@@ -1,0 +1,291 @@
+const fs = require('fs');
+const path = require('path');
+
+const leagues = [
+  {
+    name: 'Premier League',
+    clubs: [
+      'Arsenal',
+      'Aston Villa',
+      'Bournemouth',
+      'Brentford',
+      'Brighton',
+      'Burnley',
+      'Chelsea',
+      'Crystal Palace',
+      'Everton',
+      'Fulham',
+      'Liverpool',
+      'Luton Town',
+      'Manchester City',
+      'Manchester United',
+      'Newcastle United',
+      'Nottingham Forest',
+      'Sheffield United',
+      'Tottenham Hotspur',
+      'West Ham United',
+      'Wolverhampton Wanderers',
+    ],
+  },
+  {
+    name: 'EFL Championship',
+    clubs: [
+      'Birmingham City',
+      'Blackburn Rovers',
+      'Bristol City',
+      'Cardiff City',
+      'Coventry City',
+      'Hull City',
+      'Ipswich Town',
+      'Leeds United',
+      'Leicester City',
+      'Middlesbrough',
+      'Millwall',
+      'Norwich City',
+      'Plymouth Argyle',
+      'Preston North End',
+      'Queens Park Rangers',
+      'Sheffield Wednesday',
+      'Southampton',
+      'Stoke City',
+      'Sunderland',
+      'Watford',
+    ],
+  },
+  {
+    name: 'Bundesliga',
+    clubs: [
+      'Bayern Munich',
+      'Borussia Dortmund',
+      'RB Leipzig',
+      'Bayer Leverkusen',
+      'VfB Stuttgart',
+      'Eintracht Frankfurt',
+      'Freiburg',
+      'Hoffenheim',
+      'Wolfsburg',
+      'Union Berlin',
+      'Borussia Moenchengladbach',
+      'Werder Bremen',
+      'Mainz 05',
+      'Augsburg',
+      'Bochum',
+      'Heidenheim',
+      'Darmstadt 98',
+      'FC Koln',
+    ],
+  },
+  {
+    name: 'Serie A',
+    clubs: [
+      'Atalanta',
+      'Bologna',
+      'Cagliari',
+      'Empoli',
+      'Fiorentina',
+      'Frosinone',
+      'Genoa',
+      'Inter Milan',
+      'Juventus',
+      'Lazio',
+      'Lecce',
+      'AC Milan',
+      'Monza',
+      'Napoli',
+      'Roma',
+      'Salernitana',
+      'Sassuolo',
+      'Torino',
+      'Udinese',
+      'Verona',
+    ],
+  },
+  {
+    name: 'La Liga',
+    clubs: [
+      'Alaves',
+      'Almeria',
+      'Athletic Club',
+      'Atletico Madrid',
+      'Barcelona',
+      'Cadiz',
+      'Celta Vigo',
+      'Getafe',
+      'Girona',
+      'Granada',
+      'Las Palmas',
+      'Mallorca',
+      'Osasuna',
+      'Rayo Vallecano',
+      'Real Betis',
+      'Real Madrid',
+      'Real Sociedad',
+      'Sevilla',
+      'Valencia',
+      'Villarreal',
+    ],
+  },
+  {
+    name: 'Ligue 1',
+    clubs: [
+      'Paris Saint-Germain',
+      'AS Monaco',
+      'Lyon',
+      'Marseille',
+      'Lille',
+      'Nice',
+      'Rennes',
+      'Lens',
+      'Nantes',
+      'Toulouse',
+      'Reims',
+      'Strasbourg',
+      'Montpellier',
+      'Lorient',
+      'Clermont Foot',
+      'Metz',
+      'Brest',
+      'Le Havre',
+    ],
+  },
+  {
+    name: 'Primeira Liga',
+    clubs: [
+      'Benfica',
+      'Porto',
+      'Sporting CP',
+      'Braga',
+      'Vitoria SC',
+      'Boavista',
+      'Casa Pia',
+      'Chaves',
+      'Estoril',
+      'Famalicao',
+      'Farense',
+      'Gil Vicente',
+      'Moreirense',
+      'Portimonense',
+      'Rio Ave',
+      'Vizela',
+      'Arouca',
+      'Estrela Amadora',
+    ],
+  },
+  {
+    name: 'Eredivisie',
+    clubs: [
+      'Ajax',
+      'PSV Eindhoven',
+      'Feyenoord',
+      'AZ Alkmaar',
+      'FC Twente',
+      'Utrecht',
+      'SC Heerenveen',
+      'Sparta Rotterdam',
+      'Vitesse',
+      'NEC Nijmegen',
+      'Go Ahead Eagles',
+      'Fortuna Sittard',
+      'PEC Zwolle',
+      'RKC Waalwijk',
+      'Volendam',
+      'Almere City',
+      'Heracles Almelo',
+      'Cambuur',
+    ],
+  },
+  {
+    name: 'MLS',
+    clubs: [
+      'Atlanta United',
+      'Austin FC',
+      'Charlotte FC',
+      'Columbus Crew',
+      'FC Cincinnati',
+      'Houston Dynamo',
+      'Inter Miami',
+      'LA Galaxy',
+      'Los Angeles FC',
+      'Minnesota United',
+      'Nashville SC',
+      'New England Revolution',
+      'New York City FC',
+      'New York Red Bulls',
+      'Orlando City',
+      'Philadelphia Union',
+      'Portland Timbers',
+      'Real Salt Lake',
+      'Seattle Sounders',
+      'St Louis City',
+      'Toronto FC',
+      'Vancouver Whitecaps',
+    ],
+  },
+  {
+    name: 'Brasileirao Serie A',
+    clubs: [
+      'America Mineiro',
+      'Athletico Paranaense',
+      'Atletico Mineiro',
+      'Bahia',
+      'Botafogo',
+      'Corinthians',
+      'Coritiba',
+      'Cruzeiro',
+      'Cuiaba',
+      'Flamengo',
+      'Fluminense',
+      'Fortaleza',
+      'Goias',
+      'Gremio',
+      'Internacional',
+      'Palmeiras',
+      'Red Bull Bragantino',
+      'Santos',
+      'Sao Paulo',
+      'Vasco da Gama',
+    ],
+  },
+];
+
+const palette = [
+  ['#1fbf63', '#0b5e3a'],
+  ['#2d8cf0', '#133779'],
+  ['#f48c06', '#b94503'],
+  ['#e63946', '#8a0820'],
+  ['#8338ec', '#3d0a91'],
+  ['#06d6a0', '#048c68'],
+  ['#ff6d00', '#c44200'],
+  ['#1d3557', '#0a182f'],
+  ['#ef476f', '#9c1d3c'],
+  ['#118ab2', '#075071'],
+];
+
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function initials(name) {
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+leagues.forEach((league, leagueIndex) => {
+  const leagueSlug = slugify(league.name);
+  const leagueDir = path.join('badges', leagueSlug);
+  fs.mkdirSync(leagueDir, { recursive: true });
+
+  league.clubs.forEach((club, clubIndex) => {
+    const clubSlug = slugify(club);
+    const [start, end] = palette[(leagueIndex + clubIndex) % palette.length];
+    const text = initials(club);
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">\n  <defs>\n    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">\n      <stop offset="0%" stop-color="${start}"/>\n      <stop offset="100%" stop-color="${end}"/>\n    </linearGradient>\n  </defs>\n  <rect x="10" y="10" width="108" height="108" rx="22" fill="url(#grad)"/>\n  <path d="M14 70 Q16 40 32 28 L96 28 Q112 40 114 70 Q112 96 94 108 L34 108 Q16 96 14 70" fill="rgba(0,0,0,0.22)"/>\n  <text x="50%" y="58%" text-anchor="middle" fill="#ffffff" font-family="Helvetica, Arial, sans-serif" font-size="42" font-weight="700" letter-spacing="2">${text}</text>\n  <text x="50%" y="82%" text-anchor="middle" fill="rgba(255,255,255,0.85)" font-family="Helvetica, Arial, sans-serif" font-size="14">${club.toUpperCase()}</text>\n</svg>\n`;
+    fs.writeFileSync(path.join(leagueDir, `${clubSlug}.svg`), svg, 'utf8');
+  });
+});

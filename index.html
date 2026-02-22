@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Football Career Simulator</title>
+  <link rel="stylesheet" href="style.css?v=10" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Football Career Simulator</h1>
+      <p>Create a prospect, work through academy seasons, and craft your legacy.</p>
+    </header>
+
+    <main>
+      <section id="setup-section" class="panel">
+        <h2>Player Setup</h2>
+        <form id="setup-form">
+          <div class="field">
+            <label for="player-name">Player Name</label>
+            <input id="player-name" name="player-name" type="text" maxlength="30" required />
+          </div>
+
+          <div class="field">
+            <label for="nationality">Nationality</label>
+            <select id="nationality" name="nationality" required>
+              <option value="" disabled selected>Select nationality</option>
+              <option value="Argentina">Argentina</option>
+              <option value="Australia">Australia</option>
+              <option value="Austria">Austria</option>
+              <option value="Belgium">Belgium</option>
+              <option value="Brazil">Brazil</option>
+              <option value="Canada">Canada</option>
+              <option value="Chile">Chile</option>
+              <option value="China">China</option>
+              <option value="Colombia">Colombia</option>
+              <option value="Croatia">Croatia</option>
+              <option value="Denmark">Denmark</option>
+              <option value="England">England</option>
+              <option value="Finland">Finland</option>
+              <option value="France">France</option>
+              <option value="Germany">Germany</option>
+              <option value="Ghana">Ghana</option>
+              <option value="Greece">Greece</option>
+              <option value="Hungary">Hungary</option>
+              <option value="Iceland">Iceland</option>
+              <option value="Italy">Italy</option>
+              <option value="Japan">Japan</option>
+              <option value="Mexico">Mexico</option>
+              <option value="Morocco">Morocco</option>
+              <option value="Netherlands">Netherlands</option>
+              <option value="Nigeria">Nigeria</option>
+              <option value="Norway">Norway</option>
+              <option value="Poland">Poland</option>
+              <option value="Portugal">Portugal</option>
+              <option value="Scotland">Scotland</option>
+              <option value="Serbia">Serbia</option>
+              <option value="South Korea">South Korea</option>
+              <option value="Spain">Spain</option>
+              <option value="Sweden">Sweden</option>
+              <option value="Switzerland">Switzerland</option>
+              <option value="Turkey">Turkey</option>
+              <option value="United States">United States</option>
+              <option value="Uruguay">Uruguay</option>
+              <option value="Wales">Wales</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="primary-position">Primary Position</label>
+            <select id="primary-position" name="primary-position" required>
+              <option value="" disabled selected>Select a position</option>
+              <option value="GK">Goalkeeper</option>
+              <option value="RB">Right Back</option>
+              <option value="LB">Left Back</option>
+              <option value="CB">Centre Back</option>
+              <option value="CDM">Defensive Midfielder</option>
+              <option value="CM">Central Midfielder</option>
+              <option value="CAM">Attacking Midfielder</option>
+              <option value="RM">Right Midfielder</option>
+              <option value="LM">Left Midfielder</option>
+              <option value="RW">Right Winger</option>
+              <option value="LW">Left Winger</option>
+              <option value="ST">Striker</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="preferred-role">Preferred Role</label>
+            <select id="preferred-role" name="preferred-role" required>
+              <option value="" disabled selected>Select a role</option>
+            </select>
+          </div>
+
+          <button type="submit" class="primary">Start Career</button>
+        </form>
+      </section>
+
+      <section id="career-section" class="panel hidden">
+        <div class="career-layout">
+          <div class="column column-primary">
+            <div id="player-overview" class="player-overview"></div>
+
+            <section class="panel-sub" aria-live="polite">
+              <h3>League Standings</h3>
+              <div id="standings-board" class="standings-board"></div>
+            </section>
+          </div>
+
+          <div class="column column-secondary">
+            <div class="actions">
+              <button id="simulate-btn" class="primary">Simulate Next Season</button>
+              <button id="retire-btn" class="secondary">Retire Player</button>
+            </div>
+
+            <section class="panel-sub">
+              <h3>Transfer Market</h3>
+              <div id="transfer-offers" class="transfers"></div>
+            </section>
+
+            <section class="panel-sub">
+              <h3>Season History</h3>
+              <div id="season-log" class="seasons"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="season-template">
+    <article class="season-card">
+      <header></header>
+      <dl class="summary"></dl>
+      <div class="stats"></div>
+    </article>
+  </template>
+
+  <template id="offer-template">
+    <article class="offer-card">
+      <div class="details"></div>
+      <div class="offer-actions"></div>
+    </article>
+  </template>
+
+  <!-- Retirement Animation Overlay -->
+  <div id="retirement-animation-overlay" class="animation-overlay hidden">
+    <div class="animation-container">
+      <div class="retirement-header">
+        <h1>🏆 Career Complete 🏆</h1>
+        <div class="retirement-subtitle" id="retirement-subtitle"></div>
+      </div>
+      
+      <!-- Career Statistics -->
+      <div class="career-stats-section">
+        <h2>Career Statistics</h2>
+        <div class="career-stats-grid" id="career-stats-grid"></div>
+      </div>
+      
+      <!-- Career Highlights -->
+      <div class="career-highlights-section">
+        <h2>Career Highlights</h2>
+        <div class="highlights-grid" id="highlights-grid"></div>
+      </div>
+      
+      <!-- Final Rating -->
+      <div class="final-rating-section">
+        <h2>Final Rating</h2>
+        <div class="final-rating-display" id="final-rating-display"></div>
+      </div>
+      
+      <!-- Career Timeline -->
+      <div class="career-timeline-section">
+        <h2>Career Journey</h2>
+        <div class="timeline-container" id="timeline-container"></div>
+      </div>
+      
+      <!-- Thank You Message -->
+      <div class="thank-you-section">
+        <h2>Thank You for Playing!</h2>
+        <p>Your football career has come to an end. What a journey it has been!</p>
+        <button id="retirement-continue-btn" class="primary">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Season Simulation Animation Overlay -->
+  <div id="season-animation-overlay" class="animation-overlay hidden">
+    <div class="animation-container">
+      <!-- League Table Animation -->
+      <div id="league-animation" class="animation-section hidden">
+        <div class="animation-header">
+          <h2>League Standings</h2>
+          <div class="season-info" id="league-season-info"></div>
+        </div>
+        <div class="league-table-animation">
+          <div class="table-header">
+            <span>Pos</span>
+            <span>Team</span>
+            <span>Pts</span>
+            <span>W</span>
+            <span>D</span>
+            <span>L</span>
+            <span>GD</span>
+          </div>
+          <div id="league-table-rows" class="table-rows"></div>
+        </div>
+      </div>
+
+      <!-- Cup Results Animation -->
+      <div id="cup-animation" class="animation-section hidden">
+        <div class="animation-header">
+          <h2>Domestic Cup</h2>
+          <div class="cup-info" id="cup-info"></div>
+        </div>
+        <div class="cup-progression">
+          <div id="cup-rounds" class="cup-rounds"></div>
+        </div>
+      </div>
+
+      <!-- European Competition Animation -->
+      <div id="european-animation" class="animation-section hidden">
+        <div class="animation-header">
+          <h2>European Competition</h2>
+          <div class="european-info" id="european-info"></div>
+        </div>
+        <div class="european-progression">
+          <div id="european-rounds" class="european-rounds"></div>
+        </div>
+      </div>
+
+      <!-- Personal Awards Animation -->
+      <div id="awards-animation" class="animation-section hidden">
+        <div class="animation-header">
+          <h2>Personal Awards</h2>
+          <div class="awards-info" id="awards-info"></div>
+        </div>
+        <div class="awards-list">
+          <div id="awards-items" class="awards-items"></div>
+        </div>
+      </div>
+
+      <!-- Season Summary Animation -->
+      <div id="summary-animation" class="animation-section hidden">
+        <div class="animation-header">
+          <h2>Season Summary</h2>
+          <div class="summary-info" id="summary-info"></div>
+        </div>
+        <div class="summary-content">
+          <!-- Player Stats -->
+          <div class="player-stats-summary">
+            <h3>Season Statistics</h3>
+            <div id="player-stats-grid" class="stats-grid"></div>
+          </div>
+          
+          <!-- Rating Changes -->
+          <div class="rating-changes">
+            <h3>Attribute Changes</h3>
+            <div id="rating-changes-grid" class="rating-grid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overall Rating Reveal -->
+      <div id="overall-reveal" class="animation-section hidden">
+        <div class="animation-header">
+          <h2>Overall Rating</h2>
+          <div class="overall-info" id="overall-info"></div>
+        </div>
+        <div class="overall-rating-container">
+          <div class="rating-comparison">
+            <div class="old-rating">
+              <div class="rating-label">Previous</div>
+              <div id="old-rating-value" class="rating-value"></div>
+            </div>
+            <div class="rating-arrow">→</div>
+            <div class="new-rating">
+              <div class="rating-label">New</div>
+              <div id="new-rating-value" class="rating-value"></div>
+            </div>
+          </div>
+          <div id="rating-change-text" class="rating-change-text"></div>
+        </div>
+      </div>
+
+      <!-- Continue Button -->
+      <div id="animation-continue" class="animation-continue hidden">
+        <button id="continue-btn" class="primary">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="main.js?v=18"></script>
+</body>
+</html>
