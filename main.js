@@ -1,16 +1,16 @@
-import { POSITION_STYLES, STATS_KEYS } from "./js/config/playerConfig.js";
+import { STATS_KEYS } from "./js/config/playerConfig.js";
 import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js";
-import { createPlayer } from "./js/simulation/playerDevelopment.js";
+import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js";
 import { calculateContractLength, generateTransferOffers } from "./js/simulation/transferMarket.js";
 import { simulateSeason } from "./js/simulation/seasonSimulator.js";
 import {
   appendSeasonCard,
-  populateRoleOptions,
   renderPlayerOverview,
   renderSeasonLog,
   renderStandings,
   renderTransferOffers,
 } from "./js/ui/rendering.js";
+import { runCareerStartFlow } from "./js/ui/careerStartFlow.js";
 import { showSeasonAnimation } from "./js/ui/seasonAnimation.js";
 import { showRetirementAnimation } from "./js/ui/retirementAnimation.js";
 import { formatCurrency } from "./js/utils/helpers.js";
@@ -25,43 +25,78 @@ const seasonLogEl = document.getElementById("season-log");
 const transferContainer = document.getElementById("transfer-offers");
 const simulateBtn = document.getElementById("simulate-btn");
 const retireBtn = document.getElementById("retire-btn");
-const positionSelect = document.getElementById("primary-position");
-const roleSelect = document.getElementById("preferred-role");
 const standingsBoard = document.getElementById("standings-board");
 
-roleSelect.disabled = true;
+function startCareerFromSetup() {
+  const bootErr = document.getElementById("app-boot-error");
+  if (bootErr) {
+    bootErr.classList.add("hidden");
+    bootErr.textContent = "";
+  }
 
-setupForm.addEventListener("submit", (event) => {
-  event.preventDefault();
+  if (!setupForm) {
+    if (bootErr) {
+      bootErr.textContent = "Setup form not found — page may be incomplete. Reload the page.";
+      bootErr.classList.remove("hidden");
+    }
+    return;
+  }
+
+  if (!setupForm.checkValidity()) {
+    setupForm.reportValidity();
+    return;
+  }
+
   const formData = new FormData(setupForm);
-  player = createPlayer(
-    {
-      name: formData.get("player-name").trim(),
-      nationality: formData.get("nationality").trim(),
-      position: formData.get("primary-position"),
-      preferredRole: formData.get("preferred-role"),
-    },
-    ACADEMY_POOL
-  );
+  const name = String(formData.get("player-name") ?? "").trim();
+  const nationality = String(formData.get("nationality") ?? "").trim();
+  const position = String(formData.get("primary-position") ?? "").trim();
 
-  setupSection.classList.add("hidden");
-  careerSection.classList.remove("hidden");
-  refreshAll();
+  try {
+    player = createPlayerIdentity({ name, nationality, position });
+    runCareerStartFlow({
+      player,
+      academyPool: ACADEMY_POOL,
+      setupSectionEl: setupSection,
+      onComplete: () => {
+        careerSection.classList.remove("hidden");
+        refreshAll();
+        simulateBtn.disabled = player.pendingOffers.length > 0 || player.isRetired;
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    setupSection.classList.remove("hidden");
+    if (bootErr) {
+      bootErr.textContent =
+        "Could not start career. Serve this folder over HTTP (e.g. run: python3 -m http.server) and open http://localhost:8000 — opening index.html as a file often breaks the game.";
+      bootErr.classList.remove("hidden");
+    } else {
+      window.alert(
+        "Could not start career. Run from a local web server (python3 -m http.server), not file:// — see console for details."
+      );
+    }
+  }
+}
+
+/** Exposed for inline index.html click handler (runs even if other init lines fail). */
+window.__footballCareerStart = startCareerFromSetup;
+
+setupForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  startCareerFromSetup();
 });
 
-simulateBtn.addEventListener("click", () => {
+simulateBtn?.addEventListener("click", () => {
   if (!player || player.isRetired) return;
   simulateSeasonWithAnimation();
 });
 
-retireBtn.addEventListener("click", () => {
+retireBtn?.addEventListener("click", () => {
   if (!player || player.isRetired) return;
   retirePlayer();
 });
 
-positionSelect.addEventListener("change", () => {
-  populateRoleOptions(positionSelect.value, roleSelect, POSITION_STYLES);
-});
 
 function refreshOverview() {
   renderPlayerOverview(player, overviewEl, STATS_KEYS);
@@ -176,39 +211,15 @@ function maybeAutoRetire() {
 }
 
 function promoteToParentClub() {
-  if (!player || !player.club?.isAcademy) {
-    return null;
-  }
-
-  const parent = player.club.parentClub;
-  if (!parent) {
-    player.club.isAcademy = false;
-    return null;
-  }
-
-  player.club = {
-    name: parent.name,
-    displayName: parent.displayName ?? parent.name,
-    league: parent.league,
-    leagueDisplay: parent.leagueDisplay ?? parent.league,
-    tier: parent.tier,
-    badge: parent.badge,
-    financialTier: parent.financialTier,
-    isAcademy: false,
-    parentClub: null,
-  };
-
-  const currentSeason = player.seasons.length;
-  player.contractStartSeason = currentSeason;
-  player.contractYears = calculateContractLength(player.age, player.rating, player.potential, 75);
-  player.contractEndSeason = currentSeason + player.contractYears;
-
+  if (!player) return null;
+  const seniorName = promoteAcademyGraduateToFirstTeam(player, 75);
   refreshOverview();
   refreshStandings();
-  return parent.displayName ?? parent.name;
+  return seniorName;
 }
 
 function applyTransfer(offer) {
+  player.suppressParentContractOffer = false;
   player.club = {
     name: offer.club,
     displayName: offer.clubDisplay ?? offer.club,
@@ -239,17 +250,19 @@ function finishOfferWindow(accepted, offer) {
   let message;
   if (accepted && offer) {
     const offerClubName = offer.clubDisplay ?? offer.club;
-    message = `Transfer confirmed: ${player.name} joins ${offerClubName} in ${offer.leagueDisplay ?? offer.league} for ${formatCurrency(
-      offer.transferFee ?? 0
-    )}.`;
-  } else {
-    message = "Transfer window closed. Focusing on the current club.";
-    if (player.club?.isAcademy) {
-      const parentName = promoteToParentClub("auto");
-      if (parentName) {
-        message = `${player.name} signs a professional contract with ${parentName}.`;
-      }
+    if (offer.isRenewal) {
+      message = `${player.name} signs a contract extension with ${offerClubName}.`;
+    } else if (offer.isParentOffer) {
+      message = `${player.name} signs a professional contract with ${offerClubName}.`;
+    } else {
+      message = `Transfer confirmed: ${player.name} joins ${offerClubName} in ${offer.leagueDisplay ?? offer.league} for ${formatCurrency(
+        offer.transferFee ?? 0
+      )}.`;
     }
+  } else {
+    message = player.club?.isAcademy
+      ? `${player.name} remains in the academy for now.`
+      : "Transfer window closed. Focusing on the current club.";
   }
 
   note.textContent = message;

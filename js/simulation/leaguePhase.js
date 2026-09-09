@@ -1,15 +1,54 @@
 import { clamp, randFloat } from "../utils/helpers.js";
 
+const EUROPEAN_QUALIFYING_LEAGUES = new Set([
+  "England - Premier League",
+  "Spain - LaLiga",
+  "Germany - Bundesliga",
+  "Italy - Serie A",
+  "France - Ligue 1",
+  "Portugal - Liga Portugal",
+  "Netherlands - Eredivisie",
+  "Belgium - Jupiler Pro League",
+  "Austria - Bundesliga",
+  "Denmark - Superliga",
+  "Russia - Premier Liga",
+  "Türkiye - Süper Lig",
+  "Scotland - Scottish Premiership",
+  "Switzerland - Super League",
+  "Norway - Eliteserien",
+  "Sweden - Allsvenskan",
+  "Poland - PKO BP Ekstraklasa",
+  "Czech Republic - Chance Liga",
+  "Croatia - SuperSport HNL",
+  "Romania - SuperLiga",
+  "Serbia - SuperLiga",
+  "Israel - Ligat ha'Al",
+  "Ukraine - Premier Liga",
+  "Greece - Super League 1",
+  "Bulgaria - efbet Liga",
+]);
+
 export function leagueMatchCount(league) {
   const teamCount = league?.clubs?.length ?? 20;
   return (teamCount - 1) * 2;
 }
 
-export function qualificationForPosition(position, totalTeams) {
+export function isEuropeanQualificationLeague(league) {
+  return Boolean(league && EUROPEAN_QUALIFYING_LEAGUES.has(league.name));
+}
+
+export function qualificationForPosition(position, leagueOrTotalTeams) {
+  const league = typeof leagueOrTotalTeams === "object" ? leagueOrTotalTeams : null;
+  const totalTeams = league ? (league?.clubs?.length ?? 20) : leagueOrTotalTeams;
+
   if (position === 1) return "League Champions";
-  if (position <= 4 && totalTeams >= 16) return "Champions League";
-  if (position === 5 && totalTeams >= 16) return "Europa League";
-  if (position === 6 && totalTeams >= 18) return "Conference League";
+
+  if (league && isEuropeanQualificationLeague(league)) {
+    if (position <= 4 && totalTeams >= 16) return "Champions League";
+    if (position === 5 && totalTeams >= 16) return "Europa League";
+    if (position === 6 && totalTeams >= 18) return "Conference League";
+  }
+
   if (position > totalTeams - Math.max(2, Math.round(totalTeams * 0.1))) return "Relegated";
   return "";
 }
@@ -75,7 +114,7 @@ export function generateLeagueTable(league, playerClubName, performanceScore, pl
     .map((entry, index, array) => ({
       ...entry,
       position: index + 1,
-      qualification: qualificationForPosition(index + 1, array.length),
+      qualification: qualificationForPosition(index + 1, league),
     }));
 
   const playerRecord = table.find((club) => club.name === playerClubName) || null;

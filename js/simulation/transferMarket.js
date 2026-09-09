@@ -238,17 +238,6 @@ export function generateTransferOffers(performanceScore, player, leagues, league
     }
   }
 
-  const interestScore = performanceScore + player.rating * 1.5;
-  let chance = Math.min(0.92, 0.22 + interestScore / 240);
-  if (performanceScore < 55) chance *= 0.6;
-  if (performanceScore < 45) chance *= 0.35;
-  if (Math.random() > chance) {
-    return offers;
-  }
-
-  const baseSlots = Math.min(4, 1 + Math.floor(player.rating / 20));
-  const performanceMultiplier = performanceScore > 95 ? 1.7 : performanceScore > 80 ? 1.3 : performanceScore < 55 ? 0.6 : 1;
-
   if (player.club?.isAcademy && player.club.parentClub) {
     const parent = player.club.parentClub;
     const parentLeague = leagueLookup.get(parent.league);
@@ -273,6 +262,17 @@ export function generateTransferOffers(performanceScore, player, leagues, league
     });
     seen.add(parentKey);
   }
+
+  const interestScore = performanceScore + player.rating * 1.5;
+  let chance = Math.min(0.92, 0.22 + interestScore / 240);
+  if (performanceScore < 55) chance *= 0.6;
+  if (performanceScore < 45) chance *= 0.35;
+  if (Math.random() > chance) {
+    return offers;
+  }
+
+  const baseSlots = Math.min(4, 1 + Math.floor(player.rating / 20));
+  const performanceMultiplier = performanceScore > 95 ? 1.7 : performanceScore > 80 ? 1.3 : performanceScore < 55 ? 0.6 : 1;
 
   const targetOffers = Math.max(offers.length || 1, Math.round(baseSlots * performanceMultiplier));
   let safety = 0;

@@ -6,6 +6,109 @@ import { simulateDomesticCup } from "./domesticCup.js";
 import { simulateIndividualAwards } from "./individualAwards.js";
 import { clubNameForDisplay, clamp, pickRandom, randFloat, randInt } from "../utils/helpers.js";
 
+/** How much an assist counts vs a goal for “match impact” by position. */
+function assistWeightForPosition(position) {
+  const map = {
+    ST: 0.58,
+    LW: 0.7,
+    RW: 0.7,
+    LM: 0.74,
+    RM: 0.74,
+    CAM: 0.9,
+    CM: 0.92,
+    CDM: 0.95,
+    GK: 0.35,
+  };
+  return map[position] ?? 0.82;
+}
+
+/** Upper bound for average match rating: low perf → cannot fake a world-class season; elite perf → can exceed 9.3. */
+function maxAvgRatingForPerfRatio(perfRatio) {
+  if (perfRatio < 0.82) return 7.75;
+  if (perfRatio < 0.92) return 8.05;
+  if (perfRatio < 1.02) return 8.35;
+  if (perfRatio < 1.14) return 8.65;
+  if (perfRatio < 1.28) return 8.95;
+  if (perfRatio < 1.42) return 9.2;
+  if (perfRatio < 1.58) return 9.45;
+  if (perfRatio < 1.78) return 9.65;
+  if (perfRatio < 2.05) return 9.82;
+  return 9.92;
+}
+
+/**
+ * Average match rating from seasonal output (quiet seasons stay in the 6s–low 8s).
+ * Exceptional G+A (or GK clean sheets) can push into the 9.3+ range — not capped at 9.35 globally.
+ */
+function computeAvgMatchRatingFromOutput({
+  position,
+  profile,
+  matches,
+  goals,
+  assists,
+  cleanSheets,
+  ratingInfluence,
+  ageModifier,
+}) {
+  const ri = ratingInfluence;
+  const am = ageModifier;
+  const csAge = Math.min(1.1, am + 0.1);
+
+  if (position === "GK") {
+    const expCS = Math.max(0.35, matches * profile.cleanSheetRate * ri * csAge);
+    const perfRatio = clamp(cleanSheets / expCS, 0.3, 3.2);
+    const raw =
+      6.55 +
+      (perfRatio - 1) * 2.45 +
+      ri * 0.1 +
+      randFloat(-0.38, 0.38);
+    let out = raw;
+    if (perfRatio >= 1.35 && randFloat(0, 1) < 0.2) out += randFloat(0.08, 0.35);
+    const cap = maxAvgRatingForPerfRatio(perfRatio);
+    return clamp(parseFloat(out.toFixed(2)), 5.3, cap);
+  }
+
+  const aW = assistWeightForPosition(position);
+  const actualAttackPM = (goals + assists * aW) / matches;
+  const expAttackPM = Math.max(
+    0.035,
+    (profile.goalRate + profile.assistRate * aW) * ri * am
+  );
+  // Allow rare “career years” to score well above expectation (e.g. 35G/12A as ST)
+  const ratioAttack = clamp(actualAttackPM / expAttackPM, 0.12, 4.2);
+
+  const expCSPM = Math.max(0.02, profile.cleanSheetRate * ri * csAge);
+  const actualCSPM = cleanSheets / matches;
+  const ratioDef =
+    expCSPM > 0.01 ? clamp(actualCSPM / expCSPM, 0.12, 3.5) : 1;
+
+  const atkW = clamp(profile.goalRate + profile.assistRate, 0.06, 0.62);
+  const defW = profile.cleanSheetRate;
+  const blendW = atkW + defW;
+  const attackShare = blendW > 0 ? atkW / blendW : 1;
+  const defShare = 1 - attackShare;
+
+  const perfRatio = ratioAttack * attackShare + ratioDef * defShare;
+
+  const fromOutput = 6.62 + (perfRatio - 1) * 2.65;
+  const composure = ri * 0.11;
+  const noise = randFloat(-0.36, 0.36);
+  let raw = fromOutput + composure + noise;
+
+  if (perfRatio >= 1.38 && randFloat(0, 1) < 0.18) {
+    raw += randFloat(0.06, 0.28);
+  }
+  if (perfRatio >= 1.65 && randFloat(0, 1) < 0.22) {
+    raw += randFloat(0.05, 0.22);
+  }
+  if (perfRatio < 0.52 && randFloat(0, 1) < 0.16) {
+    raw -= randFloat(0.12, 0.38);
+  }
+
+  const cap = maxAvgRatingForPerfRatio(perfRatio);
+  return clamp(parseFloat(raw.toFixed(2)), 5.28, cap);
+}
+
 export function simulateSeason(player, leagues, leagueLookup) {
   const profile = POSITION_PROFILES[player.position] || POSITION_PROFILES.DEFAULT;
   const seasonIndex = player.seasons.length;
@@ -23,17 +126,49 @@ export function simulateSeason(player, leagues, leagueLookup) {
   const assists = Math.round(matches * assistRate * randFloat(0.7, 1.25));
   const cleanSheets = Math.round(matches * cleanSheetRate * randFloat(0.8, 1.2));
 
-  const avgMatchRating = clamp(
-    parseFloat((6.1 + ratingInfluence * 3 + ageModifier * 0.8 + randFloat(-0.45, 0.65)).toFixed(2)),
-    5.4,
-    9.8
-  );
+  const avgMatchRating = computeAvgMatchRatingFromOutput({
+    position: player.position,
+    profile,
+    matches,
+    goals,
+    assists,
+    cleanSheets,
+    ratingInfluence,
+    ageModifier,
+  });
 
   const performanceScore =
     avgMatchRating * 10 +
     goals * (profile.goalRate > 0.2 ? 2.3 : 1.2) +
     assists * 1.5 +
     cleanSheets * (profile.cleanSheetRate > 0.25 ? 2 : 1);
+
+  // Dynamic potential (hidden ceiling): big seasons raise it; anonymous youth seasons chip it down slightly
+  if (age <= 30) {
+    if (player.position === "GK") {
+      const csRate = matches > 0 ? cleanSheets / matches : 0;
+      if (cleanSheets >= 14 && csRate >= 0.36) {
+        player.potential = clamp(player.potential + randFloat(1.0, 3.0), player.rating + 1, 99);
+      } else if (cleanSheets >= 10 && csRate >= 0.28) {
+        player.potential = clamp(player.potential + randFloat(0.45, 1.7), player.rating + 1, 97);
+      } else if (cleanSheets <= 4 && matches >= 24) {
+        player.potential = Math.max(player.rating + 1, player.potential - randFloat(0.12, 0.65));
+      }
+    } else {
+      const contrib = goals + assists;
+      if (contrib >= 32) {
+        player.potential = clamp(player.potential + randFloat(1.2, 3.8), player.rating + 1, 99);
+      } else if (contrib >= 24) {
+        player.potential = clamp(player.potential + randFloat(0.65, 2.2), player.rating + 1, 98);
+      } else if (contrib >= 18 && performanceScore > 80) {
+        player.potential = clamp(player.potential + randFloat(0.3, 1.35), player.rating + 1, 96);
+      }
+      const quietThreshold = Math.max(4, Math.round(matches * (profile.goalRate + profile.assistRate) * 0.28));
+      if (contrib < quietThreshold && matches >= 22) {
+        player.potential = Math.max(player.rating + 1, player.potential - randFloat(0.12, 0.7));
+      }
+    }
+  }
 
   // More realistic and random rating changes based on performance
   let ratingDelta = 0;
@@ -133,8 +268,9 @@ export function simulateSeason(player, leagues, leagueLookup) {
     ratingDelta = Math.max(0, player.potential - player.rating);
   }
 
-  if (seasonIndex < 3 && ratingDelta > 0) {
-    ratingDelta += randFloat(0.1, 0.6);
+  // Slight youth variance only — removed guaranteed early-career boost so progression isn’t always up
+  if (seasonIndex < 3 && ratingDelta > 0 && randFloat(0, 1) < 0.45) {
+    ratingDelta += randFloat(0, 0.35);
   }
 
   ratingDelta = clamp(ratingDelta, -5.5, 5.5);

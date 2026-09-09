@@ -6,34 +6,6 @@ import {
   formatSigned,
 } from "../utils/helpers.js";
 
-export function populateRoleOptions(position, roleSelect, positionStyles) {
-  roleSelect.innerHTML = "";
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = "Select a role";
-  placeholder.disabled = true;
-  roleSelect.appendChild(placeholder);
-
-  const styles = positionStyles[position] ?? positionStyles.ST;
-  if (!position) {
-    roleSelect.disabled = true;
-    placeholder.selected = true;
-    return;
-  }
-
-  styles.forEach((style, index) => {
-    const option = document.createElement("option");
-    option.value = style;
-    option.textContent = style;
-    if (index === 0) {
-      option.selected = true;
-    }
-    roleSelect.appendChild(option);
-  });
-
-  roleSelect.disabled = false;
-}
-
 export function renderPlayerOverview(player, overviewEl, statsKeys) {
   if (!player) return;
   const totals = player.careerTotals;
@@ -59,7 +31,7 @@ export function renderPlayerOverview(player, overviewEl, statsKeys) {
         ${clubBadge}
         <div>
           <h2>${escapeHtml(player.name)} - OVR ${player.rating}</h2>
-          <span>${player.age} yrs - ${escapeHtml(player.position)} - ${escapeHtml(player.preferredRole)}</span>
+          <span>${player.age} yrs - ${escapeHtml(player.position)}</span>
           <span>${escapeHtml(player.nationality)} international</span>
           <span>${escapeHtml(currentClubName)} - ${escapeHtml(clubLeagueName)}</span>
         </div>
@@ -126,7 +98,7 @@ export function appendSeasonCard(season, seasonLogEl, player) {
     <dt>Europe</dt>
     <dd>${season.europeanCampaign ? `${season.europeanCampaign.competition} - ${season.europeanCampaign.result}` : "No competition"}</dd>
     <dt>Domestic cup</dt>
-    <dd>${season.domesticCupResult || "N/A"}</dd>
+    <dd>${season.domesticCupResult?.result || "N/A"}</dd>
   `;
 
   const statItems = [
@@ -149,7 +121,7 @@ export function appendSeasonCard(season, seasonLogEl, player) {
   }
 
   if (season.domesticCupResult) {
-    statItems.push(`Domestic cup: ${season.domesticCupResult}`);
+    statItems.push(`Domestic cup: ${season.domesticCupResult.result}`);
   }
 
   if (season.individualAwards?.length) {
@@ -158,6 +130,10 @@ export function appendSeasonCard(season, seasonLogEl, player) {
 
   if (season.trophies?.length) {
     statItems.push(`Trophies: ${season.trophies.join(", ")}`);
+  }
+
+  if (season.isNarrativeAcademyYear) {
+    statItems.push("Academy narrative year — no senior league / cups yet");
   }
 
   stats.innerHTML = statItems.map((item) => `<span>${item}</span>`).join("");
@@ -169,7 +145,10 @@ export function renderSeasonLog(player, seasonLogEl) {
   if (!player || !player.seasons.length) {
     const hint = document.createElement("p");
     hint.className = "empty-state";
-    hint.textContent = "No seasons simulated yet. Push 'Simulate Next Season' to begin.";
+    hint.textContent =
+      player?.careerIntroComplete === false
+        ? "Complete the career introduction to begin."
+        : "No seasons yet. Use Simulate Next Season when ready.";
     seasonLogEl.appendChild(hint);
     return;
   }
@@ -181,7 +160,7 @@ export function renderStandings(player, standingsBoard) {
   if (!player || !player.seasons.length || !player.latestStanding) {
     const note = document.createElement("p");
     note.className = "empty-state";
-    note.textContent = "Standings will appear after your first season.";
+    note.textContent = "Standings appear after you simulate a season with league fixtures.";
     standingsBoard.appendChild(note);
     return;
   }
@@ -283,12 +262,12 @@ export function renderTransferOffers({
   transferContainer.innerHTML = "";
   if (!player.pendingOffers.length) {
     if (player.club?.isAcademy) {
-      const parentName = promoteToParentClub("auto");
       const notice = document.createElement("p");
       notice.className = "empty-state";
-      notice.textContent = parentName
-        ? `${player.name} signs a professional contract with ${parentName}.`
-        : "Academy deal converted to a professional contract.";
+      notice.textContent =
+        player.seasons.length > 0
+          ? "Awaiting a decision on offers in the transfer panel."
+          : "Complete career setup to begin.";
       transferContainer.appendChild(notice);
     } else {
       const empty = document.createElement("p");
@@ -332,27 +311,29 @@ export function renderTransferOffers({
       applyTransfer(offer);
     });
 
-    const declineBtn = document.createElement("button");
-    declineBtn.className = "decline";
-    declineBtn.textContent = "Decline";
-    declineBtn.addEventListener("click", () => {
-      player.pendingOffers.splice(index, 1);
-      if (!player.pendingOffers.length) {
-        finishOfferWindow(false);
-      } else {
-        renderTransferOffers({
-          player,
-          transferContainer,
-          simulateBtn,
-          applyTransfer,
-          finishOfferWindow,
-          promoteToParentClub,
-        });
-      }
-    });
-
     actions.appendChild(acceptBtn);
-    actions.appendChild(declineBtn);
+
+    if (!offer.isReleasedYouthOffer) {
+      const declineBtn = document.createElement("button");
+      declineBtn.className = "decline";
+      declineBtn.textContent = "Decline";
+      declineBtn.addEventListener("click", () => {
+        player.pendingOffers.splice(index, 1);
+        if (!player.pendingOffers.length) {
+          finishOfferWindow(false);
+        } else {
+          renderTransferOffers({
+            player,
+            transferContainer,
+            simulateBtn,
+            applyTransfer,
+            finishOfferWindow,
+            promoteToParentClub,
+          });
+        }
+      });
+      actions.appendChild(declineBtn);
+    }
     transferContainer.appendChild(node);
   });
 
@@ -361,7 +342,7 @@ export function renderTransferOffers({
     const contractValid = player.contractEndSeason === null || currentSeason < player.contractEndSeason;
     const hasRenewalOffer = player.pendingOffers.some((offer) => offer.isRenewal && offer.club === player.club.name);
 
-    if (player.club.isAcademy && player.club.parentClub) {
+    if (player.club.isAcademy && player.club.parentClub && !player.suppressParentContractOffer) {
       const stayBtn = document.createElement("button");
       stayBtn.className = "secondary";
       const parentDisplay = clubNameForDisplay(player.club.parentClub);
@@ -369,6 +350,7 @@ export function renderTransferOffers({
       stayBtn.addEventListener("click", () => {
         promoteToParentClub("manual");
         finishOfferWindow(true, {
+          isParentOffer: true,
           club: player.club.name,
           clubDisplay: clubNameForDisplay(player.club),
           league: player.club.league,

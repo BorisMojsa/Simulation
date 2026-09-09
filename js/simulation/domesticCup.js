@@ -50,6 +50,7 @@ export function simulateDomesticCup(league, performanceScore, standing, player) 
     badge: c.badge,
     strength: c.financialTier * 10 + league.tier * 3 + randFloat(-5, 5)
   })) || [];
+  const fallbackOpponents = leagueTeams.filter(team => team.name !== playerTeamName);
   
   // Create a tournament bracket system
   // Start with all teams in competition
@@ -175,54 +176,7 @@ export function simulateDomesticCup(league, performanceScore, standing, player) 
   let winner = null;
   let winnerData = null;
   
-  if (resultIndex < 5 || !playerStillIn) {
-    // Eliminated before final - simulate rest of tournament
-    let remainingTeams = [...currentRoundTeams];
-    
-    // Continue simulating until we have finalists
-    while (remainingTeams.length > 2) {
-      const nextRound = [];
-      while (remainingTeams.length >= 2) {
-        const team1 = pickRandom(remainingTeams);
-        remainingTeams.splice(remainingTeams.indexOf(team1), 1);
-        const team2 = pickRandom(remainingTeams);
-        remainingTeams.splice(remainingTeams.indexOf(team2), 1);
-        
-        const team1WinChance = team1.strength / (team1.strength + team2.strength);
-        if (Math.random() < team1WinChance) {
-          nextRound.push(team1);
-        } else {
-          nextRound.push(team2);
-        }
-      }
-      remainingTeams = nextRound;
-    }
-    
-    // Final two teams
-    if (remainingTeams.length === 2) {
-      finalists = [
-        {
-          name: remainingTeams[0].name,
-          displayName: remainingTeams[0].displayName,
-          badge: remainingTeams[0].badge
-        },
-        {
-          name: remainingTeams[1].name,
-          displayName: remainingTeams[1].displayName,
-          badge: remainingTeams[1].badge
-        }
-      ];
-      
-      // Simulate final
-      const team1WinChance = remainingTeams[0].strength / (remainingTeams[0].strength + remainingTeams[1].strength);
-      if (Math.random() < team1WinChance) {
-        winnerData = remainingTeams[0];
-      } else {
-        winnerData = remainingTeams[1];
-      }
-      winner = winnerData.displayName;
-    }
-  } else if (result === "Winners") {
+  if (result === "Winners") {
     // Player won
     winner = playerTeam;
     winnerData = {
@@ -232,8 +186,9 @@ export function simulateDomesticCup(league, performanceScore, standing, player) 
     };
     
     // Need to determine who they beat in final
-    if (currentRoundTeams.length > 0) {
-      const finalOpponent = pickRandom(currentRoundTeams);
+    const finalPool = currentRoundTeams.length > 0 ? currentRoundTeams : fallbackOpponents;
+    if (finalPool.length > 0) {
+      const finalOpponent = pickRandom(finalPool);
       // Add final round to rounds if not already there
       if (!rounds.find(r => r.round === "Winners" || r.round === "Finalists")) {
         rounds.push({
@@ -248,8 +203,9 @@ export function simulateDomesticCup(league, performanceScore, standing, player) 
     }
   } else if (result === "Finalists") {
     // Player was runner-up - need opponent from remaining teams
-    if (currentRoundTeams.length > 0) {
-      const finalOpponent = pickRandom(currentRoundTeams);
+    const finalPool = currentRoundTeams.length > 0 ? currentRoundTeams : fallbackOpponents;
+    if (finalPool.length > 0) {
+      const finalOpponent = pickRandom(finalPool);
       finalists = [
         {
           name: playerTeamName,
@@ -276,6 +232,58 @@ export function simulateDomesticCup(league, performanceScore, standing, player) 
           qualified: false
         });
       }
+    }
+  } else {
+    // Eliminated before final - simulate rest of tournament
+    let remainingTeams = [...currentRoundTeams];
+    
+    // Continue simulating until we have finalists
+    while (remainingTeams.length > 2) {
+      const nextRound = [];
+      while (remainingTeams.length >= 2) {
+        const team1 = pickRandom(remainingTeams);
+        remainingTeams.splice(remainingTeams.indexOf(team1), 1);
+        const team2 = pickRandom(remainingTeams);
+        remainingTeams.splice(remainingTeams.indexOf(team2), 1);
+        
+        const team1WinChance = team1.strength / (team1.strength + team2.strength);
+        if (Math.random() < team1WinChance) {
+          nextRound.push(team1);
+        } else {
+          nextRound.push(team2);
+        }
+      }
+      remainingTeams = nextRound;
+    }
+    
+    if (remainingTeams.length < 2 && fallbackOpponents.length >= 2) {
+      const sortedFallback = [...fallbackOpponents].sort((a, b) => b.strength - a.strength);
+      remainingTeams = sortedFallback.slice(0, 2);
+    }
+
+    // Final two teams
+    if (remainingTeams.length === 2) {
+      finalists = [
+        {
+          name: remainingTeams[0].name,
+          displayName: remainingTeams[0].displayName,
+          badge: remainingTeams[0].badge
+        },
+        {
+          name: remainingTeams[1].name,
+          displayName: remainingTeams[1].displayName,
+          badge: remainingTeams[1].badge
+        }
+      ];
+      
+      // Simulate final
+      const team1WinChance = remainingTeams[0].strength / (remainingTeams[0].strength + remainingTeams[1].strength);
+      if (Math.random() < team1WinChance) {
+        winnerData = remainingTeams[0];
+      } else {
+        winnerData = remainingTeams[1];
+      }
+      winner = winnerData.displayName;
     }
   }
   

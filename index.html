@@ -16,6 +16,7 @@
     <main>
       <section id="setup-section" class="panel">
         <h2>Player Setup</h2>
+        <p id="app-boot-error" class="boot-error hidden" role="alert"></p>
         <form id="setup-form">
           <div class="field">
             <label for="player-name">Player Name</label>
@@ -86,14 +87,7 @@
             </select>
           </div>
 
-          <div class="field">
-            <label for="preferred-role">Preferred Role</label>
-            <select id="preferred-role" name="preferred-role" required>
-              <option value="" disabled selected>Select a role</option>
-            </select>
-          </div>
-
-          <button type="submit" class="primary">Start Career</button>
+          <button type="button" class="primary" id="start-career-btn">Start Career</button>
         </form>
       </section>
 
@@ -181,6 +175,61 @@
         <h2>Thank You for Playing!</h2>
         <p>Your football career has come to an end. What a journey it has been!</p>
         <button id="retirement-continue-btn" class="primary">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Career start: backstory → academy pick → rating → 3 decisions → year-end -->
+  <div id="career-start-overlay" class="animation-overlay hidden">
+    <div class="animation-container career-start-wrap">
+      <div id="career-step-backstory" class="career-step">
+        <div class="animation-header">
+          <h2>Where it began</h2>
+        </div>
+        <p id="career-backstory-text" class="career-prose"></p>
+        <button type="button" id="career-backstory-next" class="primary">Continue</button>
+      </div>
+
+      <div id="career-step-academy" class="career-step hidden">
+        <div class="animation-header">
+          <h2>Choose an academy</h2>
+        </div>
+        <p id="career-academy-lead" class="career-prose"></p>
+        <div id="career-academy-grid" class="career-academy-grid"></div>
+      </div>
+
+      <div id="career-step-scenario" class="career-step hidden">
+        <div class="animation-header">
+          <h2>Academy year</h2>
+          <div id="career-scenario-index" class="career-scenario-badge"></div>
+        </div>
+        <p class="career-prose career-scenario-preface">
+          Your grade can wait — these are the moments staff remember.
+        </p>
+        <p id="career-scenario-setup" class="career-prose career-scenario-setup"></p>
+        <div id="career-scenario-choices" class="career-scenario-choices"></div>
+        <p id="career-scenario-outcome" class="career-prose career-scenario-outcome hidden"></p>
+        <button type="button" id="career-scenario-next" class="primary hidden">Next</button>
+      </div>
+
+      <div id="career-step-rating" class="career-step hidden">
+        <div class="animation-header">
+          <h2>First assessment</h2>
+        </div>
+        <p class="career-prose">After those moments, the academy publishes your first overall rating.</p>
+        <div class="career-rating-reveal">
+          <span class="career-rating-label">Overall</span>
+          <span id="career-rating-value" class="career-rating-big"></span>
+        </div>
+        <button type="button" id="career-rating-next" class="primary">Continue</button>
+      </div>
+
+      <div id="career-step-year-end" class="career-step hidden">
+        <div class="animation-header">
+          <h2 id="career-year-end-title"></h2>
+        </div>
+        <p id="career-year-end-body" class="career-prose"></p>
+        <button type="button" id="career-year-end-continue" class="primary">Enter career hub</button>
       </div>
     </div>
   </div>
@@ -291,6 +340,60 @@
     </div>
   </div>
 
-  <script type="module" src="main.js?v=18"></script>
+  <!-- Inline handler runs even if the module fails to load (e.g. file:// or 404) -->
+  <script>
+    (function () {
+      function showBoot(msg) {
+        var el = document.getElementById("app-boot-error");
+        if (el) {
+          el.textContent = msg;
+          el.classList.remove("hidden");
+        } else {
+          alert(msg);
+        }
+      }
+      function onStartClick() {
+        if (typeof window.__footballCareerStart === "function") {
+          try {
+            window.__footballCareerStart();
+          } catch (err) {
+            console.error(err);
+            showBoot("Error starting career: " + (err && err.message ? err.message : String(err)));
+          }
+        } else {
+          showBoot(
+            "Game scripts are not loaded. Do not open this file directly. In Terminal: cd to the Simulation folder, run python3 -m http.server 8765, then open http://localhost:8765/ in your browser. Check the browser console (F12) for errors."
+          );
+        }
+      }
+      document.addEventListener("DOMContentLoaded", function () {
+        var btn = document.getElementById("start-career-btn");
+        if (btn) btn.addEventListener("click", onStartClick);
+      });
+    })();
+  </script>
+  <script type="module">
+    import("./main.js?v=30").catch(function (err) {
+      console.error(err);
+      var el = document.getElementById("app-boot-error");
+      if (el) {
+        el.classList.remove("hidden");
+        el.textContent =
+          "Could not load game files (" +
+          (err && err.message ? err.message : "unknown error") +
+          "). Serve this folder with a local web server and use http://localhost — not file://.";
+      }
+    });
+  </script>
+<script nomodule>
+  (function () {
+    var el = document.getElementById("app-boot-error");
+    if (el) {
+      el.classList.remove("hidden");
+      el.textContent =
+        "Your browser cannot run this app (needs ES modules). Use an up-to-date Chrome, Firefox, or Safari.";
+    }
+  })();
+</script>
 </body>
 </html>

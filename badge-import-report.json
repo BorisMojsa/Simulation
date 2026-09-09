@@ -1,0 +1,3374 @@
+{
+  "generatedAt": "2026-09-09T16:45:42Z",
+  "selectedLeagues": [
+    "Premier League",
+    "Championship",
+    "Bundesliga",
+    "2. Bundesliga",
+    "La Liga",
+    "LaLiga 2",
+    "Serie A",
+    "Serie B",
+    "Ligue 1",
+    "Ligue 2",
+    "Brasileirão Série A",
+    "Belgian Pro League",
+    "Liga Profesional",
+    "Primeira Liga",
+    "Ekstraklasa",
+    "Danish Superliga",
+    "Eliteserien",
+    "Liga MX",
+    "Categoría Primera A",
+    "Eredivisie",
+    "LigaPro Serie A",
+    "Süper Lig",
+    "Major League Soccer",
+    "Czech First League",
+    "Croatian HNL",
+    "Serbian SuperLiga"
+  ],
+  "leagues": {
+    "Premier League": {
+      "clubs": [
+        {
+          "club": "Arsenal",
+          "badge": "badges/England - Premier League/Arsenal.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Arsenal"
+        },
+        {
+          "club": "Aston Villa",
+          "badge": "badges/England - Premier League/Aston Villa.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Aston Villa"
+        },
+        {
+          "club": "AFC Bournemouth",
+          "badge": "badges/England - Premier League/AFC Bournemouth.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bournemouth"
+        },
+        {
+          "club": "Brentford",
+          "badge": "badges/England - Premier League/Brentford.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Brentford"
+        },
+        {
+          "club": "Brighton & Hove Albion",
+          "badge": "badges/England - Premier League/Brighton & Hove Albion.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Brighton WFC"
+        },
+        {
+          "club": "Chelsea",
+          "badge": "badges/England - Premier League/Chelsea.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Chelsea"
+        },
+        {
+          "club": "Coventry City",
+          "badge": "badges/England - Premier League/Coventry City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Coventry City"
+        },
+        {
+          "club": "Crystal Palace",
+          "badge": "badges/England - Premier League/Crystal Palace.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Crystal Palace"
+        },
+        {
+          "club": "Everton",
+          "badge": "badges/England - Premier League/Everton.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Everton"
+        },
+        {
+          "club": "Fulham",
+          "badge": "badges/England - Premier League/Fulham.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Fulham"
+        },
+        {
+          "club": "Hull City",
+          "badge": "badges/England - Premier League/Hull City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Hull City"
+        },
+        {
+          "club": "Ipswich Town",
+          "badge": "badges/England - Premier League/Ipswich Town.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Ipswich Town"
+        },
+        {
+          "club": "Leeds United",
+          "badge": "badges/England - Premier League/Leeds United.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Leeds United"
+        },
+        {
+          "club": "Liverpool",
+          "badge": "badges/England - Premier League/Liverpool.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Liverpool"
+        },
+        {
+          "club": "Manchester City",
+          "badge": "badges/England - Premier League/Manchester City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Manchester City"
+        },
+        {
+          "club": "Manchester United",
+          "badge": "badges/England - Premier League/Manchester United.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Manchester United"
+        },
+        {
+          "club": "Newcastle United",
+          "badge": "badges/England - Premier League/Newcastle United.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Newcastle United"
+        },
+        {
+          "club": "Nottingham Forest",
+          "badge": "badges/England - Premier League/Nottingham Forest.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Nottingham Forest"
+        },
+        {
+          "club": "Sunderland",
+          "badge": "badges/England - Premier League/Sunderland.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sunderland"
+        },
+        {
+          "club": "Tottenham Hotspur",
+          "badge": "badges/England - Premier League/Tottenham Hotspur.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Tottenham Hotspur"
+        }
+      ],
+      "sources": {
+        "sportsdb": 20
+      }
+    },
+    "Championship": {
+      "clubs": [
+        {
+          "club": "Birmingham City",
+          "badge": "badges/England - Championship/Birmingham City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Birmingham City"
+        },
+        {
+          "club": "Blackburn Rovers",
+          "badge": "badges/England - Championship/Blackburn Rovers.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Blackburn Rovers"
+        },
+        {
+          "club": "Bolton Wanderers",
+          "badge": "badges/England - Championship/Bolton Wanderers.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bolton Wanderers"
+        },
+        {
+          "club": "Bristol City",
+          "badge": "badges/England - Championship/Bristol City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bristol City"
+        },
+        {
+          "club": "Burnley",
+          "badge": "badges/England - Championship/Burnley.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Burnley"
+        },
+        {
+          "club": "Cardiff City",
+          "badge": "badges/England - Championship/Cardiff City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Cardiff City"
+        },
+        {
+          "club": "Charlton Athletic",
+          "badge": "badges/England - Championship/Charlton Athletic.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Charlton Athletic"
+        },
+        {
+          "club": "Derby County",
+          "badge": "badges/England - Championship/Derby County.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Derby County"
+        },
+        {
+          "club": "Lincoln City",
+          "badge": "badges/England - Championship/Lincoln City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lincoln City"
+        },
+        {
+          "club": "Middlesbrough",
+          "badge": "badges/England - Championship/Middlesbrough.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Middlesbrough"
+        },
+        {
+          "club": "Millwall",
+          "badge": "badges/England - Championship/Millwall.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Millwall"
+        },
+        {
+          "club": "Norwich City",
+          "badge": "badges/England - Championship/Norwich City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Norwich City"
+        },
+        {
+          "club": "Portsmouth",
+          "badge": "badges/England - Championship/Portsmouth.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Portsmouth"
+        },
+        {
+          "club": "Preston North End",
+          "badge": "badges/England - Championship/Preston North End.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Preston North End"
+        },
+        {
+          "club": "Queens Park Rangers",
+          "badge": "badges/England - Championship/Queens Park Rangers.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Queens Park Rangers"
+        },
+        {
+          "club": "Sheffield United",
+          "badge": "badges/England - Championship/Sheffield United.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sheffield United"
+        },
+        {
+          "club": "Southampton",
+          "badge": "badges/England - Championship/Southampton.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Southampton"
+        },
+        {
+          "club": "Stoke City",
+          "badge": "badges/England - Championship/Stoke City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Stoke City"
+        },
+        {
+          "club": "Swansea City",
+          "badge": "badges/England - Championship/Swansea City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Swansea City"
+        },
+        {
+          "club": "Watford",
+          "badge": "badges/England - Championship/Watford.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Watford"
+        },
+        {
+          "club": "West Bromwich Albion",
+          "badge": "badges/England - Championship/West Bromwich Albion.png",
+          "source": "sportsdb",
+          "details": "sportsdb:West Bromwich Albion"
+        },
+        {
+          "club": "West Ham United",
+          "badge": "badges/England - Championship/West Ham United.png",
+          "source": "sportsdb",
+          "details": "sportsdb:West Ham United"
+        },
+        {
+          "club": "Wolverhampton Wanderers",
+          "badge": "badges/England - Championship/Wolverhampton Wanderers.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Wolverhampton Wanderers"
+        },
+        {
+          "club": "Wrexham",
+          "badge": "badges/England - Championship/Wrexham.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Wrexham"
+        }
+      ],
+      "sources": {
+        "sportsdb": 24
+      }
+    },
+    "Bundesliga": {
+      "clubs": [
+        {
+          "club": "FC Augsburg",
+          "badge": "badges/Germany - Bundesliga/FC Augsburg.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Augsburg"
+        },
+        {
+          "club": "Union Berlin",
+          "badge": "badges/Germany - Bundesliga/Union Berlin.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Union Berlin"
+        },
+        {
+          "club": "Werder Bremen",
+          "badge": "badges/Germany - Bundesliga/Werder Bremen.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Werder Bremen"
+        },
+        {
+          "club": "Borussia Dortmund",
+          "badge": "badges/Germany - Bundesliga/Borussia Dortmund.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Borussia Dortmund"
+        },
+        {
+          "club": "SV Elversberg",
+          "badge": "badges/Germany - Bundesliga/SV Elversberg.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Elversberg"
+        },
+        {
+          "club": "Eintracht Frankfurt",
+          "badge": "badges/Germany - Bundesliga/Eintracht Frankfurt.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Eintracht Frankfurt"
+        },
+        {
+          "club": "SC Freiburg",
+          "badge": "badges/Germany - Bundesliga/SC Freiburg.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Freiburg"
+        },
+        {
+          "club": "Hamburger SV",
+          "badge": "badges/Germany - Bundesliga/Hamburger SV.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Hamburger SV"
+        },
+        {
+          "club": "TSG Hoffenheim",
+          "badge": "badges/Germany - Bundesliga/TSG Hoffenheim.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Hoffenheim"
+        },
+        {
+          "club": "1. FC Köln",
+          "badge": "badges/Germany - Bundesliga/1. FC Köln.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Köln"
+        },
+        {
+          "club": "RB Leipzig",
+          "badge": "badges/Germany - Bundesliga/RB Leipzig.png",
+          "source": "sportsdb",
+          "details": "sportsdb:RB Leipzig"
+        },
+        {
+          "club": "Bayer Leverkusen",
+          "badge": "badges/Germany - Bundesliga/Bayer Leverkusen.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bayer Leverkusen"
+        },
+        {
+          "club": "Mainz 05",
+          "badge": "badges/Germany - Bundesliga/Mainz 05.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Mainz"
+        },
+        {
+          "club": "Borussia Mönchengladbach",
+          "badge": "badges/Germany - Bundesliga/Borussia Mönchengladbach.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Borussia Mönchengladbach"
+        },
+        {
+          "club": "Bayern Munich",
+          "badge": "badges/Germany - Bundesliga/Bayern Munich.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bayern Munich"
+        },
+        {
+          "club": "SC Paderborn",
+          "badge": "badges/Germany - Bundesliga/SC Paderborn.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Paderborn"
+        },
+        {
+          "club": "Schalke 04",
+          "badge": "badges/Germany - Bundesliga/Schalke 04.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Schalke 04"
+        },
+        {
+          "club": "VfB Stuttgart",
+          "badge": "badges/Germany - Bundesliga/VfB Stuttgart.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Stuttgart"
+        }
+      ],
+      "sources": {
+        "sportsdb": 18
+      }
+    },
+    "2. Bundesliga": {
+      "clubs": [
+        {
+          "club": "Hertha BSC",
+          "badge": "badges/Germany - 2. Bundesliga/Hertha BSC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Hertha"
+        },
+        {
+          "club": "Arminia Bielefeld",
+          "badge": "badges/Germany - 2. Bundesliga/Arminia Bielefeld.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Arminia Bielefeld"
+        },
+        {
+          "club": "VfL Bochum",
+          "badge": "badges/Germany - 2. Bundesliga/VfL Bochum.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bochum"
+        },
+        {
+          "club": "Eintracht Braunschweig",
+          "badge": "badges/Germany - 2. Bundesliga/Eintracht Braunschweig.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Eintracht Braunschweig"
+        },
+        {
+          "club": "Energie Cottbus",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Darmstadt 98",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Dynamo Dresden",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Greuther Fürth",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Hannover 96",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "1. FC Heidenheim",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "1. FC Kaiserslautern",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Karlsruher SC",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Holstein Kiel",
+          "badge": "badges/Germany - 2. Bundesliga/Holstein Kiel.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Holstein Kiel"
+        },
+        {
+          "club": "1. FC Magdeburg",
+          "badge": "badges/Germany - 2. Bundesliga/1. FC Magdeburg.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Magdeburg"
+        },
+        {
+          "club": "1. FC Nürnberg",
+          "badge": "badges/Germany - 2. Bundesliga/1. FC Nürnberg.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Nürnberg"
+        },
+        {
+          "club": "VfL Osnabrück",
+          "badge": "badges/Germany - 2. Bundesliga/VfL Osnabrück.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Osnabrück"
+        },
+        {
+          "club": "FC St. Pauli",
+          "badge": "badges/Germany - 2. Bundesliga/FC St. Pauli.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Paulista"
+        },
+        {
+          "club": "VfL Wolfsburg",
+          "badge": "badges/Germany - 2. Bundesliga/VfL Wolfsburg.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Wolfsburg"
+        }
+      ],
+      "sources": {
+        "sportsdb": 10,
+        "missing": 8
+      }
+    },
+    "La Liga": {
+      "clubs": [
+        {
+          "club": "Deportivo Alavés",
+          "badge": "badges/Spain - La Liga/Deportivo Alavés.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Deportivo Alavés"
+        },
+        {
+          "club": "Athletic Bilbao",
+          "badge": "badges/Spain - La Liga/Athletic Bilbao.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Athletic Bilbao"
+        },
+        {
+          "club": "Atlético Madrid",
+          "badge": "badges/Spain - La Liga/Atlético Madrid.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Atlético Madrid"
+        },
+        {
+          "club": "FC Barcelona",
+          "badge": "badges/Spain - La Liga/FC Barcelona.png",
+          "source": "sportsdb",
+          "details": "sportsdb:FC Barcelona"
+        },
+        {
+          "club": "Celta Vigo",
+          "badge": "badges/Spain - La Liga/Celta Vigo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Celta Vigo"
+        },
+        {
+          "club": "Deportivo de La Coruña",
+          "badge": "badges/Spain - La Liga/Deportivo de La Coruña.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Deportivo Fabril"
+        },
+        {
+          "club": "Elche",
+          "badge": "badges/Spain - La Liga/Elche.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Elche"
+        },
+        {
+          "club": "Espanyol",
+          "badge": "badges/Spain - La Liga/Espanyol.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Espanyol"
+        },
+        {
+          "club": "Getafe",
+          "badge": "badges/Spain - La Liga/Getafe.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Getafe"
+        },
+        {
+          "club": "Levante",
+          "badge": "badges/Spain - La Liga/Levante.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Levante"
+        },
+        {
+          "club": "Málaga",
+          "badge": "badges/Spain - La Liga/Málaga.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Málaga"
+        },
+        {
+          "club": "Osasuna",
+          "badge": "badges/Spain - La Liga/Osasuna.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Osasuna"
+        },
+        {
+          "club": "Racing Santander",
+          "badge": "badges/Spain - La Liga/Racing Santander.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Racing de Santander"
+        },
+        {
+          "club": "Rayo Vallecano",
+          "badge": "badges/Spain - La Liga/Rayo Vallecano.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Rayo Vallecano"
+        },
+        {
+          "club": "Real Betis",
+          "badge": "badges/Spain - La Liga/Real Betis.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Real Betis"
+        },
+        {
+          "club": "Real Madrid",
+          "badge": "badges/Spain - La Liga/Real Madrid.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Real Madrid"
+        },
+        {
+          "club": "Real Sociedad",
+          "badge": "badges/Spain - La Liga/Real Sociedad.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Real Sociedad"
+        },
+        {
+          "club": "Sevilla",
+          "badge": "badges/Spain - La Liga/Sevilla.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sevilla"
+        },
+        {
+          "club": "Valencia",
+          "badge": "badges/Spain - La Liga/Valencia.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Valencia"
+        },
+        {
+          "club": "Villarreal",
+          "badge": "badges/Spain - La Liga/Villarreal.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Villarreal"
+        }
+      ],
+      "sources": {
+        "sportsdb": 20
+      }
+    },
+    "LaLiga 2": {
+      "clubs": [
+        {
+          "club": "Albacete",
+          "badge": "badges/Spain - LaLiga 2/Albacete.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Albacete"
+        },
+        {
+          "club": "Almería",
+          "badge": "badges/Spain - LaLiga 2/Almería.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Almería"
+        },
+        {
+          "club": "FC Andorra",
+          "badge": "badges/Spain - LaLiga 2/FC Andorra.png",
+          "source": "sportsdb",
+          "details": "sportsdb:FC Andorra"
+        },
+        {
+          "club": "Burgos",
+          "badge": "badges/Spain - LaLiga 2/Burgos.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Burgos"
+        },
+        {
+          "club": "Cádiz",
+          "badge": "badges/Spain - LaLiga 2/Cádiz.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Cádiz"
+        },
+        {
+          "club": "Castellón",
+          "badge": "badges/Spain - LaLiga 2/Castellón.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Castellón"
+        },
+        {
+          "club": "Celta Fortuna",
+          "badge": "badges/Spain - LaLiga 2/Celta Fortuna.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Celta Fortuna"
+        },
+        {
+          "club": "AD Ceuta",
+          "badge": "badges/Spain - LaLiga 2/AD Ceuta.png",
+          "source": "sportsdb",
+          "details": "sportsdb:AD Ceuta"
+        },
+        {
+          "club": "Córdoba",
+          "badge": "badges/Spain - LaLiga 2/Córdoba.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Córdoba"
+        },
+        {
+          "club": "Eibar",
+          "badge": "badges/Spain - LaLiga 2/Eibar.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Eibar"
+        },
+        {
+          "club": "Eldense",
+          "badge": "badges/Spain - LaLiga 2/Eldense.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Eldense"
+        },
+        {
+          "club": "Girona",
+          "badge": "badges/Spain - LaLiga 2/Girona.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Girona"
+        },
+        {
+          "club": "Granada",
+          "badge": "badges/Spain - LaLiga 2/Granada.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Granada"
+        },
+        {
+          "club": "Las Palmas",
+          "badge": "badges/Spain - LaLiga 2/Las Palmas.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Las Palmas"
+        },
+        {
+          "club": "Leganés",
+          "badge": "badges/Spain - LaLiga 2/Leganés.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Leganés"
+        },
+        {
+          "club": "Mallorca",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Real Oviedo",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Real Sociedad B",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Sabadell",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Sporting Gijón",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Tenerife",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Real Valladolid",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        }
+      ],
+      "sources": {
+        "sportsdb": 15,
+        "missing": 7
+      }
+    },
+    "Serie A": {
+      "clubs": [
+        {
+          "club": "Atalanta",
+          "badge": "badges/Italy - Serie A/Atalanta.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Atalanta"
+        },
+        {
+          "club": "Bologna",
+          "badge": "badges/Italy - Serie A/Bologna.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bologna"
+        },
+        {
+          "club": "Cagliari",
+          "badge": "badges/Italy - Serie A/Cagliari.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Cagliari"
+        },
+        {
+          "club": "Como",
+          "badge": "badges/Italy - Serie A/Como.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Como"
+        },
+        {
+          "club": "Fiorentina",
+          "badge": "badges/Italy - Serie A/Fiorentina.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Fiorentina"
+        },
+        {
+          "club": "Frosinone",
+          "badge": "badges/Italy - Serie A/Frosinone.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Frosinone"
+        },
+        {
+          "club": "Genoa",
+          "badge": "badges/Italy - Serie A/Genoa.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Genoa"
+        },
+        {
+          "club": "Inter Milan",
+          "badge": "badges/Italy - Serie A/Inter Milan.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Inter Milan"
+        },
+        {
+          "club": "Juventus",
+          "badge": "badges/Italy - Serie A/Juventus.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Juventus"
+        },
+        {
+          "club": "Lazio",
+          "badge": "badges/Italy - Serie A/Lazio.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lazio"
+        },
+        {
+          "club": "Lecce",
+          "badge": "badges/Italy - Serie A/Lecce.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lecce"
+        },
+        {
+          "club": "AC Milan",
+          "badge": "badges/Italy - Serie A/AC Milan.png",
+          "source": "sportsdb",
+          "details": "sportsdb:AC Milan"
+        },
+        {
+          "club": "Monza",
+          "badge": "badges/Italy - Serie A/Monza.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Monza"
+        },
+        {
+          "club": "Napoli",
+          "badge": "badges/Italy - Serie A/Napoli.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Napoli"
+        },
+        {
+          "club": "Parma",
+          "badge": "badges/Italy - Serie A/Parma.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Parma"
+        },
+        {
+          "club": "Roma",
+          "badge": "badges/Italy - Serie A/Roma.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Roma"
+        },
+        {
+          "club": "Sassuolo",
+          "badge": "badges/Italy - Serie A/Sassuolo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sassuolo"
+        },
+        {
+          "club": "Torino",
+          "badge": "badges/Italy - Serie A/Torino.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Torino"
+        },
+        {
+          "club": "Udinese",
+          "badge": "badges/Italy - Serie A/Udinese.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Udinese"
+        },
+        {
+          "club": "Venezia",
+          "badge": "badges/Italy - Serie A/Venezia.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Venezia"
+        }
+      ],
+      "sources": {
+        "sportsdb": 20
+      }
+    },
+    "Serie B": {
+      "clubs": [
+        {
+          "club": "Arezzo",
+          "badge": "badges/Italy - Serie B/Arezzo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Arezzo"
+        },
+        {
+          "club": "Ascoli",
+          "badge": "badges/Italy - Serie B/Ascoli.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Ascoli"
+        },
+        {
+          "club": "Avellino",
+          "badge": "badges/Italy - Serie B/Avellino.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Avellino"
+        },
+        {
+          "club": "Benevento",
+          "badge": "badges/Italy - Serie B/Benevento.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Benevento"
+        },
+        {
+          "club": "Carrarese",
+          "badge": "badges/Italy - Serie B/Carrarese.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Carrarese"
+        },
+        {
+          "club": "Catanzaro",
+          "badge": "badges/Italy - Serie B/Catanzaro.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Catanzaro"
+        },
+        {
+          "club": "Cesena",
+          "badge": "badges/Italy - Serie B/Cesena.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Cesena"
+        },
+        {
+          "club": "Cremonese",
+          "badge": "badges/Italy - Serie B/Cremonese.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Cremonese"
+        },
+        {
+          "club": "Empoli",
+          "badge": "badges/Italy - Serie B/Empoli.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Empoli"
+        },
+        {
+          "club": "Hellas Verona",
+          "badge": "badges/Italy - Serie B/Hellas Verona.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Hellas Verona"
+        },
+        {
+          "club": "Juve Stabia",
+          "badge": "badges/Italy - Serie B/Juve Stabia.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Juve Stabia"
+        },
+        {
+          "club": "Mantova",
+          "badge": "badges/Italy - Serie B/Mantova.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Mantova"
+        },
+        {
+          "club": "Modena",
+          "badge": "badges/Italy - Serie B/Modena.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Modena"
+        },
+        {
+          "club": "Padova",
+          "badge": "badges/Italy - Serie B/Padova.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Padova"
+        },
+        {
+          "club": "Palermo",
+          "badge": "badges/Italy - Serie B/Palermo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Palermo"
+        },
+        {
+          "club": "Pisa",
+          "badge": "badges/Italy - Serie B/Pisa.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Pisa"
+        },
+        {
+          "club": "Reggiana",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Sampdoria",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Spezia",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Südtirol",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        }
+      ],
+      "sources": {
+        "sportsdb": 16,
+        "missing": 4
+      }
+    },
+    "Ligue 1": {
+      "clubs": [
+        {
+          "club": "Angers",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Auxerre",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Brest",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Le Havre",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Le Mans",
+          "badge": "badges/France - Ligue 1/Le Mans.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Le Mans"
+        },
+        {
+          "club": "Lens",
+          "badge": "badges/France - Ligue 1/Lens.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lens"
+        },
+        {
+          "club": "Lille",
+          "badge": "badges/France - Ligue 1/Lille.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lille"
+        },
+        {
+          "club": "Lorient",
+          "badge": "badges/France - Ligue 1/Lorient.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lorient"
+        },
+        {
+          "club": "Lyon",
+          "badge": "badges/France - Ligue 1/Lyon.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lyon"
+        },
+        {
+          "club": "Marseille",
+          "badge": "badges/France - Ligue 1/Marseille.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Marseille"
+        },
+        {
+          "club": "Monaco",
+          "badge": "badges/France - Ligue 1/Monaco.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Monaco"
+        },
+        {
+          "club": "Nice",
+          "badge": "badges/France - Ligue 1/Nice.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Nice"
+        },
+        {
+          "club": "Paris FC",
+          "badge": "badges/France - Ligue 1/Paris FC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Paris FC"
+        },
+        {
+          "club": "Paris Saint-Germain",
+          "badge": "badges/France - Ligue 1/Paris Saint-Germain.png",
+          "source": "sportsdb",
+          "details": "sportsdb:PSG Talon"
+        },
+        {
+          "club": "Rennes",
+          "badge": "badges/France - Ligue 1/Rennes.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Rennes"
+        },
+        {
+          "club": "Strasbourg",
+          "badge": "badges/France - Ligue 1/Strasbourg.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Strasbourg"
+        },
+        {
+          "club": "Toulouse",
+          "badge": "badges/France - Ligue 1/Toulouse.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Toulouse"
+        },
+        {
+          "club": "Troyes",
+          "badge": "badges/France - Ligue 1/Troyes.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Troyes"
+        }
+      ],
+      "sources": {
+        "missing": 4,
+        "sportsdb": 14
+      }
+    },
+    "Ligue 2": {
+      "clubs": [
+        {
+          "club": "Annecy",
+          "badge": "badges/France - Ligue 2/Annecy.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Annecy"
+        },
+        {
+          "club": "Boulogne",
+          "badge": "badges/France - Ligue 2/Boulogne.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Boulogne"
+        },
+        {
+          "club": "Clermont",
+          "badge": "badges/France - Ligue 2/Clermont.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Clermont Foot"
+        },
+        {
+          "club": "Dijon",
+          "badge": "badges/France - Ligue 2/Dijon.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Dijon"
+        },
+        {
+          "club": "Dunkerque",
+          "badge": "badges/France - Ligue 2/Dunkerque.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Dunkerque"
+        },
+        {
+          "club": "Grenoble",
+          "badge": "badges/France - Ligue 2/Grenoble.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Grenoble"
+        },
+        {
+          "club": "Guingamp",
+          "badge": "badges/France - Ligue 2/Guingamp.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Guingamp"
+        },
+        {
+          "club": "Laval",
+          "badge": "badges/France - Ligue 2/Laval.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Laval"
+        },
+        {
+          "club": "Metz",
+          "badge": "badges/France - Ligue 2/Metz.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Metz"
+        },
+        {
+          "club": "Montpellier",
+          "badge": "badges/France - Ligue 2/Montpellier.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Montpellier"
+        },
+        {
+          "club": "Nancy",
+          "badge": "badges/France - Ligue 2/Nancy.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Nancy Lorraine"
+        },
+        {
+          "club": "Nantes",
+          "badge": "badges/France - Ligue 2/Nantes.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Nantes"
+        },
+        {
+          "club": "Pau",
+          "badge": "badges/France - Ligue 2/Pau.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Pau"
+        },
+        {
+          "club": "Red Star",
+          "badge": "badges/France - Ligue 2/Red Star.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Red Star"
+        },
+        {
+          "club": "Reims",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Rodez",
+          "badge": "badges/France - Ligue 2/Rodez.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Rodez"
+        },
+        {
+          "club": "Saint-Étienne",
+          "badge": "badges/France - Ligue 2/Saint-Étienne.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Saint-Étienne"
+        },
+        {
+          "club": "Sochaux",
+          "badge": "badges/France - Ligue 2/Sochaux.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sochaux"
+        }
+      ],
+      "sources": {
+        "sportsdb": 17,
+        "missing": 1
+      }
+    },
+    "Brasileirão Série A": {
+      "clubs": [
+        {
+          "club": "Athletico Paranaense",
+          "badge": "badges/Brazil - Brasileirão Série A/Athletico Paranaense.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Athletico Paranaense"
+        },
+        {
+          "club": "Atlético Mineiro",
+          "badge": "badges/Brazil - Brasileirão Série A/Atlético Mineiro.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Atlético Mineiro"
+        },
+        {
+          "club": "Bahia",
+          "badge": "badges/Brazil - Brasileirão Série A/Bahia.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bahia"
+        },
+        {
+          "club": "Botafogo",
+          "badge": "badges/Brazil - Brasileirão Série A/Botafogo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Botafogo"
+        },
+        {
+          "club": "Red Bull Bragantino",
+          "badge": "badges/Brazil - Brasileirão Série A/Red Bull Bragantino.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bragantino"
+        },
+        {
+          "club": "Chapecoense",
+          "badge": "badges/Brazil - Brasileirão Série A/Chapecoense.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Chapecoense"
+        },
+        {
+          "club": "Corinthians",
+          "badge": "badges/Brazil - Brasileirão Série A/Corinthians.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Corinthians"
+        },
+        {
+          "club": "Coritiba",
+          "badge": "badges/Brazil - Brasileirão Série A/Coritiba.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Coritiba"
+        },
+        {
+          "club": "Cruzeiro",
+          "badge": "badges/Brazil - Brasileirão Série A/Cruzeiro.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Cruzeiro"
+        },
+        {
+          "club": "Flamengo",
+          "badge": "badges/Brazil - Brasileirão Série A/Flamengo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Flamengo"
+        },
+        {
+          "club": "Fluminense",
+          "badge": "badges/Brazil - Brasileirão Série A/Fluminense.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Fluminense"
+        },
+        {
+          "club": "Grêmio",
+          "badge": "badges/Brazil - Brasileirão Série A/Grêmio.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Grêmio"
+        },
+        {
+          "club": "Internacional",
+          "badge": "badges/Brazil - Brasileirão Série A/Internacional.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Internacional"
+        },
+        {
+          "club": "Mirassol",
+          "badge": "badges/Brazil - Brasileirão Série A/Mirassol.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Mirassol"
+        },
+        {
+          "club": "Palmeiras",
+          "badge": "badges/Brazil - Brasileirão Série A/Palmeiras.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Palmeiras"
+        },
+        {
+          "club": "Remo",
+          "badge": "badges/Brazil - Brasileirão Série A/Remo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Remo"
+        },
+        {
+          "club": "Santos",
+          "badge": "badges/Brazil - Brasileirão Série A/Santos.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Santos"
+        },
+        {
+          "club": "São Paulo",
+          "badge": "badges/Brazil - Brasileirão Série A/São Paulo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:São Paulo"
+        },
+        {
+          "club": "Vasco da Gama",
+          "badge": "badges/Brazil - Brasileirão Série A/Vasco da Gama.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Vasco da Gama"
+        },
+        {
+          "club": "Vitória",
+          "badge": "badges/Brazil - Brasileirão Série A/Vitória.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Vitória"
+        }
+      ],
+      "sources": {
+        "sportsdb": 20
+      }
+    },
+    "Belgian Pro League": {
+      "clubs": [
+        {
+          "club": "Anderlecht",
+          "badge": "badges/Belgium - Belgian Pro League/Anderlecht.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Anderlecht"
+        },
+        {
+          "club": "Antwerp",
+          "badge": "badges/Belgium - Belgian Pro League/Antwerp.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Antwerp"
+        },
+        {
+          "club": "Cercle Brugge",
+          "badge": "badges/Belgium - Belgian Pro League/Cercle Brugge.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Cercle Brugge"
+        },
+        {
+          "club": "Charleroi",
+          "badge": "badges/Belgium - Belgian Pro League/Charleroi.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Charleroi"
+        },
+        {
+          "club": "Club Brugge",
+          "badge": "badges/Belgium - Belgian Pro League/Club Brugge.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Club Brugge"
+        },
+        {
+          "club": "Genk",
+          "badge": "badges/Belgium - Belgian Pro League/Genk.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Genk"
+        },
+        {
+          "club": "Gent",
+          "badge": "badges/Belgium - Belgian Pro League/Gent.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Gent"
+        },
+        {
+          "club": "Mechelen",
+          "badge": "badges/Belgium - Belgian Pro League/Mechelen.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Mechelen"
+        },
+        {
+          "club": "OH Leuven",
+          "badge": "badges/Belgium - Belgian Pro League/OH Leuven.png",
+          "source": "sportsdb",
+          "details": "sportsdb:IHC Leuven"
+        },
+        {
+          "club": "Sint-Truiden",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Standard Liège",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Union Saint-Gilloise",
+          "badge": "badges/Belgium - Belgian Pro League/Union Saint-Gilloise.png",
+          "source": "sportsdb",
+          "details": "sportsdb:UDJ"
+        },
+        {
+          "club": "Westerlo",
+          "badge": "badges/Belgium - Belgian Pro League/Westerlo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Westerlo"
+        },
+        {
+          "club": "Zulte Waregem",
+          "badge": "badges/Belgium - Belgian Pro League/Zulte Waregem.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Zulte Waregem"
+        },
+        {
+          "club": "Dender",
+          "badge": "badges/Belgium - Belgian Pro League/Dender.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Dender"
+        },
+        {
+          "club": "RAAL La Louvière",
+          "badge": "badges/Belgium - Belgian Pro League/RAAL La Louvière.png",
+          "source": "sportsdb",
+          "details": "sportsdb:RAAL La Louvière"
+        }
+      ],
+      "sources": {
+        "sportsdb": 14,
+        "missing": 2
+      }
+    },
+    "Liga Profesional": {
+      "clubs": [
+        {
+          "club": "Aldosivi",
+          "badge": "badges/Argentina - Liga Profesional/Aldosivi.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Aldosivi"
+        },
+        {
+          "club": "Argentinos Juniors",
+          "badge": "badges/Argentina - Liga Profesional/Argentinos Juniors.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Argentinos Juniors"
+        },
+        {
+          "club": "Atlético Tucumán",
+          "badge": "badges/Argentina - Liga Profesional/Atlético Tucumán.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Atlético Tucumán"
+        },
+        {
+          "club": "Banfield",
+          "badge": "badges/Argentina - Liga Profesional/Banfield.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Banfield"
+        },
+        {
+          "club": "Barracas Central",
+          "badge": "badges/Argentina - Liga Profesional/Barracas Central.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Barracas Central"
+        },
+        {
+          "club": "Belgrano",
+          "badge": "badges/Argentina - Liga Profesional/Belgrano.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Belgrano"
+        },
+        {
+          "club": "Boca Juniors",
+          "badge": "badges/Argentina - Liga Profesional/Boca Juniors.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Boca Juniors"
+        },
+        {
+          "club": "Central Córdoba",
+          "badge": "badges/Argentina - Liga Profesional/Central Córdoba.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Central Córdoba de Rosario"
+        },
+        {
+          "club": "Defensa y Justicia",
+          "badge": "badges/Argentina - Liga Profesional/Defensa y Justicia.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Defensa y Justicia"
+        },
+        {
+          "club": "Deportivo Riestra",
+          "badge": "badges/Argentina - Liga Profesional/Deportivo Riestra.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Deportivo Riestra"
+        },
+        {
+          "club": "Estudiantes",
+          "badge": "badges/Argentina - Liga Profesional/Estudiantes.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Estudiantes"
+        },
+        {
+          "club": "Estudiantes Río Cuarto",
+          "badge": "badges/Argentina - Liga Profesional/Estudiantes Río Cuarto.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Estudiantes de Río Cuarto"
+        },
+        {
+          "club": "Gimnasia La Plata",
+          "badge": "badges/Argentina - Liga Profesional/Gimnasia La Plata.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Gimnasia y Esgrima de La Plata"
+        },
+        {
+          "club": "Gimnasia Mendoza",
+          "badge": "badges/Argentina - Liga Profesional/Gimnasia Mendoza.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Gimnasia y Esgrima de Mendoza"
+        },
+        {
+          "club": "Huracán",
+          "badge": "badges/Argentina - Liga Profesional/Huracán.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Huracán"
+        },
+        {
+          "club": "Independiente",
+          "badge": "badges/Argentina - Liga Profesional/Independiente.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Independiente"
+        },
+        {
+          "club": "Independiente Rivadavia",
+          "badge": "badges/Argentina - Liga Profesional/Independiente Rivadavia.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Independiente Rivadavia"
+        },
+        {
+          "club": "Instituto",
+          "badge": "badges/Argentina - Liga Profesional/Instituto.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Instituto"
+        },
+        {
+          "club": "Lanús",
+          "badge": "badges/Argentina - Liga Profesional/Lanús.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lanús"
+        },
+        {
+          "club": "Newell's Old Boys",
+          "badge": "badges/Argentina - Liga Profesional/Newell's Old Boys.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Newell's Old Boys"
+        },
+        {
+          "club": "Platense",
+          "badge": "badges/Argentina - Liga Profesional/Platense.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Platense"
+        },
+        {
+          "club": "Racing Club",
+          "badge": "badges/Argentina - Liga Profesional/Racing Club.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Racing Club"
+        },
+        {
+          "club": "River Plate",
+          "badge": "badges/Argentina - Liga Profesional/River Plate.png",
+          "source": "sportsdb",
+          "details": "sportsdb:River Plate"
+        },
+        {
+          "club": "Rosario Central",
+          "badge": "badges/Argentina - Liga Profesional/Rosario Central.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Rosario Central"
+        },
+        {
+          "club": "San Lorenzo",
+          "badge": "badges/Argentina - Liga Profesional/San Lorenzo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:San Lorenzo"
+        },
+        {
+          "club": "Sarmiento",
+          "badge": "badges/Argentina - Liga Profesional/Sarmiento.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sarmiento"
+        },
+        {
+          "club": "Talleres",
+          "badge": "badges/Argentina - Liga Profesional/Talleres.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Talleres de Córdoba"
+        },
+        {
+          "club": "Tigre",
+          "badge": "badges/Argentina - Liga Profesional/Tigre.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Tigre"
+        },
+        {
+          "club": "Unión",
+          "badge": "badges/Argentina - Liga Profesional/Unión.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Unión"
+        },
+        {
+          "club": "Vélez Sarsfield",
+          "badge": "badges/Argentina - Liga Profesional/Vélez Sarsfield.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Vélez Sarsfield"
+        }
+      ],
+      "sources": {
+        "sportsdb": 30
+      }
+    },
+    "Primeira Liga": {
+      "clubs": [
+        {
+          "club": "Alverca",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Arouca",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "AVS",
+          "badge": "badges/Portugal - Primeira Liga/AVS.png",
+          "source": "sportsdb",
+          "details": "sportsdb:AVS"
+        },
+        {
+          "club": "Benfica",
+          "badge": "badges/Portugal - Primeira Liga/Benfica.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Benfica"
+        },
+        {
+          "club": "Braga",
+          "badge": "badges/Portugal - Primeira Liga/Braga.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Braga"
+        },
+        {
+          "club": "Casa Pia",
+          "badge": "badges/Portugal - Primeira Liga/Casa Pia.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Casa Pia"
+        },
+        {
+          "club": "Estoril",
+          "badge": "badges/Portugal - Primeira Liga/Estoril.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Estoril Praia"
+        },
+        {
+          "club": "Estrela Amadora",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Famalicão",
+          "badge": "badges/Portugal - Primeira Liga/Famalicão.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Famalicao"
+        },
+        {
+          "club": "Gil Vicente",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Moreirense",
+          "badge": "badges/Portugal - Primeira Liga/Moreirense.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Moreirense"
+        },
+        {
+          "club": "Nacional",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Porto",
+          "badge": "badges/Portugal - Primeira Liga/Porto.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Porto"
+        },
+        {
+          "club": "Rio Ave",
+          "badge": "badges/Portugal - Primeira Liga/Rio Ave.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Rio Ave"
+        },
+        {
+          "club": "Santa Clara",
+          "badge": "badges/Portugal - Primeira Liga/Santa Clara.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Santa Clara"
+        },
+        {
+          "club": "Sporting CP",
+          "badge": "badges/Portugal - Primeira Liga/Sporting CP.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sporting CP"
+        },
+        {
+          "club": "Tondela",
+          "badge": "badges/Portugal - Primeira Liga/Tondela.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Tondela"
+        },
+        {
+          "club": "Vitória Guimarães",
+          "badge": "badges/Portugal - Primeira Liga/Vitória Guimarães.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Vitória de Guimarães"
+        }
+      ],
+      "sources": {
+        "missing": 5,
+        "sportsdb": 13
+      }
+    },
+    "Ekstraklasa": {
+      "clubs": [
+        {
+          "club": "Cracovia",
+          "badge": "badges/Poland - Ekstraklasa/Cracovia.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Cracovia"
+        },
+        {
+          "club": "GKS Katowice",
+          "badge": "badges/Poland - Ekstraklasa/GKS Katowice.png",
+          "source": "sportsdb",
+          "details": "sportsdb:GKS Katowice"
+        },
+        {
+          "club": "Górnik Zabrze",
+          "badge": "badges/Poland - Ekstraklasa/Górnik Zabrze.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Górnik Zabrze"
+        },
+        {
+          "club": "Jagiellonia Białystok",
+          "badge": "badges/Poland - Ekstraklasa/Jagiellonia Białystok.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Jagiellonia Białystok"
+        },
+        {
+          "club": "Korona Kielce",
+          "badge": "badges/Poland - Ekstraklasa/Korona Kielce.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Korona Kielce"
+        },
+        {
+          "club": "Lech Poznań",
+          "badge": "badges/Poland - Ekstraklasa/Lech Poznań.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lech Poznań"
+        },
+        {
+          "club": "Legia Warsaw",
+          "badge": "badges/Poland - Ekstraklasa/Legia Warsaw.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Legia Warsaw"
+        },
+        {
+          "club": "Motor Lublin",
+          "badge": "badges/Poland - Ekstraklasa/Motor Lublin.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Motor Lublin"
+        },
+        {
+          "club": "Piast Gliwice",
+          "badge": "badges/Poland - Ekstraklasa/Piast Gliwice.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Piast Gliwice"
+        },
+        {
+          "club": "Pogoń Szczecin",
+          "badge": "badges/Poland - Ekstraklasa/Pogoń Szczecin.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Pogoń Szczecin"
+        },
+        {
+          "club": "Radomiak Radom",
+          "badge": "badges/Poland - Ekstraklasa/Radomiak Radom.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Radomiak Radom"
+        },
+        {
+          "club": "Raków Częstochowa",
+          "badge": "badges/Poland - Ekstraklasa/Raków Częstochowa.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Raków Częstochowa"
+        },
+        {
+          "club": "Widzew Łódź",
+          "badge": "badges/Poland - Ekstraklasa/Widzew Łódź.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Widzew Łódź"
+        },
+        {
+          "club": "Wisła Płock",
+          "badge": "badges/Poland - Ekstraklasa/Wisła Płock.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Wisła Płock"
+        },
+        {
+          "club": "Zagłębie Lubin",
+          "badge": "badges/Poland - Ekstraklasa/Zagłębie Lubin.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Zagłębie Lubin"
+        },
+        {
+          "club": "Arka Gdynia",
+          "badge": "badges/Poland - Ekstraklasa/Arka Gdynia.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Arka Gdynia"
+        },
+        {
+          "club": "Lechia Gdańsk",
+          "badge": "badges/Poland - Ekstraklasa/Lechia Gdańsk.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lechia Gdańsk"
+        },
+        {
+          "club": "Nieciecza",
+          "badge": "badges/Poland - Ekstraklasa/Nieciecza.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bruk-Bet Termalica Nieciecza"
+        }
+      ],
+      "sources": {
+        "sportsdb": 18
+      }
+    },
+    "Danish Superliga": {
+      "clubs": [
+        {
+          "club": "AGF",
+          "badge": "badges/Denmark - Superliga/AGF.png",
+          "source": "sportsdb",
+          "details": "sportsdb:AGF Women"
+        },
+        {
+          "club": "Brøndby",
+          "badge": "badges/Denmark - Superliga/Brøndby.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Brøndby"
+        },
+        {
+          "club": "FC Copenhagen",
+          "badge": "badges/Denmark - Superliga/FC Copenhagen.png",
+          "source": "sportsdb",
+          "details": "sportsdb:FC Copenhagen"
+        },
+        {
+          "club": "FC Midtjylland",
+          "badge": "badges/Denmark - Superliga/FC Midtjylland.png",
+          "source": "sportsdb",
+          "details": "sportsdb:FC Midtjylland"
+        },
+        {
+          "club": "Nordsjælland",
+          "badge": "badges/Denmark - Superliga/Nordsjælland.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Nordsjælland Women"
+        },
+        {
+          "club": "OB",
+          "badge": "badges/Denmark - Superliga/OB.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Oberena"
+        },
+        {
+          "club": "Randers",
+          "badge": "badges/Denmark - Superliga/Randers.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Randers FC"
+        },
+        {
+          "club": "Silkeborg",
+          "badge": "badges/Denmark - Superliga/Silkeborg.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Silkeborg IF"
+        },
+        {
+          "club": "Sønderjyske",
+          "badge": "badges/Denmark - Superliga/Sønderjyske.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sønderjyske"
+        },
+        {
+          "club": "Vejle",
+          "badge": "badges/Denmark - Superliga/Vejle.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Vejle"
+        },
+        {
+          "club": "Viborg",
+          "badge": "badges/Denmark - Superliga/Viborg.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Viborg"
+        },
+        {
+          "club": "Fredericia",
+          "badge": "badges/Denmark - Superliga/Fredericia.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Fredericia"
+        }
+      ],
+      "sources": {
+        "sportsdb": 12
+      }
+    },
+    "Eliteserien": {
+      "clubs": [
+        {
+          "club": "Bodø/Glimt",
+          "badge": "badges/Norway - Eliteserien/Bodø-Glimt.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bodø/Glimt"
+        },
+        {
+          "club": "Brann",
+          "badge": "badges/Norway - Eliteserien/Brann.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Brann"
+        },
+        {
+          "club": "Fredrikstad",
+          "badge": "badges/Norway - Eliteserien/Fredrikstad.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Fredrikstad"
+        },
+        {
+          "club": "HamKam",
+          "badge": "badges/Norway - Eliteserien/HamKam.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Hamarkameratene"
+        },
+        {
+          "club": "KFUM Oslo",
+          "badge": "badges/Norway - Eliteserien/KFUM Oslo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:KFUM-Kameratene Oslo"
+        },
+        {
+          "club": "Kristiansund",
+          "badge": "badges/Norway - Eliteserien/Kristiansund.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Kristiansund"
+        },
+        {
+          "club": "Molde",
+          "badge": "badges/Norway - Eliteserien/Molde.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Molde"
+        },
+        {
+          "club": "Rosenborg",
+          "badge": "badges/Norway - Eliteserien/Rosenborg.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Rosenborg"
+        },
+        {
+          "club": "Sarpsborg 08",
+          "badge": "badges/Norway - Eliteserien/Sarpsborg 08.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sarpsborg 08"
+        },
+        {
+          "club": "Strømsgodset",
+          "badge": "badges/Norway - Eliteserien/Strømsgodset.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Strømsgodset"
+        },
+        {
+          "club": "Tromsø",
+          "badge": "badges/Norway - Eliteserien/Tromsø.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Tromsø"
+        },
+        {
+          "club": "Viking",
+          "badge": "badges/Norway - Eliteserien/Viking.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Viking"
+        },
+        {
+          "club": "Vålerenga",
+          "badge": "badges/Norway - Eliteserien/Vålerenga.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Vålerenga"
+        },
+        {
+          "club": "Bryne",
+          "badge": "badges/Norway - Eliteserien/Bryne.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bryne"
+        },
+        {
+          "club": "Haugesund",
+          "badge": "badges/Norway - Eliteserien/Haugesund.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Haugesund"
+        },
+        {
+          "club": "Sandefjord",
+          "badge": "badges/Norway - Eliteserien/Sandefjord.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sandefjord"
+        }
+      ],
+      "sources": {
+        "sportsdb": 16
+      }
+    },
+    "Liga MX": {
+      "clubs": [
+        {
+          "club": "América",
+          "badge": "badges/Mexico - Liga MX/América.png",
+          "source": "sportsdb",
+          "details": "sportsdb:América"
+        },
+        {
+          "club": "Atlas",
+          "badge": "badges/Mexico - Liga MX/Atlas.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Atlas"
+        },
+        {
+          "club": "Atlético San Luis",
+          "badge": "badges/Mexico - Liga MX/Atlético San Luis.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Atlético de San Luis"
+        },
+        {
+          "club": "Cruz Azul",
+          "badge": "badges/Mexico - Liga MX/Cruz Azul.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Cruz Azul"
+        },
+        {
+          "club": "Guadalajara",
+          "badge": "badges/Mexico - Liga MX/Guadalajara.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Guadalajara"
+        },
+        {
+          "club": "Juárez",
+          "badge": "badges/Mexico - Liga MX/Juárez.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Juárez"
+        },
+        {
+          "club": "León",
+          "badge": "badges/Mexico - Liga MX/León.png",
+          "source": "sportsdb",
+          "details": "sportsdb:León"
+        },
+        {
+          "club": "Mazatlán",
+          "badge": "badges/Mexico - Liga MX/Mazatlán.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Mazatlán"
+        },
+        {
+          "club": "Monterrey",
+          "badge": "badges/Mexico - Liga MX/Monterrey.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Monterrey"
+        },
+        {
+          "club": "Necaxa",
+          "badge": "badges/Mexico - Liga MX/Necaxa.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Necaxa"
+        },
+        {
+          "club": "Pachuca",
+          "badge": "badges/Mexico - Liga MX/Pachuca.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Pachuca"
+        },
+        {
+          "club": "Puebla",
+          "badge": "badges/Mexico - Liga MX/Puebla.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Puebla"
+        },
+        {
+          "club": "Querétaro",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Santos Laguna",
+          "badge": "badges/Mexico - Liga MX/Santos Laguna.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Santos Laguna"
+        },
+        {
+          "club": "Tijuana",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Toluca",
+          "badge": "badges/Mexico - Liga MX/Toluca.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Toluca"
+        },
+        {
+          "club": "Tigres UANL",
+          "badge": "badges/Mexico - Liga MX/Tigres UANL.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Tigres UANL"
+        },
+        {
+          "club": "UNAM",
+          "badge": "badges/Mexico - Liga MX/UNAM.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Pumas UNAM"
+        }
+      ],
+      "sources": {
+        "sportsdb": 16,
+        "missing": 2
+      }
+    },
+    "Categoría Primera A": {
+      "clubs": [
+        {
+          "club": "Águilas Doradas",
+          "badge": "badges/Colombia - Categoría Primera A/Águilas Doradas.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Rionegro Águilas"
+        },
+        {
+          "club": "Alianza",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "América de Cali",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Atlético Bucaramanga",
+          "badge": "badges/Colombia - Categoría Primera A/Atlético Bucaramanga.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Atlético Bucaramanga"
+        },
+        {
+          "club": "Atlético Nacional",
+          "badge": "badges/Colombia - Categoría Primera A/Atlético Nacional.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Atlético Nacional"
+        },
+        {
+          "club": "Boyacá Chicó",
+          "badge": "badges/Colombia - Categoría Primera A/Boyacá Chicó.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Boyacá Chicó"
+        },
+        {
+          "club": "Cúcuta Deportivo",
+          "badge": "badges/Colombia - Categoría Primera A/Cúcuta Deportivo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Cúcuta Deportivo"
+        },
+        {
+          "club": "Deportes Tolima",
+          "badge": "badges/Colombia - Categoría Primera A/Deportes Tolima.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Deportes Tolima"
+        },
+        {
+          "club": "Deportivo Cali",
+          "badge": "badges/Colombia - Categoría Primera A/Deportivo Cali.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Deportivo Cali"
+        },
+        {
+          "club": "Deportivo Pasto",
+          "badge": "badges/Colombia - Categoría Primera A/Deportivo Pasto.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Deportivo Pasto"
+        },
+        {
+          "club": "Deportivo Pereira",
+          "badge": "badges/Colombia - Categoría Primera A/Deportivo Pereira.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Deportivo Pereira"
+        },
+        {
+          "club": "Fortaleza CEIF",
+          "badge": "badges/Colombia - Categoría Primera A/Fortaleza CEIF.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Fortaleza FC"
+        },
+        {
+          "club": "Independiente Medellín",
+          "badge": "badges/Colombia - Categoría Primera A/Independiente Medellín.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Independiente Medellín"
+        },
+        {
+          "club": "Internacional de Bogotá",
+          "badge": "badges/Colombia - Categoría Primera A/Internacional de Bogotá.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Internacional de Bogotá"
+        },
+        {
+          "club": "Jaguares",
+          "badge": "badges/Colombia - Categoría Primera A/Jaguares.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Jaguares XV"
+        },
+        {
+          "club": "Junior",
+          "badge": "badges/Colombia - Categoría Primera A/Junior.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Atlético Junior"
+        },
+        {
+          "club": "Llaneros",
+          "badge": "badges/Colombia - Categoría Primera A/Llaneros.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Llaneros"
+        },
+        {
+          "club": "Millonarios",
+          "badge": "badges/Colombia - Categoría Primera A/Millonarios.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Millonarios"
+        },
+        {
+          "club": "Once Caldas",
+          "badge": "badges/Colombia - Categoría Primera A/Once Caldas.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Once Caldas"
+        },
+        {
+          "club": "Santa Fe",
+          "badge": "badges/Colombia - Categoría Primera A/Santa Fe.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Santa Fe"
+        }
+      ],
+      "sources": {
+        "sportsdb": 18,
+        "missing": 2
+      }
+    },
+    "Eredivisie": {
+      "clubs": [
+        {
+          "club": "Ajax",
+          "badge": "badges/Netherlands - Eredivisie/Ajax.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Ajax"
+        },
+        {
+          "club": "AZ",
+          "badge": "badges/Netherlands - Eredivisie/AZ.png",
+          "source": "sportsdb",
+          "details": "sportsdb:AZ Alkmaar"
+        },
+        {
+          "club": "Excelsior",
+          "badge": "badges/Netherlands - Eredivisie/Excelsior.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Excelsior"
+        },
+        {
+          "club": "Feyenoord",
+          "badge": "badges/Netherlands - Eredivisie/Feyenoord.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Feyenoord"
+        },
+        {
+          "club": "Fortuna Sittard",
+          "badge": "badges/Netherlands - Eredivisie/Fortuna Sittard.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Fortuna Sittard"
+        },
+        {
+          "club": "Go Ahead Eagles",
+          "badge": "badges/Netherlands - Eredivisie/Go Ahead Eagles.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Go Ahead Eagles"
+        },
+        {
+          "club": "Groningen",
+          "badge": "badges/Netherlands - Eredivisie/Groningen.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Groningen"
+        },
+        {
+          "club": "Heerenveen",
+          "badge": "badges/Netherlands - Eredivisie/Heerenveen.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Heerenveen"
+        },
+        {
+          "club": "Heracles Almelo",
+          "badge": "badges/Netherlands - Eredivisie/Heracles Almelo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Heracles Almelo"
+        },
+        {
+          "club": "NAC Breda",
+          "badge": "badges/Netherlands - Eredivisie/NAC Breda.png",
+          "source": "sportsdb",
+          "details": "sportsdb:NAC Breda"
+        },
+        {
+          "club": "NEC",
+          "badge": "badges/Netherlands - Eredivisie/NEC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:NEC FC"
+        },
+        {
+          "club": "PEC Zwolle",
+          "badge": "badges/Netherlands - Eredivisie/PEC Zwolle.png",
+          "source": "sportsdb",
+          "details": "sportsdb:PEC Zwolle"
+        },
+        {
+          "club": "PSV",
+          "badge": "badges/Netherlands - Eredivisie/PSV.png",
+          "source": "sportsdb",
+          "details": "sportsdb:PSV Eindhoven"
+        },
+        {
+          "club": "Sparta Rotterdam",
+          "badge": "badges/Netherlands - Eredivisie/Sparta Rotterdam.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sparta Rotterdam"
+        },
+        {
+          "club": "Telstar",
+          "badge": "badges/Netherlands - Eredivisie/Telstar.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Telstar"
+        },
+        {
+          "club": "Twente",
+          "badge": "badges/Netherlands - Eredivisie/Twente.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Twente"
+        },
+        {
+          "club": "Utrecht",
+          "badge": "badges/Netherlands - Eredivisie/Utrecht.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Utrecht"
+        },
+        {
+          "club": "Volendam",
+          "badge": "badges/Netherlands - Eredivisie/Volendam.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Volendam"
+        }
+      ],
+      "sources": {
+        "sportsdb": 18
+      }
+    },
+    "LigaPro Serie A": {
+      "clubs": [
+        {
+          "club": "Aucas",
+          "badge": "badges/Ecuador - LigaPro Serie A/Aucas.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Aucas"
+        },
+        {
+          "club": "Barcelona SC",
+          "badge": "badges/Ecuador - LigaPro Serie A/Barcelona SC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Barcelona SC"
+        },
+        {
+          "club": "Delfín",
+          "badge": "badges/Ecuador - LigaPro Serie A/Delfín.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Delfín"
+        },
+        {
+          "club": "Deportivo Cuenca",
+          "badge": "badges/Ecuador - LigaPro Serie A/Deportivo Cuenca.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Deportivo Cuenca"
+        },
+        {
+          "club": "Emelec",
+          "badge": "badges/Ecuador - LigaPro Serie A/Emelec.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Emelec"
+        },
+        {
+          "club": "Guayaquil City",
+          "badge": "badges/Ecuador - LigaPro Serie A/Guayaquil City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Guayaquil City"
+        },
+        {
+          "club": "Independiente del Valle",
+          "badge": "badges/Ecuador - LigaPro Serie A/Independiente del Valle.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Independiente del Valle"
+        },
+        {
+          "club": "LDU Quito",
+          "badge": "badges/Ecuador - LigaPro Serie A/LDU Quito.png",
+          "source": "sportsdb",
+          "details": "sportsdb:LDU Quito"
+        },
+        {
+          "club": "Leones",
+          "badge": "badges/Ecuador - LigaPro Serie A/Leones.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Leones"
+        },
+        {
+          "club": "Libertad",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Macará",
+          "badge": "badges/Ecuador - LigaPro Serie A/Macará.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Macará"
+        },
+        {
+          "club": "Manta",
+          "badge": "badges/Ecuador - LigaPro Serie A/Manta.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Manta"
+        },
+        {
+          "club": "Mushuc Runa",
+          "badge": "badges/Ecuador - LigaPro Serie A/Mushuc Runa.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Mushuc Runa"
+        },
+        {
+          "club": "Orense",
+          "badge": "badges/Ecuador - LigaPro Serie A/Orense.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Orense"
+        },
+        {
+          "club": "Técnico Universitario",
+          "badge": "badges/Ecuador - LigaPro Serie A/Técnico Universitario.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Técnico Universitario"
+        },
+        {
+          "club": "Universidad Católica",
+          "badge": "badges/Ecuador - LigaPro Serie A/Universidad Católica.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Universidad Católica"
+        }
+      ],
+      "sources": {
+        "sportsdb": 15,
+        "missing": 1
+      }
+    },
+    "Süper Lig": {
+      "clubs": [
+        {
+          "club": "Alanyaspor",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Antalyaspor",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Beşiktaş",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Eyüpspor",
+          "badge": "",
+          "source": "missing",
+          "details": "No online image source resolved"
+        },
+        {
+          "club": "Fenerbahçe",
+          "badge": "badges/Türkiye - Süper Lig/Fenerbahçe.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Fenerbahçe"
+        },
+        {
+          "club": "Galatasaray",
+          "badge": "badges/Türkiye - Süper Lig/Galatasaray.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Galatasaray"
+        },
+        {
+          "club": "Gaziantep",
+          "badge": "badges/Türkiye - Süper Lig/Gaziantep.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Gaziantep"
+        },
+        {
+          "club": "Göztepe",
+          "badge": "badges/Türkiye - Süper Lig/Göztepe.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Göztepe"
+        },
+        {
+          "club": "Başakşehir",
+          "badge": "badges/Türkiye - Süper Lig/Başakşehir.png",
+          "source": "sportsdb",
+          "details": "sportsdb:İstanbul Başakşehir"
+        },
+        {
+          "club": "Kasımpaşa",
+          "badge": "badges/Türkiye - Süper Lig/Kasımpaşa.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Kasımpaşa"
+        },
+        {
+          "club": "Kayserispor",
+          "badge": "badges/Türkiye - Süper Lig/Kayserispor.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Kayserispor"
+        },
+        {
+          "club": "Konyaspor",
+          "badge": "badges/Türkiye - Süper Lig/Konyaspor.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Konyaspor"
+        },
+        {
+          "club": "Rizespor",
+          "badge": "badges/Türkiye - Süper Lig/Rizespor.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Rizespor"
+        },
+        {
+          "club": "Samsunspor",
+          "badge": "badges/Türkiye - Süper Lig/Samsunspor.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Samsunspor"
+        },
+        {
+          "club": "Trabzonspor",
+          "badge": "badges/Türkiye - Süper Lig/Trabzonspor.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Trabzonspor"
+        },
+        {
+          "club": "Kocaelispor",
+          "badge": "badges/Türkiye - Süper Lig/Kocaelispor.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Kocaelispor"
+        },
+        {
+          "club": "Gençlerbirliği",
+          "badge": "badges/Türkiye - Süper Lig/Gençlerbirliği.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Gençlerbirliği"
+        },
+        {
+          "club": "Fatih Karagümrük",
+          "badge": "badges/Türkiye - Süper Lig/Fatih Karagümrük.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Fatih Karagümrük"
+        }
+      ],
+      "sources": {
+        "missing": 4,
+        "sportsdb": 14
+      }
+    },
+    "Major League Soccer": {
+      "clubs": [
+        {
+          "club": "Atlanta United",
+          "badge": "badges/United States - MLS/Atlanta United.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Atlanta United"
+        },
+        {
+          "club": "Austin FC",
+          "badge": "badges/United States - MLS/Austin FC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Austin FC"
+        },
+        {
+          "club": "Charlotte FC",
+          "badge": "badges/United States - MLS/Charlotte FC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Charlotte FC"
+        },
+        {
+          "club": "Chicago Fire",
+          "badge": "badges/United States - MLS/Chicago Fire.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Chicago Fire"
+        },
+        {
+          "club": "FC Cincinnati",
+          "badge": "badges/United States - MLS/FC Cincinnati.png",
+          "source": "sportsdb",
+          "details": "sportsdb:FC Cincinnati"
+        },
+        {
+          "club": "Colorado Rapids",
+          "badge": "badges/United States - MLS/Colorado Rapids.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Colorado Rapids"
+        },
+        {
+          "club": "Columbus Crew",
+          "badge": "badges/United States - MLS/Columbus Crew.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Columbus Crew"
+        },
+        {
+          "club": "DC United",
+          "badge": "badges/United States - MLS/DC United.png",
+          "source": "sportsdb",
+          "details": "sportsdb:DC United"
+        },
+        {
+          "club": "FC Dallas",
+          "badge": "badges/United States - MLS/FC Dallas.png",
+          "source": "sportsdb",
+          "details": "sportsdb:FC Dallas"
+        },
+        {
+          "club": "Houston Dynamo",
+          "badge": "badges/United States - MLS/Houston Dynamo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Houston Dynamo"
+        },
+        {
+          "club": "Sporting Kansas City",
+          "badge": "badges/United States - MLS/Sporting Kansas City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sporting Kansas City"
+        },
+        {
+          "club": "LA Galaxy",
+          "badge": "badges/United States - MLS/LA Galaxy.png",
+          "source": "sportsdb",
+          "details": "sportsdb:LA Galaxy"
+        },
+        {
+          "club": "Los Angeles FC",
+          "badge": "badges/United States - MLS/Los Angeles FC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Los Angeles FC"
+        },
+        {
+          "club": "Inter Miami",
+          "badge": "badges/United States - MLS/Inter Miami.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Inter Miami"
+        },
+        {
+          "club": "Minnesota United",
+          "badge": "badges/United States - MLS/Minnesota United.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Minnesota United"
+        },
+        {
+          "club": "CF Montréal",
+          "badge": "badges/United States - MLS/CF Montréal.png",
+          "source": "sportsdb",
+          "details": "sportsdb:CF Montréal"
+        },
+        {
+          "club": "Nashville SC",
+          "badge": "badges/United States - MLS/Nashville SC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Nashville SC"
+        },
+        {
+          "club": "New England Revolution",
+          "badge": "badges/United States - MLS/New England Revolution.png",
+          "source": "sportsdb",
+          "details": "sportsdb:New England Revolution"
+        },
+        {
+          "club": "New York Red Bulls",
+          "badge": "badges/United States - MLS/New York Red Bulls.png",
+          "source": "sportsdb",
+          "details": "sportsdb:New York Red Bulls"
+        },
+        {
+          "club": "New York City FC",
+          "badge": "badges/United States - MLS/New York City FC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:New York City FC"
+        },
+        {
+          "club": "Orlando City",
+          "badge": "badges/United States - MLS/Orlando City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Orlando City"
+        },
+        {
+          "club": "Philadelphia Union",
+          "badge": "badges/United States - MLS/Philadelphia Union.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Philadelphia Union"
+        },
+        {
+          "club": "Portland Timbers",
+          "badge": "badges/United States - MLS/Portland Timbers.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Portland Timbers"
+        },
+        {
+          "club": "Real Salt Lake",
+          "badge": "badges/United States - MLS/Real Salt Lake.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Real Salt Lake"
+        },
+        {
+          "club": "San Diego FC",
+          "badge": "badges/United States - MLS/San Diego FC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:San Diego FC"
+        },
+        {
+          "club": "San Jose Earthquakes",
+          "badge": "badges/United States - MLS/San Jose Earthquakes.png",
+          "source": "sportsdb",
+          "details": "sportsdb:San Jose Earthquakes"
+        },
+        {
+          "club": "Seattle Sounders",
+          "badge": "badges/United States - MLS/Seattle Sounders.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Seattle Sounders"
+        },
+        {
+          "club": "St. Louis City",
+          "badge": "badges/United States - MLS/St. Louis City.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Louisville City"
+        },
+        {
+          "club": "Toronto FC",
+          "badge": "badges/United States - MLS/Toronto FC.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Toronto FC"
+        },
+        {
+          "club": "Vancouver Whitecaps",
+          "badge": "badges/United States - MLS/Vancouver Whitecaps.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Vancouver Whitecaps"
+        }
+      ],
+      "sources": {
+        "sportsdb": 30
+      }
+    },
+    "Czech First League": {
+      "clubs": [
+        {
+          "club": "Artis Brno",
+          "badge": "badges/Czechia - Czech First League/Artis Brno.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Artis Brno"
+        },
+        {
+          "club": "Bohemians 1905",
+          "badge": "badges/Czechia - Czech First League/Bohemians 1905.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Bohemians 1905"
+        },
+        {
+          "club": "Hradec Králové",
+          "badge": "badges/Czechia - Czech First League/Hradec Králové.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Hradec Králové"
+        },
+        {
+          "club": "Jablonec",
+          "badge": "badges/Czechia - Czech First League/Jablonec.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Jablonec"
+        },
+        {
+          "club": "Slovan Liberec",
+          "badge": "badges/Czechia - Czech First League/Slovan Liberec.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Slovan Liberec"
+        },
+        {
+          "club": "Mladá Boleslav",
+          "badge": "badges/Czechia - Czech First League/Mladá Boleslav.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Mladá Boleslav"
+        },
+        {
+          "club": "Sigma Olomouc",
+          "badge": "badges/Czechia - Czech First League/Sigma Olomouc.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sigma Olomouc"
+        },
+        {
+          "club": "Baník Ostrava",
+          "badge": "badges/Czechia - Czech First League/Baník Ostrava.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Baník Ostrava"
+        },
+        {
+          "club": "Pardubice",
+          "badge": "badges/Czechia - Czech First League/Pardubice.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Pardubice"
+        },
+        {
+          "club": "Viktoria Plzeň",
+          "badge": "badges/Czechia - Czech First League/Viktoria Plzeň.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Viktoria Plzeň"
+        },
+        {
+          "club": "Slavia Prague",
+          "badge": "badges/Czechia - Czech First League/Slavia Prague.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Slavia Prague"
+        },
+        {
+          "club": "Slovácko",
+          "badge": "badges/Czechia - Czech First League/Slovácko.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Slovácko"
+        },
+        {
+          "club": "Sparta Prague",
+          "badge": "badges/Czechia - Czech First League/Sparta Prague.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Sparta Prague"
+        },
+        {
+          "club": "Teplice",
+          "badge": "badges/Czechia - Czech First League/Teplice.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Teplice"
+        },
+        {
+          "club": "Zlín",
+          "badge": "badges/Czechia - Czech First League/Zlín.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Zlín"
+        },
+        {
+          "club": "Dukla Prague",
+          "badge": "badges/Czechia - Czech First League/Dukla Prague.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Dukla Praha"
+        }
+      ],
+      "sources": {
+        "sportsdb": 16
+      }
+    },
+    "Croatian HNL": {
+      "clubs": [
+        {
+          "club": "Dinamo Zagreb",
+          "badge": "badges/Croatia - HNL/Dinamo Zagreb.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Dinamo Zagreb"
+        },
+        {
+          "club": "Gorica",
+          "badge": "badges/Croatia - HNL/Gorica.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Gorica"
+        },
+        {
+          "club": "Hajduk Split",
+          "badge": "badges/Croatia - HNL/Hajduk Split.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Hajduk Split"
+        },
+        {
+          "club": "Istra 1961",
+          "badge": "badges/Croatia - HNL/Istra 1961.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Istra 1961"
+        },
+        {
+          "club": "Lokomotiva Zagreb",
+          "badge": "badges/Croatia - HNL/Lokomotiva Zagreb.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Lokomotiva Zagreb"
+        },
+        {
+          "club": "Osijek",
+          "badge": "badges/Croatia - HNL/Osijek.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Osijek"
+        },
+        {
+          "club": "Rijeka",
+          "badge": "badges/Croatia - HNL/Rijeka.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Rijeka"
+        },
+        {
+          "club": "Rudeš",
+          "badge": "badges/Croatia - HNL/Rudeš.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Rudeš"
+        },
+        {
+          "club": "Slaven Belupo",
+          "badge": "badges/Croatia - HNL/Slaven Belupo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Slaven Belupo Koprivnica"
+        },
+        {
+          "club": "Varaždin",
+          "badge": "badges/Croatia - HNL/Varaždin.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Varaždin"
+        }
+      ],
+      "sources": {
+        "sportsdb": 10
+      }
+    },
+    "Serbian SuperLiga": {
+      "clubs": [
+        {
+          "club": "Red Star Belgrade",
+          "badge": "badges/Serbia - SuperLiga/Red Star Belgrade.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Crvena Zvezda"
+        },
+        {
+          "club": "Čukarički",
+          "badge": "badges/Serbia - SuperLiga/Čukarički.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Čukarički"
+        },
+        {
+          "club": "IMT",
+          "badge": "badges/Serbia - SuperLiga/IMT.png",
+          "source": "sportsdb",
+          "details": "sportsdb:IMT Novi Beograd"
+        },
+        {
+          "club": "Mačva Šabac",
+          "badge": "badges/Serbia - SuperLiga/Mačva Šabac.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Mačva Šabac"
+        },
+        {
+          "club": "Mladost Lučani",
+          "badge": "badges/Serbia - SuperLiga/Mladost Lučani.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Mladost Lučani"
+        },
+        {
+          "club": "Novi Pazar",
+          "badge": "badges/Serbia - SuperLiga/Novi Pazar.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Novi Pazar"
+        },
+        {
+          "club": "OFK Beograd",
+          "badge": "badges/Serbia - SuperLiga/OFK Beograd.png",
+          "source": "sportsdb",
+          "details": "sportsdb:OFK Beograd"
+        },
+        {
+          "club": "Partizan",
+          "badge": "badges/Serbia - SuperLiga/Partizan.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Partizan Belgrade"
+        },
+        {
+          "club": "Radnički 1923",
+          "badge": "badges/Serbia - SuperLiga/Radnički 1923.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Radnički 1923"
+        },
+        {
+          "club": "Radnički Niš",
+          "badge": "badges/Serbia - SuperLiga/Radnički Niš.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Radnički Niš"
+        },
+        {
+          "club": "Radnik Surdulica",
+          "badge": "badges/Serbia - SuperLiga/Radnik Surdulica.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Radnik Surdulica"
+        },
+        {
+          "club": "Vojvodina",
+          "badge": "badges/Serbia - SuperLiga/Vojvodina.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Vojvodina"
+        },
+        {
+          "club": "Zemun",
+          "badge": "badges/Serbia - SuperLiga/Zemun.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Zemun"
+        },
+        {
+          "club": "Železničar Pančevo",
+          "badge": "badges/Serbia - SuperLiga/Železničar Pančevo.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Železničar Pančevo"
+        },
+        {
+          "club": "TSC Bačka Topola",
+          "badge": "badges/Serbia - SuperLiga/TSC Bačka Topola.png",
+          "source": "sportsdb",
+          "details": "sportsdb:TSC Bačka Topola"
+        },
+        {
+          "club": "Napredak Kruševac",
+          "badge": "badges/Serbia - SuperLiga/Napredak Kruševac.png",
+          "source": "sportsdb",
+          "details": "sportsdb:Napredak Kruševac"
+        }
+      ],
+      "sources": {
+        "sportsdb": 16
+      }
+    }
+  },
+  "missing": [
+    {
+      "league": "Germany - 2. Bundesliga",
+      "club": "Energie Cottbus"
+    },
+    {
+      "league": "Germany - 2. Bundesliga",
+      "club": "Darmstadt 98"
+    },
+    {
+      "league": "Germany - 2. Bundesliga",
+      "club": "Dynamo Dresden"
+    },
+    {
+      "league": "Germany - 2. Bundesliga",
+      "club": "Greuther Fürth"
+    },
+    {
+      "league": "Germany - 2. Bundesliga",
+      "club": "Hannover 96"
+    },
+    {
+      "league": "Germany - 2. Bundesliga",
+      "club": "1. FC Heidenheim"
+    },
+    {
+      "league": "Germany - 2. Bundesliga",
+      "club": "1. FC Kaiserslautern"
+    },
+    {
+      "league": "Germany - 2. Bundesliga",
+      "club": "Karlsruher SC"
+    },
+    {
+      "league": "Spain - LaLiga 2",
+      "club": "Mallorca"
+    },
+    {
+      "league": "Spain - LaLiga 2",
+      "club": "Real Oviedo"
+    },
+    {
+      "league": "Spain - LaLiga 2",
+      "club": "Real Sociedad B"
+    },
+    {
+      "league": "Spain - LaLiga 2",
+      "club": "Sabadell"
+    },
+    {
+      "league": "Spain - LaLiga 2",
+      "club": "Sporting Gijón"
+    },
+    {
+      "league": "Spain - LaLiga 2",
+      "club": "Tenerife"
+    },
+    {
+      "league": "Spain - LaLiga 2",
+      "club": "Real Valladolid"
+    },
+    {
+      "league": "Italy - Serie B",
+      "club": "Reggiana"
+    },
+    {
+      "league": "Italy - Serie B",
+      "club": "Sampdoria"
+    },
+    {
+      "league": "Italy - Serie B",
+      "club": "Spezia"
+    },
+    {
+      "league": "Italy - Serie B",
+      "club": "Südtirol"
+    },
+    {
+      "league": "France - Ligue 1",
+      "club": "Angers"
+    },
+    {
+      "league": "France - Ligue 1",
+      "club": "Auxerre"
+    },
+    {
+      "league": "France - Ligue 1",
+      "club": "Brest"
+    },
+    {
+      "league": "France - Ligue 1",
+      "club": "Le Havre"
+    },
+    {
+      "league": "France - Ligue 2",
+      "club": "Reims"
+    },
+    {
+      "league": "Belgium - Belgian Pro League",
+      "club": "Sint-Truiden"
+    },
+    {
+      "league": "Belgium - Belgian Pro League",
+      "club": "Standard Liège"
+    },
+    {
+      "league": "Portugal - Primeira Liga",
+      "club": "Alverca"
+    },
+    {
+      "league": "Portugal - Primeira Liga",
+      "club": "Arouca"
+    },
+    {
+      "league": "Portugal - Primeira Liga",
+      "club": "Estrela Amadora"
+    },
+    {
+      "league": "Portugal - Primeira Liga",
+      "club": "Gil Vicente"
+    },
+    {
+      "league": "Portugal - Primeira Liga",
+      "club": "Nacional"
+    },
+    {
+      "league": "Mexico - Liga MX",
+      "club": "Querétaro"
+    },
+    {
+      "league": "Mexico - Liga MX",
+      "club": "Tijuana"
+    },
+    {
+      "league": "Colombia - Categoría Primera A",
+      "club": "Alianza"
+    },
+    {
+      "league": "Colombia - Categoría Primera A",
+      "club": "América de Cali"
+    },
+    {
+      "league": "Ecuador - LigaPro Serie A",
+      "club": "Libertad"
+    },
+    {
+      "league": "Türkiye - Süper Lig",
+      "club": "Alanyaspor"
+    },
+    {
+      "league": "Türkiye - Süper Lig",
+      "club": "Antalyaspor"
+    },
+    {
+      "league": "Türkiye - Süper Lig",
+      "club": "Beşiktaş"
+    },
+    {
+      "league": "Türkiye - Süper Lig",
+      "club": "Eyüpspor"
+    }
+  ],
+  "validation": {
+    "leagueCount": 26,
+    "clubCount": 490,
+    "missingBadgePaths": [
+      "Germany - 2. Bundesliga :: Energie Cottbus",
+      "Germany - 2. Bundesliga :: Darmstadt 98",
+      "Germany - 2. Bundesliga :: Dynamo Dresden",
+      "Germany - 2. Bundesliga :: Greuther Fürth",
+      "Germany - 2. Bundesliga :: Hannover 96",
+      "Germany - 2. Bundesliga :: 1. FC Heidenheim",
+      "Germany - 2. Bundesliga :: 1. FC Kaiserslautern",
+      "Germany - 2. Bundesliga :: Karlsruher SC",
+      "Spain - LaLiga 2 :: Mallorca",
+      "Spain - LaLiga 2 :: Real Oviedo",
+      "Spain - LaLiga 2 :: Real Sociedad B",
+      "Spain - LaLiga 2 :: Sabadell",
+      "Spain - LaLiga 2 :: Sporting Gijón",
+      "Spain - LaLiga 2 :: Tenerife",
+      "Spain - LaLiga 2 :: Real Valladolid",
+      "Italy - Serie B :: Reggiana",
+      "Italy - Serie B :: Sampdoria",
+      "Italy - Serie B :: Spezia",
+      "Italy - Serie B :: Südtirol",
+      "France - Ligue 1 :: Angers",
+      "France - Ligue 1 :: Auxerre",
+      "France - Ligue 1 :: Brest",
+      "France - Ligue 1 :: Le Havre",
+      "France - Ligue 2 :: Reims",
+      "Belgium - Belgian Pro League :: Sint-Truiden",
+      "Belgium - Belgian Pro League :: Standard Liège",
+      "Portugal - Primeira Liga :: Alverca",
+      "Portugal - Primeira Liga :: Arouca",
+      "Portugal - Primeira Liga :: Estrela Amadora",
+      "Portugal - Primeira Liga :: Gil Vicente",
+      "Portugal - Primeira Liga :: Nacional",
+      "Mexico - Liga MX :: Querétaro",
+      "Mexico - Liga MX :: Tijuana",
+      "Colombia - Categoría Primera A :: Alianza",
+      "Colombia - Categoría Primera A :: América de Cali",
+      "Ecuador - LigaPro Serie A :: Libertad",
+      "Türkiye - Süper Lig :: Alanyaspor",
+      "Türkiye - Süper Lig :: Antalyaspor",
+      "Türkiye - Süper Lig :: Beşiktaş",
+      "Türkiye - Süper Lig :: Eyüpspor"
+    ]
+  }
+}

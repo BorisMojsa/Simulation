@@ -14,15 +14,15 @@ export function simulateIndividualAwards(performanceScore, season, player, leagu
     const matches = season.matches || 0;
     const goalsPerGame = matches > 0 ? goals / matches : 0;
     
-    // Different thresholds based on league tier
+    // Higher tier values represent stronger leagues in this sim.
     const leagueTier = season.league ? (leagueLookup.get(season.league)?.tier || 3) : 3;
     let minGoals, minGoalsPerGame;
     
-    if (leagueTier <= 2) {
+    if (leagueTier >= 4) {
       // Top leagues - very competitive
       minGoals = 20;
       minGoalsPerGame = 0.6;
-    } else if (leagueTier <= 3) {
+    } else if (leagueTier >= 3) {
       // Mid-tier leagues
       minGoals = 15;
       minGoalsPerGame = 0.5;
