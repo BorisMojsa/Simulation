@@ -1,19 +1,88 @@
 import { STATS_KEYS } from "./js/config/playerConfig.js";
-import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js";
-import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js";
+import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js?v=40";
+import { WORLD_CUP_NATIONS, flagUrl } from "./js/data/worldCupNations.js";
+import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=40";
 import { calculateContractLength, generateTransferOffers } from "./js/simulation/transferMarket.js";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=50";
 import {
   appendSeasonCard,
   renderPlayerOverview,
   renderSeasonLog,
   renderStandings,
   renderTransferOffers,
-} from "./js/ui/rendering.js";
-import { runCareerStartFlow } from "./js/ui/careerStartFlow.js";
-import { showSeasonAnimation } from "./js/ui/seasonAnimation.js";
-import { showRetirementAnimation } from "./js/ui/retirementAnimation.js";
-import { formatCurrency } from "./js/utils/helpers.js";
+} from "./js/ui/rendering.js?v=54";
+import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=40";
+import { showSeasonAnimation } from "./js/ui/seasonAnimation.js?v=54";
+import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=54";
+import {
+  customSelectsAreValid,
+  getCustomSelectValue,
+  initCustomSelect,
+  initCustomSelectOutsideClose,
+} from "./js/ui/customSelect.js";
+import { escapeHtml, formatCurrency } from "./js/utils/helpers.js";
+
+const POSITION_OPTIONS = [
+  { value: "GK", label: "Goalkeeper" },
+  { value: "RB", label: "Right Back" },
+  { value: "LB", label: "Left Back" },
+  { value: "CB", label: "Centre Back" },
+  { value: "CDM", label: "Defensive Midfielder" },
+  { value: "CM", label: "Central Midfielder" },
+  { value: "CAM", label: "Attacking Midfielder" },
+  { value: "RM", label: "Right Midfielder" },
+  { value: "LM", label: "Left Midfielder" },
+  { value: "RW", label: "Right Winger" },
+  { value: "LW", label: "Left Winger" },
+  { value: "ST", label: "Striker" },
+];
+
+const STARTING_AGE_OPTIONS = [15, 16, 17, 18, 19].map((age) => ({
+  value: String(age),
+  label: `${age} years old`,
+  html: `<span>${age} years old</span>`,
+}));
+
+function initSetupSelects() {
+  initCustomSelectOutsideClose();
+
+  const nationalityRoot = document.getElementById("nationality-select");
+  if (nationalityRoot) {
+    initCustomSelect(nationalityRoot, {
+      placeholder: "Select nationality",
+      required: true,
+      options: WORLD_CUP_NATIONS.map((nation) => ({
+        value: nation.name,
+        label: nation.name,
+        html: `<img class="select-flag" src="${flagUrl(nation.code)}" alt="" width="22" height="16" loading="lazy" /><span>${escapeHtml(nation.name)}</span>`,
+      })),
+    });
+  }
+
+  const positionRoot = document.getElementById("primary-position-select");
+  if (positionRoot) {
+    initCustomSelect(positionRoot, {
+      placeholder: "Select a position",
+      required: true,
+      options: POSITION_OPTIONS.map((pos) => ({
+        value: pos.value,
+        label: pos.label,
+        html: `<span class="select-pos-code">${escapeHtml(pos.value)}</span><span>${escapeHtml(pos.label)}</span>`,
+      })),
+    });
+  }
+
+  const ageRoot = document.getElementById("starting-age-select");
+  if (ageRoot) {
+    initCustomSelect(ageRoot, {
+      placeholder: "Select starting age",
+      required: true,
+      options: STARTING_AGE_OPTIONS,
+    });
+  }
+}
+
+initSetupSelects();
 
 let player = null;
 
@@ -36,24 +105,38 @@ function startCareerFromSetup() {
 
   if (!setupForm) {
     if (bootErr) {
-      bootErr.textContent = "Setup form not found — page may be incomplete. Reload the page.";
+      bootErr.textContent = "Setup form not found. page may be incomplete. Reload the page.";
       bootErr.classList.remove("hidden");
     }
     return;
   }
 
-  if (!setupForm.checkValidity()) {
-    setupForm.reportValidity();
+  const formData = new FormData(setupForm);
+  const name = String(formData.get("player-name") ?? "").trim();
+  const nationality = getCustomSelectValue("nationality");
+  const position = getCustomSelectValue("primary-position");
+  const startingAgeRaw = getCustomSelectValue("starting-age");
+  const startingAge = Number(startingAgeRaw);
+
+  if (!name) {
+    setupForm.querySelector("#player-name")?.reportValidity?.();
+    setupForm.querySelector("#player-name")?.focus();
     return;
   }
 
-  const formData = new FormData(setupForm);
-  const name = String(formData.get("player-name") ?? "").trim();
-  const nationality = String(formData.get("nationality") ?? "").trim();
-  const position = String(formData.get("primary-position") ?? "").trim();
+  if (!customSelectsAreValid(["nationality", "primary-position", "starting-age"])) {
+    if (bootErr) {
+      bootErr.textContent = "Choose a nationality, primary position, and starting age to open the file.";
+      bootErr.classList.remove("hidden");
+    }
+    if (!nationality) document.querySelector("#nationality-select .custom-select-trigger")?.focus();
+    else if (!position) document.querySelector("#primary-position-select .custom-select-trigger")?.focus();
+    else document.querySelector("#starting-age-select .custom-select-trigger")?.focus();
+    return;
+  }
 
   try {
-    player = createPlayerIdentity({ name, nationality, position });
+    player = createPlayerIdentity({ name, nationality, position, age: startingAge });
     runCareerStartFlow({
       player,
       academyPool: ACADEMY_POOL,
@@ -69,11 +152,11 @@ function startCareerFromSetup() {
     setupSection.classList.remove("hidden");
     if (bootErr) {
       bootErr.textContent =
-        "Could not start career. Serve this folder over HTTP (e.g. run: python3 -m http.server) and open http://localhost:8000 — opening index.html as a file often breaks the game.";
+        "Could not start career. Serve this folder over HTTP (e.g. run: python3 -m http.server) and open http://localhost:8000. opening index.html as a file often breaks the game.";
       bootErr.classList.remove("hidden");
     } else {
       window.alert(
-        "Could not start career. Run from a local web server (python3 -m http.server), not file:// — see console for details."
+        "Could not start career. Run from a local web server (python3 -m http.server), not file://. see console for details."
       );
     }
   }
@@ -147,7 +230,13 @@ function simulateSeasonWithAnimation() {
     return;
   }
 
-  const offers = generateTransferOffers(seasonData.performanceScore, player, LEAGUES, LEAGUE_LOOKUP);
+  const offers = generateTransferOffers(
+    seasonData.performanceScore,
+    player,
+    LEAGUES,
+    LEAGUE_LOOKUP,
+    seasonData.season?.avgMatchRating ?? null
+  );
   player.pendingOffers = offers;
 
   showSeasonAnimation(seasonData, player, STATS_KEYS, finishSeasonAnimation);

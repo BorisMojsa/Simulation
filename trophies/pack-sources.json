@@ -1,0 +1,1203 @@
+{
+  "asset_count": 49,
+  "retrieved": "2026-10-07",
+  "assets": [
+    {
+      "source_title": "Premier League",
+      "uid": "11",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/yFiAHTNZnU7Y552FgCcLNhn0EQH3pTCdcrvOFzpY.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/808",
+      "label": "Premier League",
+      "category": "leagues",
+      "slug": "premier-league",
+      "file": "leagues/premier-league.png",
+      "bytes": 113301,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "343c09582527bab1f9a8718af382b2de0f15d7c11e755c1bed6a9528c7dcb303"
+    },
+    {
+      "source_title": "Sky Bet Championship",
+      "uid": "12",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/bETKnmG3UbVavC2tZyztTAvGuQeN7qrSOpiwQerl.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/808",
+      "label": "Championship",
+      "category": "leagues",
+      "slug": "championship",
+      "file": "leagues/championship.png",
+      "bytes": 69973,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "60be0f52d7c8973febfffda376a968bc8fa7eedefe8ad56e612a4ced58876215"
+    },
+    {
+      "source_title": "Bundesliga",
+      "uid": "22",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/CwMmOS3bzhmaBwrCCD2wMnEBbiML7w6dxsWXSqYJ.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Bundesliga",
+      "category": "leagues",
+      "slug": "bundesliga",
+      "file": "leagues/bundesliga.png",
+      "bytes": 157699,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "af3f23e7fb23aa78d4dd8aac630c4ecf6755ea8cccbc33afbdc191778ad266ce"
+    },
+    {
+      "source_title": "Bundesliga 2",
+      "uid": "23",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/gDl6a1I7um2hdgxkwBCjWNYfKe9FKQCKrvXJCBc2.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=2",
+      "label": "2. Bundesliga",
+      "category": "leagues",
+      "slug": "2-bundesliga",
+      "file": "leagues/2-bundesliga.png",
+      "bytes": 122411,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "8ed57f9f653f8a85bb2d26cf8d5204ab9514cb75a25d71bf6de44c1456f3ecb8"
+    },
+    {
+      "source_title": "Spanish First Division",
+      "uid": "67",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/mVGRgmSu9SId4n7jfbiDR2ZzROGLW7hl5WHiZUtd.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "La Liga",
+      "category": "leagues",
+      "slug": "la-liga",
+      "file": "leagues/la-liga.png",
+      "bytes": 80885,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "80441c93f15d11f09a4b942e93e7770f8c1bd9d5e9e2fa788743566b3ce3c3ce"
+    },
+    {
+      "source_title": "Italian Serie A",
+      "uid": "32",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/Uu0NcP7ndmBjtsrmnpsBTl7UaFplOpTG1uQDjL9A.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Serie A",
+      "category": "leagues",
+      "slug": "serie-a",
+      "file": "leagues/serie-a.png",
+      "bytes": 57965,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "e7546babdd684c01832ba5da9f3e1452802eb214187aa14c9d24d271a53e3316"
+    },
+    {
+      "source_title": "Serie BKT",
+      "uid": "33",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2026/rNDhKDobnzDzgzc1Ti9Obn6IJhR3yNAtwE4TNlTb.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/1346",
+      "label": "Serie B",
+      "category": "leagues",
+      "slug": "serie-b",
+      "file": "leagues/serie-b.png",
+      "bytes": 45878,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "b04df7cce3da3fec3a24812e7245bf168558067e512feed19b147449aabd5bcf"
+    },
+    {
+      "source_title": "Ligue 2 BKT",
+      "uid": "17",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2024/hIH9OX7wzGaJOJkOAIc3Gw7h4yaj4SWgBsEsxqhX.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/1029",
+      "label": "Ligue 2",
+      "category": "leagues",
+      "slug": "ligue-2",
+      "file": "leagues/ligue-2.png",
+      "bytes": 57265,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "New silver Mathias Kiss / Christofle trophy, first awarded in May 2025. Official reference: https://www.lfp.fr/article/un-nouveau-trophee-pour-la-ligue-2-bkt",
+      "sha256": "f6a42421d640b006825516940e97ab670558703443738f7b163afe8ae1955832"
+    },
+    {
+      "source_title": "Brazilian National First Division",
+      "uid": "102423",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2025/4DSE82h81WO2oBuiTJrdDFf48fDYZIHrX0iyX6jf.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/1249",
+      "label": "Brasileirão",
+      "category": "leagues",
+      "slug": "brasileirao",
+      "file": "leagues/brasileirao.png",
+      "bytes": 96094,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "77b689e520bb03f759479b9d43f1bb52dc528047d44f412d940541b58cda9af5"
+    },
+    {
+      "source_title": "Jupiler Pro League",
+      "uid": "1",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/V3UebwDgK4FABVyyinArRcgWiKUh9dHFfi234qfD.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Belgian Pro League",
+      "category": "leagues",
+      "slug": "belgian-pro-league",
+      "file": "leagues/belgian-pro-league.png",
+      "bytes": 90132,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "4c993c24f2675a64b0ab79f20a591997edacccd0e1ca6f3fbcc271f01ca9dfe6"
+    },
+    {
+      "source_title": "Argentine Premier Division",
+      "uid": "102421",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2025/8JGPBhtlNEgnYYE6wZTPd4YIj2xBZietrAFLMSh7.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/1131",
+      "label": "Liga Profesional",
+      "category": "leagues",
+      "slug": "liga-profesional",
+      "file": "leagues/liga-profesional.png",
+      "bytes": 80818,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Liga Profesional tournament trophy from the 2025.07 pack; not the separate annual Campeón de Liga award.",
+      "sha256": "fec94683f28e6a63ca874ed17bd5e9612e4e968f482afa425f1565e132903dee"
+    },
+    {
+      "source_title": "Portuguese Premier League",
+      "uid": "60",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/G6hTMToJV8Ye7OxqKl42mcIuTQNmtALH6tYRZEaV.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Primeira Liga",
+      "category": "leagues",
+      "slug": "primeira-liga",
+      "file": "leagues/primeira-liga.png",
+      "bytes": 67786,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "16bb90c88123c55b70ea7164ce55fe422ee1c3072bdd84cc451df4c351933aad"
+    },
+    {
+      "source_title": "Mexican First Division",
+      "uid": "135973",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/un2rP8DtqrojRvAjejPrL97gNfgnYUQN56wzBapc.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/808",
+      "label": "Liga MX",
+      "category": "leagues",
+      "slug": "liga-mx",
+      "file": "leagues/liga-mx.png",
+      "bytes": 60780,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "8db75a4379aa085b7a0053286dbb10358d6d2a75321b4528003ae9765f137f0c"
+    },
+    {
+      "source_title": "Categoría Primera A / Liga BetPlay trophy photo",
+      "uid": "5260948",
+      "image_url": "https://sortitoutsi.net/uploads/media/oxFK5jhic5c2Kp11XlqVgt9k5VFNi3n2ggTkLL7V.png",
+      "source_page": "https://sortitoutsi.net/content/55584/logos-request-thread-2?page=14",
+      "label": "Categoría Primera A",
+      "category": "leagues",
+      "slug": "categoria-primera-a",
+      "file": "leagues/categoria-primera-a.png",
+      "bytes": 180433,
+      "size": [
+        288,
+        636
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Original transparent photographic cutout, published by robmoore_396 2 in the sortitoutsi Trophy Pack forum, downloaded unchanged. No AI generation or image restyling. Trophy shape verified against the official DIMAYOR Trophy Tour image: https://dimayor.com.co/2026/05/31/barranquilla-recibe-el-trophy-tour-de-la-liga-betplay-dimayor/",
+      "sha256": "6dfc184a4d554c0e4c18e36433c1b0671c5ad8d769611d26ff19ba4178b6ab0d"
+    },
+    {
+      "source_title": "VriendenLoterij Eredivisie",
+      "uid": "29",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/71kcPHsThumdNZP7P8zxrcBzLaQ5xlLyloSFh1n2.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Eredivisie",
+      "category": "leagues",
+      "slug": "eredivisie",
+      "file": "leagues/eredivisie.png",
+      "bytes": 148695,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "1534258d90ef7ff04cb3abe26d5c6f105c27163d43a446e33ff0f8c9d4309929"
+    },
+    {
+      "source_title": "Ecuadorian Serie A",
+      "uid": "80000566",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/Oj6KuNvj0SRp0lP8GNKd7dGCAtqfq8tGPaOxn7Ji.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=2",
+      "label": "LigaPro Serie A",
+      "category": "leagues",
+      "slug": "ligapro-serie-a",
+      "file": "leagues/ligapro-serie-a.png",
+      "bytes": 105180,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "9b586d91779c9c33f7afe7b5feb8f619539cd76c7aeed3781fdbda95f281f747"
+    },
+    {
+      "source_title": "MLS Cup",
+      "uid": "73",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/nP3ESXmLUWvdBxylk8MuVQC4YNbcXFRSoAejHOmn.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=2",
+      "label": "MLS Cup",
+      "category": "leagues",
+      "slug": "mls-cup",
+      "file": "leagues/mls-cup.png",
+      "bytes": 113151,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "98f47a5e21b2cba425f6f239f35c0d0ec4c6ede8dd94ffe0caea5607de5543b2"
+    },
+    {
+      "source_title": "Supporters’ Shield photograph by Ronny Salerno",
+      "uid": null,
+      "image_url": "https://images.squarespace-cdn.com/content/v1/5f4d8a25db85a54c4d64fe76/836347c9-4551-4a47-909a-54559320c7e3/722_9504.jpg",
+      "source_page": "https://ronnysalerno.com/queencitydiscovery/2024/05/supporters-shield",
+      "label": "Supporters’ Shield",
+      "category": "leagues",
+      "slug": "supporters-shield",
+      "file": "leagues/supporters-shield.png",
+      "bytes": 2123279,
+      "size": [
+        1536,
+        1024
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        254
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Made using AI background extraction from a real trophy photograph; stadium and display stand removed. Some fine engraved lettering may differ from the source photo. Prompt: Remove the background and stand, preserve the shield, output a static transparent photographic cutout.",
+      "sha256": "6a3e89a49118bf71c8d13fc5dbf7e7e8ce89e206af46ce692b6cc1f5b393a9ce"
+    },
+    {
+      "label": "Eliteserien",
+      "category": "leagues",
+      "slug": "eliteserien",
+      "file": "leagues/eliteserien.png",
+      "format": "PNG",
+      "kind": "photo cutout",
+      "source_title": "sortitoutsi Trophies Megapack",
+      "source_page": "https://sortitoutsi.net/graphics/style/32/trophies-megapack",
+      "notes": "Previously downloaded original transparent trophy asset; copied unchanged from the original five-trophy set.",
+      "bytes": 78137,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "sha256": "2c6e3ced96a95cd55019509bec62cbdf16ad8320811a7cc1fa51f4ec53d3f610"
+    },
+    {
+      "label": "Croatian HNL / SuperSport HNL",
+      "category": "leagues",
+      "slug": "croatian-hnl",
+      "file": "leagues/croatian-hnl.png",
+      "format": "PNG",
+      "kind": "photo cutout",
+      "source_title": "sortitoutsi Trophies Megapack",
+      "source_page": "https://sortitoutsi.net/graphics/style/32/trophies-megapack",
+      "notes": "Previously downloaded original transparent trophy asset; copied unchanged from the original five-trophy set.",
+      "bytes": 49054,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "sha256": "51ed26a7824d6fa383381a5674958a08315e0016977764296f3c497a729733f9"
+    },
+    {
+      "label": "Serbian SuperLiga",
+      "category": "leagues",
+      "slug": "serbian-superliga",
+      "file": "leagues/serbian-superliga.png",
+      "format": "PNG",
+      "kind": "photo cutout",
+      "source_title": "sortitoutsi Trophies Megapack",
+      "source_page": "https://sortitoutsi.net/graphics/style/32/trophies-megapack",
+      "notes": "Previously downloaded original transparent trophy asset; copied unchanged from the original five-trophy set.",
+      "bytes": 87513,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "sha256": "fed8b1df97109cb9b0fe142d7ce269a43fa3537f55d938168832ea4857d915c3"
+    },
+    {
+      "source_title": "English FA Cup",
+      "uid": "1301426",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/fiWg3kcMvffaV1WGmO4c9bsltH4tiZzOAS9WJl9B.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "FA Cup",
+      "category": "cups",
+      "slug": "fa-cup",
+      "file": "cups/fa-cup.png",
+      "bytes": 67434,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "80fd94ed2b77ab35076148534f9c9b570c1cf358a9b54c228b4c54461db1c746"
+    },
+    {
+      "source_title": "DFB-Pokal",
+      "uid": "1301410",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/iohMy8DRb0sahBPzc1CAxVujbqoV8BhhHqFVtxak.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "DFB-Pokal",
+      "category": "cups",
+      "slug": "dfb-pokal",
+      "file": "cups/dfb-pokal.png",
+      "bytes": 78266,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "3ee78e3b72543bab77ed5b980f3e88d60abe6325d07efdf35ebb16c6a8631d20"
+    },
+    {
+      "source_title": "Spanish Cup",
+      "uid": "1301422",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/gcfzohE4AHvxku2Er7kjnuYJVLvWGANsPqjKMrjV.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Copa del Rey",
+      "category": "cups",
+      "slug": "copa-del-rey",
+      "file": "cups/copa-del-rey.png",
+      "bytes": 54355,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "8ca0827a8e1ec57d6d5fab08ef66d6e091ce0db1cadd9bd8ac5bcce104f86d0d"
+    },
+    {
+      "source_title": "Italian Cup",
+      "uid": "1301412",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/bIaLejcATQIw6GYBxjSCjgTINPEaDreYTprutjsd.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Coppa Italia",
+      "category": "cups",
+      "slug": "coppa-italia",
+      "file": "cups/coppa-italia.png",
+      "bytes": 61094,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "6affb41b70c80f9c65d0109928c36f07eba9c75979fb17214d22a3bd7cba15d0"
+    },
+    {
+      "source_title": "French Cup",
+      "uid": "1301407",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/5F94QxcZSw16GKbcyihkKZJkViCUJ1ErzijDfs0E.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=2",
+      "label": "Coupe de France",
+      "category": "cups",
+      "slug": "coupe-de-france",
+      "file": "cups/coupe-de-france.png",
+      "bytes": 72609,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "732b5f59c62904b7914481adf8852619e45de5c2479320a955184dbf294fe37d"
+    },
+    {
+      "source_title": "Brazilian Cup",
+      "uid": "102427",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/FELiN9cGAlJYqd5H9pXNKQ1yr0xObDPYrTtaU8EV.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Copa do Brasil",
+      "category": "cups",
+      "slug": "copa-do-brasil",
+      "file": "cups/copa-do-brasil.png",
+      "bytes": 180046,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "aa866d032d4cbaaf197a2a07333547462b65723c9684116e19249af48165bf04"
+    },
+    {
+      "source_title": "Croky Cup",
+      "uid": "1301404",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/uiW576U7J0Ap9mp2GGqSRXsydPqfe6wDENrPIWz7.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=2",
+      "label": "Belgian Cup",
+      "category": "cups",
+      "slug": "belgian-cup",
+      "file": "cups/belgian-cup.png",
+      "bytes": 115002,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "d61ab28167831a09a024423f47c9f601d7b03b18a34ed882e045e53cbe8dba70"
+    },
+    {
+      "source_title": "Copa Argentina",
+      "uid": "14043892",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/x1uam3pmh7TZi03cAE9hs5bsM71tZoVFR2m1ps7t.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Copa Argentina",
+      "category": "cups",
+      "slug": "copa-argentina",
+      "file": "cups/copa-argentina.png",
+      "bytes": 69038,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "d238d80d8e2eef434c51dfc0b45ba3ce2c64f2139981cf7ce57ea5ade37cfaa0"
+    },
+    {
+      "label": "Taça de Portugal",
+      "category": "cups",
+      "slug": "taca-de-portugal",
+      "file": "cups/taca-de-portugal.svg",
+      "format": "SVG",
+      "kind": "vector trophy",
+      "source_title": "Taça de Portugal Trophy.svg",
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Ta%C3%A7a_de_Portugal_Trophy.svg",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Ta%C3%A7a_de_Portugal_Trophy.svg",
+      "notes": "Original SVG unchanged. Author: VitorEmanuelCarvalhoPeixoto. License: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/",
+      "bytes": 439469,
+      "sha256": "7ba0642f7f223829414dcb76ec04b40db833884084971147750cb1a9d0cec6d3",
+      "viewBox": null,
+      "static": true
+    },
+    {
+      "source_title": "Danish Cup",
+      "uid": "1301406",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/jDoCOQPXGaOAmcCIKAwJx2h0yJkEOP6EsgOOG1jP.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=3",
+      "label": "Danish Cup",
+      "category": "cups",
+      "slug": "danish-cup",
+      "file": "cups/danish-cup.png",
+      "bytes": 51659,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "13fd2ad7078f84058cd03982d161a077015e8078ca6816a8d2b49060d979e72f"
+    },
+    {
+      "label": "Norwegian Cup",
+      "category": "cups",
+      "slug": "norwegian-cup-kongepokal",
+      "file": "cups/norwegian-cup-kongepokal.svg",
+      "format": "SVG",
+      "kind": "vector trophy",
+      "source_title": "Kongepokal Harald V.svg",
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Kongepokal_Harald_V.svg",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Kongepokal_Harald_V.svg",
+      "notes": "Original Harald V Kongepokal SVG unchanged. Author: Realismadder. License: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/. Includes embedded raster details inside the SVG.",
+      "bytes": 587631,
+      "sha256": "2b69213833f66645d1a42e1cb5811ab285ddacc60b27ca14f9c84cc48b923f98",
+      "viewBox": null,
+      "static": true
+    },
+    {
+      "source_title": "Mexican Cup",
+      "uid": "51013962",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/yesBo6TexwTDH7EFkrB2eefZD4ZD3F4IudAGru4t.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=3",
+      "label": "Copa MX",
+      "category": "cups",
+      "slug": "copa-mx",
+      "file": "cups/copa-mx.png",
+      "bytes": 76077,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "12a16547859ac9e840f11cab57138ef77acf28242c1a8d8c133a3e2d6a340889"
+    },
+    {
+      "source_title": "Colombian Cup",
+      "uid": "157425",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/j3kIBizN3UXA7xqAnh1otv9qFuHxGm4az5S80FUX.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=5",
+      "label": "Copa Colombia",
+      "category": "cups",
+      "slug": "copa-colombia",
+      "file": "cups/copa-colombia.png",
+      "bytes": 58496,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "6f720fb603056a93649ffcd59da25930bf138a7097e3afea5ed40f40208776f1"
+    },
+    {
+      "source_title": "Dutch Cup",
+      "uid": "1301411",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/bEfAF9dODy9r9FyZtvYNBJY04DZeLXw0nZSGyr1x.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=2",
+      "label": "KNVB Cup",
+      "category": "cups",
+      "slug": "knvb-cup",
+      "file": "cups/knvb-cup.png",
+      "bytes": 59945,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "fe6dfaef89fd8e6bf29875c0c123b9ab7b25f7276b4e9e0c72d843d2ab40584b"
+    },
+    {
+      "source_title": "Ecuadorian Cup",
+      "uid": "2000015109",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/9U9d1JQQ0LkaY430N3GVtoGpmVZ4d5MS4UTZncoJ.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=4",
+      "label": "Copa Ecuador",
+      "category": "cups",
+      "slug": "copa-ecuador",
+      "file": "cups/copa-ecuador.png",
+      "bytes": 49873,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "4f8ad261c2cfe6b7be9023daf1afa247f8c33a8f20c1415d66adefea18184adc"
+    },
+    {
+      "source_title": "U.S. Open Cup crest trophy silhouette",
+      "uid": null,
+      "image_url": "https://upload.wikimedia.org/wikipedia/en/b/b5/U.S._Open_Cup_logo.svg",
+      "source_page": "https://en.wikipedia.org/wiki/File:U.S._Open_Cup_logo.svg",
+      "label": "U.S. Open Cup",
+      "category": "cups",
+      "slug": "us-open-cup-silhouette",
+      "file": "cups/us-open-cup-silhouette.png",
+      "bytes": 26372,
+      "size": [
+        512,
+        1024
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "black silhouette",
+      "notes": "Trophy outline extracted from the crest as native SVG paths, shield border and lettering removed, base closed, and rendered to transparent PNG. Original crest belongs to U.S. Soccer. Official competition page: https://www.ussoccer.com/us-open-cup",
+      "sha256": "054f753cdefb620520978ac907617f7456d4e5446b6efbd9ee886cee7705c40f"
+    },
+    {
+      "label": "Croatian Football Cup",
+      "category": "cups",
+      "slug": "croatian-cup",
+      "file": "cups/croatian-cup.png",
+      "format": "PNG",
+      "kind": "photo cutout",
+      "source_title": "sortitoutsi Trophies Megapack",
+      "source_page": "https://sortitoutsi.net/graphics/style/32/trophies-megapack",
+      "notes": "Previously downloaded original transparent trophy asset; copied unchanged from the original five-trophy set.",
+      "bytes": 66485,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "sha256": "4f38f57057ed15c98ade34ef9a2b71d9da6196765b5faec329ed6b37072acb88"
+    },
+    {
+      "label": "Serbian Cup / Kup Srbije",
+      "category": "cups",
+      "slug": "serbian-cup",
+      "file": "cups/serbian-cup.png",
+      "format": "PNG",
+      "kind": "photo cutout",
+      "source_title": "sortitoutsi Trophies Megapack",
+      "source_page": "https://sortitoutsi.net/graphics/style/32/trophies-megapack",
+      "notes": "Previously downloaded original transparent trophy asset; copied unchanged from the original five-trophy set.",
+      "bytes": 77798,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "sha256": "30bbcd761d7925891b79d59ce90fb52dcf5b9d4666ae1fdd16b878ecfeec8a04"
+    },
+    {
+      "source_title": "UEFA Champions League",
+      "uid": "1301394",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/yILZ608nTeRb7LmLUDJaP7Kye7Nw2PgAy3w5VH5E.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "UCL",
+      "category": "international",
+      "slug": "ucl",
+      "file": "international/ucl.png",
+      "bytes": 58244,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "ae8f5e410dd08a318b89d967a120dd95854161b0963ef6382767efd583e411b0"
+    },
+    {
+      "source_title": "UEFA Europa League",
+      "uid": "1301396",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/hSzSNSGVsYfD8YngfjrftCBfPKglg69LKhDS044y.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "UEL",
+      "category": "international",
+      "slug": "uel",
+      "file": "international/uel.png",
+      "bytes": 73274,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "25dc8c2c1baa9bb0faddafba8c6c0215e7f266cdf6be8d0b4bb7ee3f78e2aaaf"
+    },
+    {
+      "source_title": "UEFA Conference League",
+      "uid": "31051584",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/hTiL5VjrxRq88zUAh5f7MYbfCTyUTLNf2RXNFOQx.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Conference League",
+      "category": "international",
+      "slug": "conference-league",
+      "file": "international/conference-league.png",
+      "bytes": 73287,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "062b8949f6eebdc55674cd70f23c6e6fdca84fa13aaa374ccbe6abb3392820b7"
+    },
+    {
+      "source_title": "Copa Sudamericana",
+      "uid": "317567",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/gjeQFainuwDbhewJPqZpjFpX333x4k8lIRB4tdMX.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Copa Sudamericana",
+      "category": "international",
+      "slug": "copa-sudamericana",
+      "file": "international/copa-sudamericana.png",
+      "bytes": 81206,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "4b23a210fb1e15b410c3d76eee6019a9b747fb5a35e8c35cc88233fee46f25a5"
+    },
+    {
+      "source_title": "FIFA World Cup",
+      "uid": "1301385",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2025/D6RwC359o2yCjr1pSezRqrBForD1TOARqU9pt5KG.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/1249",
+      "label": "World Cup",
+      "category": "international",
+      "slug": "world-cup",
+      "file": "international/world-cup.png",
+      "bytes": 70048,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "c3e9bb13236195254b108fe5bab2af9102e4c3534f5c132e19163bd8ff991b1b"
+    },
+    {
+      "source_title": "European Football Championship",
+      "uid": "1301388",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/faV98X8V9TipZjvaSNDEHdDSltdTpBl2MFIaQfcU.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Euro",
+      "category": "international",
+      "slug": "euro",
+      "file": "international/euro.png",
+      "bytes": 63486,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "5db1180b0dba516ebcb6669a557a58af773ea50b5625ae712105c2cd3a45a5c6"
+    },
+    {
+      "source_title": "Copa América",
+      "uid": "1301389",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/IDoeEsMpqKbo1MxoiklVvcwpmANc2ijlvVnNKEhE.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=1",
+      "label": "Copa América",
+      "category": "international",
+      "slug": "copa-america",
+      "file": "international/copa-america.png",
+      "bytes": 76506,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "ee809f20ddc95cb045370f5653a45f5b7b532cfd82f4cb63bff16be323e533ef"
+    },
+    {
+      "source_title": "African Cup of Nations",
+      "uid": "1301390",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2026/oXAM7u2LAplowK1ZRLDO5MawlLSHuRGjjuHEnr4T.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/1378",
+      "label": "AFCON",
+      "category": "international",
+      "slug": "afcon",
+      "file": "international/afcon.png",
+      "bytes": 51852,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "0ffc5f55fee5846223377335ea955100a73088cc42ed654839ef306e745a2d18"
+    },
+    {
+      "source_title": "North American Gold Cup",
+      "uid": "145509",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/F3zhAYSgXhEmVri2LaLOq7MvYSMhdP49tBOSvVAo.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=4",
+      "label": "Gold Cup",
+      "category": "international",
+      "slug": "gold-cup",
+      "file": "international/gold-cup.png",
+      "bytes": 78076,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "Downloaded transparent photo from the sortitoutsi Trophies Pack.",
+      "sha256": "94c1baa2b2155df447adf00d3e67fd7d92f348fffb2e9d96df1dd00665b3072b"
+    },
+    {
+      "source_title": "European International League",
+      "uid": "90",
+      "image_url": "https://sortitoutsi.b-cdn.net/uploads/media_2023/6gEpAtBwhHtF1ogT3AZbCEWLvFogYmqXGIDk1xZM.png",
+      "source_page": "https://sortitoutsi.net/graphics/megapack/765?page=2",
+      "label": "Nations League",
+      "category": "international",
+      "slug": "nations-league",
+      "file": "international/nations-league.png",
+      "bytes": 31264,
+      "size": [
+        300,
+        300
+      ],
+      "mode": "RGBA",
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "frames": 1,
+      "format": "PNG",
+      "kind": "photo cutout",
+      "notes": "UEFA men’s Nations League trophy. The name Nations League is interpreted as UEFA Nations League.",
+      "sha256": "ac367c1edbd208be7cb454174b43d0116b4e0d30845597b2d2a405611c78a7db"
+    }
+  ]
+}

@@ -4,123 +4,127 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Football Career Simulator</title>
-  <link rel="stylesheet" href="style.css?v=10" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=28" />
 </head>
 <body>
   <div class="app">
-    <header>
-      <h1>Football Career Simulator</h1>
-      <p>Create a prospect, work through academy seasons, and craft your legacy.</p>
+    <header class="site-header">
+      <a class="brand" href="index.html">
+        <img class="brand-mark" src="favicon.svg" alt="" width="40" height="40" />
+        <span class="brand-text">
+          <span class="brand-name">Football Career Simulator</span>
+          <span class="brand-tag">Prospect file</span>
+        </span>
+      </a>
+      <p class="header-story">
+        A career told season by season: academy doors, contracts, tables, and the long walk to a final whistle.
+      </p>
     </header>
 
     <main>
-      <section id="setup-section" class="panel">
-        <h2>Player Setup</h2>
+      <section id="setup-section" class="panel setup-panel">
+        <div class="panel-intro">
+          <p class="section-kicker">Chapter 0</p>
+          <h1>Open your file</h1>
+          <p class="section-lead">
+            Name, nationality, position, and starting age are the first lines on the sheet. The rest is earned on the pitch.
+          </p>
+        </div>
         <p id="app-boot-error" class="boot-error hidden" role="alert"></p>
         <form id="setup-form">
           <div class="field">
-            <label for="player-name">Player Name</label>
-            <input id="player-name" name="player-name" type="text" maxlength="30" required />
+            <label for="player-name">Player name</label>
+            <input id="player-name" name="player-name" type="text" maxlength="30" required autocomplete="nickname" />
           </div>
 
           <div class="field">
-            <label for="nationality">Nationality</label>
-            <select id="nationality" name="nationality" required>
-              <option value="" disabled selected>Select nationality</option>
-              <option value="Argentina">Argentina</option>
-              <option value="Australia">Australia</option>
-              <option value="Austria">Austria</option>
-              <option value="Belgium">Belgium</option>
-              <option value="Brazil">Brazil</option>
-              <option value="Canada">Canada</option>
-              <option value="Chile">Chile</option>
-              <option value="China">China</option>
-              <option value="Colombia">Colombia</option>
-              <option value="Croatia">Croatia</option>
-              <option value="Denmark">Denmark</option>
-              <option value="England">England</option>
-              <option value="Finland">Finland</option>
-              <option value="France">France</option>
-              <option value="Germany">Germany</option>
-              <option value="Ghana">Ghana</option>
-              <option value="Greece">Greece</option>
-              <option value="Hungary">Hungary</option>
-              <option value="Iceland">Iceland</option>
-              <option value="Italy">Italy</option>
-              <option value="Japan">Japan</option>
-              <option value="Mexico">Mexico</option>
-              <option value="Morocco">Morocco</option>
-              <option value="Netherlands">Netherlands</option>
-              <option value="Nigeria">Nigeria</option>
-              <option value="Norway">Norway</option>
-              <option value="Poland">Poland</option>
-              <option value="Portugal">Portugal</option>
-              <option value="Scotland">Scotland</option>
-              <option value="Serbia">Serbia</option>
-              <option value="South Korea">South Korea</option>
-              <option value="Spain">Spain</option>
-              <option value="Sweden">Sweden</option>
-              <option value="Switzerland">Switzerland</option>
-              <option value="Turkey">Turkey</option>
-              <option value="United States">United States</option>
-              <option value="Uruguay">Uruguay</option>
-              <option value="Wales">Wales</option>
-            </select>
+            <span class="field-label" id="nationality-label">Nationality</span>
+            <div
+              class="custom-select"
+              id="nationality-select"
+              data-name="nationality"
+              role="group"
+              aria-labelledby="nationality-label"
+            ></div>
+            <p class="field-hint">Nations that reached at least one of the last 10 World Cups.</p>
           </div>
 
           <div class="field">
-            <label for="primary-position">Primary Position</label>
-            <select id="primary-position" name="primary-position" required>
-              <option value="" disabled selected>Select a position</option>
-              <option value="GK">Goalkeeper</option>
-              <option value="RB">Right Back</option>
-              <option value="LB">Left Back</option>
-              <option value="CB">Centre Back</option>
-              <option value="CDM">Defensive Midfielder</option>
-              <option value="CM">Central Midfielder</option>
-              <option value="CAM">Attacking Midfielder</option>
-              <option value="RM">Right Midfielder</option>
-              <option value="LM">Left Midfielder</option>
-              <option value="RW">Right Winger</option>
-              <option value="LW">Left Winger</option>
-              <option value="ST">Striker</option>
-            </select>
+            <span class="field-label" id="primary-position-label">Primary position</span>
+            <div
+              class="custom-select"
+              id="primary-position-select"
+              data-name="primary-position"
+              role="group"
+              aria-labelledby="primary-position-label"
+            ></div>
           </div>
 
-          <button type="button" class="primary" id="start-career-btn">Start Career</button>
+          <div class="field">
+            <span class="field-label" id="starting-age-label">Starting age</span>
+            <div
+              class="custom-select"
+              id="starting-age-select"
+              data-name="starting-age"
+              role="group"
+              aria-labelledby="starting-age-label"
+            ></div>
+            <p class="field-hint">Age when you open the academy chapter and begin the climb to a pro contract.</p>
+          </div>
+
+          <button type="button" class="primary" id="start-career-btn">Begin career</button>
         </form>
       </section>
 
-      <section id="career-section" class="panel hidden">
+      <section id="career-section" class="panel career-panel hidden">
+        <div class="panel-intro career-intro">
+          <p class="section-kicker">Career desk</p>
+          <h2>The seasons ahead</h2>
+          <p class="section-lead">
+            Simulate years, weigh offers, and watch the table move. The file fills itself one campaign at a time.
+          </p>
+        </div>
         <div class="career-layout">
           <div class="column column-primary">
             <div id="player-overview" class="player-overview"></div>
 
             <section class="panel-sub" aria-live="polite">
-              <h3>League Standings</h3>
+              <h3>League standings</h3>
               <div id="standings-board" class="standings-board"></div>
             </section>
           </div>
 
           <div class="column column-secondary">
             <div class="actions">
-              <button id="simulate-btn" class="primary">Simulate Next Season</button>
-              <button id="retire-btn" class="secondary">Retire Player</button>
+              <button id="simulate-btn" class="primary">Simulate next season</button>
+              <button id="retire-btn" class="secondary">Retire player</button>
             </div>
 
             <section class="panel-sub">
-              <h3>Transfer Market</h3>
+              <h3>Transfer market</h3>
               <div id="transfer-offers" class="transfers"></div>
             </section>
 
             <section class="panel-sub">
-              <h3>Season History</h3>
+              <h3>Season history</h3>
               <div id="season-log" class="seasons"></div>
             </section>
           </div>
         </div>
       </section>
     </main>
+
+    <footer class="site-footer">
+      <span>Football Career Simulator</span>
+      <nav aria-label="Legal">
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+      </nav>
+    </footer>
   </div>
 
   <template id="season-template">
@@ -138,52 +142,47 @@
     </article>
   </template>
 
-  <!-- Retirement Animation Overlay -->
   <div id="retirement-animation-overlay" class="animation-overlay hidden">
     <div class="animation-container">
       <div class="retirement-header">
-        <h1>🏆 Career Complete 🏆</h1>
+        <p class="section-kicker">Final chapter</p>
+        <h1>Career complete</h1>
         <div class="retirement-subtitle" id="retirement-subtitle"></div>
       </div>
-      
-      <!-- Career Statistics -->
+
       <div class="career-stats-section">
-        <h2>Career Statistics</h2>
+        <h2>Career statistics</h2>
         <div class="career-stats-grid" id="career-stats-grid"></div>
       </div>
-      
-      <!-- Career Highlights -->
+
       <div class="career-highlights-section">
-        <h2>Career Highlights</h2>
+        <h2>Career highlights</h2>
         <div class="highlights-grid" id="highlights-grid"></div>
       </div>
-      
-      <!-- Final Rating -->
+
       <div class="final-rating-section">
-        <h2>Final Rating</h2>
+        <h2>Final rating</h2>
         <div class="final-rating-display" id="final-rating-display"></div>
       </div>
-      
-      <!-- Career Timeline -->
+
       <div class="career-timeline-section">
-        <h2>Career Journey</h2>
+        <h2>Career journey</h2>
         <div class="timeline-container" id="timeline-container"></div>
       </div>
-      
-      <!-- Thank You Message -->
+
       <div class="thank-you-section">
-        <h2>Thank You for Playing!</h2>
-        <p>Your football career has come to an end. What a journey it has been!</p>
+        <h2>File closed</h2>
+        <p>The boots are hung up. What remains is the record you built.</p>
         <button id="retirement-continue-btn" class="primary">Continue</button>
       </div>
     </div>
   </div>
 
-  <!-- Career start: backstory → academy pick → rating → 3 decisions → year-end -->
   <div id="career-start-overlay" class="animation-overlay hidden">
     <div class="animation-container career-start-wrap">
       <div id="career-step-backstory" class="career-step">
         <div class="animation-header">
+          <p class="section-kicker">Origin</p>
           <h2>Where it began</h2>
         </div>
         <p id="career-backstory-text" class="career-prose"></p>
@@ -192,19 +191,42 @@
 
       <div id="career-step-academy" class="career-step hidden">
         <div class="animation-header">
+          <p class="section-kicker">Trials</p>
           <h2>Choose an academy</h2>
         </div>
-        <p id="career-academy-lead" class="career-prose"></p>
-        <div id="career-academy-grid" class="career-academy-grid"></div>
+
+        <div id="career-academy-intro">
+          <p id="career-academy-intro-text" class="career-prose"></p>
+          <button type="button" id="career-academy-intro-next" class="primary">See the first offer</button>
+        </div>
+
+        <div id="career-academy-reveal" class="hidden">
+          <div id="career-academy-offer-index" class="career-scenario-badge career-reveal-piece"></div>
+          <p id="career-academy-arrival" class="career-prose career-academy-arrival career-reveal-piece"></p>
+          <div id="career-academy-feature" class="career-academy-feature career-reveal-piece"></div>
+          <p id="career-academy-pitch" class="career-prose career-academy-pitch career-reveal-piece"></p>
+          <button type="button" id="career-academy-next-offer" class="primary career-reveal-piece hidden">Next offer</button>
+        </div>
+
+        <div id="career-academy-choice" class="hidden">
+          <p id="career-academy-lead" class="career-prose"></p>
+          <div id="career-academy-grid" class="career-academy-grid"></div>
+        </div>
       </div>
 
       <div id="career-step-scenario" class="career-step hidden">
-        <div class="animation-header">
-          <h2>Academy year</h2>
+        <div class="animation-header career-scenario-header">
+          <p class="section-kicker">Academy year</p>
+          <div class="career-scenario-title-row">
+            <h2>Moments that stick</h2>
+            <p class="career-live-ovr" aria-live="polite">
+              Overall <span id="career-scenario-ovr">—</span>
+            </p>
+          </div>
           <div id="career-scenario-index" class="career-scenario-badge"></div>
         </div>
         <p class="career-prose career-scenario-preface">
-          Your grade can wait — these are the moments staff remember.
+          Five moments staff remember. Each pick moves your overall.
         </p>
         <p id="career-scenario-setup" class="career-prose career-scenario-setup"></p>
         <div id="career-scenario-choices" class="career-scenario-choices"></div>
@@ -214,35 +236,79 @@
 
       <div id="career-step-rating" class="career-step hidden">
         <div class="animation-header">
-          <h2>First assessment</h2>
+          <p class="section-kicker">Assessment</p>
+          <h2>First overall</h2>
         </div>
-        <p class="career-prose">After those moments, the academy publishes your first overall rating.</p>
-        <div class="career-rating-reveal">
+        <p id="career-rating-lead" class="career-prose">The board reads your academy year in silence.</p>
+        <div class="career-rating-reveal career-rating-reveal-stage">
           <span class="career-rating-label">Overall</span>
-          <span id="career-rating-value" class="career-rating-big"></span>
+          <span id="career-rating-value" class="career-rating-big">—</span>
         </div>
-        <button type="button" id="career-rating-next" class="primary">Continue</button>
+        <p id="career-rating-after" class="career-prose career-rating-after hidden"></p>
+        <button type="button" id="career-rating-next" class="primary hidden">See contract offers</button>
+      </div>
+
+      <div id="career-step-pro-deals" class="career-step hidden">
+        <div class="animation-header">
+          <p class="section-kicker">Decision day</p>
+          <h2 id="career-pro-deals-title">First professional contract</h2>
+        </div>
+        <p id="career-pro-deals-lead" class="career-prose"></p>
+        <div id="career-pro-deals-grid" class="career-pro-deals-grid"></div>
       </div>
 
       <div id="career-step-year-end" class="career-step hidden">
         <div class="animation-header">
+          <p class="section-kicker">Year end</p>
           <h2 id="career-year-end-title"></h2>
         </div>
         <p id="career-year-end-body" class="career-prose"></p>
-        <button type="button" id="career-year-end-continue" class="primary">Enter career hub</button>
+        <button type="button" id="career-year-end-continue" class="primary">Enter career desk</button>
       </div>
     </div>
   </div>
 
-  <!-- Season Simulation Animation Overlay -->
   <div id="season-animation-overlay" class="animation-overlay hidden">
     <div class="animation-container">
-      <!-- League Table Animation -->
+      <div id="match-skip-bar" class="match-skip-bar hidden">
+        <button type="button" id="match-skip-btn" class="secondary">Skip match</button>
+        <button type="button" id="match-skip-phase-btn" class="secondary">Skip phase</button>
+      </div>
+
+      <div id="match-viewer-section" class="animation-section match-viewer-section hidden">
+        <div class="animation-header match-viewer-header">
+          <h2 id="match-phase-label">Matchday</h2>
+          <div class="season-info" id="match-progress-label"></div>
+          <div class="season-info" id="match-round-label"></div>
+        </div>
+        <div class="match-scoreboard">
+          <div class="match-side match-home">
+            <div id="match-home-badge" class="match-badge-wrap"></div>
+            <div id="match-home-name" class="match-club-name"></div>
+          </div>
+          <div class="match-score-center">
+            <div class="match-scoreline">
+              <span id="match-home-score">0</span>
+              <span class="match-score-sep">–</span>
+              <span id="match-away-score">0</span>
+            </div>
+            <div id="match-clock" class="match-clock">0'</div>
+          </div>
+          <div class="match-side match-away">
+            <div id="match-away-badge" class="match-badge-wrap"></div>
+            <div id="match-away-name" class="match-club-name"></div>
+          </div>
+        </div>
+        <div id="match-player-note" class="match-player-note hidden"></div>
+        <div id="match-events-feed" class="match-events-feed"></div>
+      </div>
+
       <div id="league-animation" class="animation-section hidden">
         <div class="animation-header">
-          <h2>League Standings</h2>
+          <h2>League standings</h2>
           <div class="season-info" id="league-season-info"></div>
         </div>
+        <div id="league-trophy-banner" class="league-trophy-banner hidden"></div>
         <div class="league-table-animation">
           <div class="table-header">
             <span>Pos</span>
@@ -257,10 +323,9 @@
         </div>
       </div>
 
-      <!-- Cup Results Animation -->
       <div id="cup-animation" class="animation-section hidden">
         <div class="animation-header">
-          <h2>Domestic Cup</h2>
+          <h2>Domestic cup</h2>
           <div class="cup-info" id="cup-info"></div>
         </div>
         <div class="cup-progression">
@@ -268,10 +333,9 @@
         </div>
       </div>
 
-      <!-- European Competition Animation -->
       <div id="european-animation" class="animation-section hidden">
         <div class="animation-header">
-          <h2>European Competition</h2>
+          <h2>European competition</h2>
           <div class="european-info" id="european-info"></div>
         </div>
         <div class="european-progression">
@@ -279,10 +343,33 @@
         </div>
       </div>
 
-      <!-- Personal Awards Animation -->
+      <div id="international-callup-animation" class="animation-section hidden">
+        <div class="animation-header">
+          <h2>National team</h2>
+          <div class="european-info" id="international-callup-info"></div>
+        </div>
+        <div id="international-announcement" class="international-announcement hidden"></div>
+      </div>
+
+      <div id="international-animation" class="animation-section hidden">
+        <div class="animation-header">
+          <h2>International competitions</h2>
+          <div class="european-info" id="international-info"></div>
+        </div>
+        <div id="international-tournaments" class="international-tournaments"></div>
+      </div>
+
+      <div id="trophies-animation" class="animation-section hidden">
+        <div class="animation-header">
+          <h2>Trophies won</h2>
+          <div class="awards-info" id="trophies-info"></div>
+        </div>
+        <div id="trophies-items" class="trophies-items"></div>
+      </div>
+
       <div id="awards-animation" class="animation-section hidden">
         <div class="animation-header">
-          <h2>Personal Awards</h2>
+          <h2>Personal awards</h2>
           <div class="awards-info" id="awards-info"></div>
         </div>
         <div class="awards-list">
@@ -290,31 +377,26 @@
         </div>
       </div>
 
-      <!-- Season Summary Animation -->
       <div id="summary-animation" class="animation-section hidden">
         <div class="animation-header">
-          <h2>Season Summary</h2>
+          <h2>Season summary</h2>
           <div class="summary-info" id="summary-info"></div>
         </div>
         <div class="summary-content">
-          <!-- Player Stats -->
           <div class="player-stats-summary">
-            <h3>Season Statistics</h3>
+            <h3>Season statistics</h3>
             <div id="player-stats-grid" class="stats-grid"></div>
           </div>
-          
-          <!-- Rating Changes -->
           <div class="rating-changes">
-            <h3>Attribute Changes</h3>
+            <h3>Attribute changes</h3>
             <div id="rating-changes-grid" class="rating-grid"></div>
           </div>
         </div>
       </div>
 
-      <!-- Overall Rating Reveal -->
       <div id="overall-reveal" class="animation-section hidden">
         <div class="animation-header">
-          <h2>Overall Rating</h2>
+          <h2>Overall rating</h2>
           <div class="overall-info" id="overall-info"></div>
         </div>
         <div class="overall-rating-container">
@@ -323,7 +405,7 @@
               <div class="rating-label">Previous</div>
               <div id="old-rating-value" class="rating-value"></div>
             </div>
-            <div class="rating-arrow">→</div>
+            <div class="rating-arrow">to</div>
             <div class="new-rating">
               <div class="rating-label">New</div>
               <div id="new-rating-value" class="rating-value"></div>
@@ -333,14 +415,12 @@
         </div>
       </div>
 
-      <!-- Continue Button -->
       <div id="animation-continue" class="animation-continue hidden">
         <button id="continue-btn" class="primary">Continue</button>
       </div>
     </div>
   </div>
 
-  <!-- Inline handler runs even if the module fails to load (e.g. file:// or 404) -->
   <script>
     (function () {
       function showBoot(msg) {
@@ -362,7 +442,7 @@
           }
         } else {
           showBoot(
-            "Game scripts are not loaded. Do not open this file directly. In Terminal: cd to the Simulation folder, run python3 -m http.server 8765, then open http://localhost:8765/ in your browser. Check the browser console (F12) for errors."
+            "Game scripts are not loaded. Do not open this file directly. In Terminal: cd to the Simulation folder, run python3 -m http.server 8787, then open http://127.0.0.1:8787/ in your browser."
           );
         }
       }
@@ -373,7 +453,7 @@
     })();
   </script>
   <script type="module">
-    import("./main.js?v=30").catch(function (err) {
+    import("./main.js?v=54").catch(function (err) {
       console.error(err);
       var el = document.getElementById("app-boot-error");
       if (el) {
@@ -381,19 +461,19 @@
         el.textContent =
           "Could not load game files (" +
           (err && err.message ? err.message : "unknown error") +
-          "). Serve this folder with a local web server and use http://localhost — not file://.";
+          "). Serve this folder with a local web server and use http://localhost, not file://.";
       }
     });
   </script>
-<script nomodule>
-  (function () {
-    var el = document.getElementById("app-boot-error");
-    if (el) {
-      el.classList.remove("hidden");
-      el.textContent =
-        "Your browser cannot run this app (needs ES modules). Use an up-to-date Chrome, Firefox, or Safari.";
-    }
-  })();
-</script>
+  <script nomodule>
+    (function () {
+      var el = document.getElementById("app-boot-error");
+      if (el) {
+        el.classList.remove("hidden");
+        el.textContent =
+          "Your browser cannot run this app (needs ES modules). Use an up-to-date Chrome, Firefox, or Safari.";
+      }
+    })();
+  </script>
 </body>
 </html>

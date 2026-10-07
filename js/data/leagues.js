@@ -57,8 +57,10 @@ export const LEAGUE_LOOKUP = new Map(LEAGUES.map((league) => [league.name, leagu
 export const ACADEMY_POOL = LEAGUES.flatMap((league) =>
   league.clubs.map((club) => ({
     name: `${club.displayName ?? club.name} Academy`,
+    displayName: `${club.displayName ?? club.name} Academy`,
     league: league.name,
     leagueDisplay: league.displayName,
+    nation: league.nation,
     tier: Math.max(1, league.tier - 2),
     badge: club.badge,
     financialTier: Math.max(1, club.financialTier - 1),
@@ -68,6 +70,7 @@ export const ACADEMY_POOL = LEAGUES.flatMap((league) =>
       displayName: club.displayName,
       league: league.name,
       leagueDisplay: league.displayName,
+      nation: league.nation,
       tier: league.tier,
       badge: club.badge,
       financialTier: club.financialTier,

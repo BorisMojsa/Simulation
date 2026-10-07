@@ -1,0 +1,925 @@
+{
+  "description": "Trophy library for Football Career Simulator. Prefer photographic transparent PNG cutouts.",
+  "licenseNote": "Primary pack: sortitoutsi Trophies Megapack photo cutouts (see pack-sources.json / pack-README.md). Some assets from Wikimedia Commons or user-supplied photos. Rights remain with respective sources.",
+  "layout": {
+    "domestic": "trophies/{Nation}/leagues|cups/",
+    "continental": "trophies/continental/{Confederation}/",
+    "international": "trophies/international/"
+  },
+  "stats": {
+    "competitionsMapped": 61,
+    "withAsset": 61,
+    "missing": 0,
+    "nonPhotoPrimary": 1,
+    "filesOnDisk": 69
+  },
+  "competitions": [
+    {
+      "competition": "Premier League",
+      "trophyName": "Premier League Trophy",
+      "kind": "league",
+      "simKey": "England - Premier League",
+      "nation": "England",
+      "path": "England/leagues/Premier-League-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "EFL Championship",
+      "trophyName": "EFL Championship Trophy",
+      "kind": "league",
+      "simKey": "England - Championship",
+      "nation": "England",
+      "path": "England/leagues/EFL-Championship-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Bundesliga",
+      "trophyName": "Meisterschale",
+      "kind": "league",
+      "simKey": "Germany - Bundesliga",
+      "nation": "Germany",
+      "path": "Germany/leagues/Bundesliga-Meisterschale.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "2. Bundesliga",
+      "trophyName": "2. Bundesliga Meisterschale",
+      "kind": "league",
+      "simKey": "Germany - 2. Bundesliga",
+      "nation": "Germany",
+      "path": "Germany/leagues/2-Bundesliga-Schale.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "La Liga",
+      "trophyName": "La Liga Trophy",
+      "kind": "league",
+      "simKey": "Spain - La Liga",
+      "nation": "Spain",
+      "path": "Spain/leagues/La-Liga-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "LaLiga 2",
+      "trophyName": "LaLiga 2 / Segunda División Trophy",
+      "kind": "league",
+      "simKey": "Spain - LaLiga 2",
+      "nation": "Spain",
+      "path": "Spain/leagues/LaLiga-2-Trophy.jpg",
+      "status": "ok",
+      "style": "photo",
+      "notes": "Photo of Segunda División trophy"
+    },
+    {
+      "competition": "Serie A",
+      "trophyName": "Coppa Campioni d'Italia (Ali della Vittoria)",
+      "kind": "league",
+      "simKey": "Italy - Serie A",
+      "nation": "Italy",
+      "path": "Italy/leagues/Serie-A-Ali-della-Vittoria.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Serie B",
+      "trophyName": "Serie B Trophy",
+      "kind": "league",
+      "simKey": "Italy - Serie B",
+      "nation": "Italy",
+      "path": "Italy/leagues/Serie-B-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Ligue 1",
+      "trophyName": "Ligue 1 Trophy (Hexagoal)",
+      "kind": "league",
+      "simKey": "France - Ligue 1",
+      "nation": "France",
+      "path": "France/leagues/Ligue-1-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Ligue 2",
+      "trophyName": "Ligue 2 Trophy",
+      "kind": "league",
+      "simKey": "France - Ligue 2",
+      "nation": "France",
+      "path": "France/leagues/Ligue-2-Trophy.png",
+      "status": "ok",
+      "style": "photo",
+      "notes": "Silver trophy first awarded May 2025"
+    },
+    {
+      "competition": "Brasileirão Série A",
+      "trophyName": "Campeonato Brasileiro Série A Trophy",
+      "kind": "league",
+      "simKey": "Brazil - Brasileirão Série A",
+      "nation": "Brazil",
+      "path": "Brazil/leagues/Brasileirao-Serie-A-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Belgian Pro League",
+      "trophyName": "Belgian Pro League Championship Trophy",
+      "kind": "league",
+      "simKey": "Belgium - Belgian Pro League",
+      "nation": "Belgium",
+      "path": "Belgium/leagues/Belgian-Pro-League-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Liga Profesional",
+      "trophyName": "Liga Profesional Trophy",
+      "kind": "league",
+      "simKey": "Argentina - Liga Profesional",
+      "nation": "Argentina",
+      "path": "Argentina/leagues/Liga-Profesional-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Primeira Liga",
+      "trophyName": "Primeira Liga Trophy",
+      "kind": "league",
+      "simKey": "Portugal - Primeira Liga",
+      "nation": "Portugal",
+      "path": "Portugal/leagues/Primeira-Liga-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Ekstraklasa",
+      "trophyName": "Mistrzostwo Polski / Ekstraklasa Trophy",
+      "kind": "league",
+      "simKey": "Poland - Ekstraklasa",
+      "nation": "Poland",
+      "path": "Poland/leagues/Ekstraklasa-Trophy.jpg",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Danish Superliga",
+      "trophyName": "Danish Championship Trophy",
+      "kind": "league",
+      "simKey": "Denmark - Superliga",
+      "nation": "Denmark",
+      "path": "Denmark/leagues/Danish-Superliga-Trophy.png",
+      "status": "ok",
+      "style": "photo",
+      "notes": "Grayscale historical Danmarksturneringen trophy; not modern Georg Jensen. Needs photo cutout replacement."
+    },
+    {
+      "competition": "Eliteserien",
+      "trophyName": "Eliteserien Championship Trophy",
+      "kind": "league",
+      "simKey": "Norway - Eliteserien",
+      "nation": "Norway",
+      "path": "Norway/leagues/Eliteserien-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Liga MX",
+      "trophyName": "Liga MX Trophy",
+      "kind": "league",
+      "simKey": "Mexico - Liga MX",
+      "nation": "Mexico",
+      "path": "Mexico/leagues/Liga-MX-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Categoría Primera A",
+      "trophyName": "Categoría Primera A / Liga BetPlay Trophy",
+      "kind": "league",
+      "simKey": "Colombia - Categoría Primera A",
+      "nation": "Colombia",
+      "path": "Colombia/leagues/Categoria-Primera-A-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Eredivisie",
+      "trophyName": "Dutch Championship Shield (Landskampioen Schaal)",
+      "kind": "league",
+      "simKey": "Netherlands - Eredivisie",
+      "nation": "Netherlands",
+      "path": "Netherlands/leagues/Eredivisie-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "LigaPro Serie A",
+      "trophyName": "LigaPro Serie A Trophy",
+      "kind": "league",
+      "simKey": "Ecuador - LigaPro Serie A",
+      "nation": "Ecuador",
+      "path": "Ecuador/leagues/LigaPro-Serie-A-Trophy.png",
+      "status": "ok",
+      "style": "photo",
+      "notes": "Verified as Ecuador LigaPro (yellow/blue ribbons + Liga Pro branding), not Portuguese Liga Portugal 2."
+    },
+    {
+      "competition": "Süper Lig",
+      "trophyName": "Süper Lig Championship Trophy",
+      "kind": "league",
+      "simKey": "Türkiye - Süper Lig",
+      "nation": "Turkey",
+      "path": "Turkey/leagues/Super-Lig-Trophy.jpg",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Major League Soccer",
+      "trophyName": "MLS Cup",
+      "kind": "league",
+      "simKey": "United States - MLS",
+      "nation": "United States",
+      "path": "United States/leagues/MLS-Cup.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "MLS Supporters' Shield",
+      "trophyName": "Supporters' Shield",
+      "kind": "league",
+      "simKey": "United States - MLS",
+      "nation": "United States",
+      "path": "United States/leagues/MLS-Supporters-Shield.png",
+      "status": "ok",
+      "style": "photo",
+      "notes": "Photo cutout with AI background removal"
+    },
+    {
+      "competition": "Czech First League",
+      "trophyName": "Czech First League Trophy",
+      "kind": "league",
+      "simKey": "Czechia - Czech First League",
+      "nation": "Czech Republic",
+      "path": "Czech Republic/leagues/Czech-First-League-Trophy.jpg",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Croatian HNL",
+      "trophyName": "SuperSport HNL Championship Trophy",
+      "kind": "league",
+      "simKey": "Croatia - HNL",
+      "nation": "Croatia",
+      "path": "Croatia/leagues/HNL-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Serbian SuperLiga",
+      "trophyName": "Serbian SuperLiga Trophy",
+      "kind": "league",
+      "simKey": "Serbia - SuperLiga",
+      "nation": "Serbia",
+      "path": "Serbia/leagues/Serbian-SuperLiga-Trophy.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "FA Cup",
+      "trophyName": "FA Cup",
+      "kind": "cup",
+      "simKey": "FA Cup",
+      "nation": "England",
+      "path": "England/cups/FA-Cup.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "DFB-Pokal",
+      "trophyName": "DFB-Pokal",
+      "kind": "cup",
+      "simKey": "DFB-Pokal",
+      "nation": "Germany",
+      "path": "Germany/cups/DFB-Pokal.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Copa del Rey",
+      "trophyName": "Copa del Rey",
+      "kind": "cup",
+      "simKey": "Copa del Rey",
+      "nation": "Spain",
+      "path": "Spain/cups/Copa-del-Rey.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Coppa Italia",
+      "trophyName": "Coppa Italia",
+      "kind": "cup",
+      "simKey": "Coppa Italia",
+      "nation": "Italy",
+      "path": "Italy/cups/Coppa-Italia.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Coupe de France",
+      "trophyName": "Coupe de France",
+      "kind": "cup",
+      "simKey": "Coupe de France",
+      "nation": "France",
+      "path": "France/cups/Coupe-de-France.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Copa do Brasil",
+      "trophyName": "Copa do Brasil",
+      "kind": "cup",
+      "simKey": "Copa do Brasil",
+      "nation": "Brazil",
+      "path": "Brazil/cups/Copa-do-Brasil.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Belgian Cup",
+      "trophyName": "Belgian Cup (Croky Cup)",
+      "kind": "cup",
+      "simKey": "Belgian Cup",
+      "nation": "Belgium",
+      "path": "Belgium/cups/Belgian-Cup.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Copa Argentina",
+      "trophyName": "Copa Argentina",
+      "kind": "cup",
+      "simKey": "Copa Argentina",
+      "nation": "Argentina",
+      "path": "Argentina/cups/Copa-Argentina.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Taça de Portugal",
+      "trophyName": "Taça de Portugal",
+      "kind": "cup",
+      "simKey": "Taça de Portugal",
+      "nation": "Portugal",
+      "path": "Portugal/cups/Taca-de-Portugal.png",
+      "status": "ok",
+      "style": "photo",
+      "notes": "User-supplied transparent photo cutout"
+    },
+    {
+      "competition": "Polish Cup",
+      "trophyName": "Puchar Polski",
+      "kind": "cup",
+      "simKey": "Polish Cup",
+      "nation": "Poland",
+      "path": "Poland/cups/Puchar-Polski.jpg",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Danish Cup",
+      "trophyName": "Danish Cup (Pokalen)",
+      "kind": "cup",
+      "simKey": "Danish Cup",
+      "nation": "Denmark",
+      "path": "Denmark/cups/Danish-Cup.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Norwegian Football Cup",
+      "trophyName": "Norwegian Football Cup (King's Trophy / Kongepokal)",
+      "kind": "cup",
+      "simKey": "Norwegian Football Cup",
+      "nation": "Norway",
+      "path": "Norway/cups/Norwegian-Football-Cup.png",
+      "status": "ok",
+      "style": "photo",
+      "notes": "User-supplied transparent photo cutout"
+    },
+    {
+      "competition": "Copa MX",
+      "trophyName": "Copa MX",
+      "kind": "cup",
+      "simKey": "Copa MX",
+      "nation": "Mexico",
+      "path": "Mexico/cups/Copa-MX.png",
+      "status": "ok",
+      "style": "photo",
+      "notes": "Verified photoreal Copa MX (green/red spiral); visually similar to Coppa Italia but correct for Mexico."
+    },
+    {
+      "competition": "Copa Colombia",
+      "trophyName": "Copa Colombia",
+      "kind": "cup",
+      "simKey": "Copa Colombia",
+      "nation": "Colombia",
+      "path": "Colombia/cups/Copa-Colombia.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "KNVB Cup",
+      "trophyName": "KNVB Beker",
+      "kind": "cup",
+      "simKey": "KNVB Cup",
+      "nation": "Netherlands",
+      "path": "Netherlands/cups/KNVB-Cup.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Copa Ecuador",
+      "trophyName": "Copa Ecuador",
+      "kind": "cup",
+      "simKey": "Copa Ecuador",
+      "nation": "Ecuador",
+      "path": "Ecuador/cups/Copa-Ecuador.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Turkish Cup",
+      "trophyName": "Turkish Cup (Türkiye Kupası)",
+      "kind": "cup",
+      "simKey": "Turkish Cup",
+      "nation": "Turkey",
+      "path": "Turkey/cups/Turkish-Cup.jpg",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "U.S. Open Cup",
+      "trophyName": "Lamar Hunt U.S. Open Cup",
+      "kind": "cup",
+      "simKey": "U.S. Open Cup",
+      "nation": "United States",
+      "path": "United States/cups/US-Open-Cup.png",
+      "status": "ok",
+      "style": "photo",
+      "notes": "User-supplied transparent photo cutout"
+    },
+    {
+      "competition": "Czech Cup",
+      "trophyName": "Czech Cup (MOL Cup / Perleťový pohár)",
+      "kind": "cup",
+      "simKey": "Czech Cup",
+      "nation": "Czech Republic",
+      "path": "Czech Republic/cups/Czech-Cup.jpg",
+      "status": "ok",
+      "style": "photo",
+      "notes": "Pohár FAČR / Pohár České pošty era photo (stadium pitch). Prefer over mislabeled Perleťový AFCON-lookalike file."
+    },
+    {
+      "competition": "Croatian Football Cup",
+      "trophyName": "Croatian Football Cup (Rabuzinovo sunce)",
+      "kind": "cup",
+      "simKey": "Croatian Football Cup",
+      "nation": "Croatia",
+      "path": "Croatia/cups/Croatian-Football-Cup.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Serbian Cup",
+      "trophyName": "Serbian Cup (Kup Srbije)",
+      "kind": "cup",
+      "simKey": "Serbian Cup",
+      "nation": "Serbia",
+      "path": "Serbia/cups/Serbian-Cup.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "UEFA Champions League",
+      "trophyName": "European Champion Clubs' Cup",
+      "kind": "continental",
+      "simKey": "Champions League",
+      "nation": null,
+      "path": "continental/UEFA/UEFA-Champions-League.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "UEFA Europa League",
+      "trophyName": "UEFA Europa League Trophy",
+      "kind": "continental",
+      "simKey": "Europa League",
+      "nation": null,
+      "path": "continental/UEFA/UEFA-Europa-League.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "UEFA Europa Conference League",
+      "trophyName": "UEFA Conference League Trophy",
+      "kind": "continental",
+      "simKey": "Conference League",
+      "nation": null,
+      "path": "continental/UEFA/UEFA-Conference-League.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Copa Libertadores",
+      "trophyName": "Copa Libertadores Trophy",
+      "kind": "continental",
+      "simKey": "Copa Libertadores",
+      "nation": null,
+      "path": "continental/CONMEBOL/Copa-Libertadores.jpg",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Copa Sudamericana",
+      "trophyName": "Copa Sudamericana Trophy",
+      "kind": "continental",
+      "simKey": "Copa Sudamericana",
+      "nation": null,
+      "path": "continental/CONMEBOL/Copa-Sudamericana.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "CONCACAF Champions Cup",
+      "trophyName": "CONCACAF Champions Cup Trophy",
+      "kind": "continental",
+      "simKey": "CONCACAF Champions Cup",
+      "nation": null,
+      "path": "continental/CONCACAF/CONCACAF-Champions-Cup.png",
+      "status": "ok",
+      "style": "illustrated",
+      "notes": "Commons SVG render of Champions Cup/League trophy (correct identity). Still not a photoreal cutout."
+    },
+    {
+      "competition": "FIFA World Cup",
+      "trophyName": "FIFA World Cup Trophy",
+      "kind": "international",
+      "simKey": "FIFA World Cup",
+      "nation": null,
+      "path": "international/FIFA-World-Cup.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "UEFA European Championship",
+      "trophyName": "Henri Delaunay Trophy",
+      "kind": "international",
+      "simKey": "UEFA European Championship",
+      "nation": null,
+      "path": "international/UEFA-European-Championship.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Copa América",
+      "trophyName": "Copa América Trophy",
+      "kind": "international",
+      "simKey": "Copa América",
+      "nation": null,
+      "path": "international/Copa-America.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "Africa Cup of Nations",
+      "trophyName": "Africa Cup of Nations Trophy",
+      "kind": "international",
+      "simKey": "Africa Cup of Nations",
+      "nation": null,
+      "path": "international/Africa-Cup-of-Nations.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "CONCACAF Gold Cup",
+      "trophyName": "CONCACAF Gold Cup Trophy",
+      "kind": "international",
+      "simKey": "CONCACAF Gold Cup",
+      "nation": null,
+      "path": "international/CONCACAF-Gold-Cup.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "AFC Asian Cup",
+      "trophyName": "AFC Asian Cup Trophy",
+      "kind": "international",
+      "simKey": "AFC Asian Cup",
+      "nation": null,
+      "path": "international/AFC-Asian-Cup.png",
+      "status": "ok",
+      "style": "photo"
+    },
+    {
+      "competition": "UEFA Nations League",
+      "trophyName": "UEFA Nations League Trophy",
+      "kind": "international",
+      "simKey": "UEFA Nations League",
+      "nation": null,
+      "path": "international/UEFA-Nations-League.png",
+      "status": "ok",
+      "style": "photo"
+    }
+  ],
+  "missing": [],
+  "nonPhotoAssets": [
+    {
+      "competition": "CONCACAF Champions Cup",
+      "path": "continental/CONCACAF/CONCACAF-Champions-Cup.png",
+      "style": "illustrated"
+    }
+  ],
+  "files": [
+    {
+      "path": "Argentina/cups/Copa-Argentina.png",
+      "bytes": 69038
+    },
+    {
+      "path": "Argentina/leagues/Liga-Profesional-Trophy.png",
+      "bytes": 80818
+    },
+    {
+      "path": "Belgium/cups/Belgian-Cup.png",
+      "bytes": 115002
+    },
+    {
+      "path": "Belgium/leagues/Belgian-Pro-League-Trophy.png",
+      "bytes": 90132
+    },
+    {
+      "path": "Brazil/cups/Copa-do-Brasil.png",
+      "bytes": 180046
+    },
+    {
+      "path": "Brazil/leagues/Brasileirao-Serie-A-Trophy.png",
+      "bytes": 96094
+    },
+    {
+      "path": "Colombia/cups/Copa-Colombia.png",
+      "bytes": 58496
+    },
+    {
+      "path": "Colombia/leagues/Categoria-Primera-A-Trophy.png",
+      "bytes": 180433
+    },
+    {
+      "path": "Croatia/cups/Croatian-Football-Cup.png",
+      "bytes": 66485
+    },
+    {
+      "path": "Croatia/leagues/HNL-Trophy.png",
+      "bytes": 49054
+    },
+    {
+      "path": "Czech Republic/cups/Czech-Cup-Perletovy-Pohar.jpg",
+      "bytes": 24475
+    },
+    {
+      "path": "Czech Republic/cups/Czech-Cup-alt.jpg",
+      "bytes": 18775
+    },
+    {
+      "path": "Czech Republic/cups/Czech-Cup.jpg",
+      "bytes": 51989
+    },
+    {
+      "path": "Czech Republic/leagues/Czech-First-League-Trophy-alt.png",
+      "bytes": 43672
+    },
+    {
+      "path": "Czech Republic/leagues/Czech-First-League-Trophy-photo.jpg",
+      "bytes": 67025
+    },
+    {
+      "path": "Czech Republic/leagues/Czech-First-League-Trophy-photo2.jpg",
+      "bytes": 119883
+    },
+    {
+      "path": "Czech Republic/leagues/Czech-First-League-Trophy.jpg",
+      "bytes": 99447
+    },
+    {
+      "path": "Denmark/cups/Danish-Cup.png",
+      "bytes": 51659
+    },
+    {
+      "path": "Denmark/leagues/Danish-Superliga-Trophy.png",
+      "bytes": 114130
+    },
+    {
+      "path": "Ecuador/cups/Copa-Ecuador.png",
+      "bytes": 49873
+    },
+    {
+      "path": "Ecuador/leagues/LigaPro-Serie-A-Trophy.png",
+      "bytes": 105180
+    },
+    {
+      "path": "England/cups/FA-Cup.png",
+      "bytes": 67434
+    },
+    {
+      "path": "England/leagues/EFL-Championship-Trophy.png",
+      "bytes": 69973
+    },
+    {
+      "path": "England/leagues/Premier-League-Trophy.png",
+      "bytes": 113301
+    },
+    {
+      "path": "France/cups/Coupe-de-France.png",
+      "bytes": 72609
+    },
+    {
+      "path": "France/leagues/Ligue-1-Trophy.png",
+      "bytes": 534122
+    },
+    {
+      "path": "France/leagues/Ligue-2-Trophy.png",
+      "bytes": 57265
+    },
+    {
+      "path": "Germany/cups/DFB-Pokal.png",
+      "bytes": 78266
+    },
+    {
+      "path": "Germany/leagues/2-Bundesliga-Schale.png",
+      "bytes": 122411
+    },
+    {
+      "path": "Germany/leagues/Bundesliga-Meisterschale.png",
+      "bytes": 157699
+    },
+    {
+      "path": "Italy/cups/Coppa-Italia.png",
+      "bytes": 61094
+    },
+    {
+      "path": "Italy/leagues/Serie-A-Ali-della-Vittoria.png",
+      "bytes": 57965
+    },
+    {
+      "path": "Italy/leagues/Serie-B-Trophy.png",
+      "bytes": 45878
+    },
+    {
+      "path": "Mexico/cups/Copa-MX.png",
+      "bytes": 76077
+    },
+    {
+      "path": "Mexico/leagues/Liga-MX-Trophy.png",
+      "bytes": 60780
+    },
+    {
+      "path": "Netherlands/cups/KNVB-Cup.png",
+      "bytes": 59945
+    },
+    {
+      "path": "Netherlands/leagues/Eredivisie-Trophy.png",
+      "bytes": 148695
+    },
+    {
+      "path": "Norway/cups/Norwegian-Football-Cup.png",
+      "bytes": 67391
+    },
+    {
+      "path": "Norway/leagues/Eliteserien-Trophy.png",
+      "bytes": 78137
+    },
+    {
+      "path": "Poland/cups/Puchar-Polski-1952-1971.png",
+      "bytes": 155245
+    },
+    {
+      "path": "Poland/cups/Puchar-Polski-alt.png",
+      "bytes": 134809
+    },
+    {
+      "path": "Poland/cups/Puchar-Polski.jpg",
+      "bytes": 26845
+    },
+    {
+      "path": "Poland/leagues/Ekstraklasa-Trophy-alt.png",
+      "bytes": 577946
+    },
+    {
+      "path": "Poland/leagues/Ekstraklasa-Trophy.jpg",
+      "bytes": 83908
+    },
+    {
+      "path": "Portugal/cups/Taca-de-Portugal.png",
+      "bytes": 43044
+    },
+    {
+      "path": "Portugal/leagues/Primeira-Liga-Trophy.png",
+      "bytes": 67786
+    },
+    {
+      "path": "Serbia/cups/Serbian-Cup.png",
+      "bytes": 77798
+    },
+    {
+      "path": "Serbia/leagues/Serbian-SuperLiga-Trophy.png",
+      "bytes": 87513
+    },
+    {
+      "path": "Spain/cups/Copa-del-Rey.png",
+      "bytes": 54355
+    },
+    {
+      "path": "Spain/leagues/La-Liga-Trophy.png",
+      "bytes": 80885
+    },
+    {
+      "path": "Spain/leagues/LaLiga-2-Trophy.jpg",
+      "bytes": 161756
+    },
+    {
+      "path": "Turkey/cups/Turkish-Cup.jpg",
+      "bytes": 85131
+    },
+    {
+      "path": "Turkey/leagues/Super-Lig-Trophy.jpg",
+      "bytes": 96555
+    },
+    {
+      "path": "United States/cups/US-Open-Cup.png",
+      "bytes": 68363
+    },
+    {
+      "path": "United States/leagues/MLS-Cup.png",
+      "bytes": 113151
+    },
+    {
+      "path": "United States/leagues/MLS-Supporters-Shield.png",
+      "bytes": 2123279
+    },
+    {
+      "path": "continental/CONCACAF/CONCACAF-Champions-Cup.png",
+      "bytes": 225928
+    },
+    {
+      "path": "continental/CONMEBOL/Copa-Libertadores.jpg",
+      "bytes": 97705
+    },
+    {
+      "path": "continental/CONMEBOL/Copa-Sudamericana.png",
+      "bytes": 81206
+    },
+    {
+      "path": "continental/UEFA/UEFA-Champions-League.png",
+      "bytes": 58244
+    },
+    {
+      "path": "continental/UEFA/UEFA-Conference-League.png",
+      "bytes": 73287
+    },
+    {
+      "path": "continental/UEFA/UEFA-Europa-League.png",
+      "bytes": 73274
+    },
+    {
+      "path": "international/AFC-Asian-Cup.png",
+      "bytes": 564807
+    },
+    {
+      "path": "international/Africa-Cup-of-Nations.png",
+      "bytes": 51852
+    },
+    {
+      "path": "international/CONCACAF-Gold-Cup.png",
+      "bytes": 78076
+    },
+    {
+      "path": "international/Copa-America.png",
+      "bytes": 76506
+    },
+    {
+      "path": "international/FIFA-World-Cup.png",
+      "bytes": 70048
+    },
+    {
+      "path": "international/UEFA-European-Championship.png",
+      "bytes": 63486
+    },
+    {
+      "path": "international/UEFA-Nations-League.png",
+      "bytes": 31264
+    }
+  ]
+}

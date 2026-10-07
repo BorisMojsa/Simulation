@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Football Career Simulator">
+  <rect width="64" height="64" fill="#101412"/>
+  <circle cx="32" cy="32" r="22" fill="none" stroke="#E8E2D6" stroke-width="2.5"/>
+  <path d="M32 12 L38 24 L51 26 L41 36 L44 49 L32 42 L20 49 L23 36 L13 26 L26 24 Z" fill="none" stroke="#4F8A5B" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="32" cy="32" r="4" fill="#C4A574"/>
+</svg>

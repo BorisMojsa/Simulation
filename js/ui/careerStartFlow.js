@@ -1,25 +1,54 @@
 import { pickRandomBackstory } from "../data/careerBackstories.js";
-import { pickScenariosForPosition } from "../data/careerOpeningScenarios.js";
-import { pickThreeAcademies, buildNarrativeAcademySeason } from "../simulation/narrativeAcademySeason.js";
+import { buildAcademyIntro } from "../data/academyOfferStories.js";
+import { pickChoiceResult, pickScenariosForPosition } from "../data/careerOpeningScenarios.js?v=40";
 import {
-  applyOpeningChoiceDelta,
+  pickThreeAcademies,
+  buildNarrativeAcademySeason,
+} from "../simulation/narrativeAcademySeason.js?v=40";
+import {
+  applyOpeningChoiceResult,
   finalizeAcademyPlayer,
-  promoteAcademyGraduateToFirstTeam,
-} from "../simulation/playerDevelopment.js";
-import { pickRandom } from "../utils/helpers.js";
+} from "../simulation/playerDevelopment.js?v=40";
+import {
+  buildFirstProContractDecision,
+  signFirstProfessionalContract,
+} from "../simulation/proContractOffers.js?v=40";
+import { escapeHtml } from "../utils/helpers.js";
+
+const ACADEMY_MOMENT_COUNT = 5;
+const ACADEMY_CLAMP = { min: 50, max: 88 };
 
 const FALLBACK_SCENARIO = {
   setup:
     "A tight training match is tied. You have the ball on the edge of the box with little time. What's the play?",
   choices: [
-    { label: "Lay it off for a teammate", minDelta: -1, maxDelta: 2 },
-    { label: "Go for goal yourself", minDelta: -2, maxDelta: 4 },
-    { label: "Recycle possession and reset", minDelta: -1, maxDelta: 1 },
-  ],
-  outcomes: [
-    ["Simple football — coach likes it.", "The pass is under-hit but you recover."],
-    ["The net ripples — big noise from the sideline.", "The keeper stands tall — no goal."],
-    ["Tempo settles — next chance will come.", "Some groans, but no harm done."],
+    {
+      label: "Lay it off for a teammate",
+      results: [
+        { delta: 2, text: "Simple football. Coach likes the decision." },
+        { delta: 1, text: "Clean link. Attack continues." },
+        { delta: 0, text: "Under-hit, but you recover." },
+        { delta: -1, text: "Interception. Lesson in weight of pass." },
+      ],
+    },
+    {
+      label: "Go for goal yourself",
+      results: [
+        { delta: 3, text: "The net ripples. Big noise from the sideline." },
+        { delta: 2, text: "Forces a strong save. Technique noted." },
+        { delta: 1, text: "Close. Confidence registered." },
+        { delta: 0, text: "Row Z. Bold intent still counted." },
+        { delta: -1, text: "Snatched. Reminder to stay composed." },
+      ],
+    },
+    {
+      label: "Recycle possession and reset",
+      results: [
+        { delta: 1, text: "Tempo settles. Next chance will come." },
+        { delta: 0, text: "Patient. Chance fades without damage." },
+        { delta: -1, text: "Too safe. Pressure builds the other way." },
+      ],
+    },
   ],
 };
 
@@ -42,9 +71,59 @@ function showStep(overlayEl, id) {
 function ensureScenarioList(position, count) {
   let list = pickScenariosForPosition(position, count);
   while (list.length < count) {
-    list = [...list, { ...FALLBACK_SCENARIO }];
+    list = [...list, structuredClone(FALLBACK_SCENARIO)];
   }
   return list.slice(0, count);
+}
+
+function updateLiveOverall(player) {
+  const el = document.getElementById("career-scenario-ovr");
+  if (el) el.textContent = String(player.rating);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runStaggeredReveal(root, selectors) {
+  if (!root) return;
+  const pieces = selectors
+    .map((sel) => root.querySelector(sel))
+    .filter(Boolean);
+  pieces.forEach((el) => {
+    el.classList.remove("is-shown");
+    el.classList.add("career-reveal-piece");
+  });
+  // force style flush
+  void root.offsetWidth;
+  for (const el of pieces) {
+    el.classList.add("is-shown");
+    await wait(520);
+  }
+}
+
+function animateCountUp(el, target, durationMs = 1600) {
+  return new Promise((resolve) => {
+    if (!el) {
+      resolve();
+      return;
+    }
+    const start = performance.now();
+    const from = Math.max(40, target - 12);
+    function frame(now) {
+      const t = Math.min(1, (now - start) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = String(Math.round(from + (target - from) * eased));
+      if (t < 1) requestAnimationFrame(frame);
+      else {
+        el.textContent = String(target);
+        el.classList.add("career-rating-landed");
+        resolve();
+      }
+    }
+    el.classList.remove("career-rating-landed");
+    requestAnimationFrame(frame);
+  });
 }
 
 function careerIntroDomReady() {
@@ -54,17 +133,34 @@ function careerIntroDomReady() {
     "career-backstory-text",
     "career-backstory-next",
     "career-step-academy",
+    "career-academy-intro",
+    "career-academy-intro-text",
+    "career-academy-intro-next",
+    "career-academy-reveal",
+    "career-academy-offer-index",
+    "career-academy-arrival",
+    "career-academy-feature",
+    "career-academy-pitch",
+    "career-academy-next-offer",
+    "career-academy-choice",
     "career-academy-grid",
     "career-academy-lead",
     "career-step-rating",
     "career-rating-value",
+    "career-rating-lead",
+    "career-rating-after",
     "career-rating-next",
+    "career-step-pro-deals",
+    "career-pro-deals-title",
+    "career-pro-deals-lead",
+    "career-pro-deals-grid",
     "career-step-scenario",
     "career-scenario-index",
     "career-scenario-setup",
     "career-scenario-choices",
     "career-scenario-outcome",
     "career-scenario-next",
+    "career-scenario-ovr",
     "career-step-year-end",
     "career-year-end-title",
     "career-year-end-body",
@@ -73,18 +169,48 @@ function careerIntroDomReady() {
   return ids.every((id) => document.getElementById(id) != null);
 }
 
+function renderOfferCard(offer, { selectable = false } = {}) {
+  const ac = offer.academy;
+  const parent = ac.parentClub;
+  const badge = ac.badge
+    ? `<img src="${escapeHtml(ac.badge)}" alt="" class="career-academy-badge" loading="lazy" />`
+    : "";
+  const abroadTag = offer.isHome
+    ? `<span class="career-academy-tag">Home pathway</span>`
+    : `<span class="career-academy-tag is-abroad">Abroad pathway</span>`;
+  const el = document.createElement(selectable ? "button" : "div");
+  if (selectable) {
+    el.type = "button";
+    el.className = "career-academy-card";
+  } else {
+    el.className = "career-academy-card career-academy-card-feature";
+  }
+  el.innerHTML = `
+    <div class="career-academy-badge-wrap">${badge}</div>
+    ${abroadTag}
+    <span class="career-academy-name">${escapeHtml(ac.displayName ?? ac.name)}</span>
+    <span class="career-academy-league">${escapeHtml(ac.leagueDisplay ?? ac.league)}</span>
+    <span class="career-academy-parent">Senior side: ${escapeHtml(parent?.displayName ?? parent?.name ?? "?")}</span>
+  `;
+  return el;
+}
+
+function kindLabel(kind) {
+  if (kind === "parent") return "Academy pathway";
+  if (kind === "rival") return "Rival interest";
+  return "Counter offer";
+}
+
 /**
- * If the intro overlay cannot run (missing DOM / file:// module issues handled elsewhere),
- * still produce a playable first year so the game never dead-ends.
+ * If the intro overlay cannot run, still produce a playable first year.
  */
 export function skipCareerIntroBootstrap(player, academyPool) {
-  const picks = pickThreeAcademies(academyPool);
+  const picks = pickThreeAcademies(academyPool, player.nationality, player.name);
   if (!picks.length) {
-    throw new Error("Academy pool is empty — check league data.");
+    throw new Error("Academy pool is empty. check league data.");
   }
-  finalizeAcademyPlayer(player, picks[0]);
+  finalizeAcademyPlayer(player, picks[0].academy);
   const ratingStart = player.rating;
-  player.age = 17;
   const season = buildNarrativeAcademySeason(player, ratingStart, player.rating);
   player.seasons.push(season);
   player.careerTotals.matches += season.matches;
@@ -93,14 +219,15 @@ export function skipCareerIntroBootstrap(player, academyPool) {
   player.careerTotals.cleanSheets += season.cleanSheets;
   player.latestStanding = null;
   player.careerIntroComplete = true;
-  promoteAcademyGraduateToFirstTeam(player, 72);
+  const decision = buildFirstProContractDecision(player);
+  signFirstProfessionalContract(player, decision.offers[0]);
 }
 
 export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComplete }) {
   const overlay = document.getElementById("career-start-overlay");
 
   if (!overlay || !careerIntroDomReady()) {
-    console.warn("[Career] Intro overlay or required nodes missing — using bootstrap path.");
+    console.warn("[Career] Intro overlay or required nodes missing. using bootstrap path.");
     try {
       skipCareerIntroBootstrap(player, academyPool);
       setupSectionEl?.classList.add("hidden");
@@ -116,22 +243,135 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     name: player.name,
     nationality: player.nationality,
   });
-  const academies = pickThreeAcademies(academyPool);
-  if (!academies.length) {
+  const offers = pickThreeAcademies(academyPool, player.nationality, player.name);
+  if (!offers.length) {
     skipCareerIntroBootstrap(player, academyPool);
     setupSectionEl?.classList.add("hidden");
     onComplete();
     return;
   }
 
-  const scenarios = ensureScenarioList(player.position, 3);
+  const scenarios = ensureScenarioList(player.position, ACADEMY_MOMENT_COUNT);
 
   let ratingAfterAcademyPick = 0;
   let scenarioIndex = 0;
+  let offerIndex = 0;
+  let revealToken = 0;
 
   const outcomeEl = document.getElementById("career-scenario-outcome");
   const nextScenarioBtn = document.getElementById("career-scenario-next");
   const choicesEl = document.getElementById("career-scenario-choices");
+
+  function chooseAcademy(offer) {
+    finalizeAcademyPlayer(player, offer.academy);
+    ratingAfterAcademyPick = player.rating;
+    scenarioIndex = 0;
+    updateLiveOverall(player);
+    showStep(overlay, "career-step-scenario");
+    bindScenarioStep();
+  }
+
+  function showOfferChoice() {
+    const intro = document.getElementById("career-academy-intro");
+    const reveal = document.getElementById("career-academy-reveal");
+    const choice = document.getElementById("career-academy-choice");
+    const grid = document.getElementById("career-academy-grid");
+    const lead = document.getElementById("career-academy-lead");
+    intro?.classList.add("hidden");
+    reveal?.classList.add("hidden");
+    choice?.classList.remove("hidden");
+    if (lead) {
+      lead.textContent = "Three doors are open. Pick where the first chapter is written.";
+    }
+    if (!grid) return;
+    grid.innerHTML = "";
+    offers.forEach((offer, i) => {
+      const card = renderOfferCard(offer, { selectable: true });
+      card.style.setProperty("--reveal-delay", `${i * 180}ms`);
+      card.classList.add("career-academy-card-stagger");
+      card.addEventListener("click", () => chooseAcademy(offer));
+      grid.appendChild(card);
+      requestAnimationFrame(() => card.classList.add("is-shown"));
+    });
+  }
+
+  async function showOfferReveal(index) {
+    const token = ++revealToken;
+    const intro = document.getElementById("career-academy-intro");
+    const reveal = document.getElementById("career-academy-reveal");
+    const choice = document.getElementById("career-academy-choice");
+    const offer = offers[index];
+    if (!offer) {
+      showOfferChoice();
+      return;
+    }
+
+    intro?.classList.add("hidden");
+    choice?.classList.add("hidden");
+    reveal?.classList.remove("hidden");
+
+    const idxEl = document.getElementById("career-academy-offer-index");
+    const arrivalEl = document.getElementById("career-academy-arrival");
+    const featureEl = document.getElementById("career-academy-feature");
+    const pitchEl = document.getElementById("career-academy-pitch");
+    const nextBtn = document.getElementById("career-academy-next-offer");
+
+    if (idxEl) idxEl.textContent = `Offer ${index + 1} of ${offers.length}`;
+    if (arrivalEl) arrivalEl.textContent = offer.arrivalStory;
+    if (pitchEl) pitchEl.textContent = offer.pitch;
+    if (featureEl) {
+      featureEl.innerHTML = "";
+      const card = renderOfferCard(offer, { selectable: false });
+      featureEl.appendChild(card);
+    }
+    if (nextBtn) {
+      nextBtn.classList.add("hidden");
+      nextBtn.disabled = true;
+      nextBtn.textContent = index < offers.length - 1 ? "Next offer" : "Compare all three";
+      nextBtn.onclick = () => {
+        offerIndex = index + 1;
+        if (offerIndex < offers.length) showOfferReveal(offerIndex);
+        else showOfferChoice();
+      };
+    }
+
+    await runStaggeredReveal(reveal, [
+      "#career-academy-offer-index",
+      "#career-academy-arrival",
+      "#career-academy-feature",
+      "#career-academy-pitch",
+    ]);
+    if (token !== revealToken) return;
+    const card = featureEl?.querySelector(".career-academy-card-feature");
+    card?.classList.add("career-academy-enter");
+    await wait(380);
+    if (token !== revealToken) return;
+    if (nextBtn) {
+      nextBtn.classList.remove("hidden");
+      nextBtn.classList.add("is-shown");
+      nextBtn.disabled = false;
+    }
+  }
+
+  function startAcademyOfferFlow() {
+    showStep(overlay, "career-step-academy");
+    const intro = document.getElementById("career-academy-intro");
+    const reveal = document.getElementById("career-academy-reveal");
+    const choice = document.getElementById("career-academy-choice");
+    const introText = document.getElementById("career-academy-intro-text");
+    intro?.classList.remove("hidden");
+    reveal?.classList.add("hidden");
+    choice?.classList.add("hidden");
+    if (introText) {
+      introText.textContent = buildAcademyIntro({
+        name: player.name,
+        nationality: player.nationality,
+      });
+      introText.classList.remove("is-shown");
+      requestAnimationFrame(() => introText.classList.add("career-reveal-piece", "is-shown"));
+    }
+    offerIndex = 0;
+  }
 
   function bindScenarioStep() {
     if (!outcomeEl || !nextScenarioBtn || !choicesEl) return;
@@ -139,10 +379,11 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     outcomeEl.textContent = "";
     nextScenarioBtn.classList.add("hidden");
     choicesEl.innerHTML = "";
+    updateLiveOverall(player);
 
     const sc = scenarios[scenarioIndex];
     if (!sc) {
-      finishNarrativeYear();
+      showRatingRevealThenFinishSetup();
       return;
     }
 
@@ -150,29 +391,32 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
 
     const idxEl = document.getElementById("career-scenario-index");
     const setupEl = document.getElementById("career-scenario-setup");
-    if (idxEl) idxEl.textContent = `Moment ${scenarioIndex + 1} of 3`;
+    if (idxEl) idxEl.textContent = `Moment ${scenarioIndex + 1} of ${ACADEMY_MOMENT_COUNT}`;
     if (setupEl) setupEl.textContent = sc.setup;
 
-    sc.choices.forEach((choice, idx) => {
+    sc.choices.forEach((choice) => {
       const btn = document.createElement("button");
       btn.className = "primary career-choice-btn";
       btn.type = "button";
       btn.textContent = choice.label;
       btn.addEventListener("click", () => {
-        const delta = applyOpeningChoiceDelta(player, choice.minDelta, choice.maxDelta, {
-          min: 50,
-          max: 76,
-        });
-        const lines = sc.outcomes[idx] || ["The moment passes."];
-        outcomeEl.textContent = pickRandom(lines);
+        const result = pickChoiceResult(choice);
+        const applied = applyOpeningChoiceResult(player, result.delta, ACADEMY_CLAMP);
+        updateLiveOverall(player);
+
+        outcomeEl.textContent = result.text;
         outcomeEl.classList.remove("hidden");
         choicesEl.innerHTML = "";
+
         const deltaNote = document.createElement("p");
         deltaNote.className = "career-delta-note";
-        deltaNote.textContent =
-          delta >= 0
-            ? `Overall ${delta > 0 ? `+${delta}` : "unchanged"} — coaches adjust their read on you.`
-            : `Overall ${delta} — a harsh lesson, but part of the game.`;
+        if (applied > 0) {
+          deltaNote.textContent = `Overall +${applied}. Now ${player.rating}.`;
+        } else if (applied < 0) {
+          deltaNote.textContent = `Overall ${applied}. Now ${player.rating}.`;
+        } else {
+          deltaNote.textContent = `Overall unchanged. Still ${player.rating}.`;
+        }
         choicesEl.appendChild(deltaNote);
         nextScenarioBtn.classList.remove("hidden");
       });
@@ -180,10 +424,31 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     });
   }
 
-  function showRatingRevealThenFinishSetup() {
+  async function showRatingRevealThenFinishSetup() {
     const rv = document.getElementById("career-rating-value");
-    if (rv) rv.textContent = String(player.rating);
+    const lead = document.getElementById("career-rating-lead");
+    const after = document.getElementById("career-rating-after");
+    const next = document.getElementById("career-rating-next");
+    if (lead) lead.textContent = "The board reads your academy year in silence.";
+    if (rv) rv.textContent = "—";
+    after?.classList.add("hidden");
+    next?.classList.add("hidden");
     showStep(overlay, "career-step-rating");
+    await wait(700);
+    await animateCountUp(rv, player.rating, 1700);
+    await wait(450);
+    if (after) {
+      after.textContent =
+        player.rating >= 70
+          ? "The room shifts. Someone is already on the phone."
+          : player.rating >= 62
+            ? "Notes are exchanged. A decision is forming upstairs."
+            : "Faces stay careful. Not every academy year ends with a senior deal.";
+      after.classList.remove("hidden");
+      after.classList.add("career-reveal-piece", "is-shown");
+    }
+    await wait(500);
+    next?.classList.remove("hidden");
   }
 
   nextScenarioBtn.onclick = () => {
@@ -195,8 +460,7 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     }
   };
 
-  function finishNarrativeYear() {
-    player.age = 17;
+  function pushAcademySeason() {
     const season = buildNarrativeAcademySeason(player, ratingAfterAcademyPick, player.rating);
     player.seasons.push(season);
     player.careerTotals.matches += season.matches;
@@ -204,18 +468,69 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     player.careerTotals.assists += season.assists;
     player.careerTotals.cleanSheets += season.cleanSheets;
     player.latestStanding = null;
+  }
 
-    const seniorName = promoteAcademyGraduateToFirstTeam(player, 72);
+  function showProDealStep() {
+    pushAcademySeason();
+    const decision = buildFirstProContractDecision(player);
+    const titleEl = document.getElementById("career-pro-deals-title");
+    const leadEl = document.getElementById("career-pro-deals-lead");
+    const grid = document.getElementById("career-pro-deals-grid");
+    if (titleEl) titleEl.textContent = decision.verdict.headline;
+    if (leadEl) {
+      leadEl.textContent = `${decision.verdict.lead} Overall ${decision.rating}. Choose where you sign.`;
+    }
+    if (grid) {
+      grid.innerHTML = "";
+      decision.offers.forEach((deal, i) => {
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = `career-pro-deal-card is-${deal.kind}`;
+        card.style.setProperty("--reveal-delay", `${120 + i * 160}ms`);
+        const club = deal.club;
+        const badge = club.badge
+          ? `<img src="${escapeHtml(club.badge)}" alt="" class="career-academy-badge" loading="lazy" />`
+          : "";
+        card.innerHTML = `
+          <span class="career-academy-tag">${escapeHtml(kindLabel(deal.kind))}</span>
+          <div class="career-academy-badge-wrap">${badge}</div>
+          <span class="career-academy-name">${escapeHtml(club.displayName ?? club.name)}</span>
+          <span class="career-academy-league">${escapeHtml(club.leagueDisplay ?? club.league)}</span>
+          <span class="career-pro-deal-blurb">${escapeHtml(deal.blurb)}</span>
+          <span class="career-pro-deal-meta">${deal.contractYears}-year professional contract</span>
+        `;
+        card.addEventListener("click", () => acceptProDeal(deal));
+        grid.appendChild(card);
+        requestAnimationFrame(() => card.classList.add("is-shown"));
+      });
+    }
+    showStep(overlay, "career-step-pro-deals");
+  }
+
+  function acceptProDeal(deal) {
+    const signedName = signFirstProfessionalContract(player, deal);
     const titleEl = document.getElementById("career-year-end-title");
     const bodyEl = document.getElementById("career-year-end-body");
-    if (titleEl) titleEl.textContent = "Professional contract";
-    if (bodyEl) {
-      const clubLabel = seniorName ?? player.club?.displayName ?? player.club?.name ?? "the first team";
-      bodyEl.textContent =
-        `${clubLabel} offer you a senior professional contract. Your time in the academy was the opening chapter — ` +
-        `from here you play for the first team. Head to the career hub to continue your story.`;
+    if (titleEl) {
+      titleEl.textContent =
+        deal.kind === "rival" ? "A crossing of lines" : "Professional contract signed";
     }
-
+    if (bodyEl) {
+      const clubLabel = signedName ?? "the first team";
+      if (deal.kind === "rival") {
+        bodyEl.textContent =
+          `You sign with ${clubLabel}. The academy you left will not forget the move. ` +
+          `From here you play senior football. Head to the career hub to continue.`;
+      } else if (deal.kind === "parent") {
+        bodyEl.textContent =
+          `${clubLabel} put pen to paper with you. The academy chapter closes on home turf. ` +
+          `From here you play for the first team.`;
+      } else {
+        bodyEl.textContent =
+          `You take the counter offer from ${clubLabel}. A new dressing room, a new start. ` +
+          `From here you play senior football.`;
+      }
+    }
     showStep(overlay, "career-step-year-end");
   }
 
@@ -232,48 +547,17 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
   const backstoryNext = document.getElementById("career-backstory-next");
   if (backstoryText) backstoryText.textContent = backstory;
   if (backstoryNext) {
-    backstoryNext.onclick = () => {
-      showStep(overlay, "career-step-academy");
-      const grid = document.getElementById("career-academy-grid");
-      const lead = document.getElementById("career-academy-lead");
-      if (!grid) return;
-      grid.innerHTML = "";
-      if (lead) {
-        lead.textContent =
-          "Three academies want a closer look. Pick where your first chapter is written.";
-      }
+    backstoryNext.onclick = () => startAcademyOfferFlow();
+  }
 
-      academies.forEach((ac) => {
-        const card = document.createElement("button");
-        card.type = "button";
-        card.className = "career-academy-card";
-        const parent = ac.parentClub;
-        const badge = ac.badge
-          ? `<img src="${ac.badge}" alt="" class="career-academy-badge" loading="lazy" />`
-          : "";
-        card.innerHTML = `
-        ${badge}
-        <span class="career-academy-name">${ac.displayName ?? ac.name}</span>
-        <span class="career-academy-league">${ac.leagueDisplay ?? ac.league}</span>
-        <span class="career-academy-parent">Senior side: ${parent?.displayName ?? parent?.name ?? "?"}</span>
-      `;
-        card.addEventListener("click", () => {
-          finalizeAcademyPlayer(player, ac);
-          ratingAfterAcademyPick = player.rating;
-          scenarioIndex = 0;
-          showStep(overlay, "career-step-scenario");
-          bindScenarioStep();
-        });
-        grid.appendChild(card);
-      });
-    };
+  const introNext = document.getElementById("career-academy-intro-next");
+  if (introNext) {
+    introNext.onclick = () => showOfferReveal(0);
   }
 
   const ratingNext = document.getElementById("career-rating-next");
   if (ratingNext) {
-    ratingNext.onclick = () => {
-      finishNarrativeYear();
-    };
+    ratingNext.onclick = () => showProDealStep();
   }
 
   setupSectionEl?.classList.add("hidden");

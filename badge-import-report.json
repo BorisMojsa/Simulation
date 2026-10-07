@@ -524,7 +524,7 @@
           "club": "FC St. Pauli",
           "badge": "badges/Germany - 2. Bundesliga/FC St. Pauli.png",
           "source": "sportsdb",
-          "details": "sportsdb:Paulista"
+          "details": "sportsdb:St Pauli"
         },
         {
           "club": "VfL Wolfsburg",
@@ -1491,7 +1491,7 @@
           "club": "Union Saint-Gilloise",
           "badge": "badges/Belgium - Belgian Pro League/Union Saint-Gilloise.png",
           "source": "sportsdb",
-          "details": "sportsdb:UDJ"
+          "details": "sportsdb:Union Saint-Gilloise"
         },
         {
           "club": "Westerlo",
@@ -1589,7 +1589,7 @@
           "club": "Estudiantes",
           "badge": "badges/Argentina - Liga Profesional/Estudiantes.png",
           "source": "sportsdb",
-          "details": "sportsdb:Estudiantes"
+          "details": "sportsdb:Estudiantes de La Plata"
         },
         {
           "club": "Estudiantes Río Cuarto",
@@ -1781,8 +1781,8 @@
         {
           "club": "Nacional",
           "badge": "",
-          "source": "missing",
-          "details": "No online image source resolved"
+          "source": "sportsdb",
+          "details": "sportsdb:Nacional de Madeira"
         },
         {
           "club": "Porto",
@@ -2153,7 +2153,7 @@
           "club": "Guadalajara",
           "badge": "badges/Mexico - Liga MX/Guadalajara.png",
           "source": "sportsdb",
-          "details": "sportsdb:Guadalajara"
+          "details": "sportsdb:CD Guadalajara"
         },
         {
           "club": "Juárez",
@@ -2250,8 +2250,8 @@
         {
           "club": "Alianza",
           "badge": "",
-          "source": "missing",
-          "details": "No online image source resolved"
+          "source": "sportsdb",
+          "details": "sportsdb:Alianza de Valledupar (verified Colombia 2024 crest)"
         },
         {
           "club": "América de Cali",
@@ -2578,7 +2578,7 @@
           "club": "Universidad Católica",
           "badge": "badges/Ecuador - LigaPro Serie A/Universidad Católica.png",
           "source": "sportsdb",
-          "details": "sportsdb:Universidad Católica"
+          "details": "sportsdb:Universidad Católica del Ecuador"
         }
       ],
       "sources": {
@@ -2966,8 +2966,8 @@
         {
           "club": "Sparta Prague",
           "badge": "badges/Czechia - Czech First League/Sparta Prague.png",
-          "source": "sportsdb",
-          "details": "sportsdb:Sparta Prague"
+          "source": "wikimedia",
+          "details": "commons:AC-Sparta-LOGO2021.svg"
         },
         {
           "club": "Teplice",

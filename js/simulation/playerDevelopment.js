@@ -5,7 +5,7 @@ import { clamp, randFloat, randInt } from "../utils/helpers.js";
 const basePlayerFields = () => ({
   seasons: [],
   careerTotals: { matches: 0, goals: 0, assists: 0, cleanSheets: 0 },
-  careerHonors: { leagueTitles: 0, europeanTitles: 0, domesticCups: 0, individualAwards: 0 },
+  careerHonors: { leagueTitles: 0, europeanTitles: 0, domesticCups: 0, individualAwards: 0, internationalTitles: 0 },
   pendingOffers: [],
   startYear: new Date().getFullYear(),
   isRetired: false,
@@ -18,12 +18,13 @@ const basePlayerFields = () => ({
 });
 
 /** After form submit — no club or ratings yet (career intro picks academy). */
-export function createPlayerIdentity({ name, nationality, position }) {
+export function createPlayerIdentity({ name, nationality, position, age = 16 }) {
+  const startAge = clamp(Math.round(Number(age) || 16), 15, 19);
   return {
     name,
     nationality: nationality || "Unknown",
     position,
-    age: 16,
+    age: startAge,
     rating: 0,
     potential: 0,
     club: null,
@@ -34,18 +35,31 @@ export function createPlayerIdentity({ name, nationality, position }) {
 }
 
 /**
- * Roll hidden OVR, attributes, and a starting potential ceiling (never shown in intro UI).
- * OVR is revealed only after narrative moments; potential stays hidden and grows with career output.
+ * Roll starting academy OVR in 54–78.
+ * Mid-60s are common; 75+ is rare but possible.
+ */
+export function rollAcademyStartingRating() {
+  const r = Math.random();
+  if (r < 0.015) return randInt(76, 78); // extremely rare
+  if (r < 0.045) return randInt(75, 75); // very rare
+  if (r < 0.1) return randInt(72, 74); // rare
+  if (r < 0.28) return randInt(68, 71);
+  if (r < 0.58) return randInt(62, 67);
+  return randInt(54, 61);
+}
+
+/**
+ * Roll hidden OVR, attributes, and a starting potential ceiling.
+ * OVR is shown during academy moments and updates with each pick.
  */
 export function finalizeAcademyPlayer(player, academyEntry) {
-  const startingRating = randInt(52, 70);
+  const startingRating = rollAcademyStartingRating();
   const academyClub = {
     ...academyEntry,
     parentClub: academyEntry.parentClub ? { ...academyEntry.parentClub } : null,
   };
   player.rating = startingRating;
-  // Ceiling at signup: above current OVR, random between ~rating+1 and 75 (dynamic later in seasons)
-  player.potential = randInt(startingRating + 1, 75);
+  player.potential = randInt(Math.min(startingRating + 4, 88), Math.max(startingRating + 8, 90));
   player.attributes = generateAttributes(player.position, startingRating);
   player.club = academyClub;
 }
@@ -86,14 +100,20 @@ export function promoteAcademyGraduateToFirstTeam(player, performanceHint = 72) 
   return parent.displayName ?? parent.name;
 }
 
-/** Narrative choice: adjusts OVR and attributes; clamp range tunable for academy intro. */
-export function applyOpeningChoiceDelta(player, minDelta, maxDelta, clampRange = { min: 50, max: 76 }) {
+/** Apply an exact academy-moment delta; returns the applied change after clamping. */
+export function applyOpeningChoiceDelta(player, minDelta, maxDelta, clampRange = { min: 50, max: 88 }) {
   const d = randInt(minDelta, maxDelta);
+  return applyOpeningChoiceResult(player, d, clampRange);
+}
+
+/** Apply a concrete result delta from a linked narrative outcome. */
+export function applyOpeningChoiceResult(player, delta, clampRange = { min: 50, max: 88 }) {
   const profile = POSITION_PROFILES[player.position] || POSITION_PROFILES.DEFAULT;
   const prev = player.rating;
-  player.rating = clamp(prev + d, clampRange.min, clampRange.max);
-  adjustAttributes(player, profile.growthBias, player.rating - prev);
-  return d;
+  player.rating = clamp(prev + delta, clampRange.min, clampRange.max);
+  const applied = player.rating - prev;
+  adjustAttributes(player, profile.growthBias, applied);
+  return applied;
 }
 
 export function createPlayer({ name, nationality, position }, academyPool) {

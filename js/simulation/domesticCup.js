@@ -1,298 +1,298 @@
-import { pickRandom, randFloat, clamp } from "../utils/helpers.js";
-import { leagueMatchCount } from "./leaguePhase.js";
+import { resolveKnockout, simulateMatch } from "./matchEngine.js?v=45";
+import { cupConfigForNation } from "../data/domesticCups.js?v=45";
+import { LEAGUES } from "../data/leagues.js";
+import { pickRandom, randFloat } from "../utils/helpers.js";
 
-export function simulateDomesticCup(league, performanceScore, standing, player) {
-  // Domestic cups are competitive - even good teams can get knocked out early
-  const base = standing ? standing.points / Math.max(1, leagueMatchCount(league)) : 0.8;
-  
-  // Factor in league position - lower positions have harder time in cup
-  const positionFactor = standing ? (standing.position <= 4 ? 1.0 : standing.position <= 8 ? 0.8 : 0.6) : 0.7;
-  
-  // Much more challenging thresholds - cups are unpredictable
-  const strength = clamp(
-    (base * 0.6 * positionFactor) + 
-    (performanceScore / 110) + 
-    (player.rating / 130) + 
-    randFloat(-0.8, 0.8), // More randomness
-    0, 
-    2.4
-  );
-  
-  // Cup rounds in order
-  const cupRounds = [
-    "Round of 64",
-    "Round of 32",
-    "Round of 16",
-    "Quarter-finals",
-    "Semi-finals",
-    "Finalists",
-    "Winners"
+function shuffle(list) {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function nextPowerOfTwo(n) {
+  let p = 1;
+  while (p < n) p *= 2;
+  return Math.max(2, p);
+}
+
+function roundLabelForSize(size) {
+  if (size === 2) return "Final";
+  if (size === 4) return "Semi-finals";
+  if (size === 8) return "Quarter-finals";
+  if (size === 16) return "Round of 16";
+  if (size === 32) return "Round of 32";
+  if (size === 64) return "Round of 64";
+  if (size === 128) return "Round of 128";
+  return `Round of ${size}`;
+}
+
+function clubEntry(club, league) {
+  return {
+    name: club.name,
+    displayName: club.displayName ?? club.name,
+    badge: club.badge,
+    financialTier: club.financialTier ?? league.financialPower ?? 2,
+    tier: league.tier,
+    league: league.name,
+    leagueDisplay: league.displayName,
+    nation: league.nation,
+  };
+}
+
+function collectNationClubs(nation, includeSecondDivision) {
+  const leagues = LEAGUES.filter((l) => l.nation === nation).sort((a, b) => b.tier - a.tier);
+  if (!leagues.length) return [];
+  const topTier = leagues[0].tier;
+  const selected = includeSecondDivision
+    ? leagues.filter((l) => l.tier >= topTier - 1)
+    : [leagues[0]];
+  const out = [];
+  const seen = new Set();
+  selected.forEach((league) => {
+    league.clubs.forEach((club) => {
+      if (seen.has(club.name)) return;
+      seen.add(club.name);
+      out.push(clubEntry(club, league));
+    });
+  });
+  return out;
+}
+
+function ensurePlayerClub(clubs, player) {
+  if (!player?.club?.name) return clubs;
+  if (clubs.some((c) => c.name === player.club.name)) return clubs;
+  return [
+    ...clubs,
+    {
+      name: player.club.name,
+      displayName: player.club.displayName ?? player.club.name,
+      badge: player.club.badge,
+      financialTier: player.club.financialTier ?? 2,
+      tier: player.club.tier ?? 3,
+      league: player.club.league,
+      leagueDisplay: player.club.leagueDisplay,
+      nation: player.club.nation,
+    },
   ];
-  
-  // Determine how far player progressed
-  let resultIndex = 0;
-  if (strength >= 2.3) resultIndex = 6; // Winners
-  else if (strength >= 2.0) resultIndex = 5; // Finalists
-  else if (strength >= 1.6) resultIndex = 4; // Semi-finals
-  else if (strength >= 1.3) resultIndex = 3; // Quarter-finals
-  else if (strength >= 0.9) resultIndex = 2; // Round of 16
-  else if (strength >= 0.5) resultIndex = 1; // Round of 32
-  else resultIndex = 0; // Round of 64
-  
-  const result = cupRounds[resultIndex];
-  const playerTeam = player.club.displayName || player.club.name;
-  const playerTeamName = player.club.name;
-  
-  // Get all teams from the league with their info
-  const leagueTeams = league.clubs?.map(c => ({
-    name: c.name,
-    displayName: c.displayName || c.name,
-    badge: c.badge,
-    strength: c.financialTier * 10 + league.tier * 3 + randFloat(-5, 5)
-  })) || [];
-  const fallbackOpponents = leagueTeams.filter(team => team.name !== playerTeamName);
-  
-  // Create a tournament bracket system
-  // Start with all teams in competition
-  let teamsInCompetition = [...leagueTeams];
-  
-  // Remove player's team from the pool (we'll track it separately)
-  const playerTeamData = teamsInCompetition.find(t => t.name === playerTeamName);
-  teamsInCompetition = teamsInCompetition.filter(t => t.name !== playerTeamName);
-  
-  // Shuffle remaining teams
-  teamsInCompetition = teamsInCompetition.sort(() => Math.random() - 0.5);
-  
-  // Generate round-by-round progression with opponents and scores
-  const rounds = [];
-  let currentRoundTeams = [...teamsInCompetition];
-  let playerStillIn = true;
-  
-  // Simulate each round
-  for (let i = 0; i <= resultIndex && playerStillIn; i++) {
-    const roundName = cupRounds[i];
-    let opponent = null;
-    let opponentData = null;
-    let score = null;
-    let qualified = false;
-    
-    if (i === 0) {
-      // Round of 64 - player plays their first match
-      if (currentRoundTeams.length > 0) {
-        opponentData = pickRandom(currentRoundTeams);
-        opponent = opponentData.displayName;
-        
-        // Calculate match result
-        const playerStrength = base * positionFactor + performanceScore / 100 + player.rating / 100;
-        const opponentStrength = opponentData.strength / 50;
-        const playerWinChance = playerStrength / (playerStrength + opponentStrength);
-        
-        if (Math.random() < playerWinChance) {
-          qualified = true;
-          // Generate score - player wins
-          const playerGoals = Math.floor(randFloat(1, 4));
-          const opponentGoals = Math.floor(randFloat(0, Math.min(playerGoals - 1, 2)));
-          score = `${playerGoals}-${opponentGoals}`;
-          // Remove opponent from competition
-          currentRoundTeams = currentRoundTeams.filter(t => t.name !== opponentData.name);
-        } else {
-          qualified = false;
-          playerStillIn = false;
-          // Generate score - player loses
-          const opponentGoals = Math.floor(randFloat(1, 3));
-          const playerGoals = Math.floor(randFloat(0, Math.min(opponentGoals - 1, 2)));
-          score = `${playerGoals}-${opponentGoals}`;
+}
+
+/**
+ * Full domestic cup for the player's nation, with named competition
+ * and multi-division field when configured.
+ */
+export function simulateDomesticCup(league, performanceScore, standing, player) {
+  const nation = league?.nation || "Unknown";
+  const config = cupConfigForNation(nation);
+  let clubs = ensurePlayerClub(
+    collectNationClubs(nation, config.includeSecondDivision),
+    player
+  );
+
+  // Size to the next power of two of the field, capped by the cup's configured start size.
+  // Dual-division nations keep the larger startSize (typically 64) so 2nd-tier clubs enter.
+  const ideal = Math.min(Math.max(config.startSize, 2), 128);
+  let bracketSize = nextPowerOfTwo(Math.min(Math.max(clubs.length, 2), ideal));
+  if (config.includeSecondDivision) {
+    bracketSize = Math.max(bracketSize, Math.min(ideal, 64));
+  }
+  // Never request more byes than clubs (would break power-of-two progression)
+  while (bracketSize - clubs.length > clubs.length) {
+    bracketSize /= 2;
+  }
+  bracketSize = Math.max(2, bracketSize);
+
+  if (clubs.length > bracketSize) {
+    clubs = shuffle(clubs)
+      .sort((a, b) => b.financialTier - a.financialTier || b.tier - a.tier)
+      .slice(0, bracketSize);
+    clubs = ensurePlayerClub(clubs, player);
+    if (clubs.length > bracketSize) clubs = clubs.slice(0, bracketSize);
+    bracketSize = nextPowerOfTwo(Math.max(clubs.length, 2));
+  }
+
+  clubs = arrangeBracketWithByes(shuffle(clubs), bracketSize);
+
+  const playerName = player.club.name;
+  const playerMatches = [];
+  const allRounds = [];
+  let remaining = clubs;
+  let eliminatedRound = null;
+
+  while (remaining.length > 1) {
+    const size = remaining.length;
+    const label = roundLabelForSize(size);
+    const next = [];
+    const roundMatches = [];
+
+    for (let i = 0; i < remaining.length; i += 2) {
+      const a = remaining[i];
+      const b = remaining[i + 1];
+
+      if (!a && !b) continue;
+      if (!b || b.isBye) {
+        if (a && !a.isBye) {
+          next.push(a);
+          roundMatches.push({
+            home: a,
+            away: { name: "__bye__", displayName: "Bye", badge: null, isBye: true },
+            scoreline: "bye",
+            homeGoals: 1,
+            awayGoals: 0,
+            winnerSide: "home",
+            isBye: true,
+            round: label,
+            cupName: config.name,
+          });
         }
+        continue;
       }
-    } else {
-      // Knockout rounds - player faces a team that's still in
-      if (currentRoundTeams.length > 0 && playerStillIn) {
-        opponentData = pickRandom(currentRoundTeams);
-        opponent = opponentData.displayName;
-        
-        // Calculate match result
-        const playerStrength = base * positionFactor + performanceScore / 100 + player.rating / 100;
-        const opponentStrength = opponentData.strength / 50;
-        const playerWinChance = playerStrength / (playerStrength + opponentStrength);
-        
-        if (Math.random() < playerWinChance) {
-          qualified = true;
-          // Generate score - player wins
-          const playerGoals = i < 3 ? Math.floor(randFloat(1, 4)) : Math.floor(randFloat(1, 3));
-          const opponentGoals = Math.floor(randFloat(0, Math.min(playerGoals - 1, 2)));
-          score = `${playerGoals}-${opponentGoals}`;
-          // Remove opponent from competition
-          currentRoundTeams = currentRoundTeams.filter(t => t.name !== opponentData.name);
-        } else {
-          qualified = false;
-          playerStillIn = false;
-          // Generate score - player loses
-          const opponentGoals = i < 3 ? Math.floor(randFloat(1, 3)) : Math.floor(randFloat(1, 2));
-          const playerGoals = Math.floor(randFloat(0, Math.min(opponentGoals - 1, 1)));
-          score = `${playerGoals}-${opponentGoals}`;
+      if (!a || a.isBye) {
+        if (b && !b.isBye) {
+          next.push(b);
+          roundMatches.push({
+            home: b,
+            away: { name: "__bye__", displayName: "Bye", badge: null, isBye: true },
+            scoreline: "bye",
+            homeGoals: 1,
+            awayGoals: 0,
+            winnerSide: "home",
+            isBye: true,
+            round: label,
+            cupName: config.name,
+          });
+        }
+        continue;
+      }
+
+      const playerInTie = a.name === playerName || b.name === playerName;
+      const playerSide = a.name === playerName ? "home" : b.name === playerName ? "away" : null;
+      let match = simulateMatch(a, b, {
+        playerSide,
+        player: playerInTie ? player : null,
+        competition: "cup",
+      });
+      match = resolveKnockout(match);
+      match.round = label;
+      match.cupName = config.name;
+
+      const winner = match.winnerSide === "home" ? a : b;
+      next.push(winner);
+      roundMatches.push(match);
+
+      if (playerInTie) {
+        playerMatches.push(match);
+        if (winner.name !== playerName) {
+          eliminatedRound = label;
         }
       }
     }
-    
-    // Simulate other matches in this round to determine who advances
-    if (i < resultIndex || (i === resultIndex && qualified)) {
-      // Other teams play each other
-      const remainingTeams = [...currentRoundTeams];
-      const nextRoundTeams = [];
-      
-      // Pair up teams and simulate matches
-      while (remainingTeams.length >= 2) {
-        const team1 = pickRandom(remainingTeams);
-        remainingTeams.splice(remainingTeams.indexOf(team1), 1);
-        const team2 = pickRandom(remainingTeams);
-        remainingTeams.splice(remainingTeams.indexOf(team2), 1);
-        
-        // Simulate match
-        const team1WinChance = team1.strength / (team1.strength + team2.strength);
-        if (Math.random() < team1WinChance) {
-          nextRoundTeams.push(team1);
-        } else {
-          nextRoundTeams.push(team2);
-        }
-      }
-      
-      currentRoundTeams = nextRoundTeams;
-    }
-    
-    if (opponentData) {
-      rounds.push({
-        round: roundName,
-        opponent: opponentData.displayName,
-        opponentName: opponentData.name,
-        opponentBadge: opponentData.badge,
-        score,
-        qualified
+
+    // Keep power-of-two progression if byes collapsed the field oddly
+    if (next.length > 1 && next.length % 2 === 1) {
+      next.push({
+        name: `__bye_pad_${next.length}`,
+        displayName: "Bye",
+        badge: null,
+        financialTier: 1,
+        tier: 1,
+        isBye: true,
       });
     }
-  }
-  
-  // Determine final result
-  let finalists = null;
-  let winner = null;
-  let winnerData = null;
-  
-  if (result === "Winners") {
-    // Player won
-    winner = playerTeam;
-    winnerData = {
-      name: playerTeamName,
-      displayName: playerTeam,
-      badge: player.club.badge
-    };
-    
-    // Need to determine who they beat in final
-    const finalPool = currentRoundTeams.length > 0 ? currentRoundTeams : fallbackOpponents;
-    if (finalPool.length > 0) {
-      const finalOpponent = pickRandom(finalPool);
-      // Add final round to rounds if not already there
-      if (!rounds.find(r => r.round === "Winners" || r.round === "Finalists")) {
-        rounds.push({
-          round: "Winners",
-          opponent: finalOpponent.displayName,
-          opponentName: finalOpponent.name,
-          opponentBadge: finalOpponent.badge,
-          score: `${Math.floor(randFloat(1, 3))}-${Math.floor(randFloat(0, 1))}`,
-          qualified: true
-        });
-      }
-    }
-  } else if (result === "Finalists") {
-    // Player was runner-up - need opponent from remaining teams
-    const finalPool = currentRoundTeams.length > 0 ? currentRoundTeams : fallbackOpponents;
-    if (finalPool.length > 0) {
-      const finalOpponent = pickRandom(finalPool);
-      finalists = [
-        {
-          name: playerTeamName,
-          displayName: playerTeam,
-          badge: player.club.badge
-        },
-        {
-          name: finalOpponent.name,
-          displayName: finalOpponent.displayName,
-          badge: finalOpponent.badge
-        }
-      ];
-      winnerData = finalOpponent;
-      winner = finalOpponent.displayName;
-      
-      // Add final round
-      if (!rounds.find(r => r.round === "Finalists")) {
-        rounds.push({
-          round: "Finalists",
-          opponent: finalOpponent.displayName,
-          opponentName: finalOpponent.name,
-          opponentBadge: finalOpponent.badge,
-          score: `${Math.floor(randFloat(0, 1))}-${Math.floor(randFloat(1, 2))}`,
-          qualified: false
-        });
-      }
-    }
-  } else {
-    // Eliminated before final - simulate rest of tournament
-    let remainingTeams = [...currentRoundTeams];
-    
-    // Continue simulating until we have finalists
-    while (remainingTeams.length > 2) {
-      const nextRound = [];
-      while (remainingTeams.length >= 2) {
-        const team1 = pickRandom(remainingTeams);
-        remainingTeams.splice(remainingTeams.indexOf(team1), 1);
-        const team2 = pickRandom(remainingTeams);
-        remainingTeams.splice(remainingTeams.indexOf(team2), 1);
-        
-        const team1WinChance = team1.strength / (team1.strength + team2.strength);
-        if (Math.random() < team1WinChance) {
-          nextRound.push(team1);
-        } else {
-          nextRound.push(team2);
-        }
-      }
-      remainingTeams = nextRound;
-    }
-    
-    if (remainingTeams.length < 2 && fallbackOpponents.length >= 2) {
-      const sortedFallback = [...fallbackOpponents].sort((a, b) => b.strength - a.strength);
-      remainingTeams = sortedFallback.slice(0, 2);
-    }
 
-    // Final two teams
-    if (remainingTeams.length === 2) {
-      finalists = [
-        {
-          name: remainingTeams[0].name,
-          displayName: remainingTeams[0].displayName,
-          badge: remainingTeams[0].badge
-        },
-        {
-          name: remainingTeams[1].name,
-          displayName: remainingTeams[1].displayName,
-          badge: remainingTeams[1].badge
-        }
-      ];
-      
-      // Simulate final
-      const team1WinChance = remainingTeams[0].strength / (remainingTeams[0].strength + remainingTeams[1].strength);
-      if (Math.random() < team1WinChance) {
-        winnerData = remainingTeams[0];
-      } else {
-        winnerData = remainingTeams[1];
-      }
-      winner = winnerData.displayName;
-    }
+    allRounds.push({ round: label, matches: roundMatches });
+    remaining = next.length ? next : remaining.slice(0, 1);
   }
-  
+
+  const winnerClub = remaining[0];
+  const won = winnerClub?.name === playerName;
+  const finalMatch =
+    allRounds
+      .find((r) => r.round === "Final")
+      ?.matches?.[0] || null;
+
+  // Player-facing rounds summary (compat + animation)
+  const rounds = playerMatches.map((m) => {
+    const opp = m.playerSide === "home" ? m.away : m.home;
+    const qualified =
+      (m.playerSide === "home" && m.winnerSide === "home") ||
+      (m.playerSide === "away" && m.winnerSide === "away");
+    return {
+      round: m.round,
+      opponent: opp.displayName,
+      opponentName: opp.name,
+      opponentBadge: opp.badge,
+      score: m.playerSide === "home" ? m.scoreline : `${m.awayGoals}-${m.homeGoals}`,
+      qualified,
+      match: m,
+    };
+  });
+
+  let result = rounds.length ? rounds[rounds.length - 1].round : roundLabelForSize(bracketSize);
+  if (won) result = "Winners";
+  else if (eliminatedRound === "Final") result = "Finalists";
+  else if (eliminatedRound) result = eliminatedRound;
+
   return {
+    name: config.name,
+    shortName: config.shortName,
     result,
-    won: result === "Winners",
+    won,
     rounds,
-    finalists,
-    winner,
-    winnerData
+    playerMatches,
+    allRounds,
+    finalMatch,
+    finalists: finalMatch
+      ? [
+          { ...finalMatch.home },
+          { ...finalMatch.away },
+        ]
+      : null,
+    winner: winnerClub?.displayName ?? null,
+    winnerData: winnerClub
+      ? {
+          name: winnerClub.name,
+          displayName: winnerClub.displayName,
+          badge: winnerClub.badge,
+        }
+      : null,
+  };
+}
+
+/** Place byes opposite real clubs so bye–bye ties never appear. */
+function arrangeBracketWithByes(clubs, bracketSize) {
+  const real = shuffle(clubs.filter((c) => !c.isBye));
+  const byesNeeded = Math.max(0, bracketSize - real.length);
+
+  // Teams with a bye auto-advance; remaining reals play each other in round 1.
+  const withBye = real.slice(0, Math.min(byesNeeded, real.length));
+  const playing = real.slice(withBye.length);
+
+  const out = [];
+  for (let i = 0; i < playing.length; i += 2) {
+    out.push(playing[i]);
+    out.push(playing[i + 1] || makeBye(`pad_${i}`));
+  }
+  withBye.forEach((club, i) => {
+    out.push(club);
+    out.push(makeBye(i));
+  });
+
+  while (out.length < bracketSize) {
+    out.push(makeBye(`extra_${out.length}`));
+  }
+  return out.slice(0, bracketSize);
+}
+
+function makeBye(id) {
+  return {
+    name: `__bye_${id}`,
+    displayName: "Bye",
+    badge: null,
+    financialTier: 1,
+    tier: 1,
+    isBye: true,
   };
 }

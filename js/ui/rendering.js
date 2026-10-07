@@ -5,6 +5,7 @@ import {
   formatOrdinal,
   formatSigned,
 } from "../utils/helpers.js";
+import { enrichTrophyWin, trophyImageHtml } from "../data/trophyAssets.js";
 
 export function renderPlayerOverview(player, overviewEl, statsKeys) {
   if (!player) return;
@@ -22,8 +23,21 @@ export function renderPlayerOverview(player, overviewEl, statsKeys) {
       }</span>`
     : "";
   const honors = player.careerHonors;
+  const continentalLabel = (() => {
+    const wins = (player.seasons || [])
+      .map((s) => s.europeanCampaign)
+      .filter((c) => c?.won && c?.qualified !== false && c?.competition)
+      .map((c) => c.competition);
+    const unique = [...new Set(wins)];
+    if (unique.length && unique.every((n) => /Champions League|Europa League|Conference League/i.test(n))) {
+      return `${honors.europeanTitles} European titles`;
+    }
+    if (unique.length === 1) return `${honors.europeanTitles} ${unique[0]}`;
+    if (honors.europeanTitles) return `${honors.europeanTitles} continental titles`;
+    return `${honors.europeanTitles} European titles`;
+  })();
   const honorLine = honors
-    ? `<span>Honors: ${honors.leagueTitles} league titles | ${honors.domesticCups} cups | ${honors.europeanTitles} European titles | ${honors.individualAwards} awards</span>`
+    ? `<span>Honors: ${honors.leagueTitles} league titles | ${honors.domesticCups} cups | ${continentalLabel} | ${honors.internationalTitles || 0} international titles | ${honors.individualAwards} awards</span>`
     : "";
   overviewEl.innerHTML = `
     <div class="player-summary">
@@ -72,6 +86,11 @@ export function appendSeasonCard(season, seasonLogEl, player) {
     ? `${formatOrdinal(season.standing.position)} | ${season.standing.points} pts`
     : "N/A";
   const honorsLabel = season.honors ? ` - ${season.honors}` : "";
+  const moveLabel = season.divisionMove
+    ? season.divisionMove.type === "promoted"
+      ? ` - Promoted to ${season.divisionMove.to}`
+      : ` - Relegated to ${season.divisionMove.to}`
+    : "";
 
   header.innerHTML = `
     <div class="season-title">
@@ -90,15 +109,37 @@ export function appendSeasonCard(season, seasonLogEl, player) {
     <dt>League</dt>
     <dd>${escapeHtml(season.leagueDisplay ?? season.league)}</dd>
     <dt>Finish</dt>
-    <dd>${finishLabel}${honorsLabel}</dd>
+    <dd>${finishLabel}${honorsLabel}${moveLabel}</dd>
     <dt>Overall change</dt>
     <dd>${ratingSign}${season.ratingChange}</dd>
     <dt>Average rating</dt>
     <dd>${season.avgMatchRating.toFixed(2)}</dd>
     <dt>Europe</dt>
-    <dd>${season.europeanCampaign ? `${season.europeanCampaign.competition} - ${season.europeanCampaign.result}` : "No competition"}</dd>
+    <dd>${
+      season.europeanCampaign?.showcase
+        ? "Not qualified"
+        : season.europeanCampaign
+          ? `${season.europeanCampaign.competition} - ${season.europeanCampaign.result}`
+          : "No competition"
+    }</dd>
+    <dt>International</dt>
+    <dd>${
+      season.internationalSeason?.calledUp
+        ? `${escapeHtml(season.internationalSeason.callUpTournament)} — ${escapeHtml(
+            season.internationalSeason.primary?.result || "Selected"
+          )}`
+        : season.internationalSeason?.callUpTournament
+          ? "Not selected"
+          : season.internationalSeason?.hasTournaments
+            ? "No national tournament"
+            : "No major tournaments"
+    }</dd>
     <dt>Domestic cup</dt>
-    <dd>${season.domesticCupResult?.result || "N/A"}</dd>
+    <dd>${
+      season.domesticCupResult
+        ? `${escapeHtml(season.domesticCupResult.name || "Cup")} — ${escapeHtml(season.domesticCupResult.result)}`
+        : "N/A"
+    }</dd>
   `;
 
   const statItems = [
@@ -116,12 +157,28 @@ export function appendSeasonCard(season, seasonLogEl, player) {
 
   statItems.push(`OVR ${season.ratingAfter}`);
 
-  if (season.europeanCampaign) {
+  if (season.europeanCampaign && !season.europeanCampaign.showcase) {
     statItems.push(`${season.europeanCampaign.competition}: ${season.europeanCampaign.result}`);
+  } else if (season.europeanCampaign?.showcase) {
+    statItems.push("Europe: Not qualified");
+  }
+
+  if (season.internationalSeason?.calledUp) {
+    statItems.push(
+      `International: ${season.internationalSeason.callUpTournament} (${season.internationalSeason.primary?.result || "selected"})`
+    );
+  } else if (season.internationalSeason?.callUpTournament) {
+    statItems.push("International: not selected");
+  } else if (season.internationalSeason?.hasTournaments) {
+    statItems.push("International: no national tournament");
   }
 
   if (season.domesticCupResult) {
-    statItems.push(`Domestic cup: ${season.domesticCupResult.result}`);
+    const cupLabel = season.domesticCupResult.name || "Domestic cup";
+    statItems.push(`${cupLabel}: ${season.domesticCupResult.result}`);
+  }
+  if (season.yellowCards || season.redCards) {
+    statItems.push(`${season.yellowCards || 0} yellow / ${season.redCards || 0} red`);
   }
 
   if (season.individualAwards?.length) {
@@ -129,14 +186,30 @@ export function appendSeasonCard(season, seasonLogEl, player) {
   }
 
   if (season.trophies?.length) {
-    statItems.push(`Trophies: ${season.trophies.join(", ")}`);
+    const labels = season.trophies.map((t) => (typeof t === "string" ? t : t.label || t.competition));
+    statItems.push(`Trophies: ${labels.join(", ")}`);
   }
 
   if (season.isNarrativeAcademyYear) {
-    statItems.push("Academy narrative year — no senior league / cups yet");
+    statItems.push("Academy narrative year. no senior league / cups yet");
   }
 
-  stats.innerHTML = statItems.map((item) => `<span>${item}</span>`).join("");
+  const trophyRow = (season.trophies || [])
+    .map((t) => enrichTrophyWin(typeof t === "string" ? { label: t, competition: t } : t))
+    .filter((t) => t?.src)
+    .map(
+      (t) =>
+        `<div class="season-trophy-thumb" title="${escapeHtml(t.label || t.competition)}">${trophyImageHtml(
+          t,
+          { className: "season-trophy-img", alt: t.trophyName || t.label }
+        )}</div>`
+    )
+    .join("");
+
+  stats.innerHTML = [
+    ...statItems.map((item) => `<span>${item}</span>`),
+    trophyRow ? `<div class="season-trophy-row">${trophyRow}</div>` : "",
+  ].join("");
   seasonLogEl.prepend(node);
 }
 

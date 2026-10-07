@@ -1,10 +1,20 @@
 import { POSITION_PROFILES, STATS_KEYS } from "../config/playerConfig.js";
-import { agePerformanceModifier, adjustAttributes } from "./playerDevelopment.js";
-import { generateLeagueTable } from "./leaguePhase.js";
-import { simulateEuropeanCampaign } from "./europeanCompetition.js";
-import { simulateDomesticCup } from "./domesticCup.js";
+import { agePerformanceModifier, adjustAttributes } from "./playerDevelopment.js?v=49";
+import {
+  applyDivisionMovement,
+  divisionMoveSlots,
+  findSisterLeagues,
+  qualificationForPosition,
+} from "./leaguePhase.js?v=45";
+import { simulateLeagueSeason } from "./leagueFixtures.js?v=45";
+import {
+  simulateEuropeanCampaign,
+  simulateEuropeanFinalsShowcase,
+} from "./europeanCompetition.js?v=49";
+import { simulateDomesticCup } from "./domesticCup.js?v=49";
 import { simulateIndividualAwards } from "./individualAwards.js";
-import { clubNameForDisplay, clamp, pickRandom, randFloat, randInt } from "../utils/helpers.js";
+import { simulateInternationalSeason } from "./nationalTeam.js?v=49";
+import { clubNameForDisplay, clamp, pickRandom, randFloat } from "../utils/helpers.js";
 
 /** How much an assist counts vs a goal for “match impact” by position. */
 function assistWeightForPosition(position) {
@@ -113,179 +123,188 @@ export function simulateSeason(player, leagues, leagueLookup) {
   const profile = POSITION_PROFILES[player.position] || POSITION_PROFILES.DEFAULT;
   const seasonIndex = player.seasons.length;
   const age = player.age + 1;
-  const matches = randInt(20, 44);
+  const league = leagueLookup.get(player.club.league) || pickRandom(leagues);
+  const formSeed = 65 + (player.rating - 65) * 0.8 + randFloat(-6, 8);
+
+  const leagueSim = simulateLeagueSeason(league, player, formSeed);
+  const sisters = findSisterLeagues(league, leagues);
+  const { promoteSlots, relegateSlots } = divisionMoveSlots(league, sisters);
+
+  leagueSim.table.forEach((row) => {
+    row.qualification = qualificationForPosition(row.position, league, sisters);
+    if (sisters.higher && row.position <= promoteSlots) row.divisionMove = "promoted";
+    if (sisters.lower && row.position > leagueSim.table.length - relegateSlots) row.divisionMove = "relegated";
+  });
+
+  const playerRow = leagueSim.playerRecord;
+  if (playerRow) {
+    playerRow.qualification = qualificationForPosition(playerRow.position, league, sisters);
+    playerRow.divisionMove = leagueSim.table.find((r) => r.name === playerRow.name)?.divisionMove || null;
+  }
+
+  let matches = leagueSim.playerMatchStats.played;
+  let goals = leagueSim.playerMatchStats.goals;
+  let assists = leagueSim.playerMatchStats.assists;
+  let cleanSheets = 0;
+  if (player.position === "GK") {
+    cleanSheets = leagueSim.playerMatches.filter((m) => {
+      const conceded = m.playerSide === "home" ? m.awayGoals : m.homeGoals;
+      return conceded === 0;
+    }).length;
+  } else if (["CB", "RB", "LB", "CDM"].includes(player.position)) {
+    cleanSheets = leagueSim.playerMatches.filter((m) => {
+      const conceded = m.playerSide === "home" ? m.awayGoals : m.homeGoals;
+      return conceded === 0 && Math.random() < 0.55;
+    }).length;
+  }
+
+  const standing = playerRow
+    ? {
+        position: playerRow.position,
+        points: playerRow.points,
+        qualification: playerRow.qualification,
+        divisionMove: playerRow.divisionMove || null,
+        record: { wins: playerRow.wins, draws: playerRow.draws, losses: playerRow.losses },
+        matches: playerRow.matches,
+        goalDiff: playerRow.goalDiff,
+        strength: playerRow.strength,
+        table: leagueSim.table,
+      }
+    : null;
+
+  let yellowCards = leagueSim.playerMatchStats.yellow;
+  let redCards = leagueSim.playerMatchStats.red;
+
+  const domesticCupResult = simulateDomesticCup(league, formSeed, standing, player);
+  for (const m of domesticCupResult.playerMatches || []) {
+    goals += m.playerStats?.goals || 0;
+    assists += m.playerStats?.assists || 0;
+    yellowCards += m.playerStats?.yellow || 0;
+    redCards += m.playerStats?.red || 0;
+  }
+
+  let europeanCampaign = simulateEuropeanCampaign({ standing, league, performanceScore: formSeed, player });
+  if (!europeanCampaign) {
+    europeanCampaign = simulateEuropeanFinalsShowcase(league);
+  } else {
+    for (const m of europeanCampaign.playerMatches || []) {
+      goals += m.playerStats?.goals || 0;
+      assists += m.playerStats?.assists || 0;
+      yellowCards += m.playerStats?.yellow || 0;
+      redCards += m.playerStats?.red || 0;
+    }
+  }
+
+  // Provisional club form for national call-up decisions
+  const clubRated = [
+    ...(leagueSim.playerMatches || []),
+    ...(domesticCupResult.playerMatches || []),
+    ...((europeanCampaign?.qualified !== false && europeanCampaign?.playerMatches) || []),
+  ].filter((m) => m.playerStats?.rating != null);
+  const clubFormAvg =
+    clubRated.length > 0
+      ? clubRated.reduce((s, m) => s + m.playerStats.rating, 0) / clubRated.length
+      : 6.8;
+
+  const calendarYear = (player.startYear || new Date().getFullYear()) + seasonIndex;
+  const internationalSeason = simulateInternationalSeason({
+    player,
+    calendarYear,
+    avgMatchRating: clubFormAvg,
+  });
+  for (const m of internationalSeason.playerMatches || []) {
+    goals += m.playerStats?.goals || 0;
+    assists += m.playerStats?.assists || 0;
+    yellowCards += m.playerStats?.yellow || 0;
+    redCards += m.playerStats?.red || 0;
+  }
+
+  // True average of per-match ratings (WhoScored-style), then blend with output model
+  const ratedMatches = [
+    ...clubRated,
+    ...(internationalSeason.playerMatches || []).filter((m) => m.playerStats?.rating != null),
+  ];
+
+  const liveAvg =
+    ratedMatches.length > 0
+      ? ratedMatches.reduce((s, m) => s + m.playerStats.rating, 0) / ratedMatches.length
+      : null;
+
   const ageModifier = agePerformanceModifier(age);
-  const formModifier = randFloat(0.85, 1.18);
-  const ratingInfluence = player.rating / 100;
-
-  const goalRate = profile.goalRate * ratingInfluence * ageModifier * formModifier;
-  const assistRate = profile.assistRate * ratingInfluence * ageModifier * randFloat(0.9, 1.1);
-  const cleanSheetRate = profile.cleanSheetRate * ratingInfluence * Math.min(1.1, ageModifier + 0.1);
-
-  const goals = Math.round(matches * goalRate * randFloat(0.7, 1.25));
-  const assists = Math.round(matches * assistRate * randFloat(0.7, 1.25));
-  const cleanSheets = Math.round(matches * cleanSheetRate * randFloat(0.8, 1.2));
-
-  const avgMatchRating = computeAvgMatchRatingFromOutput({
+  const outputAvg = computeAvgMatchRatingFromOutput({
     position: player.position,
     profile,
-    matches,
+    matches: Math.max(1, matches),
     goals,
     assists,
     cleanSheets,
-    ratingInfluence,
+    ratingInfluence: player.rating / 100,
     ageModifier,
   });
+  const avgMatchRating = parseFloat(
+    (liveAvg != null ? liveAvg * 0.72 + outputAvg * 0.28 : outputAvg).toFixed(2)
+  );
 
   const performanceScore =
-    avgMatchRating * 10 +
+    avgMatchRating * 11 +
     goals * (profile.goalRate > 0.2 ? 2.3 : 1.2) +
     assists * 1.5 +
     cleanSheets * (profile.cleanSheetRate > 0.25 ? 2 : 1);
 
-  // Dynamic potential (hidden ceiling): big seasons raise it; anonymous youth seasons chip it down slightly
   if (age <= 30) {
     if (player.position === "GK") {
       const csRate = matches > 0 ? cleanSheets / matches : 0;
-      if (cleanSheets >= 14 && csRate >= 0.36) {
-        player.potential = clamp(player.potential + randFloat(1.0, 3.0), player.rating + 1, 99);
-      } else if (cleanSheets >= 10 && csRate >= 0.28) {
-        player.potential = clamp(player.potential + randFloat(0.45, 1.7), player.rating + 1, 97);
-      } else if (cleanSheets <= 4 && matches >= 24) {
-        player.potential = Math.max(player.rating + 1, player.potential - randFloat(0.12, 0.65));
-      }
+      if (cleanSheets >= 14 && csRate >= 0.36) player.potential = clamp(player.potential + randFloat(1.0, 3.0), player.rating + 1, 99);
+      else if (cleanSheets >= 10 && csRate >= 0.28) player.potential = clamp(player.potential + randFloat(0.45, 1.7), player.rating + 1, 97);
+      else if (cleanSheets <= 4 && matches >= 24) player.potential = Math.max(player.rating + 1, player.potential - randFloat(0.12, 0.65));
     } else {
       const contrib = goals + assists;
-      if (contrib >= 32) {
-        player.potential = clamp(player.potential + randFloat(1.2, 3.8), player.rating + 1, 99);
-      } else if (contrib >= 24) {
-        player.potential = clamp(player.potential + randFloat(0.65, 2.2), player.rating + 1, 98);
-      } else if (contrib >= 18 && performanceScore > 80) {
-        player.potential = clamp(player.potential + randFloat(0.3, 1.35), player.rating + 1, 96);
-      }
+      if (contrib >= 32) player.potential = clamp(player.potential + randFloat(1.2, 3.8), player.rating + 1, 99);
+      else if (contrib >= 24) player.potential = clamp(player.potential + randFloat(0.65, 2.2), player.rating + 1, 98);
+      else if (contrib >= 18 && performanceScore > 80) player.potential = clamp(player.potential + randFloat(0.3, 1.35), player.rating + 1, 96);
       const quietThreshold = Math.max(4, Math.round(matches * (profile.goalRate + profile.assistRate) * 0.28));
-      if (contrib < quietThreshold && matches >= 22) {
-        player.potential = Math.max(player.rating + 1, player.potential - randFloat(0.12, 0.7));
-      }
+      if (contrib < quietThreshold && matches >= 22) player.potential = Math.max(player.rating + 1, player.potential - randFloat(0.12, 0.7));
     }
   }
 
-  // More realistic and random rating changes based on performance
   let ratingDelta = 0;
-  
-  // Excellent performance - significant boost
-  if (performanceScore > 92) {
-    ratingDelta = randFloat(2.0, 4.0);
-  } 
-  // Very good performance - good boost
-  else if (performanceScore > 85) {
-    ratingDelta = randFloat(1.0, 2.5);
-  } 
-  // Good performance - moderate boost
-  else if (performanceScore > 78) {
-    ratingDelta = randFloat(0.2, 1.8);
-  } 
-  // Average performance - can go either way, slight bias toward staying same
-  else if (performanceScore > 68) {
-    ratingDelta = randFloat(-0.5, 1.2); // Can decrease with average performance
-  } 
-  // Below average - often decreases
-  else if (performanceScore > 58) {
-    ratingDelta = randFloat(-1.2, 0.5); // More likely to decrease
-  } 
-  // Poor performance - decreases
-  else if (performanceScore > 45) {
-    ratingDelta = -randFloat(0.5, 2.0);
-  } 
-  // Very poor performance - significant decrease
-  else if (performanceScore > 34) {
-    ratingDelta = -randFloat(1.5, 3.0);
-  } 
-  // Terrible performance - large decrease
-  else {
-    ratingDelta = -randFloat(2.5, 4.5);
-  }
+  if (performanceScore > 92) ratingDelta = randFloat(2.0, 4.0);
+  else if (performanceScore > 85) ratingDelta = randFloat(1.0, 2.5);
+  else if (performanceScore > 78) ratingDelta = randFloat(0.2, 1.8);
+  else if (performanceScore > 68) ratingDelta = randFloat(-0.5, 1.2);
+  else if (performanceScore > 58) ratingDelta = randFloat(-1.2, 0.5);
+  else if (performanceScore > 45) ratingDelta = -randFloat(0.5, 2.0);
+  else if (performanceScore > 34) ratingDelta = -randFloat(1.5, 3.0);
+  else ratingDelta = -randFloat(2.5, 4.5);
 
-  // Performance-based adjustments from stats
-  const expectedGoals = matches * profile.goalRate;
-  const expectedAssists = matches * profile.assistRate;
-  const expectedCleanSheets = matches * profile.cleanSheetRate;
+  // Season average match rating (WhoScored scale) pulls OVR hard
+  if (avgMatchRating >= 8.2) ratingDelta += randFloat(0.55, 1.35);
+  else if (avgMatchRating >= 7.6) ratingDelta += randFloat(0.25, 0.75);
+  else if (avgMatchRating >= 7.1) ratingDelta += randFloat(0.05, 0.35);
+  else if (avgMatchRating < 6.2) ratingDelta -= randFloat(0.35, 1.1);
+  else if (avgMatchRating < 6.6) ratingDelta -= randFloat(0.1, 0.45);
 
-  // Stats impact - can be positive or negative
-  const goalsImpact = clamp((goals - expectedGoals) * 0.05, -1.8, 1.8);
-  const assistsImpact = clamp((assists - expectedAssists) * 0.04, -1.4, 1.4);
-  ratingDelta += goalsImpact;
-  ratingDelta += assistsImpact;
-
-  if (["GK", "RB", "LB", "CB", "CDM"].includes(player.position)) {
-    const cleanSheetsImpact = clamp((cleanSheets - expectedCleanSheets) * 0.035, -1.3, 1.3);
-    ratingDelta += cleanSheetsImpact;
-  }
-
-  // Add more randomness - simulation variability
-  ratingDelta += randFloat(-0.6, 0.6); // Increased randomness
-
-  if (age >= 30) {
-    ratingDelta -= randFloat(0.3, 1.5);
-  }
-
-  // Young-player breakout potential boosts; stop awarding after ~27.
-  const breakoutBoost = age <= 27
-    ? (
-        performanceScore > 118
-          ? randFloat(1.4, 2.6)
-          : performanceScore > 98
-          ? randFloat(0.6, 1.6)
-          : performanceScore > 80
-          ? randFloat(0.2, 0.8)
-          : 0
-      )
-    : 0;
-
-  if (breakoutBoost > 0) {
-    const ceilingCap = 98;
-    const minCeiling = Math.min(player.rating + Math.max(ratingDelta, 0) + 1, ceilingCap);
-    player.potential = clamp(player.potential + breakoutBoost, minCeiling, ceilingCap);
-  }
-
-  if (age >= 28 && performanceScore < 55) {
-    const drop = randFloat(0.2, 0.9);
-    player.potential = Math.max(player.rating + 1, player.potential - drop);
-  }
-
-  // Natural ageing decline after 34: enforce negative drift and limit positives.
+  ratingDelta += clamp((goals - matches * profile.goalRate) * 0.05, -1.8, 1.8);
+  ratingDelta += clamp((assists - matches * profile.assistRate) * 0.04, -1.4, 1.4);
+  if (age >= 30) ratingDelta -= (age - 29) * 0.12;
+  if (age <= 27 && performanceScore > 88) ratingDelta += randFloat(0.15, 0.55);
+  if (age >= 28 && performanceScore < 55) ratingDelta -= randFloat(0.2, 0.8);
   if (age >= 34) {
-    // Cap positive growth when mid-30s+; allow only very small upticks.
-    if (ratingDelta > 0) {
-      ratingDelta = Math.min(ratingDelta, age <= 35 ? 0.3 : 0.15);
-    }
-    const over = age - 34; // 34 -> 0
-    const declineBase = 0.45 + over * 0.35; // grows with age
-    ratingDelta -= clamp(randFloat(declineBase * 0.8, declineBase * 1.2), 0.2, 4.5);
+    if (ratingDelta > 0) ratingDelta = Math.min(ratingDelta, age <= 35 ? 0.3 : 0.15);
+    const declineBase = 0.45 + (age - 34) * 0.35;
+    if (ratingDelta > -declineBase) ratingDelta = -declineBase + randFloat(-0.35, 0.15);
   }
-
-  if (player.rating + ratingDelta > player.potential) {
-    ratingDelta = Math.max(0, player.potential - player.rating);
-  }
-
-  // Slight youth variance only — removed guaranteed early-career boost so progression isn’t always up
-  if (seasonIndex < 3 && ratingDelta > 0 && randFloat(0, 1) < 0.45) {
-    ratingDelta += randFloat(0, 0.35);
-  }
-
+  if (seasonIndex < 3 && ratingDelta > 0 && randFloat(0, 1) < 0.45) ratingDelta += randFloat(0, 0.35);
   ratingDelta = clamp(ratingDelta, -5.5, 5.5);
 
   const previousRating = player.rating;
   const newRating = clamp(Math.round(previousRating + ratingDelta), 40, 99);
   const ratingChange = newRating - previousRating;
-
-  // Store previous attributes for comparison
   const previousAttributes = { ...player.attributes };
 
   player.age = age;
   player.rating = newRating;
   adjustAttributes(player, profile.growthBias, ratingChange !== 0 ? ratingChange : ratingDelta);
-  // Reduce potential gradually after early 30s regardless of performance.
   if (age >= 33) {
     const decay = age >= 37 ? randFloat(0.7, 1.6) : randFloat(0.3, 1.0);
     player.potential = Math.max(newRating + 1, player.potential - decay);
@@ -295,61 +314,59 @@ export function simulateSeason(player, leagues, leagueLookup) {
   player.careerTotals.assists += assists;
   player.careerTotals.cleanSheets += cleanSheets;
 
-  const league = leagueLookup.get(player.club.league) || pickRandom(leagues);
-  const standings = generateLeagueTable(league, player.club.name, performanceScore, player);
-  const standing = standings.playerRecord
-    ? {
-        position: standings.playerRecord.position,
-        points: standings.playerRecord.points,
-        qualification: standings.playerRecord.qualification,
-        record: {
-          wins: standings.playerRecord.wins,
-          draws: standings.playerRecord.draws,
-          losses: standings.playerRecord.losses,
-        },
-        matches: standings.playerRecord.matches,
-        goalDiff: standings.playerRecord.goalDiff,
-        strength: standings.playerRecord.strength,
-        table: standings.table,
-      }
-    : null;
-
-  const europeanCampaign = simulateEuropeanCampaign({ standing, league, performanceScore, player });
-  const domesticCupResult = simulateDomesticCup(league, performanceScore, standing, player);
-  
-  // Create season data for awards calculation
-  const seasonData = {
-    goals,
-    assists,
-    cleanSheets,
-    matches,
-    league: player.club.league
-  };
-  
-  const individualAwards = simulateIndividualAwards(performanceScore, seasonData, player, leagueLookup);
+  const individualAwards = simulateIndividualAwards(
+    performanceScore,
+    { goals, assists, cleanSheets, matches, league: player.club.league },
+    player,
+    leagueLookup
+  );
   const trophies = [];
-
   if (standing && standing.position === 1) {
     player.careerHonors.leagueTitles += 1;
-    trophies.push(`${league.displayName ?? league.name} Champions`);
+    trophies.push({
+      kind: "league",
+      label: `${league.displayName ?? league.name} Champions`,
+      competition: league.displayName ?? league.name,
+      simKey: league.name,
+    });
   }
   if (domesticCupResult?.won) {
     player.careerHonors.domesticCups += 1;
-    trophies.push(`${league.nation} Cup Winners`);
+    const cupName = domesticCupResult.name || `${league.nation} Cup`;
+    trophies.push({
+      kind: "cup",
+      label: `${cupName} Winners`,
+      competition: cupName,
+      simKey: cupName,
+    });
   }
-  if (europeanCampaign?.won) {
+  if (europeanCampaign?.won && europeanCampaign?.qualified !== false) {
     player.careerHonors.europeanTitles += 1;
-    trophies.push(`${europeanCampaign.competition} Winners`);
+    trophies.push({
+      kind: "continental",
+      label: `${europeanCampaign.competition} Winners`,
+      competition: europeanCampaign.competition,
+      simKey: europeanCampaign.competition,
+    });
   }
-  if (individualAwards.length) {
-    player.careerHonors.individualAwards += individualAwards.length;
+  if (internationalSeason?.primary?.won) {
+    if (!player.careerHonors.internationalTitles) player.careerHonors.internationalTitles = 0;
+    player.careerHonors.internationalTitles += 1;
+    const intlName = internationalSeason.primary.name;
+    trophies.push({
+      kind: "international",
+      label: `${intlName} Winners`,
+      competition: intlName,
+      simKey: intlName,
+    });
   }
+  if (individualAwards.length) player.careerHonors.individualAwards += individualAwards.length;
 
   const honors = trophies.length
-    ? trophies[0]
+    ? trophies[0].label
     : standing
-    ? standing.qualification || null
-    : null;
+      ? standing.qualification || null
+      : null;
 
   const season = {
     seasonNumber: seasonIndex + 1,
@@ -363,44 +380,50 @@ export function simulateSeason(player, leagues, leagueLookup) {
     goals,
     assists,
     cleanSheets,
+    yellowCards,
+    redCards,
     avgMatchRating,
     ratingChange,
     ratingAfter: newRating,
     standing,
     honors,
     europeanCampaign,
+    internationalSeason,
     domesticCupResult,
     individualAwards,
     trophies,
+    divisionMove: null,
+    leagueMatches: leagueSim.playerMatches,
   };
 
   player.seasons.push(season);
   player.latestStanding = standing
-    ? {
-        league: league.name,
-        leagueDisplay: league.displayName ?? league.name,
-        table: standings.table,
-        playerRow: standings.playerRecord,
-      }
+    ? { league: league.name, leagueDisplay: league.displayName ?? league.name, table: leagueSim.table, playerRow }
     : null;
 
-  // Calculate attribute changes
+  const divisionMove = applyDivisionMovement(player, playerRow, league, leagues);
+  if (divisionMove) {
+    season.divisionMove = divisionMove;
+    if (standing) standing.divisionMove = divisionMove.type;
+  }
+
   const attributeChanges = {};
-  STATS_KEYS.forEach(key => {
+  STATS_KEYS.forEach((key) => {
     attributeChanges[key] = {
       old: previousAttributes[key],
       new: player.attributes[key],
-      change: player.attributes[key] - previousAttributes[key]
+      change: player.attributes[key] - previousAttributes[key],
     };
   });
 
-  return { 
-    season, 
-    league, 
-    standings, 
-    europeanCampaign, 
-    domesticCupResult, 
-    individualAwards, 
+  return {
+    season,
+    league,
+    standings: { table: leagueSim.table, playerRecord: playerRow },
+    europeanCampaign,
+    internationalSeason,
+    domesticCupResult,
+    individualAwards,
     attributeChanges,
     previousRating,
     newRating,

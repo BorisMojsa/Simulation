@@ -222,15 +222,30 @@ function buildOfferMessage(league, club, playerPosition) {
   return `${clubName} (${league.displayName ?? league.name}) ${pickRandom(hooks)}.`;
 }
 
-export function generateTransferOffers(performanceScore, player, leagues, leagueLookup) {
+export function generateTransferOffers(performanceScore, player, leagues, leagueLookup, avgMatchRating = null) {
   const offers = [];
   const seen = new Set();
   const currentSeason = player.seasons.length;
+  const formBoost =
+    avgMatchRating == null
+      ? 0
+      : avgMatchRating >= 8.0
+        ? 18
+        : avgMatchRating >= 7.5
+          ? 10
+          : avgMatchRating >= 7.0
+            ? 4
+            : avgMatchRating < 6.3
+              ? -14
+              : avgMatchRating < 6.7
+                ? -6
+                : 0;
+  const effectivePerf = performanceScore + formBoost;
 
   if (player.contractEndSeason !== null && currentSeason >= player.contractEndSeason) {
-    const renewalInterest = calculateRenewalInterest(player, performanceScore);
+    const renewalInterest = calculateRenewalInterest(player, effectivePerf);
     if (renewalInterest > 0) {
-      const renewalOffer = generateRenewalOffer(player, performanceScore, leagueLookup);
+      const renewalOffer = generateRenewalOffer(player, effectivePerf, leagueLookup);
       if (renewalOffer) {
         offers.push(renewalOffer);
         seen.add(`${player.club.league}:${player.club.name}`);
@@ -263,23 +278,30 @@ export function generateTransferOffers(performanceScore, player, leagues, league
     seen.add(parentKey);
   }
 
-  const interestScore = performanceScore + player.rating * 1.5;
+  const interestScore = effectivePerf + player.rating * 1.5;
   let chance = Math.min(0.92, 0.22 + interestScore / 240);
-  if (performanceScore < 55) chance *= 0.6;
-  if (performanceScore < 45) chance *= 0.35;
+  if (effectivePerf < 55) chance *= 0.6;
+  if (effectivePerf < 45) chance *= 0.35;
+  if (avgMatchRating != null && avgMatchRating >= 7.8) chance = Math.min(0.96, chance + 0.12);
   if (Math.random() > chance) {
     return offers;
   }
 
   const baseSlots = Math.min(4, 1 + Math.floor(player.rating / 20));
-  const performanceMultiplier = performanceScore > 95 ? 1.7 : performanceScore > 80 ? 1.3 : performanceScore < 55 ? 0.6 : 1;
+  const performanceMultiplier =
+    effectivePerf > 95 ? 1.7 : effectivePerf > 80 ? 1.3 : effectivePerf < 55 ? 0.6 : 1;
+  const formSlots =
+    avgMatchRating != null && avgMatchRating >= 8.0 ? 1 : avgMatchRating != null && avgMatchRating >= 7.5 ? 0.5 : 0;
 
-  const targetOffers = Math.max(offers.length || 1, Math.round(baseSlots * performanceMultiplier));
+  const targetOffers = Math.max(
+    offers.length || 1,
+    Math.round(baseSlots * performanceMultiplier + formSlots)
+  );
   let safety = 0;
 
   while (offers.length < targetOffers && safety < 160) {
     safety += 1;
-    const league = weightedLeague({ performanceScore, player, leagues });
+    const league = weightedLeague({ performanceScore: effectivePerf, player, leagues });
     const club = pickRandom(league.clubs);
     if (!club) continue;
 
@@ -290,10 +312,14 @@ export function generateTransferOffers(performanceScore, player, leagues, league
     const requiredTier = financialTierRequirement(player.rating);
     const ratingTier = tierFromRating(player.rating);
 
-    if (clubFinancial < requiredTier) continue;
-    if (league.tier < Math.max(3, ratingTier - 1)) continue;
+    // Hot form opens doors at richer clubs
+    const formTierRelax =
+      avgMatchRating != null && avgMatchRating >= 7.8 ? 1 : avgMatchRating != null && avgMatchRating >= 7.4 ? 0 : 0;
 
-    if (performanceScore < 50 && league.tier >= ratingTier + 1 && Math.random() > 0.35) {
+    if (clubFinancial < requiredTier - formTierRelax) continue;
+    if (league.tier < Math.max(3, ratingTier - 1 - (avgMatchRating >= 7.6 ? 1 : 0))) continue;
+
+    if (effectivePerf < 50 && league.tier >= ratingTier + 1 && Math.random() > 0.35) {
       continue;
     }
 
@@ -310,7 +336,7 @@ export function generateTransferOffers(performanceScore, player, leagues, league
 
     if (transferFee > clubBudget) continue;
 
-    const contractYears = calculateContractLength(player.age, player.rating, player.potential, performanceScore);
+    const contractYears = calculateContractLength(player.age, player.rating, player.potential, effectivePerf);
 
     seen.add(key);
     offers.push({
