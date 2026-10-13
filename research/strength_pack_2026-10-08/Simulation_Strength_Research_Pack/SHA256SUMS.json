@@ -1,0 +1,13 @@
+{
+  "README.md": "e7d880ad03ca23c26ebe73b1cb04afab2b1d446284f754ffe5fc883094020ed5",
+  "Simulation_Cursor_Researched_Strength_Prompt.txt": "eeb1717e63751399513b12c7aa532554efb27787211f047d528615304125a26f",
+  "calibration_diagnostics.json": "74bd5c9b51f10681672c024ed6a6876f3413d2f67f5d871962cbec13cc239666",
+  "clubelo_observations_existing_35.json": "331172070caa82aa3aa5297be123227942065f38928b7475e5106a7d79bd7864",
+  "cross_provider_anchor_pairs.json": "68f8527221462b6b2b7a32d5a0da12e9d05074955c3b0c15afe28421119b1e5b",
+  "historical_source_manifest.json": "3fd4bd25404309e55b36eb09bc6956ef94cad1865ca7769a44a9e95f1ce01bbf",
+  "raw_clubelo_country_tables.json": "6ceec5cffc8fe0760d1a931e6752c142518a2dc1057e6a88801be64cdafdd1c8",
+  "raw_footballdatabase_country_tables.json": "020d73638571dd08647a0b2ca8ac39693aa212a848ba6931a79a0c83fbe267c5",
+  "replacement_observations_455.csv": "c63a9b75825250996f44ea82c76b1e0ead611ee8a7e2e16d14e72f5955f8c9cf",
+  "replacement_observations_455.json": "1754b64da067d65117d7af2336aa6f7028d5acff027f4de6cda9761a5b2ce2a0",
+  "research_coverage_summary.json": "17da9b72d130f3af95dadf60a4e2ebd98463f7590d24f715cdd917b247ad5cd2"
+}

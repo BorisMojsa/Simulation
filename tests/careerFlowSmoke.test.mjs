@@ -216,10 +216,13 @@ test("createPlayerIdentity + finalize + narrative season + first pro deal choice
   assert.equal(pl.age, 17);
   finalizeAcademyPlayer(pl, pickThreeAcademies(ACADEMY_POOL, "England", "Test")[0].academy);
   assert.ok(pl.rating >= 54 && pl.rating <= 78);
-  assert.ok(pl.potential > pl.rating);
+  // Forecast upper may equal base; potential is not forced to rating+1.
+  assert.ok(pl.potential >= pl.rating && pl.potential <= 99);
   const before = pl.rating;
   const applied = applyOpeningChoiceResult(pl, 3, { min: 50, max: 88 });
-  assert.equal(applied, Math.min(88, before + 3) - before);
+  // Academy growth mutates attributes; realized displayed Δ may differ from the legacy request.
+  assert.equal(typeof applied, "number");
+  assert.ok(applied >= 0 && applied <= 4, `realized academy Δ ${applied}`);
   assert.equal(pl.rating, before + applied);
   const season = buildNarrativeAcademySeason(pl, before, pl.rating);
   assert.ok(season.matches > 0);
@@ -227,13 +230,19 @@ test("createPlayerIdentity + finalize + narrative season + first pro deal choice
   assert.equal(season.age, 17);
   pl.seasons.push(season);
   const decision = buildFirstProContractDecision(pl);
-  assert.ok(decision.offers.length >= 1);
   assert.ok(decision.verdict.headline);
-  const seniorName = signFirstProfessionalContract(pl, decision.offers[0]);
-  assert.equal(pl.club.isAcademy, false);
-  assert.ok(seniorName || pl.club?.name);
-  assert.ok(pl.contractYears >= 1);
-  assert.ok(pl.contractEndSeason >= pl.seasons.length);
+  // Suitable clubs only — empty is allowed, but ordinary England academy grads usually get ≥1.
+  if (decision.offers.length >= 1) {
+    const seniorName = signFirstProfessionalContract(pl, decision.offers[0]);
+    assert.equal(pl.club.isAcademy, false);
+    assert.ok(seniorName || pl.club?.name);
+    assert.ok(pl.contractYears >= 1);
+    assert.ok(pl.contractEndSeason >= pl.seasons.length);
+    assert.ok(Number.isFinite(pl.weeklyWage) || Number.isFinite(pl.wage));
+  } else {
+    assert.equal(decision.emptyOffers, true);
+    assert.equal(pl.club.isAcademy, true);
+  }
 });
 
 test("club rivals map covers Eternal Derby and El Clasico sides", () => {

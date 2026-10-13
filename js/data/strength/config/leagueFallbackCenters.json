@@ -1,0 +1,31 @@
+{
+  "notes": "Centers used only when a league has fewer than 2 verified Opta anchors. These are priors for provisional_estimate, not verified ratings.",
+  "centers": {
+    "England - Premier League": { "center": 88, "spread": 6 },
+    "England - Championship": { "center": 74, "spread": 5 },
+    "Germany - Bundesliga": { "center": 85, "spread": 6 },
+    "Germany - 2. Bundesliga": { "center": 71, "spread": 5 },
+    "Spain - La Liga": { "center": 84, "spread": 6 },
+    "Spain - LaLiga 2": { "center": 70, "spread": 5 },
+    "Italy - Serie A": { "center": 84, "spread": 6 },
+    "Italy - Serie B": { "center": 69, "spread": 5 },
+    "France - Ligue 1": { "center": 81, "spread": 6 },
+    "France - Ligue 2": { "center": 67, "spread": 5 },
+    "Portugal - Primeira Liga": { "center": 78, "spread": 6 },
+    "Netherlands - Eredivisie": { "center": 76, "spread": 6 },
+    "Belgium - Belgian Pro League": { "center": 75, "spread": 5 },
+    "Denmark - Superliga": { "center": 71, "spread": 4 },
+    "Türkiye - Süper Lig": { "center": 74, "spread": 5 },
+    "Norway - Eliteserien": { "center": 69, "spread": 4 },
+    "Poland - Ekstraklasa": { "center": 68, "spread": 4 },
+    "Czechia - Czech First League": { "center": 69, "spread": 4 },
+    "Croatia - HNL": { "center": 68, "spread": 5 },
+    "Serbia - SuperLiga": { "center": 67, "spread": 5 },
+    "Brazil - Brasileirão Série A": { "center": 77, "spread": 5 },
+    "Argentina - Liga Profesional": { "center": 74, "spread": 5 },
+    "Colombia - Categoría Primera A": { "center": 68, "spread": 4 },
+    "Ecuador - LigaPro Serie A": { "center": 66, "spread": 4 },
+    "Mexico - Liga MX": { "center": 72, "spread": 4 },
+    "United States - MLS": { "center": 71, "spread": 4 }
+  }
+}

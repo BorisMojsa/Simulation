@@ -1,0 +1,843 @@
+{
+  "schemaVersion": 1,
+  "count": 79,
+  "mappings": [
+    {
+      "nationId": "nation:algeria",
+      "canonicalName": "Algeria",
+      "provider": "fifa",
+      "providerAliases": [
+        "Algeria"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:angola",
+      "canonicalName": "Angola",
+      "provider": "fifa",
+      "providerAliases": [
+        "Angola"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:argentina",
+      "canonicalName": "Argentina",
+      "provider": "fifa",
+      "providerAliases": [
+        "Argentina"
+      ],
+      "confederation": "CONMEBOL",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:australia",
+      "canonicalName": "Australia",
+      "provider": "fifa",
+      "providerAliases": [
+        "Australia"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:austria",
+      "canonicalName": "Austria",
+      "provider": "fifa",
+      "providerAliases": [
+        "Austria"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:belgium",
+      "canonicalName": "Belgium",
+      "provider": "fifa",
+      "providerAliases": [
+        "Belgium"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:bolivia",
+      "canonicalName": "Bolivia",
+      "provider": "fifa",
+      "providerAliases": [
+        "Bolivia"
+      ],
+      "confederation": "CONMEBOL",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:bosnia-and-herzegovina",
+      "canonicalName": "Bosnia and Herzegovina",
+      "provider": "fifa",
+      "providerAliases": [
+        "Bosnia and Herzegovina"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:brazil",
+      "canonicalName": "Brazil",
+      "provider": "fifa",
+      "providerAliases": [
+        "Brazil"
+      ],
+      "confederation": "CONMEBOL",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:bulgaria",
+      "canonicalName": "Bulgaria",
+      "provider": "fifa",
+      "providerAliases": [
+        "Bulgaria"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:cameroon",
+      "canonicalName": "Cameroon",
+      "provider": "fifa",
+      "providerAliases": [
+        "Cameroon"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:canada",
+      "canonicalName": "Canada",
+      "provider": "fifa",
+      "providerAliases": [
+        "Canada"
+      ],
+      "confederation": "CONCACAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:cape-verde",
+      "canonicalName": "Cape Verde",
+      "provider": "fifa",
+      "providerAliases": [
+        "Cabo Verde",
+        "Cape Verde"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:chile",
+      "canonicalName": "Chile",
+      "provider": "fifa",
+      "providerAliases": [
+        "Chile"
+      ],
+      "confederation": "CONMEBOL",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:china",
+      "canonicalName": "China",
+      "provider": "fifa",
+      "providerAliases": [
+        "China PR",
+        "China"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:colombia",
+      "canonicalName": "Colombia",
+      "provider": "fifa",
+      "providerAliases": [
+        "Colombia"
+      ],
+      "confederation": "CONMEBOL",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:costa-rica",
+      "canonicalName": "Costa Rica",
+      "provider": "fifa",
+      "providerAliases": [
+        "Costa Rica"
+      ],
+      "confederation": "CONCACAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:croatia",
+      "canonicalName": "Croatia",
+      "provider": "fifa",
+      "providerAliases": [
+        "Croatia"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:curacao",
+      "canonicalName": "Curaçao",
+      "provider": "fifa",
+      "providerAliases": [
+        "Curaçao"
+      ],
+      "confederation": "CONCACAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:czech-republic",
+      "canonicalName": "Czech Republic",
+      "provider": "fifa",
+      "providerAliases": [
+        "Czechia",
+        "Czech Republic"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:denmark",
+      "canonicalName": "Denmark",
+      "provider": "fifa",
+      "providerAliases": [
+        "Denmark"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:dr-congo",
+      "canonicalName": "DR Congo",
+      "provider": "fifa",
+      "providerAliases": [
+        "Congo DR",
+        "DR Congo",
+        "Democratic Republic of the Congo"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:ecuador",
+      "canonicalName": "Ecuador",
+      "provider": "fifa",
+      "providerAliases": [
+        "Ecuador"
+      ],
+      "confederation": "CONMEBOL",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:egypt",
+      "canonicalName": "Egypt",
+      "provider": "fifa",
+      "providerAliases": [
+        "Egypt"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:england",
+      "canonicalName": "England",
+      "provider": "fifa",
+      "providerAliases": [
+        "England"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:france",
+      "canonicalName": "France",
+      "provider": "fifa",
+      "providerAliases": [
+        "France"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:germany",
+      "canonicalName": "Germany",
+      "provider": "fifa",
+      "providerAliases": [
+        "Germany"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:ghana",
+      "canonicalName": "Ghana",
+      "provider": "fifa",
+      "providerAliases": [
+        "Ghana"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:greece",
+      "canonicalName": "Greece",
+      "provider": "fifa",
+      "providerAliases": [
+        "Greece"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:haiti",
+      "canonicalName": "Haiti",
+      "provider": "fifa",
+      "providerAliases": [
+        "Haiti"
+      ],
+      "confederation": "CONCACAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:honduras",
+      "canonicalName": "Honduras",
+      "provider": "fifa",
+      "providerAliases": [
+        "Honduras"
+      ],
+      "confederation": "CONCACAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:hungary",
+      "canonicalName": "Hungary",
+      "provider": "fifa",
+      "providerAliases": [
+        "Hungary"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:iceland",
+      "canonicalName": "Iceland",
+      "provider": "fifa",
+      "providerAliases": [
+        "Iceland"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:iran",
+      "canonicalName": "Iran",
+      "provider": "fifa",
+      "providerAliases": [
+        "IR Iran",
+        "Iran"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:iraq",
+      "canonicalName": "Iraq",
+      "provider": "fifa",
+      "providerAliases": [
+        "Iraq"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:italy",
+      "canonicalName": "Italy",
+      "provider": "fifa",
+      "providerAliases": [
+        "Italy"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:ivory-coast",
+      "canonicalName": "Ivory Coast",
+      "provider": "fifa",
+      "providerAliases": [
+        "Côte d'Ivoire",
+        "Ivory Coast"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:jamaica",
+      "canonicalName": "Jamaica",
+      "provider": "fifa",
+      "providerAliases": [
+        "Jamaica"
+      ],
+      "confederation": "CONCACAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:japan",
+      "canonicalName": "Japan",
+      "provider": "fifa",
+      "providerAliases": [
+        "Japan"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:jordan",
+      "canonicalName": "Jordan",
+      "provider": "fifa",
+      "providerAliases": [
+        "Jordan"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:mali",
+      "canonicalName": "Mali",
+      "provider": "fifa",
+      "providerAliases": [
+        "Mali"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:mexico",
+      "canonicalName": "Mexico",
+      "provider": "fifa",
+      "providerAliases": [
+        "Mexico"
+      ],
+      "confederation": "CONCACAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:morocco",
+      "canonicalName": "Morocco",
+      "provider": "fifa",
+      "providerAliases": [
+        "Morocco"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:netherlands",
+      "canonicalName": "Netherlands",
+      "provider": "fifa",
+      "providerAliases": [
+        "Netherlands"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:new-zealand",
+      "canonicalName": "New Zealand",
+      "provider": "fifa",
+      "providerAliases": [
+        "New Zealand"
+      ],
+      "confederation": "OFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:nigeria",
+      "canonicalName": "Nigeria",
+      "provider": "fifa",
+      "providerAliases": [
+        "Nigeria"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:north-korea",
+      "canonicalName": "North Korea",
+      "provider": "fifa",
+      "providerAliases": [
+        "DPR Korea",
+        "Korea DPR",
+        "North Korea"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:norway",
+      "canonicalName": "Norway",
+      "provider": "fifa",
+      "providerAliases": [
+        "Norway"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:panama",
+      "canonicalName": "Panama",
+      "provider": "fifa",
+      "providerAliases": [
+        "Panama"
+      ],
+      "confederation": "CONCACAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:paraguay",
+      "canonicalName": "Paraguay",
+      "provider": "fifa",
+      "providerAliases": [
+        "Paraguay"
+      ],
+      "confederation": "CONMEBOL",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:peru",
+      "canonicalName": "Peru",
+      "provider": "fifa",
+      "providerAliases": [
+        "Peru"
+      ],
+      "confederation": "CONMEBOL",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:poland",
+      "canonicalName": "Poland",
+      "provider": "fifa",
+      "providerAliases": [
+        "Poland"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:portugal",
+      "canonicalName": "Portugal",
+      "provider": "fifa",
+      "providerAliases": [
+        "Portugal"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:qatar",
+      "canonicalName": "Qatar",
+      "provider": "fifa",
+      "providerAliases": [
+        "Qatar"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:republic-of-ireland",
+      "canonicalName": "Republic of Ireland",
+      "provider": "fifa",
+      "providerAliases": [
+        "Republic of Ireland"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:romania",
+      "canonicalName": "Romania",
+      "provider": "fifa",
+      "providerAliases": [
+        "Romania"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:russia",
+      "canonicalName": "Russia",
+      "provider": "fifa",
+      "providerAliases": [
+        "Russia"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:saudi-arabia",
+      "canonicalName": "Saudi Arabia",
+      "provider": "fifa",
+      "providerAliases": [
+        "Saudi Arabia"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:scotland",
+      "canonicalName": "Scotland",
+      "provider": "fifa",
+      "providerAliases": [
+        "Scotland"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:senegal",
+      "canonicalName": "Senegal",
+      "provider": "fifa",
+      "providerAliases": [
+        "Senegal"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:serbia",
+      "canonicalName": "Serbia",
+      "provider": "fifa",
+      "providerAliases": [
+        "Serbia"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:slovakia",
+      "canonicalName": "Slovakia",
+      "provider": "fifa",
+      "providerAliases": [
+        "Slovakia"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:slovenia",
+      "canonicalName": "Slovenia",
+      "provider": "fifa",
+      "providerAliases": [
+        "Slovenia"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:south-africa",
+      "canonicalName": "South Africa",
+      "provider": "fifa",
+      "providerAliases": [
+        "South Africa"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:south-korea",
+      "canonicalName": "South Korea",
+      "provider": "fifa",
+      "providerAliases": [
+        "Korea Republic",
+        "South Korea"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:spain",
+      "canonicalName": "Spain",
+      "provider": "fifa",
+      "providerAliases": [
+        "Spain"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:sweden",
+      "canonicalName": "Sweden",
+      "provider": "fifa",
+      "providerAliases": [
+        "Sweden"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:switzerland",
+      "canonicalName": "Switzerland",
+      "provider": "fifa",
+      "providerAliases": [
+        "Switzerland"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:togo",
+      "canonicalName": "Togo",
+      "provider": "fifa",
+      "providerAliases": [
+        "Togo"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:trinidad-and-tobago",
+      "canonicalName": "Trinidad and Tobago",
+      "provider": "fifa",
+      "providerAliases": [
+        "Trinidad and Tobago"
+      ],
+      "confederation": "CONCACAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:tunisia",
+      "canonicalName": "Tunisia",
+      "provider": "fifa",
+      "providerAliases": [
+        "Tunisia"
+      ],
+      "confederation": "CAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:turkey",
+      "canonicalName": "Turkey",
+      "provider": "fifa",
+      "providerAliases": [
+        "Türkiye",
+        "Turkey"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:ukraine",
+      "canonicalName": "Ukraine",
+      "provider": "fifa",
+      "providerAliases": [
+        "Ukraine"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:united-arab-emirates",
+      "canonicalName": "United Arab Emirates",
+      "provider": "fifa",
+      "providerAliases": [
+        "United Arab Emirates"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:united-states",
+      "canonicalName": "United States",
+      "provider": "fifa",
+      "providerAliases": [
+        "USA",
+        "United States"
+      ],
+      "confederation": "CONCACAF",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:uruguay",
+      "canonicalName": "Uruguay",
+      "provider": "fifa",
+      "providerAliases": [
+        "Uruguay"
+      ],
+      "confederation": "CONMEBOL",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:uzbekistan",
+      "canonicalName": "Uzbekistan",
+      "provider": "fifa",
+      "providerAliases": [
+        "Uzbekistan"
+      ],
+      "confederation": "AFC",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:venezuela",
+      "canonicalName": "Venezuela",
+      "provider": "fifa",
+      "providerAliases": [
+        "Venezuela"
+      ],
+      "confederation": "CONMEBOL",
+      "matchPolicy": "explicit_unique_alias_only"
+    },
+    {
+      "nationId": "nation:wales",
+      "canonicalName": "Wales",
+      "provider": "fifa",
+      "providerAliases": [
+        "Wales"
+      ],
+      "confederation": "UEFA",
+      "matchPolicy": "explicit_unique_alias_only"
+    }
+  ],
+  "confederationCorrections": [
+    {
+      "nationId": "nation:hungary",
+      "name": "Hungary",
+      "oldConfederation": "FIFA",
+      "correctConfederation": "UEFA",
+      "primarySourceUrl": "https://inside.fifa.com/en/associations/HUN/organisation",
+      "membershipSourceTier": "primary_official_fifa_association_profile",
+      "note": "Correct canonical identity/competition eligibility metadata separately from strength."
+    },
+    {
+      "nationId": "nation:mali",
+      "name": "Mali",
+      "oldConfederation": "FIFA",
+      "correctConfederation": "CAF",
+      "primarySourceUrl": "https://inside.fifa.com/en/associations/MLI/organisation",
+      "membershipSourceTier": "primary_official_fifa_association_profile",
+      "note": "Correct canonical identity/competition eligibility metadata separately from strength."
+    },
+    {
+      "nationId": "nation:venezuela",
+      "name": "Venezuela",
+      "oldConfederation": "FIFA",
+      "correctConfederation": "CONMEBOL",
+      "primarySourceUrl": "https://inside.fifa.com/associations/ven",
+      "membershipSourceTier": "primary_official_fifa_association_profile",
+      "note": "Correct canonical identity/competition eligibility metadata separately from strength."
+    }
+  ],
+  "forbiddenAmbiguousAliases": [
+    "Congo",
+    "Korea",
+    "Ireland"
+  ],
+  "note": "Do not auto-match ambiguous names or infer confederation from rating. Republic of Ireland, DR Congo and North/South Korea require their explicit identities."
+}

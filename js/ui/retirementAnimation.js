@@ -1,4 +1,5 @@
 import { enrichTrophyWin, trophyImageHtml } from "../data/trophyAssets.js";
+import { formatAbilityForDisplay } from "./abilityFormatting.js";
 
 export function showRetirementAnimation(player, onContinue) {
   const overlay = document.getElementById("retirement-animation-overlay");
@@ -280,7 +281,7 @@ function showFinalRating(player) {
   const section = document.querySelector(".final-rating-section");
 
   ratingDisplay.innerHTML = `
-    <div class="final-rating-value">${player.rating}</div>
+    <div class="final-rating-value">${formatAbilityForDisplay(player.rating)}</div>
     <div class="final-rating-label">Final Overall Rating</div>
   `;
 

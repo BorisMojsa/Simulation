@@ -1,19 +1,26 @@
 import { STATS_KEYS } from "./js/config/playerConfig.js";
-import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js?v=40";
+import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js?v=61";
 import { WORLD_CUP_NATIONS, flagUrl } from "./js/data/worldCupNations.js";
-import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=40";
-import { calculateContractLength, generateTransferOffers } from "./js/simulation/transferMarket.js";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=50";
+import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=61";
+import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=61";
+import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=62";
+import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=62";
+import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=63";
+import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=62";
+import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=62";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=62";
+import { createWorldState, setWorldState } from "./js/simulation/worldState.js?v=61";
+import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=1";
 import {
   appendSeasonCard,
   renderPlayerOverview,
   renderSeasonLog,
   renderStandings,
   renderTransferOffers,
-} from "./js/ui/rendering.js?v=54";
-import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=40";
-import { showSeasonAnimation } from "./js/ui/seasonAnimation.js?v=54";
-import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=54";
+} from "./js/ui/rendering.js?v=64";
+import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=63";
+import { showSeasonAnimation } from "./js/ui/seasonAnimation.js?v=63";
+import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=63";
 import {
   customSelectsAreValid,
   getCustomSelectValue,
@@ -85,6 +92,7 @@ function initSetupSelects() {
 initSetupSelects();
 
 let player = null;
+let dealBookingGuard = false;
 
 const setupForm = document.getElementById("setup-form");
 const setupSection = document.getElementById("setup-section");
@@ -136,15 +144,18 @@ function startCareerFromSetup() {
   }
 
   try {
+    setWorldState(createWorldState({ startYear: new Date().getFullYear() }));
     player = createPlayerIdentity({ name, nationality, position, age: startingAge });
     runCareerStartFlow({
       player,
       academyPool: ACADEMY_POOL,
       setupSectionEl: setupSection,
       onComplete: () => {
+        ensureTransferSave(player);
         careerSection.classList.remove("hidden");
         refreshAll();
-        simulateBtn.disabled = player.pendingOffers.length > 0 || player.isRetired;
+        simulateBtn.disabled =
+          (player.pendingOffers?.length > 0 || player.pendingDecision) || player.isRetired;
       },
     });
   } catch (err) {
@@ -165,6 +176,74 @@ function startCareerFromSetup() {
 /** Exposed for inline index.html click handler (runs even if other init lines fail). */
 window.__footballCareerStart = startCareerFromSetup;
 
+/**
+ * Deterministic mid-season loan fixture for live browser verification.
+ * Uses the production season pipeline + validated loan offers.
+ */
+window.__loadLiveLoanBrowserFixture = function loadLiveLoanBrowserFixture(opts = {}) {
+  const result = buildLiveLoanBrowserFixture(opts);
+  if (!result.ok) {
+    console.error("Live loan fixture failed:", result.reason, result);
+    return result;
+  }
+  player = result.player;
+  dealBookingGuard = false;
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  const note = document.createElement("p");
+  note.className = "empty-state";
+  note.textContent =
+    "Mid-season checkpoint. Resolve the squad discussion or offers, then the season continues from January — not from a finished year.";
+  transferContainer?.prepend(note);
+  simulateBtn.disabled = true;
+  return {
+    ok: true,
+    kind: result.decision?.kind,
+    loanOffers: result.offers?.length ?? 0,
+    parentClub: player.club?.displayName || player.club?.name,
+    employmentClubId: player.employmentClubId,
+    weeklyWage: player.weeklyWage,
+    ovr: Math.round(player.rating),
+    checkpointDate: player.seasonCheckpoint?.simulationDate || player.seasonCheckpoint?.date,
+  };
+};
+
+window.__getLiveCareerDebug = function getLiveCareerDebug() {
+  if (!player) return null;
+  return {
+    name: player.name,
+    club: player.club?.displayName || player.club?.name,
+    clubId: player.club?.clubId,
+    employmentClubId: player.employmentClubId,
+    playingClubId: player.playingClubId,
+    weeklyWage: player.weeklyWage,
+    contractEndSeason: player.contractEndSeason,
+    rating: player.rating,
+    ovrDisplay: Math.round(Number(player.rating) || 0),
+    activeLoan: player.activeLoan
+      ? {
+          status: player.activeLoan.status,
+          parentClubId: player.activeLoan.parentClubId,
+          borrowingClubId: player.activeLoan.borrowingClubId,
+          startDate: player.activeLoan.startDate,
+          endDate: player.activeLoan.endDate,
+          transactionIds: player.activeLoan.transactionIds || [],
+        }
+      : null,
+    pendingDecision: player.pendingDecision?.kind || null,
+    pendingOffers: (player.pendingOffers || []).map((o) => ({
+      club: o.clubDisplay || o.club,
+      isLoan: !!o.isLoan,
+      wage: o.wage,
+    })),
+    seasonCheckpoint: player.seasonCheckpoint?.status || null,
+    seasons: player.seasons?.length ?? 0,
+    dealBookingGuard,
+  };
+};
+
 setupForm?.addEventListener("submit", (event) => {
   event.preventDefault();
   startCareerFromSetup();
@@ -182,7 +261,8 @@ retireBtn?.addEventListener("click", () => {
 
 
 function refreshOverview() {
-  renderPlayerOverview(player, overviewEl, STATS_KEYS);
+  const keys = player ? getDisplayAttributeKeys(player.position) : STATS_KEYS;
+  renderPlayerOverview(player, overviewEl, keys);
 }
 
 function refreshSeasonLog() {
@@ -191,6 +271,25 @@ function refreshSeasonLog() {
 
 function refreshStandings() {
   renderStandings(player, standingsBoard);
+}
+
+function handleSquadDecision(decision, choiceId) {
+  const result = resolveSquadDecision(player, decision, choiceId);
+  if (result.action === "reintegrate" && player.activeLoan?.status === "active") {
+    endLoan(player, "return");
+  }
+  if (result.action === "stay" || result.action === "transfer-listed") {
+    dealBookingGuard = false;
+  }
+  refreshTransferOffers();
+  refreshOverview();
+  const waiting =
+    player.pendingOffers?.length > 0 || Boolean(player.pendingDecision);
+  if (!waiting && player.seasonCheckpoint?.status === "awaiting_decision") {
+    resumeSeasonAfterDecision();
+    return;
+  }
+  simulateBtn.disabled = player.isRetired || waiting;
 }
 
 function refreshTransferOffers() {
@@ -202,6 +301,7 @@ function refreshTransferOffers() {
     applyTransfer,
     finishOfferWindow,
     promoteToParentClub,
+    onDecision: handleSquadDecision,
   });
 }
 
@@ -215,8 +315,68 @@ function refreshAll() {
 function simulateSeasonWithAnimation() {
   simulateBtn.disabled = true;
 
-  const seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP);
+  let seasonData;
+  try {
+    // Interactive careers pause at the winter window when a decision/offer exists.
+    seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, { pauseForDecisions: true });
 
+    if (!seasonData) {
+      simulateBtn.disabled = !!player?.isRetired;
+      return;
+    }
+
+    if (seasonData.awaitingDecision) {
+      player.seasonCheckpoint = seasonData.checkpoint;
+      player.pendingDecision = seasonData.decision || null;
+      player.pendingOffers = seasonData.offers || [];
+      ensureTransferSave(player);
+      refreshOverview();
+      refreshTransferOffers();
+      const note = document.createElement("p");
+      note.className = "empty-state";
+      note.textContent =
+        "Mid-season checkpoint. Resolve the squad discussion or offers, then the season continues from January — not from a finished year.";
+      transferContainer.prepend(note);
+      simulateBtn.disabled = true;
+      return;
+    }
+
+    finalizeCompletedSeasonUi(seasonData);
+  } catch (err) {
+    console.error("Season simulation failed:", err);
+    simulateBtn.disabled = !!player?.isRetired;
+    window.alert(
+      `Season simulation failed: ${err?.message || err}. Check the console for details.`
+    );
+  }
+}
+
+function resumeSeasonAfterDecision() {
+  if (!player?.seasonCheckpoint) return;
+  simulateBtn.disabled = true;
+  try {
+    const seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+      pauseForDecisions: false,
+      checkpoint: player.seasonCheckpoint,
+      autoDecisionPolicy: null,
+    });
+    if (seasonData?.awaitingDecision) {
+      player.seasonCheckpoint = seasonData.checkpoint;
+      player.pendingDecision = seasonData.decision || null;
+      player.pendingOffers = seasonData.offers || [];
+      refreshTransferOffers();
+      return;
+    }
+    player.seasonCheckpoint = null;
+    finalizeCompletedSeasonUi(seasonData);
+  } catch (err) {
+    console.error("Season resume failed:", err);
+    simulateBtn.disabled = !!player?.isRetired;
+    window.alert(`Season resume failed: ${err?.message || err}`);
+  }
+}
+
+function finalizeCompletedSeasonUi(seasonData) {
   if (!seasonData) {
     simulateBtn.disabled = !!player?.isRetired;
     return;
@@ -227,7 +387,18 @@ function simulateSeasonWithAnimation() {
     appendSeasonCard(seasonData.season, seasonLogEl, player);
     refreshStandings();
     refreshTransferOffers();
+    simulateBtn.disabled = true;
     return;
+  }
+
+  if (player.activeLoan?.status === "active") {
+    const seasonIndex = player.seasons.length;
+    if (player.activeLoan.endSeason != null && seasonIndex >= player.activeLoan.endSeason) {
+      queueSquadDecision(player, "loan-return", {
+        seasonIndex,
+        performanceScore: seasonData.performanceScore,
+      });
+    }
   }
 
   const offers = generateTransferOffers(
@@ -239,7 +410,21 @@ function simulateSeasonWithAnimation() {
   );
   player.pendingOffers = offers;
 
-  showSeasonAnimation(seasonData, player, STATS_KEYS, finishSeasonAnimation);
+  if (!player.pendingDecision && !player.club?.isAcademy) {
+    queueSquadDecision(player, "pre-season", {
+      seasonIndex: player.seasons.length,
+      performanceScore: seasonData.performanceScore,
+    });
+  }
+
+  ensureTransferSave(player);
+
+  showSeasonAnimation(
+    seasonData,
+    player,
+    getDisplayAttributeKeys(player.position),
+    finishSeasonAnimation
+  );
 }
 
 function finishSeasonAnimation() {
@@ -251,7 +436,8 @@ function finishSeasonAnimation() {
   refreshStandings();
   refreshTransferOffers();
 
-  simulateBtn.disabled = player.pendingOffers.length > 0 || player.isRetired;
+  simulateBtn.disabled =
+    player.pendingOffers?.length > 0 || Boolean(player.pendingDecision) || player.isRetired;
 }
 
 function retirePlayer() {
@@ -308,30 +494,57 @@ function promoteToParentClub() {
 }
 
 function applyTransfer(offer) {
+  if (!player || !offer) return;
+  if (dealBookingGuard) {
+    console.warn("Blocked duplicate deal acceptance click.");
+    return { ok: false, reason: "duplicate-click" };
+  }
+  dealBookingGuard = true;
   player.suppressParentContractOffer = false;
-  player.club = {
-    name: offer.club,
-    displayName: offer.clubDisplay ?? offer.club,
-    league: offer.league,
-    leagueDisplay: offer.leagueDisplay ?? offer.league,
-    tier: offer.tier,
-    badge: offer.badge,
-    financialTier: offer.financialTier,
-    isAcademy: false,
-    parentClub: null,
-  };
 
-  const currentSeason = player.seasons.length;
-  player.contractStartSeason = currentSeason;
-  player.contractYears = offer.contractYears || calculateContractLength(player.age, player.rating, player.potential, 70);
-  player.contractEndSeason = currentSeason + player.contractYears;
+  const playerNationality = player.nationality;
+  if (offer.isLoan) {
+    const loanResult = startLoan(player, offer);
+    if (!loanResult.ok) {
+      dealBookingGuard = false;
+      window.alert(`Loan could not be completed: ${loanResult.reason || "validation failed"}.`);
+      return loanResult;
+    }
+    player.nationality = playerNationality;
+    if (player.attributes) refreshAbilityCaches(player);
+    finishOfferWindow(true, offer);
+    maybeResumeAfterWindowChoice();
+    return loanResult;
+  }
 
+  const result = acceptPipelineOffer(player, offer);
+  if (!result.ok) {
+    dealBookingGuard = false;
+    window.alert(
+      `Deal could not be completed: ${(result.reasons || [result.reason]).join(", ")}.`
+    );
+    return result;
+  }
+
+  player.nationality = playerNationality;
+  if (player.attributes) refreshAbilityCaches(player);
   finishOfferWindow(true, offer);
+  maybeResumeAfterWindowChoice();
+  return result;
+}
+
+function maybeResumeAfterWindowChoice() {
+  if (player.seasonCheckpoint?.status === "awaiting_decision") {
+    if (!(player.pendingOffers?.length > 0) && !player.pendingDecision) {
+      resumeSeasonAfterDecision();
+    }
+  }
 }
 
 function finishOfferWindow(accepted, offer) {
   player.pendingOffers = [];
   transferContainer.innerHTML = "";
+  if (!accepted) dealBookingGuard = false;
 
   const note = document.createElement("p");
   note.className = "empty-state";
@@ -339,14 +552,20 @@ function finishOfferWindow(accepted, offer) {
   let message;
   if (accepted && offer) {
     const offerClubName = offer.clubDisplay ?? offer.club;
-    if (offer.isRenewal) {
-      message = `${player.name} signs a contract extension with ${offerClubName}.`;
-    } else if (offer.isParentOffer) {
-      message = `${player.name} signs a professional contract with ${offerClubName}.`;
+    if (offer.isLoan) {
+      message = `${player.name} joins ${offerClubName} on loan. Parent registration is retained.`;
+    } else if (offer.isRenewal) {
+      message = `${player.name} signs a contract extension with ${offerClubName} at ${formatCurrency(
+        offer.wage || 0
+      )}/wk.`;
+    } else if (offer.isParentOffer || offer.dealType === "first_pro") {
+      message = `${player.name} signs a professional contract with ${offerClubName} at ${formatCurrency(
+        offer.wage || 0
+      )}/wk.`;
     } else {
-      message = `Transfer confirmed: ${player.name} joins ${offerClubName} in ${offer.leagueDisplay ?? offer.league} for ${formatCurrency(
-        offer.transferFee ?? 0
-      )}.`;
+      message = `Transfer confirmed: ${player.name} joins ${offerClubName} in ${
+        offer.leagueDisplay ?? offer.league
+      } for ${formatCurrency(offer.transferFee ?? 0)} · ${formatCurrency(offer.wage || 0)}/wk.`;
     }
   } else {
     message = player.club?.isAcademy
@@ -359,5 +578,14 @@ function finishOfferWindow(accepted, offer) {
 
   refreshOverview();
   refreshStandings();
-  simulateBtn.disabled = player.isRetired;
+  if (
+    player.seasonCheckpoint?.status === "awaiting_decision" &&
+    !(player.pendingOffers?.length > 0) &&
+    !player.pendingDecision
+  ) {
+    maybeResumeAfterWindowChoice();
+    return;
+  }
+  simulateBtn.disabled =
+    player.isRetired || player.pendingOffers?.length > 0 || Boolean(player.pendingDecision);
 }

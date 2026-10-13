@@ -1,0 +1,337 @@
+{
+  "generatedAt": "2026-10-13T22:27:50.769Z",
+  "revision": {
+    "rev": "c3536363c19ec61e18b1b82e667cee4277fcbf7f",
+    "dirty": true,
+    "statusLines": 74
+  },
+  "profileVersion": "club-finance-v1-2026-10-09",
+  "fxVersion": "fx-2026-10-09",
+  "clubCount": 490,
+  "leagueCount": 26,
+  "estimatedCount": 460,
+  "sourcedCount": 30,
+  "uniqueClubIds": true,
+  "duplicateIds": [],
+  "unmatchedProfileIds": [],
+  "leaguesMissingBaseline": [],
+  "eliteFallbackOnMissing": false,
+  "byLeague": {
+    "league:england-premier-league": {
+      "clubs": 20,
+      "profiles": 20,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 20,
+      "sourced": 0
+    },
+    "league:england-championship": {
+      "clubs": 24,
+      "profiles": 24,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 24,
+      "sourced": 0
+    },
+    "league:germany-bundesliga": {
+      "clubs": 18,
+      "profiles": 18,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 18,
+      "sourced": 0
+    },
+    "league:germany-2-bundesliga": {
+      "clubs": 18,
+      "profiles": 18,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 18,
+      "sourced": 0
+    },
+    "league:spain-la-liga": {
+      "clubs": 20,
+      "profiles": 20,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 20,
+      "sourced": 0
+    },
+    "league:spain-laliga-2": {
+      "clubs": 22,
+      "profiles": 22,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 22,
+      "sourced": 0
+    },
+    "league:italy-serie-a": {
+      "clubs": 20,
+      "profiles": 20,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 20,
+      "sourced": 0
+    },
+    "league:italy-serie-b": {
+      "clubs": 20,
+      "profiles": 20,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 20,
+      "sourced": 0
+    },
+    "league:france-ligue-1": {
+      "clubs": 18,
+      "profiles": 18,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 18,
+      "sourced": 0
+    },
+    "league:france-ligue-2": {
+      "clubs": 18,
+      "profiles": 18,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 18,
+      "sourced": 0
+    },
+    "league:brazil-brasileirao-serie-a": {
+      "clubs": 20,
+      "profiles": 20,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 20,
+      "sourced": 0
+    },
+    "league:belgium-belgian-pro-league": {
+      "clubs": 16,
+      "profiles": 16,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 16,
+      "sourced": 0
+    },
+    "league:argentina-liga-profesional": {
+      "clubs": 30,
+      "profiles": 30,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 30,
+      "sourced": 0
+    },
+    "league:portugal-primeira-liga": {
+      "clubs": 18,
+      "profiles": 18,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 18,
+      "sourced": 0
+    },
+    "league:poland-ekstraklasa": {
+      "clubs": 18,
+      "profiles": 18,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 18,
+      "sourced": 0
+    },
+    "league:denmark-superliga": {
+      "clubs": 12,
+      "profiles": 12,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 12,
+      "sourced": 0
+    },
+    "league:norway-eliteserien": {
+      "clubs": 16,
+      "profiles": 16,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 16,
+      "sourced": 0
+    },
+    "league:mexico-liga-mx": {
+      "clubs": 18,
+      "profiles": 18,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 18,
+      "sourced": 0
+    },
+    "league:colombia-categoria-primera-a": {
+      "clubs": 20,
+      "profiles": 20,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 20,
+      "sourced": 0
+    },
+    "league:netherlands-eredivisie": {
+      "clubs": 18,
+      "profiles": 18,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 18,
+      "sourced": 0
+    },
+    "league:ecuador-ligapro-serie-a": {
+      "clubs": 16,
+      "profiles": 16,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 16,
+      "sourced": 0
+    },
+    "league:turkiye-super-lig": {
+      "clubs": 18,
+      "profiles": 18,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 18,
+      "sourced": 0
+    },
+    "league:united-states-mls": {
+      "clubs": 30,
+      "profiles": 30,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 0,
+      "sourced": 30
+    },
+    "league:czechia-czech-first-league": {
+      "clubs": 16,
+      "profiles": 16,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 16,
+      "sourced": 0
+    },
+    "league:croatia-hnl": {
+      "clubs": 10,
+      "profiles": 10,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 10,
+      "sourced": 0
+    },
+    "league:serbia-superliga": {
+      "clubs": 16,
+      "profiles": 16,
+      "missing": [],
+      "hasBaseline": true,
+      "estimated": 16,
+      "sourced": 0
+    }
+  },
+  "honesty": "Most board authorisations and wage bands are declared simulation allocations with estimatedFields — not verified private club budgets. Inferred transfer allocations must not be described as audited accounts.",
+  "scheduleCoverage": {
+    "league:england-premier-league": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:england-championship": {
+      "fixtures": 552,
+      "clubs": 24
+    },
+    "league:germany-bundesliga": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:germany-2-bundesliga": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:spain-la-liga": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:spain-laliga-2": {
+      "fixtures": 462,
+      "clubs": 22
+    },
+    "league:italy-serie-a": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:italy-serie-b": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:france-ligue-1": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:france-ligue-2": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:brazil-brasileirao-serie-a": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:belgium-belgian-pro-league": {
+      "fixtures": 240,
+      "clubs": 16
+    },
+    "league:argentina-liga-profesional": {
+      "fixtures": 870,
+      "clubs": 30
+    },
+    "league:portugal-primeira-liga": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:poland-ekstraklasa": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:denmark-superliga": {
+      "fixtures": 132,
+      "clubs": 12
+    },
+    "league:norway-eliteserien": {
+      "fixtures": 240,
+      "clubs": 16
+    },
+    "league:mexico-liga-mx": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:colombia-categoria-primera-a": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:netherlands-eredivisie": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:ecuador-ligapro-serie-a": {
+      "fixtures": 240,
+      "clubs": 16
+    },
+    "league:turkiye-super-lig": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:united-states-mls": {
+      "fixtures": 870,
+      "clubs": 30
+    },
+    "league:czechia-czech-first-league": {
+      "fixtures": 240,
+      "clubs": 16
+    },
+    "league:croatia-hnl": {
+      "fixtures": 90,
+      "clubs": 10
+    },
+    "league:serbia-superliga": {
+      "fixtures": 240,
+      "clubs": 16
+    }
+  },
+  "note": "Most board authorisations and wage bands are declared simulation allocations with estimatedFields — not verified private club budgets. Inferred transfer allocations must not be described as audited accounts."
+}

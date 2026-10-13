@@ -1,0 +1,2462 @@
+{
+  "acceptedPrimary": [
+    {
+      "clubId": "club:argentina:aldosivi",
+      "providerName": "Aldosivi",
+      "rawRating": 1565
+    },
+    {
+      "clubId": "club:argentina:argentinos-juniors",
+      "providerName": "Argentinos Junio",
+      "rawRating": 1745
+    },
+    {
+      "clubId": "club:argentina:atletico-tucuman",
+      "providerName": "Atlético Tucumán",
+      "rawRating": 1635
+    },
+    {
+      "clubId": "club:argentina:banfield",
+      "providerName": "Banfield",
+      "rawRating": 1599
+    },
+    {
+      "clubId": "club:argentina:barracas-central",
+      "providerName": "Barracas Central",
+      "rawRating": 1631
+    },
+    {
+      "clubId": "club:argentina:belgrano",
+      "providerName": "Belgrano",
+      "rawRating": 1703
+    },
+    {
+      "clubId": "club:argentina:boca-juniors",
+      "providerName": "Boca Juniors",
+      "rawRating": 1776
+    },
+    {
+      "clubId": "club:argentina:central-cordoba",
+      "providerName": "Central Córdoba",
+      "rawRating": 1618
+    },
+    {
+      "clubId": "club:argentina:defensa-y-justicia",
+      "providerName": "Defensa y Justic",
+      "rawRating": 1652
+    },
+    {
+      "clubId": "club:argentina:deportivo-riestra",
+      "providerName": "Riestra",
+      "rawRating": 1615
+    },
+    {
+      "clubId": "club:argentina:estudiantes",
+      "providerName": "Estudiantes",
+      "rawRating": 1724
+    },
+    {
+      "clubId": "club:argentina:estudiantes-rio-cuarto",
+      "providerName": "Río Cuarto",
+      "rawRating": 1540
+    },
+    {
+      "clubId": "club:argentina:gimnasia-la-plata",
+      "providerName": "Gimnasia LP",
+      "rawRating": 1682
+    },
+    {
+      "clubId": "club:argentina:gimnasia-mendoza",
+      "providerName": "GyE Mendoza",
+      "rawRating": 1643
+    },
+    {
+      "clubId": "club:argentina:huracan",
+      "providerName": "Huracán",
+      "rawRating": 1695
+    },
+    {
+      "clubId": "club:argentina:independiente",
+      "providerName": "Independiente",
+      "rawRating": 1689
+    },
+    {
+      "clubId": "club:argentina:independiente-rivadavia",
+      "providerName": "Ind Rivadavia",
+      "rawRating": 1731
+    },
+    {
+      "clubId": "club:argentina:instituto",
+      "providerName": "Instituto",
+      "rawRating": 1688
+    },
+    {
+      "clubId": "club:argentina:lanus",
+      "providerName": "Lanús",
+      "rawRating": 1699
+    },
+    {
+      "clubId": "club:argentina:newell-s-old-boys",
+      "providerName": "Newell's Old Boy",
+      "rawRating": 1628
+    },
+    {
+      "clubId": "club:argentina:platense",
+      "providerName": "Platense",
+      "rawRating": 1632
+    },
+    {
+      "clubId": "club:argentina:racing-club",
+      "providerName": "Racing Club",
+      "rawRating": 1710
+    },
+    {
+      "clubId": "club:argentina:river-plate",
+      "providerName": "River Plate",
+      "rawRating": 1732
+    },
+    {
+      "clubId": "club:argentina:rosario-central",
+      "providerName": "Rosario Central",
+      "rawRating": 1735
+    },
+    {
+      "clubId": "club:argentina:san-lorenzo",
+      "providerName": "San Lorenzo",
+      "rawRating": 1637
+    },
+    {
+      "clubId": "club:argentina:sarmiento",
+      "providerName": "Sarmiento",
+      "rawRating": 1616
+    },
+    {
+      "clubId": "club:argentina:talleres",
+      "providerName": "Talleres",
+      "rawRating": 1637
+    },
+    {
+      "clubId": "club:argentina:tigre",
+      "providerName": "Tigre",
+      "rawRating": 1652
+    },
+    {
+      "clubId": "club:argentina:union",
+      "providerName": "Unión de Santa F",
+      "rawRating": 1636
+    },
+    {
+      "clubId": "club:argentina:velez-sarsfield",
+      "providerName": "Vélez Sarsfield",
+      "rawRating": 1725
+    },
+    {
+      "clubId": "club:belgium:anderlecht",
+      "providerName": "Anderlecht",
+      "rawRating": 1663
+    },
+    {
+      "clubId": "club:belgium:antwerp",
+      "providerName": "Antwerp",
+      "rawRating": 1582
+    },
+    {
+      "clubId": "club:belgium:cercle-brugge",
+      "providerName": "Cercle Brugge",
+      "rawRating": 1543
+    },
+    {
+      "clubId": "club:belgium:charleroi",
+      "providerName": "Charleroi",
+      "rawRating": 1627
+    },
+    {
+      "clubId": "club:belgium:club-brugge",
+      "providerName": "Brugge",
+      "rawRating": 1809
+    },
+    {
+      "clubId": "club:belgium:dender",
+      "providerName": "Dender",
+      "rawRating": 1481
+    },
+    {
+      "clubId": "club:belgium:genk",
+      "providerName": "Genk",
+      "rawRating": 1676
+    },
+    {
+      "clubId": "club:belgium:gent",
+      "providerName": "Gent",
+      "rawRating": 1632
+    },
+    {
+      "clubId": "club:belgium:mechelen",
+      "providerName": "Mechelen",
+      "rawRating": 1546
+    },
+    {
+      "clubId": "club:belgium:oh-leuven",
+      "providerName": "Leuven",
+      "rawRating": 1510
+    },
+    {
+      "clubId": "club:belgium:sint-truiden",
+      "providerName": "St Truiden",
+      "rawRating": 1612
+    },
+    {
+      "clubId": "club:belgium:standard-liege",
+      "providerName": "Standard",
+      "rawRating": 1584
+    },
+    {
+      "clubId": "club:belgium:union-saint-gilloise",
+      "providerName": "St Gillis",
+      "rawRating": 1812
+    },
+    {
+      "clubId": "club:belgium:westerlo",
+      "providerName": "Westerlo",
+      "rawRating": 1575
+    },
+    {
+      "clubId": "club:belgium:zulte-waregem",
+      "providerName": "Zulte Waregem",
+      "rawRating": 1567
+    },
+    {
+      "clubId": "club:brazil:athletico-paranaense",
+      "providerName": "Ath Paranaense",
+      "rawRating": 1730
+    },
+    {
+      "clubId": "club:brazil:atletico-mineiro",
+      "providerName": "Atlético Mineiro",
+      "rawRating": 1719
+    },
+    {
+      "clubId": "club:brazil:bahia",
+      "providerName": "Bahia",
+      "rawRating": 1732
+    },
+    {
+      "clubId": "club:brazil:botafogo",
+      "providerName": "Botafogo",
+      "rawRating": 1711
+    },
+    {
+      "clubId": "club:brazil:chapecoense",
+      "providerName": "Chapecoense",
+      "rawRating": 1587
+    },
+    {
+      "clubId": "club:brazil:corinthians",
+      "providerName": "Corinthians",
+      "rawRating": 1713
+    },
+    {
+      "clubId": "club:brazil:coritiba",
+      "providerName": "Coritiba",
+      "rawRating": 1650
+    },
+    {
+      "clubId": "club:brazil:cruzeiro",
+      "providerName": "Cruzeiro",
+      "rawRating": 1775
+    },
+    {
+      "clubId": "club:brazil:flamengo",
+      "providerName": "Flamengo",
+      "rawRating": 1871
+    },
+    {
+      "clubId": "club:brazil:fluminense",
+      "providerName": "Fluminense",
+      "rawRating": 1765
+    },
+    {
+      "clubId": "club:brazil:gremio",
+      "providerName": "Grêmio",
+      "rawRating": 1689
+    },
+    {
+      "clubId": "club:brazil:internacional",
+      "providerName": "Internacional",
+      "rawRating": 1693
+    },
+    {
+      "clubId": "club:brazil:mirassol",
+      "providerName": "Mirassol",
+      "rawRating": 1719
+    },
+    {
+      "clubId": "club:brazil:palmeiras",
+      "providerName": "Palmeiras",
+      "rawRating": 1853
+    },
+    {
+      "clubId": "club:brazil:red-bull-bragantino",
+      "providerName": "Bragantino",
+      "rawRating": 1689
+    },
+    {
+      "clubId": "club:brazil:remo",
+      "providerName": "Remo",
+      "rawRating": 1633
+    },
+    {
+      "clubId": "club:brazil:santos",
+      "providerName": "Santos",
+      "rawRating": 1720
+    },
+    {
+      "clubId": "club:brazil:sao-paulo",
+      "providerName": "São Paulo",
+      "rawRating": 1716
+    },
+    {
+      "clubId": "club:brazil:vasco-da-gama",
+      "providerName": "Vasco da Gama",
+      "rawRating": 1710
+    },
+    {
+      "clubId": "club:brazil:vitoria",
+      "providerName": "Vitória",
+      "rawRating": 1667
+    },
+    {
+      "clubId": "club:colombia:aguilas-doradas",
+      "providerName": "Águilas Doradas",
+      "rawRating": 1550
+    },
+    {
+      "clubId": "club:colombia:america-de-cali",
+      "providerName": "América de Cali",
+      "rawRating": 1676
+    },
+    {
+      "clubId": "club:colombia:atletico-bucaramanga",
+      "providerName": "Bucaramanga",
+      "rawRating": 1643
+    },
+    {
+      "clubId": "club:colombia:atletico-nacional",
+      "providerName": "Atlético Naciona",
+      "rawRating": 1729
+    },
+    {
+      "clubId": "club:colombia:boyaca-chico",
+      "providerName": "Boyacá Chicó",
+      "rawRating": 1470
+    },
+    {
+      "clubId": "club:colombia:cucuta-deportivo",
+      "providerName": "Cúcuta",
+      "rawRating": 1486
+    },
+    {
+      "clubId": "club:colombia:deportes-tolima",
+      "providerName": "Tolima",
+      "rawRating": 1644
+    },
+    {
+      "clubId": "club:colombia:deportivo-cali",
+      "providerName": "Deportivo Cali",
+      "rawRating": 1598
+    },
+    {
+      "clubId": "club:colombia:deportivo-pasto",
+      "providerName": "Pasto",
+      "rawRating": 1530
+    },
+    {
+      "clubId": "club:colombia:deportivo-pereira",
+      "providerName": "Pereira",
+      "rawRating": 1484
+    },
+    {
+      "clubId": "club:colombia:fortaleza-ceif",
+      "providerName": "Fortaleza",
+      "rawRating": 1536
+    },
+    {
+      "clubId": "club:colombia:independiente-medellin",
+      "providerName": "DIM",
+      "rawRating": 1659
+    },
+    {
+      "clubId": "club:colombia:internacional-de-bogota",
+      "providerName": "La Equidad",
+      "rawRating": 1497
+    },
+    {
+      "clubId": "club:colombia:jaguares",
+      "providerName": "Jaguares",
+      "rawRating": 1450
+    },
+    {
+      "clubId": "club:colombia:junior",
+      "providerName": "Atlético Junior",
+      "rawRating": 1623
+    },
+    {
+      "clubId": "club:colombia:llaneros",
+      "providerName": "Llaneros",
+      "rawRating": 1535
+    },
+    {
+      "clubId": "club:colombia:millonarios",
+      "providerName": "Millonarios",
+      "rawRating": 1648
+    },
+    {
+      "clubId": "club:colombia:once-caldas",
+      "providerName": "Once Caldas",
+      "rawRating": 1617
+    },
+    {
+      "clubId": "club:colombia:santa-fe",
+      "providerName": "Santa Fe",
+      "rawRating": 1661
+    },
+    {
+      "clubId": "club:croatia:dinamo-zagreb",
+      "providerName": "Dinamo Zagreb",
+      "rawRating": 1672
+    },
+    {
+      "clubId": "club:croatia:gorica",
+      "providerName": "HNK Gorica",
+      "rawRating": 1397
+    },
+    {
+      "clubId": "club:croatia:hajduk-split",
+      "providerName": "Hajduk",
+      "rawRating": 1580
+    },
+    {
+      "clubId": "club:croatia:istra-1961",
+      "providerName": "Istra 1961",
+      "rawRating": 1442
+    },
+    {
+      "clubId": "club:croatia:lokomotiva-zagreb",
+      "providerName": "Lok Zagreb",
+      "rawRating": 1434
+    },
+    {
+      "clubId": "club:croatia:osijek",
+      "providerName": "Osijek",
+      "rawRating": 1459
+    },
+    {
+      "clubId": "club:croatia:rijeka",
+      "providerName": "Rijeka",
+      "rawRating": 1550
+    },
+    {
+      "clubId": "club:croatia:rudes",
+      "providerName": "Rudes Zagreb",
+      "rawRating": 1187
+    },
+    {
+      "clubId": "club:croatia:slaven-belupo",
+      "providerName": "Slaven Belupo",
+      "rawRating": 1400
+    },
+    {
+      "clubId": "club:czech-republic:artis-brno",
+      "providerName": "Artis Brno",
+      "rawRating": 1213
+    },
+    {
+      "clubId": "club:czech-republic:banik-ostrava",
+      "providerName": "Banik Ostrava",
+      "rawRating": 1472
+    },
+    {
+      "clubId": "club:czech-republic:bohemians-1905",
+      "providerName": "Bohemians",
+      "rawRating": 1462
+    },
+    {
+      "clubId": "club:czech-republic:dukla-prague",
+      "providerName": "Dukla",
+      "rawRating": 1368
+    },
+    {
+      "clubId": "club:czech-republic:hradec-kralove",
+      "providerName": "Hradec Kralove",
+      "rawRating": 1561
+    },
+    {
+      "clubId": "club:czech-republic:jablonec",
+      "providerName": "Jablonec",
+      "rawRating": 1544
+    },
+    {
+      "clubId": "club:czech-republic:mlada-boleslav",
+      "providerName": "Mlada Boleslav",
+      "rawRating": 1496
+    },
+    {
+      "clubId": "club:czech-republic:pardubice",
+      "providerName": "Pardubice",
+      "rawRating": 1439
+    },
+    {
+      "clubId": "club:czech-republic:sigma-olomouc",
+      "providerName": "Sigma Olomouc",
+      "rawRating": 1510
+    },
+    {
+      "clubId": "club:czech-republic:slavia-prague",
+      "providerName": "Slavia Praha",
+      "rawRating": 1762
+    },
+    {
+      "clubId": "club:czech-republic:slovacko",
+      "providerName": "Slovacko",
+      "rawRating": 1399
+    },
+    {
+      "clubId": "club:czech-republic:slovan-liberec",
+      "providerName": "Slovan Liberec",
+      "rawRating": 1552
+    },
+    {
+      "clubId": "club:czech-republic:sparta-prague",
+      "providerName": "Sparta Praha",
+      "rawRating": 1652
+    },
+    {
+      "clubId": "club:czech-republic:teplice",
+      "providerName": "Teplice",
+      "rawRating": 1501
+    },
+    {
+      "clubId": "club:czech-republic:viktoria-plzen",
+      "providerName": "Viktoria Plzeň",
+      "rawRating": 1629
+    },
+    {
+      "clubId": "club:czech-republic:zlin",
+      "providerName": "Zlín",
+      "rawRating": 1378
+    },
+    {
+      "clubId": "club:denmark:agf",
+      "providerName": "Aarhus",
+      "rawRating": 1600
+    },
+    {
+      "clubId": "club:denmark:brondby",
+      "providerName": "Brondby",
+      "rawRating": 1577
+    },
+    {
+      "clubId": "club:denmark:fc-copenhagen",
+      "providerName": "FC Kobenhavn",
+      "rawRating": 1694
+    },
+    {
+      "clubId": "club:denmark:fc-midtjylland",
+      "providerName": "Midtjylland",
+      "rawRating": 1716
+    },
+    {
+      "clubId": "club:denmark:fredericia",
+      "providerName": "FC Fredericia",
+      "rawRating": 1478
+    },
+    {
+      "clubId": "club:denmark:nordsjaelland",
+      "providerName": "Nordsjaelland",
+      "rawRating": 1643
+    },
+    {
+      "clubId": "club:denmark:ob",
+      "providerName": "Odense",
+      "rawRating": 1496
+    },
+    {
+      "clubId": "club:denmark:randers",
+      "providerName": "Randers",
+      "rawRating": 1510
+    },
+    {
+      "clubId": "club:denmark:silkeborg",
+      "providerName": "Silkeborg",
+      "rawRating": 1515
+    },
+    {
+      "clubId": "club:denmark:sonderjyske",
+      "providerName": "SonderjyskE",
+      "rawRating": 1487
+    },
+    {
+      "clubId": "club:denmark:vejle",
+      "providerName": "Vejle",
+      "rawRating": 1441
+    },
+    {
+      "clubId": "club:denmark:viborg",
+      "providerName": "Viborg",
+      "rawRating": 1583
+    },
+    {
+      "clubId": "club:ecuador:aucas",
+      "providerName": "Aucas",
+      "rawRating": 1613
+    },
+    {
+      "clubId": "club:ecuador:barcelona-sc",
+      "providerName": "Barcelona",
+      "rawRating": 1643
+    },
+    {
+      "clubId": "club:ecuador:delfin",
+      "providerName": "Delfín",
+      "rawRating": 1505
+    },
+    {
+      "clubId": "club:ecuador:deportivo-cuenca",
+      "providerName": "Cuenca",
+      "rawRating": 1549
+    },
+    {
+      "clubId": "club:ecuador:emelec",
+      "providerName": "Emelec",
+      "rawRating": 1569
+    },
+    {
+      "clubId": "club:ecuador:guayaquil-city",
+      "providerName": "Guayaquil",
+      "rawRating": 1572
+    },
+    {
+      "clubId": "club:ecuador:independiente-del-valle",
+      "providerName": "Ind del Valle",
+      "rawRating": 1783
+    },
+    {
+      "clubId": "club:ecuador:ldu-quito",
+      "providerName": "LDU Quito",
+      "rawRating": 1706
+    },
+    {
+      "clubId": "club:ecuador:leones",
+      "providerName": "Leones del Norte",
+      "rawRating": 1569
+    },
+    {
+      "clubId": "club:ecuador:libertad",
+      "providerName": "Libertad de Loja",
+      "rawRating": 1595
+    },
+    {
+      "clubId": "club:ecuador:macara",
+      "providerName": "Macará",
+      "rawRating": 1655
+    },
+    {
+      "clubId": "club:ecuador:manta",
+      "providerName": "Manta",
+      "rawRating": 1463
+    },
+    {
+      "clubId": "club:ecuador:mushuc-runa",
+      "providerName": "Mushuc Runa",
+      "rawRating": 1571
+    },
+    {
+      "clubId": "club:ecuador:orense",
+      "providerName": "Orense",
+      "rawRating": 1556
+    },
+    {
+      "clubId": "club:ecuador:tecnico-universitario",
+      "providerName": "Técnico Uni",
+      "rawRating": 1509
+    },
+    {
+      "clubId": "club:ecuador:universidad-catolica",
+      "providerName": "Uni Catolica",
+      "rawRating": 1685
+    },
+    {
+      "clubId": "club:england:afc-bournemouth",
+      "providerName": "Bournemouth",
+      "rawRating": 1861
+    },
+    {
+      "clubId": "club:england:arsenal",
+      "providerName": "Arsenal",
+      "rawRating": 2040
+    },
+    {
+      "clubId": "club:england:aston-villa",
+      "providerName": "Aston Villa",
+      "rawRating": 1895
+    },
+    {
+      "clubId": "club:england:birmingham-city",
+      "providerName": "Birmingham",
+      "rawRating": 1622
+    },
+    {
+      "clubId": "club:england:blackburn-rovers",
+      "providerName": "Blackburn",
+      "rawRating": 1576
+    },
+    {
+      "clubId": "club:england:bolton-wanderers",
+      "providerName": "Bolton",
+      "rawRating": 1537
+    },
+    {
+      "clubId": "club:england:brentford",
+      "providerName": "Brentford",
+      "rawRating": 1862
+    },
+    {
+      "clubId": "club:england:brighton-and-hove-albion",
+      "providerName": "Brighton",
+      "rawRating": 1891
+    },
+    {
+      "clubId": "club:england:bristol-city",
+      "providerName": "Bristol City",
+      "rawRating": 1582
+    },
+    {
+      "clubId": "club:england:burnley",
+      "providerName": "Burnley",
+      "rawRating": 1646
+    },
+    {
+      "clubId": "club:england:cardiff-city",
+      "providerName": "Cardiff",
+      "rawRating": 1569
+    },
+    {
+      "clubId": "club:england:charlton-athletic",
+      "providerName": "Charlton",
+      "rawRating": 1546
+    },
+    {
+      "clubId": "club:england:chelsea",
+      "providerName": "Chelsea",
+      "rawRating": 1881
+    },
+    {
+      "clubId": "club:england:coventry-city",
+      "providerName": "Coventry",
+      "rawRating": 1689
+    },
+    {
+      "clubId": "club:england:crystal-palace",
+      "providerName": "Crystal Palace",
+      "rawRating": 1824
+    },
+    {
+      "clubId": "club:england:derby-county",
+      "providerName": "Derby",
+      "rawRating": 1569
+    },
+    {
+      "clubId": "club:england:everton",
+      "providerName": "Everton",
+      "rawRating": 1827
+    },
+    {
+      "clubId": "club:england:fulham",
+      "providerName": "Fulham",
+      "rawRating": 1807
+    },
+    {
+      "clubId": "club:england:hull-city",
+      "providerName": "Hull",
+      "rawRating": 1634
+    },
+    {
+      "clubId": "club:england:ipswich-town",
+      "providerName": "Ipswich",
+      "rawRating": 1694
+    },
+    {
+      "clubId": "club:england:leeds-united",
+      "providerName": "Leeds",
+      "rawRating": 1817
+    },
+    {
+      "clubId": "club:england:lincoln-city",
+      "providerName": "Lincoln City",
+      "rawRating": 1610
+    },
+    {
+      "clubId": "club:england:liverpool",
+      "providerName": "Liverpool",
+      "rawRating": 1937
+    },
+    {
+      "clubId": "club:england:manchester-city",
+      "providerName": "Man City",
+      "rawRating": 2028
+    },
+    {
+      "clubId": "club:england:manchester-united",
+      "providerName": "Man United",
+      "rawRating": 1879
+    },
+    {
+      "clubId": "club:england:middlesbrough",
+      "providerName": "Middlesbrough",
+      "rawRating": 1650
+    },
+    {
+      "clubId": "club:england:millwall",
+      "providerName": "Millwall",
+      "rawRating": 1639
+    },
+    {
+      "clubId": "club:england:newcastle-united",
+      "providerName": "Newcastle",
+      "rawRating": 1879
+    },
+    {
+      "clubId": "club:england:norwich-city",
+      "providerName": "Norwich",
+      "rawRating": 1611
+    },
+    {
+      "clubId": "club:england:nottingham-forest",
+      "providerName": "Forest",
+      "rawRating": 1805
+    },
+    {
+      "clubId": "club:england:portsmouth",
+      "providerName": "Portsmouth",
+      "rawRating": 1554
+    },
+    {
+      "clubId": "club:england:preston-north-end",
+      "providerName": "Preston",
+      "rawRating": 1525
+    },
+    {
+      "clubId": "club:england:queens-park-rangers",
+      "providerName": "QPR",
+      "rawRating": 1572
+    },
+    {
+      "clubId": "club:england:sheffield-united",
+      "providerName": "Sheffield United",
+      "rawRating": 1609
+    },
+    {
+      "clubId": "club:england:southampton",
+      "providerName": "Southampton",
+      "rawRating": 1699
+    },
+    {
+      "clubId": "club:england:stoke-city",
+      "providerName": "Stoke",
+      "rawRating": 1559
+    },
+    {
+      "clubId": "club:england:sunderland",
+      "providerName": "Sunderland",
+      "rawRating": 1737
+    },
+    {
+      "clubId": "club:england:swansea-city",
+      "providerName": "Swansea",
+      "rawRating": 1614
+    },
+    {
+      "clubId": "club:england:tottenham-hotspur",
+      "providerName": "Tottenham",
+      "rawRating": 1798
+    },
+    {
+      "clubId": "club:england:watford",
+      "providerName": "Watford",
+      "rawRating": 1527
+    },
+    {
+      "clubId": "club:england:west-bromwich-albion",
+      "providerName": "West Brom",
+      "rawRating": 1590
+    },
+    {
+      "clubId": "club:england:west-ham-united",
+      "providerName": "West Ham",
+      "rawRating": 1777
+    },
+    {
+      "clubId": "club:england:wolverhampton-wanderers",
+      "providerName": "Wolves",
+      "rawRating": 1726
+    },
+    {
+      "clubId": "club:england:wrexham",
+      "providerName": "Wrexham",
+      "rawRating": 1617
+    },
+    {
+      "clubId": "club:france:angers",
+      "providerName": "Angers",
+      "rawRating": 1620
+    },
+    {
+      "clubId": "club:france:annecy",
+      "providerName": "Annecy",
+      "rawRating": 1555
+    },
+    {
+      "clubId": "club:france:auxerre",
+      "providerName": "Auxerre",
+      "rawRating": 1651
+    },
+    {
+      "clubId": "club:france:boulogne",
+      "providerName": "Boulogne",
+      "rawRating": 1478
+    },
+    {
+      "clubId": "club:france:brest",
+      "providerName": "Brest",
+      "rawRating": 1672
+    },
+    {
+      "clubId": "club:france:clermont",
+      "providerName": "Clermont",
+      "rawRating": 1498
+    },
+    {
+      "clubId": "club:france:dijon",
+      "providerName": "Dijon",
+      "rawRating": 1546
+    },
+    {
+      "clubId": "club:france:dunkerque",
+      "providerName": "Dunkerque",
+      "rawRating": 1529
+    },
+    {
+      "clubId": "club:france:grenoble",
+      "providerName": "Grenoble",
+      "rawRating": 1510
+    },
+    {
+      "clubId": "club:france:guingamp",
+      "providerName": "Guingamp",
+      "rawRating": 1521
+    },
+    {
+      "clubId": "club:france:laval",
+      "providerName": "Laval",
+      "rawRating": 1484
+    },
+    {
+      "clubId": "club:france:le-havre",
+      "providerName": "Le Havre",
+      "rawRating": 1606
+    },
+    {
+      "clubId": "club:france:le-mans",
+      "providerName": "Le Mans",
+      "rawRating": 1596
+    },
+    {
+      "clubId": "club:france:lens",
+      "providerName": "Lens",
+      "rawRating": 1812
+    },
+    {
+      "clubId": "club:france:lille",
+      "providerName": "Lille",
+      "rawRating": 1780
+    },
+    {
+      "clubId": "club:france:lorient",
+      "providerName": "Lorient",
+      "rawRating": 1688
+    },
+    {
+      "clubId": "club:france:lyon",
+      "providerName": "Lyon",
+      "rawRating": 1800
+    },
+    {
+      "clubId": "club:france:marseille",
+      "providerName": "Marseille",
+      "rawRating": 1762
+    },
+    {
+      "clubId": "club:france:metz",
+      "providerName": "Metz",
+      "rawRating": 1568
+    },
+    {
+      "clubId": "club:france:monaco",
+      "providerName": "Monaco",
+      "rawRating": 1802
+    },
+    {
+      "clubId": "club:france:montpellier",
+      "providerName": "Montpellier",
+      "rawRating": 1579
+    },
+    {
+      "clubId": "club:france:nancy",
+      "providerName": "Nancy",
+      "rawRating": 1498
+    },
+    {
+      "clubId": "club:france:nantes",
+      "providerName": "Nantes",
+      "rawRating": 1576
+    },
+    {
+      "clubId": "club:france:nice",
+      "providerName": "Nice",
+      "rawRating": 1667
+    },
+    {
+      "clubId": "club:france:paris-fc",
+      "providerName": "Paris FC",
+      "rawRating": 1705
+    },
+    {
+      "clubId": "club:france:paris-saint-germain",
+      "providerName": "Paris SG",
+      "rawRating": 1956
+    },
+    {
+      "clubId": "club:france:pau",
+      "providerName": "Pau",
+      "rawRating": 1497
+    },
+    {
+      "clubId": "club:france:red-star",
+      "providerName": "Red Star",
+      "rawRating": 1580
+    },
+    {
+      "clubId": "club:france:reims",
+      "providerName": "Reims",
+      "rawRating": 1634
+    },
+    {
+      "clubId": "club:france:rennes",
+      "providerName": "Rennes",
+      "rawRating": 1754
+    },
+    {
+      "clubId": "club:france:rodez",
+      "providerName": "Rodez",
+      "rawRating": 1564
+    },
+    {
+      "clubId": "club:france:saint-etienne",
+      "providerName": "Saint-Etienne",
+      "rawRating": 1612
+    },
+    {
+      "clubId": "club:france:sochaux",
+      "providerName": "Sochaux",
+      "rawRating": 1517
+    },
+    {
+      "clubId": "club:france:strasbourg",
+      "providerName": "Strasbourg",
+      "rawRating": 1742
+    },
+    {
+      "clubId": "club:france:toulouse",
+      "providerName": "Toulouse",
+      "rawRating": 1688
+    },
+    {
+      "clubId": "club:france:troyes",
+      "providerName": "Troyes",
+      "rawRating": 1603
+    },
+    {
+      "clubId": "club:germany:1-fc-heidenheim",
+      "providerName": "Heidenheim",
+      "rawRating": 1640
+    },
+    {
+      "clubId": "club:germany:1-fc-kaiserslautern",
+      "providerName": "Lautern",
+      "rawRating": 1607
+    },
+    {
+      "clubId": "club:germany:1-fc-koln",
+      "providerName": "Köln",
+      "rawRating": 1652
+    },
+    {
+      "clubId": "club:germany:1-fc-magdeburg",
+      "providerName": "Magdeburg",
+      "rawRating": 1580
+    },
+    {
+      "clubId": "club:germany:1-fc-nurnberg",
+      "providerName": "Nürnberg",
+      "rawRating": 1617
+    },
+    {
+      "clubId": "club:germany:arminia-bielefeld",
+      "providerName": "Bielefeld",
+      "rawRating": 1571
+    },
+    {
+      "clubId": "club:germany:bayer-leverkusen",
+      "providerName": "Leverkusen",
+      "rawRating": 1870
+    },
+    {
+      "clubId": "club:germany:bayern-munich",
+      "providerName": "Bayern München",
+      "rawRating": 2046
+    },
+    {
+      "clubId": "club:germany:borussia-dortmund",
+      "providerName": "Dortmund",
+      "rawRating": 1900
+    },
+    {
+      "clubId": "club:germany:borussia-monchengladbach",
+      "providerName": "Gladbach",
+      "rawRating": 1672
+    },
+    {
+      "clubId": "club:germany:darmstadt-98",
+      "providerName": "Darmstadt",
+      "rawRating": 1582
+    },
+    {
+      "clubId": "club:germany:dynamo-dresden",
+      "providerName": "Dresden",
+      "rawRating": 1556
+    },
+    {
+      "clubId": "club:germany:eintracht-braunschweig",
+      "providerName": "Braunschweig",
+      "rawRating": 1511
+    },
+    {
+      "clubId": "club:germany:eintracht-frankfurt",
+      "providerName": "Frankfurt",
+      "rawRating": 1740
+    },
+    {
+      "clubId": "club:germany:energie-cottbus",
+      "providerName": "Cottbus",
+      "rawRating": 1549
+    },
+    {
+      "clubId": "club:germany:fc-augsburg",
+      "providerName": "Augsburg",
+      "rawRating": 1724
+    },
+    {
+      "clubId": "club:germany:fc-st-pauli",
+      "providerName": "St Pauli",
+      "rawRating": 1611
+    },
+    {
+      "clubId": "club:germany:greuther-furth",
+      "providerName": "Fürth",
+      "rawRating": 1527
+    },
+    {
+      "clubId": "club:germany:hamburger-sv",
+      "providerName": "Hamburg",
+      "rawRating": 1671
+    },
+    {
+      "clubId": "club:germany:hannover-96",
+      "providerName": "Hannover",
+      "rawRating": 1631
+    },
+    {
+      "clubId": "club:germany:hertha-bsc",
+      "providerName": "Hertha",
+      "rawRating": 1655
+    },
+    {
+      "clubId": "club:germany:holstein-kiel",
+      "providerName": "Holstein",
+      "rawRating": 1585
+    },
+    {
+      "clubId": "club:germany:karlsruher-sc",
+      "providerName": "Karlsruhe",
+      "rawRating": 1567
+    },
+    {
+      "clubId": "club:germany:mainz-05",
+      "providerName": "Mainz",
+      "rawRating": 1742
+    },
+    {
+      "clubId": "club:germany:rb-leipzig",
+      "providerName": "RB Leipzig",
+      "rawRating": 1816
+    },
+    {
+      "clubId": "club:germany:sc-freiburg",
+      "providerName": "Freiburg",
+      "rawRating": 1790
+    },
+    {
+      "clubId": "club:germany:sc-paderborn",
+      "providerName": "Paderborn",
+      "rawRating": 1665
+    },
+    {
+      "clubId": "club:germany:schalke-04",
+      "providerName": "Schalke",
+      "rawRating": 1649
+    },
+    {
+      "clubId": "club:germany:sv-elversberg",
+      "providerName": "Elversberg",
+      "rawRating": 1675
+    },
+    {
+      "clubId": "club:germany:tsg-hoffenheim",
+      "providerName": "Hoffenheim",
+      "rawRating": 1728
+    },
+    {
+      "clubId": "club:germany:union-berlin",
+      "providerName": "Union Berlin",
+      "rawRating": 1676
+    },
+    {
+      "clubId": "club:germany:vfb-stuttgart",
+      "providerName": "Stuttgart",
+      "rawRating": 1818
+    },
+    {
+      "clubId": "club:germany:vfl-bochum",
+      "providerName": "Bochum",
+      "rawRating": 1601
+    },
+    {
+      "clubId": "club:germany:vfl-osnabruck",
+      "providerName": "Osnabrück",
+      "rawRating": 1555
+    },
+    {
+      "clubId": "club:germany:vfl-wolfsburg",
+      "providerName": "Wolfsburg",
+      "rawRating": 1677
+    },
+    {
+      "clubId": "club:germany:werder-bremen",
+      "providerName": "Werder",
+      "rawRating": 1688
+    },
+    {
+      "clubId": "club:italy:ac-milan",
+      "providerName": "Milan",
+      "rawRating": 1823
+    },
+    {
+      "clubId": "club:italy:arezzo",
+      "providerName": "Arezzo",
+      "rawRating": 1504
+    },
+    {
+      "clubId": "club:italy:ascoli",
+      "providerName": "Ascoli",
+      "rawRating": 1534
+    },
+    {
+      "clubId": "club:italy:atalanta",
+      "providerName": "Atalanta",
+      "rawRating": 1807
+    },
+    {
+      "clubId": "club:italy:avellino",
+      "providerName": "Avellino",
+      "rawRating": 1522
+    },
+    {
+      "clubId": "club:italy:benevento",
+      "providerName": "Benevento",
+      "rawRating": 1554
+    },
+    {
+      "clubId": "club:italy:bologna",
+      "providerName": "Bologna",
+      "rawRating": 1753
+    },
+    {
+      "clubId": "club:italy:cagliari",
+      "providerName": "Cagliari",
+      "rawRating": 1678
+    },
+    {
+      "clubId": "club:italy:carrarese",
+      "providerName": "Carrarese",
+      "rawRating": 1483
+    },
+    {
+      "clubId": "club:italy:catanzaro",
+      "providerName": "Catanzaro",
+      "rawRating": 1574
+    },
+    {
+      "clubId": "club:italy:cesena",
+      "providerName": "Cesena",
+      "rawRating": 1524
+    },
+    {
+      "clubId": "club:italy:como",
+      "providerName": "Como",
+      "rawRating": 1806
+    },
+    {
+      "clubId": "club:italy:cremonese",
+      "providerName": "Cremonese",
+      "rawRating": 1607
+    },
+    {
+      "clubId": "club:italy:empoli",
+      "providerName": "Empoli",
+      "rawRating": 1540
+    },
+    {
+      "clubId": "club:italy:fiorentina",
+      "providerName": "Fiorentina",
+      "rawRating": 1721
+    },
+    {
+      "clubId": "club:italy:frosinone",
+      "providerName": "Frosinone",
+      "rawRating": 1690
+    },
+    {
+      "clubId": "club:italy:genoa",
+      "providerName": "Genoa",
+      "rawRating": 1660
+    },
+    {
+      "clubId": "club:italy:hellas-verona",
+      "providerName": "Verona",
+      "rawRating": 1580
+    },
+    {
+      "clubId": "club:italy:inter-milan",
+      "providerName": "Internazionale",
+      "rawRating": 1946
+    },
+    {
+      "clubId": "club:italy:juve-stabia",
+      "providerName": "Juve Stabia",
+      "rawRating": 1532
+    },
+    {
+      "clubId": "club:italy:juventus",
+      "providerName": "Juventus",
+      "rawRating": 1841
+    },
+    {
+      "clubId": "club:italy:lazio",
+      "providerName": "Lazio",
+      "rawRating": 1777
+    },
+    {
+      "clubId": "club:italy:lecce",
+      "providerName": "Lecce",
+      "rawRating": 1615
+    },
+    {
+      "clubId": "club:italy:mantova",
+      "providerName": "Mantova",
+      "rawRating": 1542
+    },
+    {
+      "clubId": "club:italy:modena",
+      "providerName": "Modena",
+      "rawRating": 1557
+    },
+    {
+      "clubId": "club:italy:monza",
+      "providerName": "Monza",
+      "rawRating": 1642
+    },
+    {
+      "clubId": "club:italy:napoli",
+      "providerName": "Napoli",
+      "rawRating": 1833
+    },
+    {
+      "clubId": "club:italy:padova",
+      "providerName": "Padova",
+      "rawRating": 1513
+    },
+    {
+      "clubId": "club:italy:palermo",
+      "providerName": "Palermo",
+      "rawRating": 1647
+    },
+    {
+      "clubId": "club:italy:parma",
+      "providerName": "Parma",
+      "rawRating": 1648
+    },
+    {
+      "clubId": "club:italy:pisa",
+      "providerName": "Pisa",
+      "rawRating": 1541
+    },
+    {
+      "clubId": "club:italy:reggiana",
+      "providerName": "Reggiana",
+      "rawRating": 1481
+    },
+    {
+      "clubId": "club:italy:roma",
+      "providerName": "Roma",
+      "rawRating": 1857
+    },
+    {
+      "clubId": "club:italy:sampdoria",
+      "providerName": "Sampdoria",
+      "rawRating": 1500
+    },
+    {
+      "clubId": "club:italy:sassuolo",
+      "providerName": "Sassuolo",
+      "rawRating": 1697
+    },
+    {
+      "clubId": "club:italy:spezia",
+      "providerName": "Spezia",
+      "rawRating": 1555
+    },
+    {
+      "clubId": "club:italy:sudtirol",
+      "providerName": "Südtirol",
+      "rawRating": 1537
+    },
+    {
+      "clubId": "club:italy:torino",
+      "providerName": "Torino",
+      "rawRating": 1682
+    },
+    {
+      "clubId": "club:italy:udinese",
+      "providerName": "Udinese",
+      "rawRating": 1696
+    },
+    {
+      "clubId": "club:italy:venezia",
+      "providerName": "Venezia",
+      "rawRating": 1645
+    },
+    {
+      "clubId": "club:mexico:america",
+      "providerName": "América",
+      "rawRating": 1708
+    },
+    {
+      "clubId": "club:mexico:atlas",
+      "providerName": "Atlas",
+      "rawRating": 1572
+    },
+    {
+      "clubId": "club:mexico:atletico-san-luis",
+      "providerName": "San Luis",
+      "rawRating": 1558
+    },
+    {
+      "clubId": "club:mexico:cruz-azul",
+      "providerName": "Cruz Azul",
+      "rawRating": 1712
+    },
+    {
+      "clubId": "club:mexico:guadalajara",
+      "providerName": "Guadalajara",
+      "rawRating": 1674
+    },
+    {
+      "clubId": "club:mexico:juarez",
+      "providerName": "Juárez",
+      "rawRating": 1507
+    },
+    {
+      "clubId": "club:mexico:leon",
+      "providerName": "León",
+      "rawRating": 1565
+    },
+    {
+      "clubId": "club:mexico:mazatlan",
+      "providerName": "Mazatlán",
+      "rawRating": 1504
+    },
+    {
+      "clubId": "club:mexico:monterrey",
+      "providerName": "Monterrey",
+      "rawRating": 1635
+    },
+    {
+      "clubId": "club:mexico:necaxa",
+      "providerName": "Necaxa",
+      "rawRating": 1539
+    },
+    {
+      "clubId": "club:mexico:pachuca",
+      "providerName": "Pachuca",
+      "rawRating": 1646
+    },
+    {
+      "clubId": "club:mexico:puebla",
+      "providerName": "Puebla",
+      "rawRating": 1491
+    },
+    {
+      "clubId": "club:mexico:queretaro",
+      "providerName": "Querétaro",
+      "rawRating": 1592
+    },
+    {
+      "clubId": "club:mexico:santos-laguna",
+      "providerName": "Santos Laguna",
+      "rawRating": 1484
+    },
+    {
+      "clubId": "club:mexico:tigres-uanl",
+      "providerName": "UANL",
+      "rawRating": 1670
+    },
+    {
+      "clubId": "club:mexico:tijuana",
+      "providerName": "Tijuana",
+      "rawRating": 1606
+    },
+    {
+      "clubId": "club:mexico:toluca",
+      "providerName": "Toluca",
+      "rawRating": 1727
+    },
+    {
+      "clubId": "club:mexico:unam",
+      "providerName": "UNAM",
+      "rawRating": 1628
+    },
+    {
+      "clubId": "club:netherlands:ajax",
+      "providerName": "Ajax",
+      "rawRating": 1687
+    },
+    {
+      "clubId": "club:netherlands:az",
+      "providerName": "AZ",
+      "rawRating": 1691
+    },
+    {
+      "clubId": "club:netherlands:excelsior",
+      "providerName": "Excelsior",
+      "rawRating": 1506
+    },
+    {
+      "clubId": "club:netherlands:feyenoord",
+      "providerName": "Feyenoord",
+      "rawRating": 1718
+    },
+    {
+      "clubId": "club:netherlands:fortuna-sittard",
+      "providerName": "Sittard",
+      "rawRating": 1488
+    },
+    {
+      "clubId": "club:netherlands:go-ahead-eagles",
+      "providerName": "Go Ahead Eagles",
+      "rawRating": 1551
+    },
+    {
+      "clubId": "club:netherlands:groningen",
+      "providerName": "Groningen",
+      "rawRating": 1526
+    },
+    {
+      "clubId": "club:netherlands:heerenveen",
+      "providerName": "Heerenveen",
+      "rawRating": 1552
+    },
+    {
+      "clubId": "club:netherlands:heracles-almelo",
+      "providerName": "Heracles",
+      "rawRating": 1442
+    },
+    {
+      "clubId": "club:netherlands:nac-breda",
+      "providerName": "Breda",
+      "rawRating": 1395
+    },
+    {
+      "clubId": "club:netherlands:nec",
+      "providerName": "Nijmegen",
+      "rawRating": 1585
+    },
+    {
+      "clubId": "club:netherlands:pec-zwolle",
+      "providerName": "Zwolle",
+      "rawRating": 1465
+    },
+    {
+      "clubId": "club:netherlands:psv",
+      "providerName": "PSV",
+      "rawRating": 1784
+    },
+    {
+      "clubId": "club:netherlands:sparta-rotterdam",
+      "providerName": "Sparta",
+      "rawRating": 1495
+    },
+    {
+      "clubId": "club:netherlands:telstar",
+      "providerName": "Telstar",
+      "rawRating": 1448
+    },
+    {
+      "clubId": "club:netherlands:twente",
+      "providerName": "Twente",
+      "rawRating": 1666
+    },
+    {
+      "clubId": "club:netherlands:utrecht",
+      "providerName": "Utrecht",
+      "rawRating": 1574
+    },
+    {
+      "clubId": "club:netherlands:volendam",
+      "providerName": "Volendam",
+      "rawRating": 1407
+    },
+    {
+      "clubId": "club:norway:bodo-glimt",
+      "providerName": "Bodø/Glimt",
+      "rawRating": 1779
+    },
+    {
+      "clubId": "club:norway:brann",
+      "providerName": "Brann",
+      "rawRating": 1588
+    },
+    {
+      "clubId": "club:norway:bryne",
+      "providerName": "Bryne",
+      "rawRating": 1359
+    },
+    {
+      "clubId": "club:norway:fredrikstad",
+      "providerName": "Fredrikstad",
+      "rawRating": 1500
+    },
+    {
+      "clubId": "club:norway:hamkam",
+      "providerName": "Ham-Kam",
+      "rawRating": 1448
+    },
+    {
+      "clubId": "club:norway:haugesund",
+      "providerName": "Haugesund",
+      "rawRating": 1352
+    },
+    {
+      "clubId": "club:norway:kfum-oslo",
+      "providerName": "Kfum",
+      "rawRating": 1457
+    },
+    {
+      "clubId": "club:norway:kristiansund",
+      "providerName": "Kristiansund",
+      "rawRating": 1418
+    },
+    {
+      "clubId": "club:norway:molde",
+      "providerName": "Molde",
+      "rawRating": 1557
+    },
+    {
+      "clubId": "club:norway:rosenborg",
+      "providerName": "Rosenborg",
+      "rawRating": 1568
+    },
+    {
+      "clubId": "club:norway:sandefjord",
+      "providerName": "Sandefjord",
+      "rawRating": 1487
+    },
+    {
+      "clubId": "club:norway:sarpsborg-08",
+      "providerName": "Sarpsborg",
+      "rawRating": 1489
+    },
+    {
+      "clubId": "club:norway:stromsgodset",
+      "providerName": "Stromsgodset",
+      "rawRating": 1409
+    },
+    {
+      "clubId": "club:norway:tromso",
+      "providerName": "Tromsø",
+      "rawRating": 1571
+    },
+    {
+      "clubId": "club:norway:valerenga",
+      "providerName": "Valerenga",
+      "rawRating": 1470
+    },
+    {
+      "clubId": "club:norway:viking",
+      "providerName": "Viking",
+      "rawRating": 1693
+    },
+    {
+      "clubId": "club:poland:arka-gdynia",
+      "providerName": "Arka",
+      "rawRating": 1500
+    },
+    {
+      "clubId": "club:poland:cracovia",
+      "providerName": "KS Cracovia",
+      "rawRating": 1504
+    },
+    {
+      "clubId": "club:poland:gks-katowice",
+      "providerName": "Katowice",
+      "rawRating": 1552
+    },
+    {
+      "clubId": "club:poland:gornik-zabrze",
+      "providerName": "Gornik",
+      "rawRating": 1583
+    },
+    {
+      "clubId": "club:poland:jagiellonia-bia-ystok",
+      "providerName": "Jagiellonia",
+      "rawRating": 1605
+    },
+    {
+      "clubId": "club:poland:korona-kielce",
+      "providerName": "Korona",
+      "rawRating": 1539
+    },
+    {
+      "clubId": "club:poland:lech-poznan",
+      "providerName": "Lech",
+      "rawRating": 1674
+    },
+    {
+      "clubId": "club:poland:lechia-gdansk",
+      "providerName": "Lechia",
+      "rawRating": 1510
+    },
+    {
+      "clubId": "club:poland:legia-warsaw",
+      "providerName": "Legia",
+      "rawRating": 1619
+    },
+    {
+      "clubId": "club:poland:motor-lublin",
+      "providerName": "Motor Lublin",
+      "rawRating": 1492
+    },
+    {
+      "clubId": "club:poland:nieciecza",
+      "providerName": "Nieciecza",
+      "rawRating": 1471
+    },
+    {
+      "clubId": "club:poland:piast-gliwice",
+      "providerName": "Piast Gliwice",
+      "rawRating": 1530
+    },
+    {
+      "clubId": "club:poland:pogon-szczecin",
+      "providerName": "Pogon",
+      "rawRating": 1582
+    },
+    {
+      "clubId": "club:poland:radomiak-radom",
+      "providerName": "Radomiak",
+      "rawRating": 1487
+    },
+    {
+      "clubId": "club:poland:rakow-czestochowa",
+      "providerName": "Rakow",
+      "rawRating": 1587
+    },
+    {
+      "clubId": "club:poland:widzew-odz",
+      "providerName": "Widzew",
+      "rawRating": 1503
+    },
+    {
+      "clubId": "club:poland:wis-a-p-ock",
+      "providerName": "Plock",
+      "rawRating": 1519
+    },
+    {
+      "clubId": "club:poland:zag-ebie-lubin",
+      "providerName": "Lubin",
+      "rawRating": 1518
+    },
+    {
+      "clubId": "club:portugal:alverca",
+      "providerName": "Alverca",
+      "rawRating": 1538
+    },
+    {
+      "clubId": "club:portugal:arouca",
+      "providerName": "Arouca",
+      "rawRating": 1572
+    },
+    {
+      "clubId": "club:portugal:benfica",
+      "providerName": "Benfica",
+      "rawRating": 1854
+    },
+    {
+      "clubId": "club:portugal:braga",
+      "providerName": "Braga",
+      "rawRating": 1730
+    },
+    {
+      "clubId": "club:portugal:casa-pia",
+      "providerName": "Casa Pia",
+      "rawRating": 1493
+    },
+    {
+      "clubId": "club:portugal:estoril",
+      "providerName": "Estoril",
+      "rawRating": 1515
+    },
+    {
+      "clubId": "club:portugal:estrela-amadora",
+      "providerName": "Estrela Amadora",
+      "rawRating": 1495
+    },
+    {
+      "clubId": "club:portugal:famalicao",
+      "providerName": "Famalicao",
+      "rawRating": 1613
+    },
+    {
+      "clubId": "club:portugal:gil-vicente",
+      "providerName": "Gil Vicente",
+      "rawRating": 1564
+    },
+    {
+      "clubId": "club:portugal:moreirense",
+      "providerName": "Moreirense",
+      "rawRating": 1548
+    },
+    {
+      "clubId": "club:portugal:nacional",
+      "providerName": "Nacional",
+      "rawRating": 1481
+    },
+    {
+      "clubId": "club:portugal:porto",
+      "providerName": "Porto",
+      "rawRating": 1839
+    },
+    {
+      "clubId": "club:portugal:rio-ave",
+      "providerName": "Rio Ave",
+      "rawRating": 1497
+    },
+    {
+      "clubId": "club:portugal:santa-clara",
+      "providerName": "Santa Clara",
+      "rawRating": 1573
+    },
+    {
+      "clubId": "club:portugal:sporting-cp",
+      "providerName": "Sporting",
+      "rawRating": 1871
+    },
+    {
+      "clubId": "club:portugal:tondela",
+      "providerName": "Tondela",
+      "rawRating": 1472
+    },
+    {
+      "clubId": "club:portugal:vitoria-guimaraes",
+      "providerName": "Guimaraes",
+      "rawRating": 1570
+    },
+    {
+      "clubId": "club:serbia:cukaricki",
+      "providerName": "FK Čukarički",
+      "rawRating": 1342
+    },
+    {
+      "clubId": "club:serbia:imt",
+      "providerName": "IMT Beograd",
+      "rawRating": 1325
+    },
+    {
+      "clubId": "club:serbia:macva-sabac",
+      "providerName": "Macva Sabac",
+      "rawRating": 1258
+    },
+    {
+      "clubId": "club:serbia:mladost-lucani",
+      "providerName": "Mladost Lucani",
+      "rawRating": 1310
+    },
+    {
+      "clubId": "club:serbia:napredak-krusevac",
+      "providerName": "Krusevac",
+      "rawRating": 1181
+    },
+    {
+      "clubId": "club:serbia:novi-pazar",
+      "providerName": "FK Novi Pazar",
+      "rawRating": 1337
+    },
+    {
+      "clubId": "club:serbia:ofk-beograd",
+      "providerName": "OFK",
+      "rawRating": 1342
+    },
+    {
+      "clubId": "club:serbia:partizan",
+      "providerName": "Partizan",
+      "rawRating": 1481
+    },
+    {
+      "clubId": "club:serbia:radnicki-1923",
+      "providerName": "Kragujevac",
+      "rawRating": 1360
+    },
+    {
+      "clubId": "club:serbia:radnicki-nis",
+      "providerName": "Radnički Niš",
+      "rawRating": 1285
+    },
+    {
+      "clubId": "club:serbia:radnik-surdulica",
+      "providerName": "Radnik Surdulica",
+      "rawRating": 1315
+    },
+    {
+      "clubId": "club:serbia:red-star-belgrade",
+      "providerName": "Crvena Zvezda",
+      "rawRating": 1664
+    },
+    {
+      "clubId": "club:serbia:tsc-backa-topola",
+      "providerName": "Backa Topola",
+      "rawRating": 1345
+    },
+    {
+      "clubId": "club:serbia:zeleznicar-pancevo",
+      "providerName": "Železničar Panče",
+      "rawRating": 1372
+    },
+    {
+      "clubId": "club:serbia:zemun",
+      "providerName": "Zemun",
+      "rawRating": 1076
+    },
+    {
+      "clubId": "club:spain:ad-ceuta",
+      "providerName": "CA Ceuta",
+      "rawRating": 1567
+    },
+    {
+      "clubId": "club:spain:albacete",
+      "providerName": "Albacete",
+      "rawRating": 1595
+    },
+    {
+      "clubId": "club:spain:almeria",
+      "providerName": "Almeria",
+      "rawRating": 1696
+    },
+    {
+      "clubId": "club:spain:athletic-bilbao",
+      "providerName": "Athletic Club",
+      "rawRating": 1764
+    },
+    {
+      "clubId": "club:spain:atletico-madrid",
+      "providerName": "Atlético",
+      "rawRating": 1903
+    },
+    {
+      "clubId": "club:spain:burgos",
+      "providerName": "Burgos",
+      "rawRating": 1661
+    },
+    {
+      "clubId": "club:spain:cadiz",
+      "providerName": "Cadiz",
+      "rawRating": 1563
+    },
+    {
+      "clubId": "club:spain:castellon",
+      "providerName": "Castellon",
+      "rawRating": 1691
+    },
+    {
+      "clubId": "club:spain:celta-fortuna",
+      "providerName": "RC Celta B",
+      "rawRating": 1569
+    },
+    {
+      "clubId": "club:spain:celta-vigo",
+      "providerName": "Celta",
+      "rawRating": 1750
+    },
+    {
+      "clubId": "club:spain:cordoba",
+      "providerName": "Cordoba",
+      "rawRating": 1598
+    },
+    {
+      "clubId": "club:spain:deportivo-alaves",
+      "providerName": "Alaves",
+      "rawRating": 1723
+    },
+    {
+      "clubId": "club:spain:deportivo-de-la-coruna",
+      "providerName": "Depor",
+      "rawRating": 1691
+    },
+    {
+      "clubId": "club:spain:eibar",
+      "providerName": "Eibar",
+      "rawRating": 1693
+    },
+    {
+      "clubId": "club:spain:elche",
+      "providerName": "Elche",
+      "rawRating": 1701
+    },
+    {
+      "clubId": "club:spain:eldense",
+      "providerName": "Eldense",
+      "rawRating": 1590
+    },
+    {
+      "clubId": "club:spain:espanyol",
+      "providerName": "Espanyol",
+      "rawRating": 1697
+    },
+    {
+      "clubId": "club:spain:fc-andorra",
+      "providerName": "FC Andorra",
+      "rawRating": 1590
+    },
+    {
+      "clubId": "club:spain:fc-barcelona",
+      "providerName": "Barcelona",
+      "rawRating": 2024
+    },
+    {
+      "clubId": "club:spain:getafe",
+      "providerName": "Getafe",
+      "rawRating": 1700
+    },
+    {
+      "clubId": "club:spain:girona",
+      "providerName": "Girona",
+      "rawRating": 1720
+    },
+    {
+      "clubId": "club:spain:granada",
+      "providerName": "Granada",
+      "rawRating": 1615
+    },
+    {
+      "clubId": "club:spain:las-palmas",
+      "providerName": "Las Palmas",
+      "rawRating": 1661
+    },
+    {
+      "clubId": "club:spain:leganes",
+      "providerName": "Leganes",
+      "rawRating": 1600
+    },
+    {
+      "clubId": "club:spain:levante",
+      "providerName": "Levante",
+      "rawRating": 1708
+    },
+    {
+      "clubId": "club:spain:malaga",
+      "providerName": "Malaga",
+      "rawRating": 1666
+    },
+    {
+      "clubId": "club:spain:mallorca",
+      "providerName": "Mallorca",
+      "rawRating": 1713
+    },
+    {
+      "clubId": "club:spain:osasuna",
+      "providerName": "Osasuna",
+      "rawRating": 1717
+    },
+    {
+      "clubId": "club:spain:racing-santander",
+      "providerName": "Santander",
+      "rawRating": 1685
+    },
+    {
+      "clubId": "club:spain:rayo-vallecano",
+      "providerName": "Rayo Vallecano",
+      "rawRating": 1744
+    },
+    {
+      "clubId": "club:spain:real-betis",
+      "providerName": "Betis",
+      "rawRating": 1818
+    },
+    {
+      "clubId": "club:spain:real-madrid",
+      "providerName": "Real Madrid",
+      "rawRating": 1972
+    },
+    {
+      "clubId": "club:spain:real-oviedo",
+      "providerName": "Oviedo",
+      "rawRating": 1636
+    },
+    {
+      "clubId": "club:spain:real-sociedad",
+      "providerName": "Real Sociedad",
+      "rawRating": 1769
+    },
+    {
+      "clubId": "club:spain:real-sociedad-b",
+      "providerName": "Real Sociedad B",
+      "rawRating": 1567
+    },
+    {
+      "clubId": "club:spain:real-valladolid",
+      "providerName": "Real Valladolid",
+      "rawRating": 1360
+    },
+    {
+      "clubId": "club:spain:sabadell",
+      "providerName": "Sabadell",
+      "rawRating": 1585
+    },
+    {
+      "clubId": "club:spain:sevilla",
+      "providerName": "Sevilla",
+      "rawRating": 1725
+    },
+    {
+      "clubId": "club:spain:sporting-gijon",
+      "providerName": "Gijon",
+      "rawRating": 1627
+    },
+    {
+      "clubId": "club:spain:tenerife",
+      "providerName": "Tenerife",
+      "rawRating": 1614
+    },
+    {
+      "clubId": "club:spain:valencia",
+      "providerName": "Valencia",
+      "rawRating": 1741
+    },
+    {
+      "clubId": "club:spain:villarreal",
+      "providerName": "Villarreal",
+      "rawRating": 1798
+    },
+    {
+      "clubId": "club:turkey:alanyaspor",
+      "providerName": "Alanyaspor",
+      "rawRating": 1579
+    },
+    {
+      "clubId": "club:turkey:antalyaspor",
+      "providerName": "Antalyaspor",
+      "rawRating": 1505
+    },
+    {
+      "clubId": "club:turkey:basaksehir",
+      "providerName": "Başakşehir",
+      "rawRating": 1629
+    },
+    {
+      "clubId": "club:turkey:besiktas",
+      "providerName": "Besiktas",
+      "rawRating": 1699
+    },
+    {
+      "clubId": "club:turkey:eyupspor",
+      "providerName": "Eyupspor",
+      "rawRating": 1527
+    },
+    {
+      "clubId": "club:turkey:fatih-karagumruk",
+      "providerName": "Karagümrük",
+      "rawRating": 1503
+    },
+    {
+      "clubId": "club:turkey:fenerbahce",
+      "providerName": "Fenerbahçe",
+      "rawRating": 1780
+    },
+    {
+      "clubId": "club:turkey:galatasaray",
+      "providerName": "Galatasaray",
+      "rawRating": 1795
+    },
+    {
+      "clubId": "club:turkey:gaziantep",
+      "providerName": "Gaziantep",
+      "rawRating": 1541
+    },
+    {
+      "clubId": "club:turkey:genclerbirligi",
+      "providerName": "Genclerbirligi",
+      "rawRating": 1559
+    },
+    {
+      "clubId": "club:turkey:goztepe",
+      "providerName": "Göztepe",
+      "rawRating": 1600
+    },
+    {
+      "clubId": "club:turkey:kas-mpasa",
+      "providerName": "Kasimpasa",
+      "rawRating": 1566
+    },
+    {
+      "clubId": "club:turkey:kayserispor",
+      "providerName": "Kayseri",
+      "rawRating": 1512
+    },
+    {
+      "clubId": "club:turkey:kocaelispor",
+      "providerName": "Kocaelispor",
+      "rawRating": 1586
+    },
+    {
+      "clubId": "club:turkey:konyaspor",
+      "providerName": "Konyaspor",
+      "rawRating": 1538
+    },
+    {
+      "clubId": "club:turkey:rizespor",
+      "providerName": "Rizespor",
+      "rawRating": 1569
+    },
+    {
+      "clubId": "club:turkey:samsunspor",
+      "providerName": "Samsunspor",
+      "rawRating": 1596
+    },
+    {
+      "clubId": "club:turkey:trabzonspor",
+      "providerName": "Trabzonspor",
+      "rawRating": 1664
+    },
+    {
+      "clubId": "club:united-states:atlanta-united",
+      "providerName": "Atlanta United",
+      "rawRating": 1514
+    },
+    {
+      "clubId": "club:united-states:austin-fc",
+      "providerName": "Austin",
+      "rawRating": 1548
+    },
+    {
+      "clubId": "club:united-states:cf-montreal",
+      "providerName": "Montréal",
+      "rawRating": 1489
+    },
+    {
+      "clubId": "club:united-states:charlotte-fc",
+      "providerName": "Charlotte",
+      "rawRating": 1604
+    },
+    {
+      "clubId": "club:united-states:chicago-fire",
+      "providerName": "Chicago Fire",
+      "rawRating": 1600
+    },
+    {
+      "clubId": "club:united-states:colorado-rapids",
+      "providerName": "Colorado Rapids",
+      "rawRating": 1541
+    },
+    {
+      "clubId": "club:united-states:columbus-crew",
+      "providerName": "Columbus",
+      "rawRating": 1599
+    },
+    {
+      "clubId": "club:united-states:dc-united",
+      "providerName": "DC United",
+      "rawRating": 1499
+    },
+    {
+      "clubId": "club:united-states:fc-cincinnati",
+      "providerName": "Cincinnati",
+      "rawRating": 1595
+    },
+    {
+      "clubId": "club:united-states:fc-dallas",
+      "providerName": "FC Dallas",
+      "rawRating": 1611
+    },
+    {
+      "clubId": "club:united-states:houston-dynamo",
+      "providerName": "Houston Dynamo",
+      "rawRating": 1588
+    },
+    {
+      "clubId": "club:united-states:inter-miami",
+      "providerName": "Inter Miami",
+      "rawRating": 1680
+    },
+    {
+      "clubId": "club:united-states:la-galaxy",
+      "providerName": "LA Galaxy",
+      "rawRating": 1554
+    },
+    {
+      "clubId": "club:united-states:los-angeles-fc",
+      "providerName": "LAFC",
+      "rawRating": 1654
+    },
+    {
+      "clubId": "club:united-states:minnesota-united",
+      "providerName": "Minnesota Utd",
+      "rawRating": 1563
+    },
+    {
+      "clubId": "club:united-states:nashville-sc",
+      "providerName": "Nashville",
+      "rawRating": 1682
+    },
+    {
+      "clubId": "club:united-states:new-england-revolution",
+      "providerName": "NE Revolution",
+      "rawRating": 1568
+    },
+    {
+      "clubId": "club:united-states:new-york-city-fc",
+      "providerName": "NYC FC",
+      "rawRating": 1596
+    },
+    {
+      "clubId": "club:united-states:new-york-red-bulls",
+      "providerName": "New York RB",
+      "rawRating": 1541
+    },
+    {
+      "clubId": "club:united-states:orlando-city",
+      "providerName": "Orlando City",
+      "rawRating": 1590
+    },
+    {
+      "clubId": "club:united-states:philadelphia-union",
+      "providerName": "Philadelphia",
+      "rawRating": 1646
+    },
+    {
+      "clubId": "club:united-states:portland-timbers",
+      "providerName": "Portland Timbers",
+      "rawRating": 1557
+    },
+    {
+      "clubId": "club:united-states:real-salt-lake",
+      "providerName": "Real Salt Lake",
+      "rawRating": 1545
+    },
+    {
+      "clubId": "club:united-states:san-diego-fc",
+      "providerName": "San Diego FC",
+      "rawRating": 1611
+    },
+    {
+      "clubId": "club:united-states:san-jose-earthquakes",
+      "providerName": "San Jose",
+      "rawRating": 1568
+    },
+    {
+      "clubId": "club:united-states:seattle-sounders",
+      "providerName": "Seattle Sounders",
+      "rawRating": 1614
+    },
+    {
+      "clubId": "club:united-states:sporting-kansas-city",
+      "providerName": "Sporting KC",
+      "rawRating": 1457
+    },
+    {
+      "clubId": "club:united-states:st-louis-city",
+      "providerName": "St. Louis City",
+      "rawRating": 1620
+    },
+    {
+      "clubId": "club:united-states:toronto-fc",
+      "providerName": "Toronto FC",
+      "rawRating": 1516
+    },
+    {
+      "clubId": "club:united-states:vancouver-whitecaps",
+      "providerName": "Vancouver",
+      "rawRating": 1653
+    }
+  ],
+  "acceptedSecondaryCalibrated": [
+    {
+      "clubId": "club:belgium:raal-la-louviere",
+      "footballDatabasePoints": 1312,
+      "calibratedClubElo": 1432
+    },
+    {
+      "clubId": "club:colombia:alianza",
+      "footballDatabasePoints": 1364,
+      "calibratedClubElo": 1486
+    },
+    {
+      "clubId": "club:croatia:varazdin",
+      "footballDatabasePoints": 1427,
+      "calibratedClubElo": 1485
+    },
+    {
+      "clubId": "club:portugal:avs",
+      "footballDatabasePoints": 1335,
+      "calibratedClubElo": 1423
+    },
+    {
+      "clubId": "club:serbia:vojvodina",
+      "footballDatabasePoints": 1517,
+      "calibratedClubElo": 1506
+    }
+  ],
+  "unmatched": [],
+  "duplicates": [],
+  "identityChecks": {
+    "existing35Resolved": 35,
+    "specialCases": 3
+  }
+}

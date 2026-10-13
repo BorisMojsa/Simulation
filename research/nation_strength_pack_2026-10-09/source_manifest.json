@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "researchDate": "2026-10-09",
+  "datasetId": "fifa-men-2026-10-07-inventory79-secondary-v1",
+  "sources": [
+    {
+      "sourceId": "betimate",
+      "url": "https://betimate.com/en/fifa-ranking",
+      "publisher": "Betimate",
+      "evidenceTier": "secondary_republisher",
+      "originProvider": "fifa",
+      "publicationDate": null,
+      "rankingEditionDate": "2026-10-07",
+      "retrievedAt": "2026-10-09",
+      "rawPath": "raw/betimate_fifa_2026-10-07_inventory79.json"
+    },
+    {
+      "sourceId": "futbor",
+      "url": "https://futbor.com/fifa-rankings/",
+      "publisher": "Futbor",
+      "evidenceTier": "secondary_republisher",
+      "originProvider": "fifa",
+      "publicationDate": null,
+      "rankingEditionDate": "2026-10-07",
+      "retrievedAt": "2026-10-09",
+      "rawPath": "raw/futbor_fifa_2026-10-07_inventory79.json"
+    },
+    {
+      "sourceId": "b_empire",
+      "url": "https://b-empiremagazine.com/en/classement-fifa/",
+      "publisher": "B-Empire Magazine",
+      "evidenceTier": "secondary_republisher",
+      "originProvider": "fifa",
+      "publicationDate": null,
+      "rankingEditionDate": "2026-10-07",
+      "retrievedAt": "2026-10-09",
+      "rawPath": "raw/b_empire_fifa_2026-10-07_inventory79.json"
+    },
+    {
+      "sourceId": "australia_supplement",
+      "url": "https://fifarankingcalculator.com/team/australia/",
+      "publisher": "FIFA Ranking Calculator",
+      "evidenceTier": "secondary_republisher",
+      "originProvider": "fifa",
+      "publicationDate": null,
+      "rankingEditionDate": "2026-10-07",
+      "retrievedAt": "2026-10-09",
+      "rawPath": "raw/australia_supplement_2026-10-07.json"
+    },
+    {
+      "sourceId": "fifa_men_methodology",
+      "url": "https://inside.fifa.com/fifa-rankings/world-ranking/procedure-men",
+      "publisher": "FIFA",
+      "evidenceTier": "primary_official",
+      "retrievedAt": "2026-10-09",
+      "supports": "SUM adds/subtracts result-dependent points from existing totals, accounts for relative strength, and took effect in August 2018. Does not supply the numeric 79-team snapshot."
+    },
+    {
+      "sourceId": "fifa_confederation_corrections",
+      "publisher": "FIFA",
+      "evidenceTier": "primary_official",
+      "retrievedAt": "2026-10-09",
+      "urls": [
+        "https://inside.fifa.com/en/associations/HUN/organisation",
+        "https://inside.fifa.com/en/associations/MLI/organisation",
+        "https://inside.fifa.com/associations/ven"
+      ],
+      "supports": "Hungary UEFA, Mali CAF, Venezuela CONMEBOL; membership facts only, not rating points."
+    },
+    {
+      "sourceId": "uploaded_nation_report",
+      "evidenceTier": "user_supplied_report",
+      "localPath": "input_reports/nation-strength-coverage-report.json"
+    },
+    {
+      "sourceId": "uploaded_club_calibration_report",
+      "evidenceTier": "user_supplied_report",
+      "localPath": "input_reports/strength-calibration-report.json"
+    }
+  ],
+  "limitations": [
+    "A direct, complete numeric FIFA export was not obtained. Direct-primary-verified points remain zero in this research pack.",
+    "Corroboration across publishers is agreement evidence; they may share an upstream feed and are not proven independent observations.",
+    "The three ranking pages claim a 211-team table. This pack intentionally captures the complete 79-team application inventory, not all 211 teams.",
+    "The source pages state a ranking edition date, not a verified article publication timestamp. publicationDate is unknown.",
+    "One secondary source differs for Australia. A selected published value and all conflicting observations are retained.",
+    "Ratings are results-based observations; derived game quality and positional ratings will still be model outputs.",
+    "The uploaded calibration report describes diagnostic results. Current uncommitted implementation, fitting code and frozen parameters were not available for direct audit.",
+    "No 35-year trophy or season-result database was constructed. No arbitrary historic-title bonuses are supplied."
+  ]
+}

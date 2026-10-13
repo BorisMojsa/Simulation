@@ -1,0 +1,514 @@
+{
+  "generatedAt": "2026-10-13T22:27:50.769Z",
+  "revision": {
+    "rev": "c3536363c19ec61e18b1b82e667cee4277fcbf7f",
+    "dirty": true,
+    "statusLines": 74
+  },
+  "versions": {
+    "financeProfile": "club-finance-v1-2026-10-09",
+    "recruitment": "recruitment-v1-2026-10-09",
+    "fx": "fx-2026-10-09",
+    "registration": "registration-windows-v1-2026-10-10"
+  },
+  "hashes": {
+    "clubFinanceProfiles": "55c1a71ff7f4b275",
+    "recruitmentConfig": "8c79815f34071c7d",
+    "dealPipeline": "5a0b676947b753a3",
+    "destinationSchedule": "cf4242fdf5eb4770",
+    "registrationWindows": "296509d46e757129"
+  },
+  "coverage": {
+    "profileVersion": "club-finance-v1-2026-10-09",
+    "fxVersion": "fx-2026-10-09",
+    "clubCount": 490,
+    "leagueCount": 26,
+    "estimatedCount": 460,
+    "sourcedCount": 30,
+    "uniqueClubIds": true,
+    "duplicateIds": [],
+    "unmatchedProfileIds": [],
+    "leaguesMissingBaseline": [],
+    "eliteFallbackOnMissing": false,
+    "byLeague": {
+      "league:england-premier-league": {
+        "clubs": 20,
+        "profiles": 20,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 20,
+        "sourced": 0
+      },
+      "league:england-championship": {
+        "clubs": 24,
+        "profiles": 24,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 24,
+        "sourced": 0
+      },
+      "league:germany-bundesliga": {
+        "clubs": 18,
+        "profiles": 18,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 18,
+        "sourced": 0
+      },
+      "league:germany-2-bundesliga": {
+        "clubs": 18,
+        "profiles": 18,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 18,
+        "sourced": 0
+      },
+      "league:spain-la-liga": {
+        "clubs": 20,
+        "profiles": 20,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 20,
+        "sourced": 0
+      },
+      "league:spain-laliga-2": {
+        "clubs": 22,
+        "profiles": 22,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 22,
+        "sourced": 0
+      },
+      "league:italy-serie-a": {
+        "clubs": 20,
+        "profiles": 20,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 20,
+        "sourced": 0
+      },
+      "league:italy-serie-b": {
+        "clubs": 20,
+        "profiles": 20,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 20,
+        "sourced": 0
+      },
+      "league:france-ligue-1": {
+        "clubs": 18,
+        "profiles": 18,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 18,
+        "sourced": 0
+      },
+      "league:france-ligue-2": {
+        "clubs": 18,
+        "profiles": 18,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 18,
+        "sourced": 0
+      },
+      "league:brazil-brasileirao-serie-a": {
+        "clubs": 20,
+        "profiles": 20,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 20,
+        "sourced": 0
+      },
+      "league:belgium-belgian-pro-league": {
+        "clubs": 16,
+        "profiles": 16,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 16,
+        "sourced": 0
+      },
+      "league:argentina-liga-profesional": {
+        "clubs": 30,
+        "profiles": 30,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 30,
+        "sourced": 0
+      },
+      "league:portugal-primeira-liga": {
+        "clubs": 18,
+        "profiles": 18,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 18,
+        "sourced": 0
+      },
+      "league:poland-ekstraklasa": {
+        "clubs": 18,
+        "profiles": 18,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 18,
+        "sourced": 0
+      },
+      "league:denmark-superliga": {
+        "clubs": 12,
+        "profiles": 12,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 12,
+        "sourced": 0
+      },
+      "league:norway-eliteserien": {
+        "clubs": 16,
+        "profiles": 16,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 16,
+        "sourced": 0
+      },
+      "league:mexico-liga-mx": {
+        "clubs": 18,
+        "profiles": 18,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 18,
+        "sourced": 0
+      },
+      "league:colombia-categoria-primera-a": {
+        "clubs": 20,
+        "profiles": 20,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 20,
+        "sourced": 0
+      },
+      "league:netherlands-eredivisie": {
+        "clubs": 18,
+        "profiles": 18,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 18,
+        "sourced": 0
+      },
+      "league:ecuador-ligapro-serie-a": {
+        "clubs": 16,
+        "profiles": 16,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 16,
+        "sourced": 0
+      },
+      "league:turkiye-super-lig": {
+        "clubs": 18,
+        "profiles": 18,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 18,
+        "sourced": 0
+      },
+      "league:united-states-mls": {
+        "clubs": 30,
+        "profiles": 30,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 0,
+        "sourced": 30
+      },
+      "league:czechia-czech-first-league": {
+        "clubs": 16,
+        "profiles": 16,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 16,
+        "sourced": 0
+      },
+      "league:croatia-hnl": {
+        "clubs": 10,
+        "profiles": 10,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 10,
+        "sourced": 0
+      },
+      "league:serbia-superliga": {
+        "clubs": 16,
+        "profiles": 16,
+        "missing": [],
+        "hasBaseline": true,
+        "estimated": 16,
+        "sourced": 0
+      }
+    },
+    "honesty": "Most board authorisations and wage bands are declared simulation allocations with estimatedFields — not verified private club budgets. Inferred transfer allocations must not be described as audited accounts.",
+    "estimatedFieldsNote": "Most board authorisations and wage bands are declared simulation allocations with estimatedFields — not verified private budgets."
+  },
+  "sampleSize": 936,
+  "runtimeMs": 3644,
+  "summary": {
+    "offerCount": 1130,
+    "meanOffersPerScenario": 1.2072649572649572,
+    "eligibleTotal": 295332,
+    "meanEligiblePerScenario": 315.52564102564105,
+    "eliteSeniorOffers": 5,
+    "eliteSeniorOffersLowOvr": 0,
+    "eliteProspectOffers": 0,
+    "feeP50": 12750000,
+    "feeP90": 22250000,
+    "wageP50": 6900,
+    "wageP90": 112000,
+    "loanStarts": 156,
+    "loanReturns": 156,
+    "roleCounts": {
+      "prospect": 252,
+      "cover": 52,
+      "rotation": 190,
+      "starter": 636
+    },
+    "zeroEliteSeniorLowOvrRequired": true,
+    "leaguesWithZeroEligibleAcrossScenarios": []
+  },
+  "positiveControls": {
+    "affordableSmallClub": {
+      "eligible": 244,
+      "offers": 1,
+      "sampleDestinations": [
+        {
+          "club": "Radnički 1923",
+          "league": "league:serbia-superliga",
+          "role": "starter",
+          "wage": 3200,
+          "fee": 0
+        }
+      ],
+      "ok": true
+    },
+    "eliteSeniorReady": {
+      "eligible": 483,
+      "eliteSeniorEligible": 17,
+      "ok": true
+    },
+    "qualifiedProspect": {
+      "eligible": 393,
+      "prospectPathway": 25,
+      "ok": true
+    }
+  },
+  "serieBChecks": {
+    "reject100m": true,
+    "reject8mVs3m": true,
+    "valid2m": true
+  },
+  "rejectionReasons": {
+    "fee-above-ordinary-deal-band": 900,
+    "no-fee-overlap": 23,
+    "sellerMin=4400000": 1,
+    "buyerMax=2700000": 1,
+    "sellerMin=6200000": 1,
+    "buyerMax=3600000": 3,
+    "insufficient-cash-reserve": 6,
+    "sellerMin=5000000": 2,
+    "buyerMax=3100000": 1,
+    "sellerMin=6900000": 1,
+    "buyerMax=4300000": 1,
+    "sellerMin=5600000": 2,
+    "buyerMax=3200000": 1,
+    "sellerMin=2900000": 1,
+    "buyerMax=1600000": 1,
+    "exceeds-transfer-authorisation": 4,
+    "sellerMin=6600000": 2,
+    "buyerMax=4000000": 3,
+    "sellerMin=3700000": 1,
+    "buyerMax=2500000": 1,
+    "sellerMin=6000000": 1,
+    "buyerMax=3700000": 1,
+    "sellerMin=6100000": 1,
+    "buyerMax=3400000": 1,
+    "sellerMin=6800000": 1,
+    "sellerMin=2600000": 1,
+    "buyerMax=1500000": 1,
+    "sellerMin=8100000": 1,
+    "buyerMax=5500000": 1,
+    "buyerMax=4500000": 1,
+    "sellerMin=5500000": 1,
+    "buyerMax=3800000": 1,
+    "sellerMin=4000000": 1,
+    "buyerMax=2800000": 1,
+    "sellerMin=7700000": 1,
+    "sellerMin=4500000": 1,
+    "buyerMax=3000000": 2,
+    "sellerMin=5200000": 1,
+    "sellerMin=5100000": 1,
+    "buyerMax=3500000": 1,
+    "mls-exceeds-max-budget-charge": 2,
+    "sellerMin=7600000": 1,
+    "buyerMax=4700000": 1
+  },
+  "offersByLeague": {
+    "league:england-premier-league": 60,
+    "league:portugal-primeira-liga": 40,
+    "league:france-ligue-1": 64,
+    "league:italy-serie-a": 83,
+    "league:spain-la-liga": 69,
+    "league:england-championship": 49,
+    "league:germany-bundesliga": 72,
+    "league:germany-2-bundesliga": 36,
+    "league:brazil-brasileirao-serie-a": 42,
+    "league:spain-laliga-2": 36,
+    "league:italy-serie-b": 36,
+    "league:france-ligue-2": 36,
+    "league:mexico-liga-mx": 37,
+    "league:belgium-belgian-pro-league": 36,
+    "league:argentina-liga-profesional": 36,
+    "league:netherlands-eredivisie": 39,
+    "league:poland-ekstraklasa": 36,
+    "league:denmark-superliga": 36,
+    "league:norway-eliteserien": 36,
+    "league:turkiye-super-lig": 37,
+    "league:colombia-categoria-primera-a": 36,
+    "league:ecuador-ligapro-serie-a": 36,
+    "league:united-states-mls": 34,
+    "league:czechia-czech-first-league": 36,
+    "league:croatia-hnl": 36,
+    "league:serbia-superliga": 36
+  },
+  "eligibleByLeague": {
+    "league:england-premier-league": 11360,
+    "league:england-championship": 11364,
+    "league:germany-bundesliga": 11398,
+    "league:germany-2-bundesliga": 11369,
+    "league:spain-la-liga": 11376,
+    "league:spain-laliga-2": 11371,
+    "league:italy-serie-a": 11339,
+    "league:italy-serie-b": 11361,
+    "league:france-ligue-1": 11400,
+    "league:france-ligue-2": 11370,
+    "league:brazil-brasileirao-serie-a": 11380,
+    "league:belgium-belgian-pro-league": 11359,
+    "league:argentina-liga-profesional": 11351,
+    "league:portugal-primeira-liga": 11368,
+    "league:poland-ekstraklasa": 11359,
+    "league:denmark-superliga": 11353,
+    "league:norway-eliteserien": 11346,
+    "league:mexico-liga-mx": 11359,
+    "league:colombia-categoria-primera-a": 11311,
+    "league:netherlands-eredivisie": 11331,
+    "league:ecuador-ligapro-serie-a": 11376,
+    "league:turkiye-super-lig": 11366,
+    "league:united-states-mls": 11352,
+    "league:czechia-czech-first-league": 11329,
+    "league:croatia-hnl": 11306,
+    "league:serbia-superliga": 11378
+  },
+  "scheduleCoverage": {
+    "league:england-premier-league": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:england-championship": {
+      "fixtures": 552,
+      "clubs": 24
+    },
+    "league:germany-bundesliga": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:germany-2-bundesliga": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:spain-la-liga": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:spain-laliga-2": {
+      "fixtures": 462,
+      "clubs": 22
+    },
+    "league:italy-serie-a": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:italy-serie-b": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:france-ligue-1": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:france-ligue-2": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:brazil-brasileirao-serie-a": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:belgium-belgian-pro-league": {
+      "fixtures": 240,
+      "clubs": 16
+    },
+    "league:argentina-liga-profesional": {
+      "fixtures": 870,
+      "clubs": 30
+    },
+    "league:portugal-primeira-liga": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:poland-ekstraklasa": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:denmark-superliga": {
+      "fixtures": 132,
+      "clubs": 12
+    },
+    "league:norway-eliteserien": {
+      "fixtures": 240,
+      "clubs": 16
+    },
+    "league:mexico-liga-mx": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:colombia-categoria-primera-a": {
+      "fixtures": 380,
+      "clubs": 20
+    },
+    "league:netherlands-eredivisie": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:ecuador-ligapro-serie-a": {
+      "fixtures": 240,
+      "clubs": 16
+    },
+    "league:turkiye-super-lig": {
+      "fixtures": 306,
+      "clubs": 18
+    },
+    "league:united-states-mls": {
+      "fixtures": 870,
+      "clubs": 30
+    },
+    "league:czechia-czech-first-league": {
+      "fixtures": 240,
+      "clubs": 16
+    },
+    "league:croatia-hnl": {
+      "fixtures": 90,
+      "clubs": 10
+    },
+    "league:serbia-superliga": {
+      "fixtures": 240,
+      "clubs": 16
+    }
+  },
+  "notes": [
+    "Squad-review checkpoints are not universal registration windows; see REGISTRATION_RULE_VERSION.",
+    "Cross-league mid-season moves attach destination remaining fixtures via destinationSchedule.js.",
+    "National-team strength is not used in club recruiting or budgets."
+  ]
+}

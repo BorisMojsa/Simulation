@@ -35,6 +35,7 @@ export const WORLD_CUP_NATIONS = [
   { name: "Greece", code: "gr" },
   { name: "Haiti", code: "ht" },
   { name: "Honduras", code: "hn" },
+  { name: "Hungary", code: "hu" },
   { name: "Iceland", code: "is" },
   { name: "Iran", code: "ir" },
   { name: "Iraq", code: "iq" },
@@ -43,6 +44,7 @@ export const WORLD_CUP_NATIONS = [
   { name: "Jamaica", code: "jm" },
   { name: "Japan", code: "jp" },
   { name: "Jordan", code: "jo" },
+  { name: "Mali", code: "ml" },
   { name: "Mexico", code: "mx" },
   { name: "Morocco", code: "ma" },
   { name: "Netherlands", code: "nl" },
@@ -79,6 +81,7 @@ export const WORLD_CUP_NATIONS = [
   { name: "United States", code: "us" },
   { name: "Uruguay", code: "uy" },
   { name: "Uzbekistan", code: "uz" },
+  { name: "Venezuela", code: "ve" },
   { name: "Wales", code: "gb-wls" },
 ];
 

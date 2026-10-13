@@ -93,6 +93,8 @@ export const NATION_REGION = {
   "South Africa": "africa",
   "DR Congo": "africa",
   Angola: "africa",
+  Mali: "africa",
+  Togo: "africa",
   "Cape Verde": "africa",
 
   // Asia / Oceania

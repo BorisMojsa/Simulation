@@ -1,0 +1,232 @@
+{
+  "auditDate": "2026-10-09",
+  "auditScope": "Uploaded report plus the 75 published observation pairs from the prior research pack. Not a direct audit of new implementation source code.",
+  "reportedCalibrationId": "fdb-to-clubelo-regularized-country-v1",
+  "reportedAcceptance": {
+    "rule": "Accept regularized country-aware conversion when (1) slope>0, (2) leave-one-club-out MAE is at least 25 Elo better than global linear LOO MAE, (3) every target club country has ≥9 same-club pairs, (4) predicted ClubElo in [1000,2200], (5) Zemun/Mačva residuals retained (not dropped). Converted values labelled calibrated_from_published_rating, not verified ClubElo.",
+    "slopePositive": true,
+    "looMaeImprovementVsGlobal": 32.08,
+    "accepted": true
+  },
+  "reportedGlobalLooMaeElo": 60.42,
+  "reportedRegularizedLooMaeElo": 28.34,
+  "reportedGlobalLooImprovementElo": 32.08,
+  "reportedRegularizedCountryMetrics": {
+    "Belgium": {
+      "n": 15,
+      "maeElo": 32.25,
+      "rmseElo": 40.66,
+      "meanSignedErrorElo": 14.33
+    },
+    "Colombia": {
+      "n": 19,
+      "maeElo": 16.37,
+      "rmseElo": 20.57,
+      "meanSignedErrorElo": 12.39
+    },
+    "Croatia": {
+      "n": 9,
+      "maeElo": 17.26,
+      "rmseElo": 20.72,
+      "meanSignedErrorElo": -12.76
+    },
+    "Portugal": {
+      "n": 17,
+      "maeElo": 29.46,
+      "rmseElo": 34.54,
+      "meanSignedErrorElo": 1.93
+    },
+    "Serbia": {
+      "n": 15,
+      "maeElo": 44.99,
+      "rmseElo": 61.82,
+      "meanSignedErrorElo": -32.14
+    }
+  },
+  "reportedSignedResidualDefinition": "not stated in supplied report; do not infer bias direction without checking code",
+  "clubEloToQuality": {
+    "formula": "clamp(-25.072479 + 0.05800793 * clubElo, 30, 94)",
+    "intercept": -25.072478739035574,
+    "slope": 0.05800792555323033,
+    "clipMin": 30,
+    "clipMax": 94,
+    "notes": "Monotonic ClubElo→internal team quality fitted to percentile anchors over the observed 485-club Elo range so weak and elite clubs are not flattened. Distinct from Opta and FIFA transforms. Parameters frozen with baseline.",
+    "calibrationAnchors": [
+      {
+        "clubElo": 1258,
+        "targetQuality": 50
+      },
+      {
+        "clubElo": 1481,
+        "targetQuality": 56
+      },
+      {
+        "clubElo": 1537,
+        "targetQuality": 62
+      },
+      {
+        "clubElo": 1604,
+        "targetQuality": 68
+      },
+      {
+        "clubElo": 1691,
+        "targetQuality": 76
+      },
+      {
+        "clubElo": 1780,
+        "targetQuality": 82
+      },
+      {
+        "clubElo": 1956,
+        "targetQuality": 89
+      },
+      {
+        "clubElo": 2046,
+        "targetQuality": 91
+      }
+    ]
+  },
+  "targets": [
+    {
+      "clubId": "club:belgium:raal-la-louviere",
+      "clubName": "RAAL La Louvière",
+      "country": "Belgium",
+      "footballDatabasePoints": 1312,
+      "predictedClubElo": 1432,
+      "predictedClubEloUnrounded": 1431.6139,
+      "withinAcceptanceRange": true,
+      "strengthDerivationStatus": "calibrated_from_published_rating",
+      "pairedCountrySampleSize": 15,
+      "pairedFootballDatabaseRange": [
+        1290,
+        1756
+      ],
+      "targetWithinPairedInputRange": true,
+      "extrapolationDistanceFdbPoints": 0,
+      "reportedCountryLooMetrics": {
+        "n": 15,
+        "maeElo": 32.25,
+        "rmseElo": 40.66,
+        "meanSignedErrorElo": 14.33
+      },
+      "approximateCountryMaeInInternalQualityUnits": 1.871,
+      "uncertaintyStatement": "Country holdout errors describe this calibration sample; they are not a target-specific confidence interval."
+    },
+    {
+      "clubId": "club:colombia:alianza",
+      "clubName": "Alianza",
+      "country": "Colombia",
+      "footballDatabasePoints": 1364,
+      "predictedClubElo": 1486,
+      "predictedClubEloUnrounded": 1486.1599,
+      "withinAcceptanceRange": true,
+      "strengthDerivationStatus": "calibrated_from_published_rating",
+      "pairedCountrySampleSize": 19,
+      "pairedFootballDatabaseRange": [
+        1297,
+        1630
+      ],
+      "targetWithinPairedInputRange": true,
+      "extrapolationDistanceFdbPoints": 0,
+      "reportedCountryLooMetrics": {
+        "n": 19,
+        "maeElo": 16.37,
+        "rmseElo": 20.57,
+        "meanSignedErrorElo": 12.39
+      },
+      "approximateCountryMaeInInternalQualityUnits": 0.95,
+      "uncertaintyStatement": "Country holdout errors describe this calibration sample; they are not a target-specific confidence interval."
+    },
+    {
+      "clubId": "club:croatia:varazdin",
+      "clubName": "Varaždin",
+      "country": "Croatia",
+      "footballDatabasePoints": 1427,
+      "predictedClubElo": 1485,
+      "predictedClubEloUnrounded": 1484.8124,
+      "withinAcceptanceRange": true,
+      "strengthDerivationStatus": "calibrated_from_published_rating",
+      "pairedCountrySampleSize": 9,
+      "pairedFootballDatabaseRange": [
+        1156,
+        1648
+      ],
+      "targetWithinPairedInputRange": true,
+      "extrapolationDistanceFdbPoints": 0,
+      "reportedCountryLooMetrics": {
+        "n": 9,
+        "maeElo": 17.26,
+        "rmseElo": 20.72,
+        "meanSignedErrorElo": -12.76
+      },
+      "approximateCountryMaeInInternalQualityUnits": 1.001,
+      "uncertaintyStatement": "Country holdout errors describe this calibration sample; they are not a target-specific confidence interval."
+    },
+    {
+      "clubId": "club:portugal:avs",
+      "clubName": "AVS",
+      "country": "Portugal",
+      "footballDatabasePoints": 1335,
+      "predictedClubElo": 1423,
+      "predictedClubEloUnrounded": 1422.7945,
+      "withinAcceptanceRange": true,
+      "strengthDerivationStatus": "calibrated_from_published_rating",
+      "pairedCountrySampleSize": 17,
+      "pairedFootballDatabaseRange": [
+        1344,
+        1846
+      ],
+      "targetWithinPairedInputRange": false,
+      "extrapolationDistanceFdbPoints": 9,
+      "reportedCountryLooMetrics": {
+        "n": 17,
+        "maeElo": 29.46,
+        "rmseElo": 34.54,
+        "meanSignedErrorElo": 1.93
+      },
+      "approximateCountryMaeInInternalQualityUnits": 1.709,
+      "uncertaintyStatement": "Country holdout errors describe this calibration sample; they are not a target-specific confidence interval."
+    },
+    {
+      "clubId": "club:serbia:vojvodina",
+      "clubName": "Vojvodina",
+      "country": "Serbia",
+      "footballDatabasePoints": 1517,
+      "predictedClubElo": 1506,
+      "predictedClubEloUnrounded": 1506.3958,
+      "withinAcceptanceRange": true,
+      "strengthDerivationStatus": "calibrated_from_published_rating",
+      "pairedCountrySampleSize": 15,
+      "pairedFootballDatabaseRange": [
+        1171,
+        1705
+      ],
+      "targetWithinPairedInputRange": true,
+      "extrapolationDistanceFdbPoints": 0,
+      "reportedCountryLooMetrics": {
+        "n": 15,
+        "maeElo": 44.99,
+        "rmseElo": 61.82,
+        "meanSignedErrorElo": -32.14
+      },
+      "approximateCountryMaeInInternalQualityUnits": 2.61,
+      "uncertaintyStatement": "Country holdout errors describe this calibration sample; they are not a target-specific confidence interval."
+    }
+  ],
+  "findings": [
+    "The report shows an aggregate improvement in matching the published ClubElo scale. It does not establish match-outcome calibration.",
+    "Serbia has the largest country MAE (44.99) and RMSE (61.82); the sample retains Zemun (181.40 absolute error) and Macva Sabac (96.39).",
+    "AVS raw FootballDatabase rating 1335 is 9 points below the Portuguese paired minimum of 1344. This is mild extrapolation and must be disclosed.",
+    "All five targets remain calibrated_from_published_rating. Their predicted ClubElo values are not direct ClubElo observations.",
+    "The linear ClubElo-to-quality transform uses chosen internal quality anchors. It is a game design mapping, not an empirically verified player or match rating.",
+    "The paired provider editions differ by four days (ClubElo 2026-10-08, FootballDatabase 2026-10-04). Report the date difference as a limitation."
+  ],
+  "requiredImplementationChecks": [
+    "Verify each cross-validation fold refits all learned global and country terms using only training rows.",
+    "Document fixed versus tuned regularization and avoid choosing hyperparameters on the same holdout observations used to report final error.",
+    "Report all paired rows and residuals with a defined sign; keep known outliers.",
+    "Add per-target country sample support, input range, extrapolation and uncertainty limitations.",
+    "Freeze model coefficients and regularization/version identifiers in career baselines.",
+    "Use sensitivity refits to flag unstable targets; do not choose arbitrary offsets or output a fake confidence interval from MAE."
+  ]
+}

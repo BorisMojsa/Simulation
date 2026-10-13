@@ -1,0 +1,48 @@
+{
+  "snapshotId": "opta-pl-footballinsider-2026-02-19",
+  "provider": "opta",
+  "sourceStatus": "verified_rating",
+  "sourceUrl": "https://www.footballinsider247.com/match/where-every-premier-league-club-ranks-in-optas-global-power-rankings-controversial-pick-for-no-1-spot",
+  "methodologyUrl": "https://theanalyst.com/articles/power-rankings-your-club-ranked",
+  "publicationDate": "2026-02-19",
+  "ratingAsOfDate": null,
+  "ratingAsOfDateNote": "Article dated 19 Feb 2026 listing Opta global ratings for Premier League clubs. Exact Opta model timestamp not stated. Used only for clubs absent from the newer Spurs Web top-30 snapshot to avoid mixing conflicting observations for the same club.",
+  "retrievedAt": "2026-10-08",
+  "evidenceRef": "footballinsider-opta-pl-table-2026-02-19",
+  "scale": "opta_0_100",
+  "priority": 20,
+  "observations": [
+    {
+      "providerName": "Leeds",
+      "rawRating": 88.2,
+      "rawRank": 29,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Sunderland",
+      "rawRating": 87.5,
+      "rawRank": 37,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "West Ham",
+      "rawRating": 86.9,
+      "rawRank": 41,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Wolves",
+      "rawRating": 84.2,
+      "rawRank": 58,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Burnley",
+      "rawRating": 84.2,
+      "rawRank": 59,
+      "countryHint": "England"
+    }
+  ],
+  "archivedProvenance": true,
+  "archivedNote": "Retained for provenance. New careers use ClubElo primary baseline (clubelo-public-ranking-2026-10-08); do not mix June Opta values with October ClubElo for the same career seed."
+}

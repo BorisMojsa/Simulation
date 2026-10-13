@@ -1,0 +1,198 @@
+{
+  "snapshotId": "opta-public-top30-spursweb-2026-06-06",
+  "provider": "opta",
+  "sourceStatus": "verified_rating",
+  "sourceUrl": "https://www.spurs-web.com/spurs-news/where-tottenham-stand-in-optas-latest-power-rankings-below-everton-and-club-brugge/",
+  "methodologyUrl": "https://theanalyst.com/articles/power-rankings-your-club-ranked",
+  "publicationDate": "2026-06-06",
+  "ratingAsOfDate": null,
+  "ratingAsOfDateNote": "Article publishes Opta global top-30 values; exact Opta model timestamp not stated. Publication date recorded; ratingAsOfDate left unknown.",
+  "retrievedAt": "2026-10-08",
+  "evidenceRef": "spursweb-opta-top30-table-2026-06-06",
+  "scale": "opta_0_100",
+  "checksumNote": "Values transcribed from published HTML table rows Rank/Team/Rating.",
+  "observations": [
+    {
+      "providerName": "Arsenal",
+      "rawRating": 100,
+      "rawRank": 1,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Bayern München",
+      "rawRating": 99.8,
+      "rawRank": 2,
+      "countryHint": "Germany"
+    },
+    {
+      "providerName": "Manchester City",
+      "rawRating": 98,
+      "rawRank": 3,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Paris Saint-Germain",
+      "rawRating": 97.3,
+      "rawRank": 4,
+      "countryHint": "France"
+    },
+    {
+      "providerName": "Barcelona",
+      "rawRating": 96.2,
+      "rawRank": 5,
+      "countryHint": "Spain"
+    },
+    {
+      "providerName": "Manchester United",
+      "rawRating": 95.2,
+      "rawRank": 6,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Aston Villa",
+      "rawRating": 95.2,
+      "rawRank": 7,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Real Madrid",
+      "rawRating": 95,
+      "rawRank": 8,
+      "countryHint": "Spain"
+    },
+    {
+      "providerName": "Internazionale",
+      "rawRating": 94.3,
+      "rawRank": 9,
+      "countryHint": "Italy"
+    },
+    {
+      "providerName": "Liverpool",
+      "rawRating": 94.1,
+      "rawRank": 10,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "AFC Bournemouth",
+      "rawRating": 93.6,
+      "rawRank": 11,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Borussia Dortmund",
+      "rawRating": 92.6,
+      "rawRank": 12,
+      "countryHint": "Germany"
+    },
+    {
+      "providerName": "Brighton & Hove Albion",
+      "rawRating": 92.5,
+      "rawRank": 13,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Newcastle United",
+      "rawRating": 92.4,
+      "rawRank": 14,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Sporting CP",
+      "rawRating": 92.3,
+      "rawRank": 15,
+      "countryHint": "Portugal"
+    },
+    {
+      "providerName": "Brentford",
+      "rawRating": 92.1,
+      "rawRank": 16,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Benfica",
+      "rawRating": 91.9,
+      "rawRank": 17,
+      "countryHint": "Portugal"
+    },
+    {
+      "providerName": "Nottingham Forest",
+      "rawRating": 91.7,
+      "rawRank": 18,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Chelsea",
+      "rawRating": 91.7,
+      "rawRank": 19,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Atlético de Madrid",
+      "rawRating": 91.6,
+      "rawRank": 20,
+      "countryHint": "Spain"
+    },
+    {
+      "providerName": "Bayer Leverkusen",
+      "rawRating": 91.2,
+      "rawRank": 21,
+      "countryHint": "Germany"
+    },
+    {
+      "providerName": "Club Brugge",
+      "rawRating": 91.1,
+      "rawRank": 22,
+      "countryHint": "Belgium"
+    },
+    {
+      "providerName": "Roma",
+      "rawRating": 91,
+      "rawRank": 23,
+      "countryHint": "Italy"
+    },
+    {
+      "providerName": "Fulham",
+      "rawRating": 90.9,
+      "rawRank": 24,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Crystal Palace",
+      "rawRating": 90.5,
+      "rawRank": 25,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Napoli",
+      "rawRating": 90.4,
+      "rawRank": 26,
+      "countryHint": "Italy"
+    },
+    {
+      "providerName": "Porto",
+      "rawRating": 90.4,
+      "rawRank": 27,
+      "countryHint": "Portugal"
+    },
+    {
+      "providerName": "Everton",
+      "rawRating": 90.4,
+      "rawRank": 28,
+      "countryHint": "England"
+    },
+    {
+      "providerName": "Juventus",
+      "rawRating": 90.2,
+      "rawRank": 29,
+      "countryHint": "Italy"
+    },
+    {
+      "providerName": "Tottenham Hotspur",
+      "rawRating": 90.1,
+      "rawRank": 30,
+      "countryHint": "England"
+    }
+  ],
+  "archivedProvenance": true,
+  "archivedNote": "Retained for provenance. New careers use ClubElo primary baseline (clubelo-public-ranking-2026-10-08); do not mix June Opta values with October ClubElo for the same career seed."
+}

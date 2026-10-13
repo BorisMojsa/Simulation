@@ -1,0 +1,17 @@
+{
+  "sourceId": "australia_supplement",
+  "sourceUrl": "https://fifarankingcalculator.com/team/australia/",
+  "publisher": "FIFA Ranking Calculator",
+  "sourceEvidenceTier": "secondary_republisher",
+  "rankingEditionDate": "2026-10-07",
+  "retrievedAt": "2026-10-09",
+  "publicationDate": null,
+  "rows": [
+    {
+      "providerTeamName": "Australia",
+      "fifaRank": 26,
+      "fifaPoints": 1580.52,
+      "fifaPointsDecimal": "1580.52"
+    }
+  ]
+}

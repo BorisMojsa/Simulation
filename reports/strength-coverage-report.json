@@ -1,0 +1,253 @@
+{
+  "generatedAt": "2026-10-08",
+  "clubTotal": 490,
+  "leagues": 26,
+  "countries": 21,
+  "ratingSourceStatus": {
+    "verified_rating": 490,
+    "results_derived": 0,
+    "unresolved": 0
+  },
+  "strengthDerivationStatus": {
+    "normalized_from_published_rating": 485,
+    "calibrated_from_published_rating": 5,
+    "results_derived": 0,
+    "unresolved_conversion": 0
+  },
+  "verified_rating": 490,
+  "manual_estimate": 0,
+  "provisional_estimate": 0,
+  "baselineSnapshotId": "clubelo-public-ranking-2026-10-08",
+  "transformVersion": "team-quality-v3",
+  "calibrationId": "fdb-to-clubelo-regularized-country-v1",
+  "byLeague": {
+    "Argentina - Liga Profesional": {
+      "total": 30,
+      "club_elo_primary": 30,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 30,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Belgium - Belgian Pro League": {
+      "total": 16,
+      "club_elo_primary": 15,
+      "footballdatabase_calibrated": 1,
+      "verified_rating": 16,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Brazil - Brasileirão Série A": {
+      "total": 20,
+      "club_elo_primary": 20,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 20,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Colombia - Categoría Primera A": {
+      "total": 20,
+      "club_elo_primary": 19,
+      "footballdatabase_calibrated": 1,
+      "verified_rating": 20,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Croatia - HNL": {
+      "total": 10,
+      "club_elo_primary": 9,
+      "footballdatabase_calibrated": 1,
+      "verified_rating": 10,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Czechia - Czech First League": {
+      "total": 16,
+      "club_elo_primary": 16,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 16,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Denmark - Superliga": {
+      "total": 12,
+      "club_elo_primary": 12,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 12,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Ecuador - LigaPro Serie A": {
+      "total": 16,
+      "club_elo_primary": 16,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 16,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "England - Premier League": {
+      "total": 20,
+      "club_elo_primary": 20,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 20,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "England - Championship": {
+      "total": 24,
+      "club_elo_primary": 24,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 24,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "France - Ligue 1": {
+      "total": 18,
+      "club_elo_primary": 18,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 18,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "France - Ligue 2": {
+      "total": 18,
+      "club_elo_primary": 18,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 18,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Germany - 2. Bundesliga": {
+      "total": 18,
+      "club_elo_primary": 18,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 18,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Germany - Bundesliga": {
+      "total": 18,
+      "club_elo_primary": 18,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 18,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Italy - Serie A": {
+      "total": 20,
+      "club_elo_primary": 20,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 20,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Italy - Serie B": {
+      "total": 20,
+      "club_elo_primary": 20,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 20,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Mexico - Liga MX": {
+      "total": 18,
+      "club_elo_primary": 18,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 18,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Netherlands - Eredivisie": {
+      "total": 18,
+      "club_elo_primary": 18,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 18,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Norway - Eliteserien": {
+      "total": 16,
+      "club_elo_primary": 16,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 16,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Poland - Ekstraklasa": {
+      "total": 18,
+      "club_elo_primary": 18,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 18,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Portugal - Primeira Liga": {
+      "total": 18,
+      "club_elo_primary": 17,
+      "footballdatabase_calibrated": 1,
+      "verified_rating": 18,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Serbia - SuperLiga": {
+      "total": 16,
+      "club_elo_primary": 15,
+      "footballdatabase_calibrated": 1,
+      "verified_rating": 16,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Spain - LaLiga 2": {
+      "total": 22,
+      "club_elo_primary": 22,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 22,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Spain - La Liga": {
+      "total": 20,
+      "club_elo_primary": 20,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 20,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "Türkiye - Süper Lig": {
+      "total": 18,
+      "club_elo_primary": 18,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 18,
+      "results_derived": 0,
+      "unresolved": 0
+    },
+    "United States - MLS": {
+      "total": 30,
+      "club_elo_primary": 30,
+      "footballdatabase_calibrated": 0,
+      "verified_rating": 30,
+      "results_derived": 0,
+      "unresolved": 0
+    }
+  },
+  "providerCounts": {
+    "ClubElo": 485,
+    "FootballDatabase": 5
+  },
+  "sourceAccessLimitations": [
+    "ClubElo values are a structured transcription of publicly rendered country ranking tables (2026-10-08), not an official bulk API export.",
+    "Five clubs use FootballDatabase points (updated after matches on 2026-10-04) converted via fdb-to-clubelo-regularized-country-v1.",
+    "Archived Opta snapshots retained for provenance only; not mixed into new-career ClubElo baselines.",
+    "No 35-season historical results archive was ingested; results_derived count is zero.",
+    "National-team ratings are out of scope for this club snapshot."
+  ],
+  "unresolvedClubs": [],
+  "inventoryReconciliation": {
+    "expectedClubs": 490,
+    "researchPackGapIds": 455,
+    "additionalPrimaryNamesResolved": 35,
+    "additions": [],
+    "removals": [],
+    "note": "All 455 uploaded gap IDs present unchanged; 35 additional names resolved uniquely to existing clubIds; union covers every game club once."
+  }
+}

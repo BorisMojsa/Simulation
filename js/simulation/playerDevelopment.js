@@ -1,13 +1,30 @@
 import { ATTRIBUTE_MODIFIERS, POSITION_PROFILES, STATS_KEYS } from "../config/playerConfig.js";
-import { calculateContractLength } from "./transferMarket.js";
 import { clamp, randFloat, randInt } from "../utils/helpers.js";
+import { findSeniorClub, findSeniorClubById } from "./seniorClubs.js";
+import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js";
+import {
+  calculateOverall,
+  getDisplayAttributeKeys,
+  normalizePosition,
+  refreshAbilityCaches,
+} from "./playerAbility.js";
+import {
+  applyAcademyGrowth,
+  generateStartingAttributes,
+  initializePlayerDevelopment,
+  sampleLatentBudget,
+  stableCareerId,
+} from "./playerDevelopmentModel.js";
+import { getOrUpdateForecast } from "./playerPotential.js";
+import { ensurePlayerModel } from "./playerModelMigration.js";
+import { createStreamRng, reseedCareerRng, hashSeed } from "./rng.js";
 
 const basePlayerFields = () => ({
   seasons: [],
   careerTotals: { matches: 0, goals: 0, assists: 0, cleanSheets: 0 },
   careerHonors: { leagueTitles: 0, europeanTitles: 0, domesticCups: 0, individualAwards: 0, internationalTitles: 0 },
   pendingOffers: [],
-  startYear: new Date().getFullYear(),
+  startYear: 2026,
   isRetired: false,
   retiredInSeason: null,
   latestStanding: null,
@@ -20,55 +37,72 @@ const basePlayerFields = () => ({
 /** After form submit — no club or ratings yet (career intro picks academy). */
 export function createPlayerIdentity({ name, nationality, position, age = 16 }) {
   const startAge = clamp(Math.round(Number(age) || 16), 15, 19);
+  const norm = normalizePosition(position);
+  const careerId = `cid_${hashSeed(`${name}|${nationality || "?"}|${norm.position}|${startAge}`).toString(16)}`;
+  reseedCareerRng(hashSeed(careerId));
   return {
     name,
     nationality: nationality || "Unknown",
-    position,
+    position: norm.position === "DEFAULT" ? String(position || "CM").toUpperCase() : norm.position,
+    positionUncertainty: norm.uncertainty,
     age: startAge,
+    careerId,
     rating: 0,
     potential: 0,
     club: null,
     attributes: null,
     careerIntroComplete: false,
+    playerModelVersion: 2,
     ...basePlayerFields(),
   };
 }
 
 /**
- * Roll starting academy OVR in 54–78.
- * Mid-60s are common; 75+ is rare but possible.
+ * Roll starting academy OVR band target in 54–78 (generation target, not final truth).
  */
-export function rollAcademyStartingRating() {
-  const r = Math.random();
-  if (r < 0.015) return randInt(76, 78); // extremely rare
-  if (r < 0.045) return randInt(75, 75); // very rare
-  if (r < 0.1) return randInt(72, 74); // rare
-  if (r < 0.28) return randInt(68, 71);
-  if (r < 0.58) return randInt(62, 67);
-  return randInt(54, 61);
+export function rollAcademyStartingRating(rng = null) {
+  const r = rng?.random?.() ?? Math.random();
+  const int = (a, b) => (rng ? rng.int(a, b) : randInt(a, b));
+  if (r < 0.015) return int(76, 78);
+  if (r < 0.045) return int(75, 75);
+  if (r < 0.1) return int(72, 74);
+  if (r < 0.28) return int(68, 71);
+  if (r < 0.58) return int(62, 67);
+  return int(54, 61);
 }
 
 /**
- * Roll hidden OVR, attributes, and a starting potential ceiling.
- * OVR is shown during academy moments and updates with each pick.
+ * Roll hidden budget, attributes, derive overall, initialize development + forecast.
  */
 export function finalizeAcademyPlayer(player, academyEntry) {
-  const startingRating = rollAcademyStartingRating();
+  const rng = createStreamRng(stableCareerId(player), "generation");
+  const startingTarget = rollAcademyStartingRating(rng);
+  let budget = sampleLatentBudget(rng);
+  budget = Math.max(budget, startingTarget + 1);
+
   const academyClub = {
     ...academyEntry,
     parentClub: academyEntry.parentClub ? { ...academyEntry.parentClub } : null,
   };
-  player.rating = startingRating;
-  player.potential = randInt(Math.min(startingRating + 4, 88), Math.max(startingRating + 8, 90));
-  player.attributes = generateAttributes(player.position, startingRating);
+
+  player.attributes = generateStartingAttributes(player.position, startingTarget, budget, rng);
   player.club = academyClub;
+  // Placeholders overwritten by initialize
+  player.rating = startingTarget;
+  initializePlayerDevelopment(player, { rng, careerId: player.careerId });
+  // Ensure budget respected
+  if (player.baseOverallRaw > player.development.latentAbilityBudget) {
+    player.development.latentAbilityBudget = player.baseOverallRaw;
+  }
+  getOrUpdateForecast(player, { sampleCount: 48 });
 }
 
 /**
  * After the opening academy story, move to the senior (parent) club on a pro deal.
- * Academy is intro-only; ongoing career is with the first team.
+ * Routes through the shared deal pipeline — no unsigned financial bypass.
  */
 export function promoteAcademyGraduateToFirstTeam(player, performanceHint = 72) {
+  ensurePlayerModel(player);
   if (!player.club?.isAcademy) {
     return null;
   }
@@ -78,26 +112,36 @@ export function promoteAcademyGraduateToFirstTeam(player, performanceHint = 72) 
     return null;
   }
 
-  player.club = {
-    name: parent.name,
-    displayName: parent.displayName ?? parent.name,
-    league: parent.league,
-    leagueDisplay: parent.leagueDisplay ?? parent.league,
-    tier: parent.tier,
-    badge: parent.badge,
-    financialTier: parent.financialTier,
-    isAcademy: false,
-    parentClub: null,
-  };
-
-  const currentSeason = player.seasons.length;
-  player.contractStartSeason = currentSeason;
-  player.contractYears = calculateContractLength(player.age, player.rating, player.potential, performanceHint);
-  player.contractEndSeason = currentSeason + player.contractYears;
-  player.pendingOffers = [];
-  player.suppressParentContractOffer = false;
-
-  return parent.displayName ?? parent.name;
+  const club =
+    findSeniorClub(parent.name) || findSeniorClubById(parent.clubId) || parent;
+  const built = buildValidatedOffer({
+    player,
+    club,
+    dealType: "first_pro",
+    performanceScore: performanceHint,
+    forceParent: true,
+  });
+  if (!built.ok) {
+    // Supported continuation: remain academy; do not invent an ineligible senior deal.
+    player.suppressParentContractOffer = true;
+    player.pendingOffers = [];
+    return null;
+  }
+  const accepted = acceptPipelineOffer(player, {
+    ...built.offer,
+    isParentOffer: true,
+  });
+  if (!accepted.ok) {
+    player.suppressParentContractOffer = true;
+    return null;
+  }
+  if (player.state) {
+    player.state.adaptationPenalty = clamp((player.state.adaptationPenalty || 0) + 0.35, 0, 1.5);
+    player.state.roleFit = clamp((player.state.roleFit ?? 1) - 0.05, 0.6, 1);
+  }
+  refreshAbilityCaches(player);
+  player.suppressParentContractOffer = true;
+  return player.club?.displayName ?? player.club?.name ?? null;
 }
 
 /** Apply an exact academy-moment delta; returns the applied change after clamping. */
@@ -106,14 +150,40 @@ export function applyOpeningChoiceDelta(player, minDelta, maxDelta, clampRange =
   return applyOpeningChoiceResult(player, d, clampRange);
 }
 
-/** Apply a concrete result delta from a linked narrative outcome. */
+/** Apply a concrete result delta from a linked narrative outcome via attributes. */
 export function applyOpeningChoiceResult(player, delta, clampRange = { min: 50, max: 88 }) {
+  ensurePlayerModel(player);
   const profile = POSITION_PROFILES[player.position] || POSITION_PROFILES.DEFAULT;
-  const prev = player.rating;
-  player.rating = clamp(prev + delta, clampRange.min, clampRange.max);
-  const applied = player.rating - prev;
-  adjustAttributes(player, profile.growthBias, applied);
-  return applied;
+  const prevDisplayed = player.rating;
+  const appliedMap = player.development?.appliedEventIds;
+  const choiceIndex = Array.isArray(appliedMap)
+    ? appliedMap.length
+    : Object.keys(appliedMap || {}).length;
+  const rng = createStreamRng(stableCareerId(player), `academy:${choiceIndex}`);
+  // ~5–8 narrative beats share roughly one academy-year learning budget.
+  applyAcademyGrowth(player, delta, {
+    rng,
+    focusBias: profile.growthBias,
+    elapsedYearsShare: 0.14,
+  });
+  // Soft clamp displayed base for academy narrative band
+  if (player.rating < clampRange.min || player.rating > clampRange.max) {
+    if (player.rating < clampRange.min) {
+      applyAcademyGrowth(player, clampRange.min - player.rating, {
+        rng,
+        focusBias: profile.growthBias,
+        elapsedYearsShare: 0.08,
+      });
+    }
+  }
+  getOrUpdateForecast(player, { sampleCount: 32 });
+  // Displayed Δ from rounded base cache (fractional attr gains may accumulate across choices).
+  const appliedDisplayed = player.rating - prevDisplayed;
+  if (!player.development.appliedEventIds || Array.isArray(player.development.appliedEventIds)) {
+    player.development.appliedEventIds = {};
+  }
+  player.development.appliedEventIds[`academy-choice-${choiceIndex}`] = true;
+  return appliedDisplayed;
 }
 
 export function createPlayer({ name, nationality, position }, academyPool) {
@@ -124,65 +194,29 @@ export function createPlayer({ name, nationality, position }, academyPool) {
   return player;
 }
 
-export function agePerformanceModifier(age) {
-  if (age <= 22) return 1.1;
-  if (age <= 27) return 1.05;
-  if (age <= 30) return 1;
-  if (age <= 32) return 0.95;
-  if (age <= 34) return 0.9;
-  if (age <= 36) return 0.82;
-  if (age <= 38) return 0.78;
-  return 0.72;
+/**
+ * @deprecated Duplicate age decline — physical/technical development already ages players.
+ * Retained as no-op identity for any legacy callers; prefer removing call sites.
+ */
+export function agePerformanceModifier(_age) {
+  return 1;
 }
 
+/**
+ * Legacy attribute nudge helper — prefer developSeason / applyAcademyGrowth.
+ * Kept for non-migrated paths; mutates attributes then refreshes rating cache.
+ */
 export function adjustAttributes(player, growthBias, ratingDelta) {
-  const age = player.age;
-  const volatility = age <= 20 ? 1.35 : age <= 24 ? 1.15 : age <= 28 ? 1 : age <= 32 ? 0.88 : 0.75;
-  const trend =
-    ratingDelta === 0 ? randFloat(-0.55, 0.55) : clamp(ratingDelta, -4, 4) * 0.38;
-
-  STATS_KEYS.forEach((key) => {
-    const focus = growthBias?.[key] || 1;
-    const focusNorm = (focus + 0.35) / 3.6;
-
-    // Weak link to overall form — one area can improve while another regresses
-    const correlated = trend * focusNorm * randFloat(0.25, 1.05);
-
-    // Independent swing: form, coaching focus, confidence, minor injuries
-    const independent = randFloat(-1.55, 1.55) * volatility;
-
-    // Occasional “wrong” direction vs season narrative (real careers aren’t monotonic)
-    let counter = 0;
-    if (Math.random() < 0.14) {
-      const flip = trend >= 0 ? -1 : 1;
-      counter = flip * randFloat(0.45, 1.85) * focusNorm;
-    }
-
-    let change = correlated + independent + counter;
-    change = clamp(change, -3, 3);
-
-    // Regression toward balance when one stat drifts far from the pack
-    const vsOverall = player.attributes[key] - player.rating;
-    if (vsOverall > 11) change -= randFloat(0.25, 1.15);
-    else if (vsOverall < -11) change += randFloat(0.25, 1.15);
-
-    let ageingPenalty = 0;
-    if (player.age > 29) {
-      const heavyKeys = ["Speed", "Dribbling"];
-      const base = player.age >= 35 ? randFloat(0.3, 0.8) : randFloat(0.2, 0.6);
-      ageingPenalty = heavyKeys.includes(key) ? base * 1.2 : base * 0.6;
-    }
-
-    player.attributes[key] = clamp(Math.round(player.attributes[key] + change - ageingPenalty), 25, 99);
+  ensurePlayerModel(player);
+  applyAcademyGrowth(player, ratingDelta, {
+    focusBias: growthBias,
+    elapsedYearsShare: 0.2,
   });
 }
 
 export function generateAttributes(position, rating) {
-  const base = ATTRIBUTE_MODIFIERS[position] || ATTRIBUTE_MODIFIERS.DEFAULT;
-  const attrs = {};
-  STATS_KEYS.forEach((key) => {
-    const modifier = base[key] ?? 0;
-    attrs[key] = clamp(Math.round(rating + modifier + randFloat(-4, 4)), 25, 90);
-  });
-  return attrs;
+  const rng = createStreamRng(`gen:${position}:${rating}`, "legacy");
+  return generateStartingAttributes(position, rating, rating + 8, rng);
 }
+
+export { STATS_KEYS, ATTRIBUTE_MODIFIERS, getDisplayAttributeKeys, calculateOverall, refreshAbilityCaches, ensurePlayerModel };

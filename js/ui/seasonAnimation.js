@@ -1,4 +1,11 @@
 import { enrichTrophyWin, resolveTrophyAsset, trophyImageHtml } from "../data/trophyAssets.js";
+import {
+  abilityDisplayChange,
+  abilityDisplayChangeTone,
+  formatAbilityDisplayChange,
+  formatAbilityForDisplay,
+  rawAbilityEndpoints,
+} from "./abilityFormatting.js";
 
 let animationCtl = {
   skipMatch: false,
@@ -1420,22 +1427,27 @@ function showSummaryAnimation(season, attributeChanges, statsKeys) {
     setTimeout(() => statEl.classList.add("animate-in"), index * 120 + 200);
   });
 
-  statsKeys.forEach((key, index) => {
-    const change = attributeChanges[key];
+  const keys =
+    Array.isArray(statsKeys) && statsKeys.length
+      ? statsKeys
+      : Object.keys(attributeChanges || {});
+  keys.forEach((key, index) => {
+    const change = attributeChanges?.[key];
+    if (!change || typeof change !== "object") return;
+    const { rawBefore, rawAfter } = rawAbilityEndpoints(change);
+    const displayChange = abilityDisplayChange(rawBefore, rawAfter);
+    const changeClass = abilityDisplayChangeTone(rawBefore, rawAfter);
+    const changeText = formatAbilityDisplayChange(rawBefore, rawAfter, "0");
+
     const ratingEl = document.createElement("div");
     ratingEl.className = "rating-item";
-    if (change.change > 0) ratingEl.classList.add("positive");
-    else if (change.change < 0) ratingEl.classList.add("negative");
-
-    const changeText =
-      change.change > 0 ? `+${change.change}` : change.change < 0 ? `${change.change}` : "0";
-    const changeClass =
-      change.change > 0 ? "positive" : change.change < 0 ? "negative" : "neutral";
+    if (displayChange > 0) ratingEl.classList.add("positive");
+    else if (displayChange < 0) ratingEl.classList.add("negative");
 
     ratingEl.innerHTML = `
       <div class="rating-name">${key}</div>
       <div class="rating-change ${changeClass}">${changeText}</div>
-      <div class="rating-new">${change.new}</div>
+      <div class="rating-new">${formatAbilityForDisplay(rawAfter)}</div>
     `;
     ratingGrid.appendChild(ratingEl);
     setTimeout(() => ratingEl.classList.add("animate-in"), index * 100 + 800);
@@ -1455,21 +1467,27 @@ function showOverallRatingReveal(season, previousRating, newRating) {
 
   if (overallInfo) overallInfo.textContent = `${season.clubDisplay} — ${season.age} years old`;
 
-  const ratingChange = newRating - previousRating;
-  const changeText =
-    ratingChange > 0 ? `+${ratingChange}` : ratingChange < 0 ? `${ratingChange}` : "No change";
+  const rawBefore =
+    Number.isFinite(season?.baseOverallBefore) ? season.baseOverallBefore : previousRating;
+  const rawAfter =
+    Number.isFinite(season?.baseOverallAfter) ? season.baseOverallAfter : newRating;
+  const displayChange = abilityDisplayChange(rawBefore, rawAfter);
+  const changeText = formatAbilityDisplayChange(rawBefore, rawAfter, "No change");
 
-  oldRatingValue.textContent = previousRating;
-  newRatingValue.textContent = newRating;
+  oldRatingValue.textContent = formatAbilityForDisplay(rawBefore);
+  newRatingValue.textContent = formatAbilityForDisplay(rawAfter);
   ratingChangeText.textContent = changeText;
   oldRatingValue.classList.remove("positive", "negative");
   newRatingValue.classList.remove("positive", "negative");
   ratingChangeText.classList.remove("positive", "negative");
+  if (ratingArrow) {
+    ratingArrow.classList.toggle("hidden", displayChange === 0 || displayChange == null);
+  }
 
-  if (ratingChange > 0) {
+  if (displayChange > 0) {
     newRatingValue.classList.add("positive");
     ratingChangeText.classList.add("positive");
-  } else if (ratingChange < 0) {
+  } else if (displayChange < 0) {
     newRatingValue.classList.add("negative");
     ratingChangeText.classList.add("negative");
   }
@@ -1478,7 +1496,7 @@ function showOverallRatingReveal(season, previousRating, newRating) {
   overallSection.classList.add("active");
 
   setTimeout(() => oldRatingValue.classList.add("animate-in"), 300);
-  setTimeout(() => ratingArrow.classList.add("animate-in"), 700);
+  setTimeout(() => ratingArrow?.classList.add("animate-in"), 700);
   setTimeout(() => newRatingValue.classList.add("animate-in"), 1100);
   setTimeout(() => ratingChangeText.classList.add("animate-in"), 1500);
 }

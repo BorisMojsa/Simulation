@@ -1,0 +1,23 @@
+{
+  "count": 1,
+  "items": [
+    {
+      "nationId": "nation:australia",
+      "name": "Australia",
+      "fifaRank": 26,
+      "rankingEditionDate": "2026-10-07",
+      "selectedPublishedPoints": 1580.52,
+      "agreeingSources": [
+        "betimate",
+        "futbor",
+        "australia_supplement"
+      ],
+      "conflictingSource": "b_empire",
+      "conflictingPublishedPoints": 1585.52,
+      "differencePoints": 5.0,
+      "selectionRationale": "Select the value shared by two full-table publishers and an additional country profile. Preserve the conflicting observation unchanged; no interpolation or arithmetic averaging.",
+      "directPrimaryPointsVerified": false,
+      "discrepancyResolution": "selected_with_secondary_corroboration; direct FIFA confirmation outstanding"
+    }
+  ]
+}

@@ -1,0 +1,1014 @@
+{
+  "snapshots": [
+    {
+      "provider": "FootballDatabase",
+      "country": "Belgium",
+      "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+      "publishedAsOfDate": "2026-10-04",
+      "retrievedOn": "2026-10-08",
+      "licenseNotice": "CC BY-SA 4.0 (displayed in source footer)",
+      "ratings": [
+        {
+          "providerName": "Union St.Gilloise",
+          "rawRating": 1756,
+          "rank": 1,
+          "sourceLine": 4
+        },
+        {
+          "providerName": "Club Brugge",
+          "rawRating": 1750,
+          "rank": 2,
+          "sourceLine": 5
+        },
+        {
+          "providerName": "KRC Genk",
+          "rawRating": 1579,
+          "rank": 3,
+          "sourceLine": 6
+        },
+        {
+          "providerName": "RSC Anderlecht",
+          "rawRating": 1539,
+          "rank": 4,
+          "sourceLine": 7
+        },
+        {
+          "providerName": "Gent",
+          "rawRating": 1516,
+          "rank": 5,
+          "sourceLine": 8
+        },
+        {
+          "providerName": "Sporting Charleroi",
+          "rawRating": 1493,
+          "rank": 6,
+          "sourceLine": 9
+        },
+        {
+          "providerName": "Sint-Truiden",
+          "rawRating": 1478,
+          "rank": 7,
+          "sourceLine": 10
+        },
+        {
+          "providerName": "Standard Liège",
+          "rawRating": 1459,
+          "rank": 8,
+          "sourceLine": 11
+        },
+        {
+          "providerName": "Westerlo",
+          "rawRating": 1457,
+          "rank": 9,
+          "sourceLine": 12
+        },
+        {
+          "providerName": "Royal Antwerp FC",
+          "rawRating": 1442,
+          "rank": 10,
+          "sourceLine": 13
+        },
+        {
+          "providerName": "KV Mechelen",
+          "rawRating": 1407,
+          "rank": 11,
+          "sourceLine": 14
+        },
+        {
+          "providerName": "Zulte Waregem",
+          "rawRating": 1393,
+          "rank": 12,
+          "sourceLine": 15
+        },
+        {
+          "providerName": "Lommel SK",
+          "rawRating": 1365,
+          "rank": 13,
+          "sourceLine": 16
+        },
+        {
+          "providerName": "Cercle Brugge",
+          "rawRating": 1362,
+          "rank": 14,
+          "sourceLine": 17
+        },
+        {
+          "providerName": "Mouscron-Péruwelz",
+          "rawRating": 1361,
+          "rank": 15,
+          "sourceLine": 18
+        },
+        {
+          "providerName": "Oud-Heverlee Leuven",
+          "rawRating": 1352,
+          "rank": 16,
+          "sourceLine": 19
+        },
+        {
+          "providerName": "Royal Excel Mouscron Péruwelz",
+          "rawRating": 1328,
+          "rank": 17,
+          "sourceLine": 20
+        },
+        {
+          "providerName": "Roeselare",
+          "rawRating": 1325,
+          "rank": 18,
+          "sourceLine": 21
+        },
+        {
+          "providerName": "RAAL La Louvière",
+          "rawRating": 1312,
+          "rank": 19,
+          "sourceLine": 22
+        },
+        {
+          "providerName": "Mons",
+          "rawRating": 1310,
+          "rank": 20,
+          "sourceLine": 23
+        },
+        {
+          "providerName": "SK Beveren",
+          "rawRating": 1296,
+          "rank": 21,
+          "sourceLine": 24
+        },
+        {
+          "providerName": "Lokeren",
+          "rawRating": 1292,
+          "rank": 22,
+          "sourceLine": 25
+        },
+        {
+          "providerName": "F.C.V. Dender E.H.",
+          "rawRating": 1290,
+          "rank": 23,
+          "sourceLine": 26
+        },
+        {
+          "providerName": "Lierse",
+          "rawRating": 1288,
+          "rank": 24,
+          "sourceLine": 27
+        },
+        {
+          "providerName": "SV Roeselare",
+          "rawRating": 1286,
+          "rank": 25,
+          "sourceLine": 28
+        },
+        {
+          "providerName": "RWD Molenbeek",
+          "rawRating": 1286,
+          "rank": 26,
+          "sourceLine": 29
+        },
+        {
+          "providerName": "KV Oostende",
+          "rawRating": 1285,
+          "rank": 27,
+          "sourceLine": 30
+        },
+        {
+          "providerName": "Kortrijk",
+          "rawRating": 1280,
+          "rank": 28,
+          "sourceLine": 31
+        },
+        {
+          "providerName": "Eupen",
+          "rawRating": 1249,
+          "rank": 29,
+          "sourceLine": 32
+        },
+        {
+          "providerName": "Germinal Beerschot",
+          "rawRating": 1246,
+          "rank": 30,
+          "sourceLine": 33
+        },
+        {
+          "providerName": "R.F.C. Seraing",
+          "rawRating": 1227,
+          "rank": 31,
+          "sourceLine": 34
+        }
+      ]
+    },
+    {
+      "provider": "FootballDatabase",
+      "country": "Portugal",
+      "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+      "publishedAsOfDate": "2026-10-04",
+      "retrievedOn": "2026-10-08",
+      "licenseNotice": "CC BY-SA 4.0 (displayed in source footer)",
+      "ratings": [
+        {
+          "providerName": "Sporting",
+          "rawRating": 1846,
+          "rank": 1,
+          "sourceLine": 4
+        },
+        {
+          "providerName": "Benfica",
+          "rawRating": 1831,
+          "rank": 2,
+          "sourceLine": 5
+        },
+        {
+          "providerName": "FC Porto",
+          "rawRating": 1804,
+          "rank": 3,
+          "sourceLine": 6
+        },
+        {
+          "providerName": "Braga",
+          "rawRating": 1667,
+          "rank": 4,
+          "sourceLine": 7
+        },
+        {
+          "providerName": "FC Famalicão",
+          "rawRating": 1556,
+          "rank": 5,
+          "sourceLine": 8
+        },
+        {
+          "providerName": "Arouca",
+          "rawRating": 1494,
+          "rank": 6,
+          "sourceLine": 9
+        },
+        {
+          "providerName": "CD Santa Clara",
+          "rawRating": 1492,
+          "rank": 7,
+          "sourceLine": 10
+        },
+        {
+          "providerName": "Gil Vicente FC",
+          "rawRating": 1468,
+          "rank": 8,
+          "sourceLine": 11
+        },
+        {
+          "providerName": "Moreirense",
+          "rawRating": 1452,
+          "rank": 9,
+          "sourceLine": 12
+        },
+        {
+          "providerName": "Vitória Guimarães",
+          "rawRating": 1451,
+          "rank": 10,
+          "sourceLine": 13
+        },
+        {
+          "providerName": "Académico de Viseu F.C.",
+          "rawRating": 1437,
+          "rank": 11,
+          "sourceLine": 14
+        },
+        {
+          "providerName": "F.C. Alverca",
+          "rawRating": 1433,
+          "rank": 12,
+          "sourceLine": 15
+        },
+        {
+          "providerName": "Estoril",
+          "rawRating": 1409,
+          "rank": 13,
+          "sourceLine": 16
+        },
+        {
+          "providerName": "S.C.U. Torreense",
+          "rawRating": 1409,
+          "rank": 14,
+          "sourceLine": 17
+        },
+        {
+          "providerName": "Rio Ave",
+          "rawRating": 1396,
+          "rank": 15,
+          "sourceLine": 18
+        },
+        {
+          "providerName": "C.F. Estrela da Amadora",
+          "rawRating": 1385,
+          "rank": 16,
+          "sourceLine": 19
+        },
+        {
+          "providerName": "Vitória Setúbal",
+          "rawRating": 1371,
+          "rank": 17,
+          "sourceLine": 20
+        },
+        {
+          "providerName": "CS Marítimo Madeira",
+          "rawRating": 1371,
+          "rank": 18,
+          "sourceLine": 21
+        },
+        {
+          "providerName": "Casa Pia",
+          "rawRating": 1370,
+          "rank": 19,
+          "sourceLine": 22
+        },
+        {
+          "providerName": "SC Farense",
+          "rawRating": 1367,
+          "rank": 20,
+          "sourceLine": 23
+        },
+        {
+          "providerName": "Portimonense",
+          "rawRating": 1361,
+          "rank": 21,
+          "sourceLine": 24
+        },
+        {
+          "providerName": "Belenenses",
+          "rawRating": 1356,
+          "rank": 22,
+          "sourceLine": 25
+        },
+        {
+          "providerName": "FC Vizela",
+          "rawRating": 1355,
+          "rank": 23,
+          "sourceLine": 26
+        },
+        {
+          "providerName": "Uniao da Madeira",
+          "rawRating": 1350,
+          "rank": 24,
+          "sourceLine": 27
+        },
+        {
+          "providerName": "Nacional",
+          "rawRating": 1348,
+          "rank": 25,
+          "sourceLine": 28
+        },
+        {
+          "providerName": "Paços de Ferreira",
+          "rawRating": 1344,
+          "rank": 26,
+          "sourceLine": 29
+        },
+        {
+          "providerName": "Tondela",
+          "rawRating": 1344,
+          "rank": 27,
+          "sourceLine": 30
+        },
+        {
+          "providerName": "Beira-Mar",
+          "rawRating": 1343,
+          "rank": 28,
+          "sourceLine": 31
+        },
+        {
+          "providerName": "Chaves",
+          "rawRating": 1340,
+          "rank": 29,
+          "sourceLine": 32
+        },
+        {
+          "providerName": "Naval 1º de Maio",
+          "rawRating": 1337,
+          "rank": 30,
+          "sourceLine": 33
+        },
+        {
+          "providerName": "AVS Futebol SAD",
+          "rawRating": 1335,
+          "rank": 31,
+          "sourceLine": 34
+        },
+        {
+          "providerName": "Olhanense",
+          "rawRating": 1329,
+          "rank": 32,
+          "sourceLine": 35
+        },
+        {
+          "providerName": "Académica",
+          "rawRating": 1322,
+          "rank": 33,
+          "sourceLine": 36
+        },
+        {
+          "providerName": "Leixões",
+          "rawRating": 1318,
+          "rank": 34,
+          "sourceLine": 37
+        },
+        {
+          "providerName": "Boavista",
+          "rawRating": 1316,
+          "rank": 35,
+          "sourceLine": 38
+        },
+        {
+          "providerName": "Penafiel",
+          "rawRating": 1298,
+          "rank": 36,
+          "sourceLine": 39
+        },
+        {
+          "providerName": "Feirense",
+          "rawRating": 1294,
+          "rank": 37,
+          "sourceLine": 40
+        },
+        {
+          "providerName": "União de Leiria",
+          "rawRating": 1288,
+          "rank": 38,
+          "sourceLine": 41
+        },
+        {
+          "providerName": "CD das Aves",
+          "rawRating": 1266,
+          "rank": 39,
+          "sourceLine": 42
+        }
+      ]
+    },
+    {
+      "provider": "FootballDatabase",
+      "country": "Croatia",
+      "sourceUrl": "https://footballdatabase.com/ranking/croatia/1",
+      "publishedAsOfDate": "2026-10-04",
+      "retrievedOn": "2026-10-08",
+      "licenseNotice": "CC BY-SA 4.0 (displayed in source footer)",
+      "ratings": [
+        {
+          "providerName": "Dinamo Zagreb",
+          "rawRating": 1648,
+          "rank": 1,
+          "sourceLine": 4
+        },
+        {
+          "providerName": "Hajduk Split",
+          "rawRating": 1546,
+          "rank": 2,
+          "sourceLine": 5
+        },
+        {
+          "providerName": "Rijeka",
+          "rawRating": 1506,
+          "rank": 3,
+          "sourceLine": 6
+        },
+        {
+          "providerName": "NK Varaždin",
+          "rawRating": 1427,
+          "rank": 4,
+          "sourceLine": 7
+        },
+        {
+          "providerName": "Osijek",
+          "rawRating": 1417,
+          "rank": 5,
+          "sourceLine": 8
+        },
+        {
+          "providerName": "Lokomotiva",
+          "rawRating": 1383,
+          "rank": 6,
+          "sourceLine": 9
+        },
+        {
+          "providerName": "NK Istra 1961",
+          "rawRating": 1376,
+          "rank": 7,
+          "sourceLine": 10
+        },
+        {
+          "providerName": "Slaven",
+          "rawRating": 1337,
+          "rank": 8,
+          "sourceLine": 11
+        },
+        {
+          "providerName": "HNK Gorica",
+          "rawRating": 1329,
+          "rank": 9,
+          "sourceLine": 12
+        },
+        {
+          "providerName": "Lučko",
+          "rawRating": 1303,
+          "rank": 10,
+          "sourceLine": 13
+        },
+        {
+          "providerName": "Karlovac",
+          "rawRating": 1287,
+          "rank": 11,
+          "sourceLine": 14
+        },
+        {
+          "providerName": "HNK Vukovar 1991",
+          "rawRating": 1280,
+          "rank": 12,
+          "sourceLine": 15
+        },
+        {
+          "providerName": "RNK Split",
+          "rawRating": 1277,
+          "rank": 13,
+          "sourceLine": 16
+        },
+        {
+          "providerName": "NK Zadar",
+          "rawRating": 1265,
+          "rank": 14,
+          "sourceLine": 17
+        },
+        {
+          "providerName": "Medimurje",
+          "rawRating": 1264,
+          "rank": 15,
+          "sourceLine": 18
+        },
+        {
+          "providerName": "Šibenik",
+          "rawRating": 1253,
+          "rank": 16,
+          "sourceLine": 19
+        },
+        {
+          "providerName": "NK Zagreb",
+          "rawRating": 1241,
+          "rank": 17,
+          "sourceLine": 20
+        },
+        {
+          "providerName": "Cibalia",
+          "rawRating": 1237,
+          "rank": 18,
+          "sourceLine": 21
+        },
+        {
+          "providerName": "Hrvatski Dragovoljac",
+          "rawRating": 1228,
+          "rank": 19,
+          "sourceLine": 22
+        },
+        {
+          "providerName": "Croatia Sesvete",
+          "rawRating": 1209,
+          "rank": 20,
+          "sourceLine": 23
+        },
+        {
+          "providerName": "Zaprešić",
+          "rawRating": 1197,
+          "rank": 21,
+          "sourceLine": 24
+        },
+        {
+          "providerName": "NK Rudeš",
+          "rawRating": 1156,
+          "rank": 22,
+          "sourceLine": 25
+        }
+      ]
+    },
+    {
+      "provider": "FootballDatabase",
+      "country": "Serbia",
+      "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+      "publishedAsOfDate": "2026-10-04",
+      "retrievedOn": "2026-10-08",
+      "licenseNotice": "CC BY-SA 4.0 (displayed in source footer)",
+      "ratings": [
+        {
+          "providerName": "FK Red Star Belgrade",
+          "rawRating": 1705,
+          "rank": 1,
+          "sourceLine": 4
+        },
+        {
+          "providerName": "Partizan Beograd",
+          "rawRating": 1538,
+          "rank": 2,
+          "sourceLine": 5
+        },
+        {
+          "providerName": "Vojvodina",
+          "rawRating": 1517,
+          "rank": 3,
+          "sourceLine": 6
+        },
+        {
+          "providerName": "Železničar Pančevo",
+          "rawRating": 1397,
+          "rank": 4,
+          "sourceLine": 7
+        },
+        {
+          "providerName": "Topolski Sportski Club",
+          "rawRating": 1396,
+          "rank": 5,
+          "sourceLine": 8
+        },
+        {
+          "providerName": "Čukarički",
+          "rawRating": 1395,
+          "rank": 6,
+          "sourceLine": 9
+        },
+        {
+          "providerName": "Radnički 1923 Kragujevac",
+          "rawRating": 1391,
+          "rank": 7,
+          "sourceLine": 10
+        },
+        {
+          "providerName": "Novi Pazar",
+          "rawRating": 1379,
+          "rank": 8,
+          "sourceLine": 11
+        },
+        {
+          "providerName": "FK IMT",
+          "rawRating": 1359,
+          "rank": 9,
+          "sourceLine": 12
+        },
+        {
+          "providerName": "FK Mladost Lučani",
+          "rawRating": 1354,
+          "rank": 10,
+          "sourceLine": 13
+        },
+        {
+          "providerName": "OFK Beograd",
+          "rawRating": 1350,
+          "rank": 11,
+          "sourceLine": 14
+        },
+        {
+          "providerName": "Sloboda Užice",
+          "rawRating": 1340,
+          "rank": 12,
+          "sourceLine": 15
+        },
+        {
+          "providerName": "Hajduk Kula",
+          "rawRating": 1323,
+          "rank": 13,
+          "sourceLine": 16
+        },
+        {
+          "providerName": "FK Radnik Surdulica",
+          "rawRating": 1323,
+          "rank": 14,
+          "sourceLine": 17
+        },
+        {
+          "providerName": "Radnički Niš",
+          "rawRating": 1320,
+          "rank": 15,
+          "sourceLine": 18
+        },
+        {
+          "providerName": "Voždovac",
+          "rawRating": 1319,
+          "rank": 16,
+          "sourceLine": 19
+        },
+        {
+          "providerName": "Jagodina",
+          "rawRating": 1289,
+          "rank": 17,
+          "sourceLine": 20
+        },
+        {
+          "providerName": "Javor",
+          "rawRating": 1282,
+          "rank": 18,
+          "sourceLine": 21
+        },
+        {
+          "providerName": "FK Proleter Novi Sad",
+          "rawRating": 1277,
+          "rank": 19,
+          "sourceLine": 22
+        },
+        {
+          "providerName": "FK Kolubara",
+          "rawRating": 1277,
+          "rank": 20,
+          "sourceLine": 23
+        },
+        {
+          "providerName": "FK Mladost Novi Sad",
+          "rawRating": 1274,
+          "rank": 21,
+          "sourceLine": 24
+        },
+        {
+          "providerName": "FK Tekstilac Odžaci",
+          "rawRating": 1272,
+          "rank": 22,
+          "sourceLine": 25
+        },
+        {
+          "providerName": "FK Donji Srem",
+          "rawRating": 1263,
+          "rank": 23,
+          "sourceLine": 26
+        },
+        {
+          "providerName": "BSK Borča",
+          "rawRating": 1260,
+          "rank": 24,
+          "sourceLine": 27
+        },
+        {
+          "providerName": "FK Metalac",
+          "rawRating": 1258,
+          "rank": 25,
+          "sourceLine": 28
+        },
+        {
+          "providerName": "Mladi Radnik",
+          "rawRating": 1255,
+          "rank": 26,
+          "sourceLine": 29
+        },
+        {
+          "providerName": "Dinamo Vranje",
+          "rawRating": 1253,
+          "rank": 27,
+          "sourceLine": 30
+        },
+        {
+          "providerName": "Rad Beograd",
+          "rawRating": 1252,
+          "rank": 28,
+          "sourceLine": 31
+        },
+        {
+          "providerName": "FK Jedinstvo Ub",
+          "rawRating": 1250,
+          "rank": 29,
+          "sourceLine": 32
+        },
+        {
+          "providerName": "FK Zemun",
+          "rawRating": 1248,
+          "rank": 30,
+          "sourceLine": 33
+        },
+        {
+          "providerName": "FK Zlatibor Čajetina",
+          "rawRating": 1238,
+          "rank": 31,
+          "sourceLine": 34
+        },
+        {
+          "providerName": "FK Spartak Subotica",
+          "rawRating": 1231,
+          "rank": 32,
+          "sourceLine": 35
+        },
+        {
+          "providerName": "FK Inđija",
+          "rawRating": 1221,
+          "rank": 33,
+          "sourceLine": 36
+        },
+        {
+          "providerName": "Smederevo",
+          "rawRating": 1220,
+          "rank": 34,
+          "sourceLine": 37
+        },
+        {
+          "providerName": "Napredak",
+          "rawRating": 1220,
+          "rank": 35,
+          "sourceLine": 38
+        },
+        {
+          "providerName": "Borac Čačak",
+          "rawRating": 1218,
+          "rank": 36,
+          "sourceLine": 39
+        },
+        {
+          "providerName": "Mačva Šabac",
+          "rawRating": 1171,
+          "rank": 37,
+          "sourceLine": 40
+        },
+        {
+          "providerName": "FK Bačka Palanka",
+          "rawRating": 1158,
+          "rank": 38,
+          "sourceLine": 41
+        }
+      ]
+    },
+    {
+      "provider": "FootballDatabase",
+      "country": "Colombia",
+      "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+      "publishedAsOfDate": "2026-10-04",
+      "retrievedOn": "2026-10-08",
+      "licenseNotice": "CC BY-SA 4.0 (displayed in source footer)",
+      "ratings": [
+        {
+          "providerName": "Atlético Nacional",
+          "rawRating": 1630,
+          "rank": 1,
+          "sourceLine": 4
+        },
+        {
+          "providerName": "América de Cali",
+          "rawRating": 1557,
+          "rank": 2,
+          "sourceLine": 5
+        },
+        {
+          "providerName": "Santa Fe",
+          "rawRating": 1545,
+          "rank": 3,
+          "sourceLine": 6
+        },
+        {
+          "providerName": "Independiente Medellín",
+          "rawRating": 1539,
+          "rank": 4,
+          "sourceLine": 7
+        },
+        {
+          "providerName": "Millonarios",
+          "rawRating": 1536,
+          "rank": 5,
+          "sourceLine": 8
+        },
+        {
+          "providerName": "Club Atlético Bucaramanga",
+          "rawRating": 1530,
+          "rank": 6,
+          "sourceLine": 9
+        },
+        {
+          "providerName": "Tolima",
+          "rawRating": 1521,
+          "rank": 7,
+          "sourceLine": 10
+        },
+        {
+          "providerName": "Junior FC",
+          "rawRating": 1507,
+          "rank": 8,
+          "sourceLine": 11
+        },
+        {
+          "providerName": "Once Caldas",
+          "rawRating": 1477,
+          "rank": 9,
+          "sourceLine": 12
+        },
+        {
+          "providerName": "Deportivo Cali",
+          "rawRating": 1462,
+          "rank": 10,
+          "sourceLine": 13
+        },
+        {
+          "providerName": "Águilas Doradas",
+          "rawRating": 1425,
+          "rank": 11,
+          "sourceLine": 14
+        },
+        {
+          "providerName": "Deportivo Pasto",
+          "rawRating": 1394,
+          "rank": 12,
+          "sourceLine": 15
+        },
+        {
+          "providerName": "Llaneros F.C.",
+          "rawRating": 1390,
+          "rank": 13,
+          "sourceLine": 16
+        },
+        {
+          "providerName": "Fortaleza CEIF FC",
+          "rawRating": 1383,
+          "rank": 14,
+          "sourceLine": 17
+        },
+        {
+          "providerName": "Alianza FC",
+          "rawRating": 1364,
+          "rank": 15,
+          "sourceLine": 18
+        },
+        {
+          "providerName": "Internacional de Bogotá",
+          "rawRating": 1348,
+          "rank": 16,
+          "sourceLine": 19
+        },
+        {
+          "providerName": "Tigres FC",
+          "rawRating": 1338,
+          "rank": 17,
+          "sourceLine": 20
+        },
+        {
+          "providerName": "Cúcuta Deportivo",
+          "rawRating": 1333,
+          "rank": 18,
+          "sourceLine": 21
+        },
+        {
+          "providerName": "Boyacá Chicó FC",
+          "rawRating": 1331,
+          "rank": 19,
+          "sourceLine": 22
+        },
+        {
+          "providerName": "Patriotas Boyacá",
+          "rawRating": 1327,
+          "rank": 20,
+          "sourceLine": 23
+        },
+        {
+          "providerName": "Uniautónoma FC",
+          "rawRating": 1327,
+          "rank": 21,
+          "sourceLine": 24
+        },
+        {
+          "providerName": "CS Deportivo Pereira",
+          "rawRating": 1323,
+          "rank": 22,
+          "sourceLine": 25
+        },
+        {
+          "providerName": "AD Unión Magdalena",
+          "rawRating": 1321,
+          "rank": 23,
+          "sourceLine": 26
+        },
+        {
+          "providerName": "Envigado",
+          "rawRating": 1319,
+          "rank": 24,
+          "sourceLine": 27
+        },
+        {
+          "providerName": "Atlético Huila",
+          "rawRating": 1301,
+          "rank": 25,
+          "sourceLine": 28
+        },
+        {
+          "providerName": "CD Jaguares",
+          "rawRating": 1297,
+          "rank": 26,
+          "sourceLine": 29
+        },
+        {
+          "providerName": "Real Cartagena",
+          "rawRating": 1294,
+          "rank": 27,
+          "sourceLine": 30
+        },
+        {
+          "providerName": "Deportes Quindío",
+          "rawRating": 1290,
+          "rank": 28,
+          "sourceLine": 31
+        },
+        {
+          "providerName": "Leones FC",
+          "rawRating": 1290,
+          "rank": 29,
+          "sourceLine": 32
+        },
+        {
+          "providerName": "Cortuluá",
+          "rawRating": 1276,
+          "rank": 30,
+          "sourceLine": 33
+        }
+      ]
+    }
+  ]
+}

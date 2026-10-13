@@ -6,15 +6,38 @@ import {
   formatSigned,
 } from "../utils/helpers.js";
 import { enrichTrophyWin, trophyImageHtml } from "../data/trophyAssets.js";
+import { describeTeamStrength } from "../simulation/teamStrength.js";
+import { getWorldState } from "../simulation/worldState.js";
+import { getDisplayAttributeKeys } from "../simulation/playerAbility.js?v=61";
+import {
+  formatAbilityDisplayChange,
+  formatAbilityForDisplay,
+  roundAbilityForDisplay,
+} from "./abilityFormatting.js";
 
 export function renderPlayerOverview(player, overviewEl, statsKeys) {
   if (!player) return;
+  const displayKeys =
+    player.position === "GK" ? getDisplayAttributeKeys("GK") : statsKeys || getDisplayAttributeKeys(player.position);
   const totals = player.careerTotals;
   const cleanSheetLine = totals.cleanSheets ? ` - ${totals.cleanSheets} clean sheets` : "";
   const currentClubName = clubNameForDisplay(player.club);
   const clubLeagueName = player.club?.leagueDisplay ?? player.club?.league ?? "Unknown League";
   const clubBadge = player.club?.badge
     ? `<img class="club-badge" src="${player.club.badge}" alt="${escapeHtml(currentClubName)} badge" loading="lazy" />`
+    : "";
+  const clubStrength =
+    player.club && !player.club.isAcademy
+      ? describeTeamStrength(player.club, getWorldState())
+      : null;
+  const strengthLine = clubStrength
+    ? `<span class="club-strength">Team strength: ${clubStrength.overall.toFixed(1)} (${escapeHtml(
+        clubStrength.tierLabel
+      )}) · ATK ${clubStrength.attack.toFixed(0)} / MID ${clubStrength.midfield.toFixed(
+        0
+      )} / DEF ${clubStrength.defence.toFixed(0)} / GK ${clubStrength.goalkeeper.toFixed(0)}${
+        clubStrength.snapshotDate ? ` · Starting data: ${escapeHtml(String(clubStrength.snapshotDate))}` : ""
+      }</span>`
     : "";
   const latestStanding = player.latestStanding?.playerRow;
   const finishLine = latestStanding
@@ -44,10 +67,42 @@ export function renderPlayerOverview(player, overviewEl, statsKeys) {
       <div class="club-heading">
         ${clubBadge}
         <div>
-          <h2>${escapeHtml(player.name)} - OVR ${player.rating}</h2>
+          <h2>${escapeHtml(player.name)} - OVR ${formatAbilityForDisplay(
+            player.currentOverall ?? player.rating
+          )}</h2>
+          <span>Base ${formatAbilityForDisplay(player.baseOverallRaw ?? player.rating)}${
+            (() => {
+              const baseDisp = roundAbilityForDisplay(player.baseOverallRaw ?? player.rating);
+              const curDisp = roundAbilityForDisplay(player.currentOverall ?? player.currentOverallRaw);
+              return curDisp != null && baseDisp != null && curDisp !== baseDisp
+                ? ` · current ${formatAbilityForDisplay(player.currentOverall ?? player.currentOverallRaw)}`
+                : "";
+            })()
+          }</span>
           <span>${player.age} yrs - ${escapeHtml(player.position)}</span>
           <span>${escapeHtml(player.nationality)} international</span>
           <span>${escapeHtml(currentClubName)} - ${escapeHtml(clubLeagueName)}</span>
+          ${
+            player.potentialForecast &&
+            Number.isFinite(player.potentialForecast.lower) &&
+            Number.isFinite(player.potentialForecast.upper)
+              ? `<span>Projected base peak: ${formatAbilityForDisplay(
+                  player.potentialForecast.lower
+                )}–${formatAbilityForDisplay(player.potentialForecast.upper)} · ${
+                  typeof player.potentialForecast.confidence === "number"
+                    ? `${Math.round(player.potentialForecast.confidence * 100)}%`
+                    : escapeHtml(String(player.potentialForecast.confidence ?? ""))
+                } confidence</span>`
+              : `<span>Potential (forecast): ${formatAbilityForDisplay(player.potential)}</span>`
+          }
+          ${
+            player.state
+              ? `<span>Form ${(player.state.form ?? 0).toFixed(2)} · readiness ${Math.round(
+                  (player.state.readiness ?? 1) * 100
+                )}%${player.health?.status && player.health.status !== "fit" ? ` · ${escapeHtml(player.health.status)}` : ""}</span>`
+              : ""
+          }
+          ${strengthLine}
         </div>
       </div>
       <span>Career totals: ${totals.matches} apps - ${totals.goals} goals - ${totals.assists} assists${cleanSheetLine}</span>
@@ -55,12 +110,12 @@ export function renderPlayerOverview(player, overviewEl, statsKeys) {
       ${honorLine}
     </div>
     <div class="player-metrics">
-      ${statsKeys
+      ${displayKeys
         .map(
           (key) => `
           <div class="metric">
             <span class="label">${key}</span>
-            <span class="value">${player.attributes[key]}</span>
+            <span class="value">${formatAbilityForDisplay(player.attributes?.[key])}</span>
           </div>
         `
         )
@@ -77,7 +132,16 @@ export function appendSeasonCard(season, seasonLogEl, player) {
   const stats = node.querySelector(".stats");
 
   const yearLabel = `${player.startYear + season.seasonNumber - 1}/${(player.startYear + season.seasonNumber).toString().slice(-2)}`;
-  const ratingSign = season.ratingChange > 0 ? "+" : "";
+  const ovrBefore =
+    Number.isFinite(season.baseOverallBefore)
+      ? season.baseOverallBefore
+      : Number.isFinite(season.ratingAfter) && Number.isFinite(season.ratingChange)
+        ? season.ratingAfter - season.ratingChange
+        : null;
+  const ovrAfter = Number.isFinite(season.baseOverallAfter)
+    ? season.baseOverallAfter
+    : season.ratingAfter;
+  const ovrChangeText = formatAbilityDisplayChange(ovrBefore, ovrAfter, "0");
   const seasonClubName = season.clubDisplay ?? season.club;
   const badgeMarkup = season.badge
     ? `<img class="club-badge badge-small" src="${season.badge}" alt="${escapeHtml(seasonClubName)} badge" loading="lazy" />`
@@ -110,10 +174,16 @@ export function appendSeasonCard(season, seasonLogEl, player) {
     <dd>${escapeHtml(season.leagueDisplay ?? season.league)}</dd>
     <dt>Finish</dt>
     <dd>${finishLabel}${honorsLabel}${moveLabel}</dd>
-    <dt>Overall change</dt>
-    <dd>${ratingSign}${season.ratingChange}</dd>
+    <dt>Base OVR change</dt>
+    <dd>${ovrChangeText}${
+      season.developmentExplanations?.length
+        ? ` <span class="muted">(${escapeHtml(season.developmentExplanations[0])})</span>`
+        : ""
+    }</dd>
+    <dt>Minutes / starts</dt>
+    <dd>${season.minutes ?? "—"} min · ${season.starts ?? "—"} starts</dd>
     <dt>Average rating</dt>
-    <dd>${season.avgMatchRating.toFixed(2)}</dd>
+    <dd>${Number(season.avgMatchRating || 0).toFixed(2)}</dd>
     <dt>Europe</dt>
     <dd>${
       season.europeanCampaign?.showcase
@@ -155,7 +225,7 @@ export function appendSeasonCard(season, seasonLogEl, player) {
     statItems.push(`Goal diff ${formatSigned(season.standing.goalDiff)}`);
   }
 
-  statItems.push(`OVR ${season.ratingAfter}`);
+  statItems.push(`OVR ${formatAbilityForDisplay(ovrAfter)}`);
 
   if (season.europeanCampaign && !season.europeanCampaign.showcase) {
     statItems.push(`${season.europeanCampaign.competition}: ${season.europeanCampaign.result}`);
@@ -331,70 +401,56 @@ export function renderTransferOffers({
   applyTransfer,
   finishOfferWindow,
   promoteToParentClub,
+  onDecision = null,
 }) {
   transferContainer.innerHTML = "";
-  if (!player.pendingOffers.length) {
+
+  const hasDecision = Boolean(player.pendingDecision);
+  const hasOffers = Boolean(player.pendingOffers?.length);
+
+  if (!hasOffers && !hasDecision) {
     if (player.club?.isAcademy) {
       const notice = document.createElement("p");
       notice.className = "empty-state";
       notice.textContent =
         player.seasons.length > 0
-          ? "Awaiting a decision on offers in the transfer panel."
+          ? "No suitable professional offer is available right now. You can continue at the academy or wait for a fitting club."
           : "Complete career setup to begin.";
       transferContainer.appendChild(notice);
     } else {
       const empty = document.createElement("p");
       empty.className = "empty-state";
-      empty.textContent = "No active transfer offers. Keep performing to attract interest.";
+      empty.textContent =
+        "No active transfer offers. Keep performing — zero interest is a valid outcome.";
       transferContainer.appendChild(empty);
     }
     simulateBtn.disabled = !!player.isRetired;
     return;
   }
 
-  player.pendingOffers.forEach((offer, index) => {
-    const template = document.getElementById("offer-template");
-    const node = template.content.cloneNode(true);
-    const details = node.querySelector(".details");
-    const actions = node.querySelector(".offer-actions");
-    const offerClubName = offer.clubDisplay ?? offer.club;
-
-    const badgeMarkup = offer.badge
-      ? `<img class="club-badge badge-small" src="${offer.badge}" alt="${escapeHtml(offerClubName)} badge" loading="lazy" />`
-      : "";
-
-    details.innerHTML = `
-      <div class="offer-heading">
-        ${badgeMarkup}
-        <div>
-          <strong>${escapeHtml(offerClubName)}</strong>
-          <span>${escapeHtml(offer.leagueDisplay ?? offer.league)}</span>
-        </div>
+  // Manager / loan decision card (academy-style)
+  if (hasDecision && !(player.pendingOffers || []).some((o) => o.isLoan)) {
+    const d = player.pendingDecision;
+    const card = document.createElement("div");
+    card.className = "offer-card career-decision-card";
+    card.innerHTML = `
+      <div class="details">
+        <strong>${escapeHtml(d.headline || "Squad discussion")}</strong>
+        <span>${escapeHtml(d.lead || "")}</span>
       </div>
-      <span>${escapeHtml(offer.message)}</span>
-      <span>Wage offer: ${formatCurrency(Math.max(900, offer.wage))} per week</span>
-      <span>Transfer fee: ${formatCurrency(offer.transferFee)}</span>
-      <span>Contract length: ${offer.contractYears} years</span>
+      <div class="offer-actions" data-decision-actions></div>
     `;
-
-    const acceptBtn = document.createElement("button");
-    acceptBtn.className = "accept";
-    acceptBtn.textContent = "Accept Offer";
-    acceptBtn.addEventListener("click", () => {
-      applyTransfer(offer);
-    });
-
-    actions.appendChild(acceptBtn);
-
-    if (!offer.isReleasedYouthOffer) {
-      const declineBtn = document.createElement("button");
-      declineBtn.className = "decline";
-      declineBtn.textContent = "Decline";
-      declineBtn.addEventListener("click", () => {
-        player.pendingOffers.splice(index, 1);
-        if (!player.pendingOffers.length) {
-          finishOfferWindow(false);
-        } else {
+    const actions = card.querySelector("[data-decision-actions]");
+    for (const choice of d.choices || []) {
+      const btn = document.createElement("button");
+      btn.className = choice.id.includes("loan") ? "accept" : "secondary";
+      btn.textContent = choice.label;
+      btn.addEventListener("click", () => {
+        if (typeof onDecision === "function") {
+          onDecision(d, choice.id);
+        } else if (choice.offers?.length) {
+          player.pendingOffers = choice.offers;
+          player.pendingDecision = null;
           renderTransferOffers({
             player,
             transferContainer,
@@ -402,18 +458,130 @@ export function renderTransferOffers({
             applyTransfer,
             finishOfferWindow,
             promoteToParentClub,
+            onDecision,
           });
+        } else {
+          player.pendingDecision = null;
+          finishOfferWindow(false);
         }
       });
-      actions.appendChild(declineBtn);
+      actions.appendChild(btn);
     }
+    transferContainer.appendChild(card);
+  }
+
+  (player.pendingOffers || []).forEach((offer, index) => {
+    const template = document.getElementById("offer-template");
+    const node = template.content.cloneNode(true);
+    const details = node.querySelector(".details");
+    const actions = node.querySelector(".offer-actions");
+    const offerClubName = offer.clubDisplay ?? offer.club;
+    const dealLabel = offer.isLoan
+      ? "Loan"
+      : offer.isRenewal
+        ? "Renewal"
+        : offer.isFreeAgent || offer.dealType === "first_pro"
+          ? "Free / first contract"
+          : "Permanent";
+    const roleLabel = offer.expectedRole || "squad";
+    const minutes =
+      offer.projectedMinutesRange != null
+        ? `${offer.projectedMinutesRange[0]}–${offer.projectedMinutesRange[1]}% projected club minutes`
+        : null;
+
+    const badgeMarkup = offer.badge
+      ? `<img class="club-badge badge-small" src="${offer.badge}" alt="${escapeHtml(offerClubName)} badge" loading="lazy" />`
+      : "";
+
+    const feeLine = offer.isLoan
+      ? `<span>Loan fee: ${formatCurrency(offer.loanFee || 0)}</span>`
+      : `<span>Transfer fee: ${formatCurrency(offer.transferFee || 0)}</span>`;
+    const wage = Number.isFinite(offer.wage) ? offer.wage : 0;
+    const parentName =
+      offer.parentClubName ||
+      offer.loanTerms?.parentClubName ||
+      player.employmentClubId ||
+      player.parentClubSnapshot?.displayName ||
+      player.parentClubSnapshot?.name ||
+      player.club?.name;
+    const loanStart = offer.loanTerms?.startDate || offer.effectiveDate || offer.reviewDate;
+    const loanEnd = offer.loanTerms?.endDate;
+    const lengthLine = offer.isLoan
+      ? `<span>Loan dates: ${escapeHtml(loanStart || "TBC")} → ${escapeHtml(
+          loanEnd || "end of season"
+        )}${
+          offer.loanTerms?.purchaseOption
+            ? ` · purchase option ${formatCurrency(offer.loanTerms.purchaseOption.fee)}`
+            : ""
+        }</span>`
+      : `<span>Contract length: ${offer.contractYears} years</span>`;
+
+    details.innerHTML = `
+      <div class="offer-heading">
+        ${badgeMarkup}
+        <div>
+          <strong>${escapeHtml(offerClubName)}</strong>
+          <span>${escapeHtml(offer.leagueDisplay ?? offer.league)} · ${escapeHtml(dealLabel)}</span>
+        </div>
+      </div>
+      <span>${escapeHtml(offer.message)}</span>
+      ${
+        offer.isLoan
+          ? `<span>Parent club: ${escapeHtml(String(parentName || "—"))}</span>`
+          : ""
+      }
+      <span>Gross weekly wage: ${formatCurrency(wage)}</span>
+      ${feeLine}
+      ${lengthLine}
+      <span>Expected role: ${escapeHtml(roleLabel)}${minutes ? ` · ${escapeHtml(minutes)}` : ""}</span>
+      ${
+        offer.isLoan && offer.loanTerms
+          ? `<span>Parent club retains registration; wage split borrower ${(
+              (offer.loanTerms.borrowerWageShare || 0) * 100
+            ).toFixed(0)}% / parent ${((offer.loanTerms.parentWageShare || 0) * 100).toFixed(0)}%</span>`
+          : ""
+      }
+    `;
+
+    const acceptBtn = document.createElement("button");
+    acceptBtn.className = "accept";
+    acceptBtn.textContent = offer.isLoan ? "Accept Loan" : "Accept Offer";
+    acceptBtn.addEventListener("click", () => {
+      acceptBtn.disabled = true;
+      applyTransfer(offer);
+    });
+
+    actions.appendChild(acceptBtn);
+
+    const declineBtn = document.createElement("button");
+    declineBtn.className = "decline";
+    declineBtn.textContent = "Decline";
+    declineBtn.addEventListener("click", () => {
+      player.pendingOffers.splice(index, 1);
+      if (!player.pendingOffers.length) {
+        finishOfferWindow(false);
+      } else {
+        renderTransferOffers({
+          player,
+          transferContainer,
+          simulateBtn,
+          applyTransfer,
+          finishOfferWindow,
+          promoteToParentClub,
+          onDecision,
+        });
+      }
+    });
+    actions.appendChild(declineBtn);
     transferContainer.appendChild(node);
   });
 
   if (player.club) {
     const currentSeason = player.seasons.length;
     const contractValid = player.contractEndSeason === null || currentSeason < player.contractEndSeason;
-    const hasRenewalOffer = player.pendingOffers.some((offer) => offer.isRenewal && offer.club === player.club.name);
+    const hasRenewalOffer = (player.pendingOffers || []).some(
+      (offer) => offer.isRenewal && offer.club === player.club.name
+    );
 
     if (player.club.isAcademy && player.club.parentClub && !player.suppressParentContractOffer) {
       const stayBtn = document.createElement("button");

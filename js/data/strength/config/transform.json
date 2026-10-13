@@ -1,0 +1,69 @@
+{
+  "transformVersion": "team-quality-v3",
+  "clubEloToTeamQuality": {
+    "formula": "clamp(-25.072479 + 0.05800793 * clubElo, 30, 94)",
+    "intercept": -25.072478739035574,
+    "slope": 0.05800792555323033,
+    "clipMin": 30,
+    "clipMax": 94,
+    "notes": "Monotonic ClubElo→internal team quality fitted to percentile anchors over the observed 485-club Elo range so weak and elite clubs are not flattened. Distinct from Opta and FIFA transforms. Parameters frozen with baseline.",
+    "calibrationAnchors": [
+      {
+        "clubElo": 1258,
+        "targetQuality": 50
+      },
+      {
+        "clubElo": 1481,
+        "targetQuality": 56
+      },
+      {
+        "clubElo": 1537,
+        "targetQuality": 62
+      },
+      {
+        "clubElo": 1604,
+        "targetQuality": 68
+      },
+      {
+        "clubElo": 1691,
+        "targetQuality": 76
+      },
+      {
+        "clubElo": 1780,
+        "targetQuality": 82
+      },
+      {
+        "clubElo": 1956,
+        "targetQuality": 89
+      },
+      {
+        "clubElo": 2046,
+        "targetQuality": 91
+      }
+    ]
+  },
+  "optaToTeamQuality": {
+    "formula": "clamp(raw * 0.88 + 2, 30, 94)",
+    "notes": "Legacy Opta mapping retained for archived Opta snapshots only; not used for new-career club baselines after team-quality-v3."
+  },
+  "fifaPointsToTeamQuality": {
+    "formula": "clamp(28 + (points - 800) * 0.055, 40, 93)",
+    "notes": "Monotonic mapping from FIFA ranking points into national team quality. Distinct from club Elo scale."
+  },
+  "fdbToClubElo": {
+    "calibrationId": "fdb-to-clubelo-regularized-country-v1",
+    "notes": "See config/fdbToClubEloCalibration.json"
+  },
+  "subratings": {
+    "method": "neutral_equal_split_v1",
+    "notes": "Attack/midfield/defence/GK equal the transformed overall when positional evidence is unavailable. Marked derived, never verified provider data."
+  },
+  "replacementOvr": {
+    "method": "overall_minus_4_role_offsets_v1",
+    "notes": "Typical replacement player OVR band derived from team quality; not a published observation."
+  },
+  "fallback": {
+    "method": "none_for_new_careers_v3",
+    "notes": "League-centre priors removed for new careers. Genuine gaps use results_derived or remain unresolved."
+  }
+}

@@ -1,0 +1,252 @@
+{
+  "researchDate": "2026-10-08",
+  "purpose": "Checked research entry points for a genuine 35-year results fallback, not a collected or scored 35-season dataset.",
+  "historicalSeasonsIngested": 0,
+  "coverageMeaning": "Every game league is associated with a country and checked archive entry points. Complete per-club historical results coverage has not been established.",
+  "globalIndexes": {
+    "domesticHistory": "https://www.rsssf.org/histdom.html",
+    "countryTables": "https://www.rsssf.org/country.html",
+    "annualRecentSeasons": "https://www.rsssf.org/resultsp2020.html",
+    "annual1990s": "https://www.rsssf.org/resultsp99.html",
+    "domesticCups": "https://www.rsssf.org/cuphist.html",
+    "continentalClubCompetitions": "https://www.rsssf.org/intclub.html"
+  },
+  "windowConvention": {
+    "splitYearSeasons": "1991/92 through 2025/26 inclusive, adjusted only for documented country season calendars",
+    "calendarYearSeasons": "1991 through 2025 inclusive",
+    "incompleteCurrentSeason": "Separate dated update through 2026-10-08; not counted as a completed season",
+    "newerClubs": "Actual documented history since foundation; no invented seasons or unproven inherited predecessor record"
+  },
+  "countries": [
+    {
+      "country": "Argentina",
+      "gameLeagues": [
+        "Liga Profesional"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesa/arghist.html"
+      ],
+      "notes": "Expand annual professional-era links. Account for changing tournament calendars, Apertura/Clausura and promotion. The entry point alone is not proof of complete match data."
+    },
+    {
+      "country": "Belgium",
+      "gameLeagues": [
+        "Belgian Pro League"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesb/belghist.html"
+      ],
+      "notes": "This history is titled Final Tables 1895-2008. Continue later seasons through annual indexes. Treat championship playoffs and carried/halved points correctly."
+    },
+    {
+      "country": "Brazil",
+      "gameLeagues": [
+        "Brasileirão Série A"
+      ],
+      "entryPoints": [
+        "https://rsssfbrasil.com/historical.htm"
+      ],
+      "notes": "The national/state archive separates competitions. National league, national cup, state leagues and continental results must have distinct identities and weights."
+    },
+    {
+      "country": "Colombia",
+      "gameLeagues": [
+        "Categoría Primera A"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesc/colchamp.html"
+      ],
+      "notes": "The linked country entry is a champions/runners-up index, not complete results. Retrieve annual full tables and matches, including Apertura/Finalización and stage-specific records."
+    },
+    {
+      "country": "Croatia",
+      "gameLeagues": [
+        "HNL"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesk/kroahist.html",
+        "https://www.rsssf.org/tablesj/joeghist.html"
+      ],
+      "notes": "Resolve national competition transitions within the window and modern clubs versus predecessor entities. Do not automatically merge Varaždin/Varteks histories."
+    },
+    {
+      "country": "Czech Republic",
+      "gameLeagues": [
+        "Czech First League"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablest/tsjslhist.html",
+        "https://www.rsssf.org/country.html"
+      ],
+      "notes": "Include the relevant Czechoslovak seasons before the Czech league began; retain original competition identity and club continuity. Follow separate lower-division links when necessary."
+    },
+    {
+      "country": "Denmark",
+      "gameLeagues": [
+        "Superliga"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesd/denhist.html"
+      ],
+      "notes": "The history is titled Danish League Tables 1927-1998. Extend through annual archive links and account for subsequent split stages."
+    },
+    {
+      "country": "Ecuador",
+      "gameLeagues": [
+        "LigaPro Serie A"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablese/ecuahist.html"
+      ],
+      "notes": "Expand season links and distinguish tournament stages, championship finals and cumulative tables without duplicating matches or points."
+    },
+    {
+      "country": "England",
+      "gameLeagues": [
+        "Premier League",
+        "Championship"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/engpaul/FLA/league.html",
+        "https://www.rsssf.org/cuphist.html"
+      ],
+      "notes": "Include promotion/relegation and both divisions. Collect FA Cup and League Cup separately; add continental matches for participating clubs."
+    },
+    {
+      "country": "France",
+      "gameLeagues": [
+        "Ligue 1",
+        "Ligue 2"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesf/franfullhist.html",
+        "https://www.rsssf.org/tablesf/fran2hist.html"
+      ],
+      "notes": "First-division history is titled 1932-1998. Later annual editions are necessary. Document which domestic cups existed in each season."
+    },
+    {
+      "country": "Germany",
+      "gameLeagues": [
+        "Bundesliga",
+        "2. Bundesliga"
+      ],
+      "entryPoints": [
+        "https://www.f-archiv.de/",
+        "https://www.rsssf.org/histdom.html"
+      ],
+      "notes": "The country index points to F-Archiv. Follow documented season/division links and retain cup results and any relevant competition transitions."
+    },
+    {
+      "country": "Italy",
+      "gameLeagues": [
+        "Serie A",
+        "Serie B"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesi/italchamp.html",
+        "https://www.rsssf.org/histdom.html"
+      ],
+      "notes": "The country link is a champions list with season links. Use full season tables/matches, promotion playoffs and actual sanctions rather than treating champion lists as full results."
+    },
+    {
+      "country": "Mexico",
+      "gameLeagues": [
+        "Liga MX"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesm/mexhist.html"
+      ],
+      "notes": "Track Apertura/Clausura and liguilla distinctly. Normalize season exposure instead of counting two short tournaments as two full national years."
+    },
+    {
+      "country": "Netherlands",
+      "gameLeagues": [
+        "Eredivisie"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesn/nedprofhist.html"
+      ],
+      "notes": "Follow annual tables/results and KNVB Cup links. Senior and reserve sides are separate identities."
+    },
+    {
+      "country": "Norway",
+      "gameLeagues": [
+        "Eliteserien"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.no/archive.html"
+      ],
+      "notes": "Use calendar-year editions and separate national cup records. Treat the incomplete 2026 season as a dated current update."
+    },
+    {
+      "country": "Poland",
+      "gameLeagues": [
+        "Ekstraklasa"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesp/polhist.html"
+      ],
+      "notes": "The archive covers first and second levels via season links. Preserve distinct club identities despite similar names or lossy slug spellings."
+    },
+    {
+      "country": "Portugal",
+      "gameLeagues": [
+        "Primeira Liga"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesp/porthist.html"
+      ],
+      "notes": "The history is titled Final Tables 1934-2004. Extend later annual editions. AVS Futebol SAD and CD das Aves must not automatically share history."
+    },
+    {
+      "country": "Serbia",
+      "gameLeagues": [
+        "SuperLiga"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablesj/joeghist.html",
+        "https://www.rsssf.org/tabless/serv2026.html",
+        "https://www.rsssf.org/country.html"
+      ],
+      "notes": "Research Yugoslav/Serbia-Montenegro/Serbian competition transitions with explicit identity continuity. The 2025/26 page has regular and playoff stages, Kup Srbije and Prva Liga; do not double-count carried points. A single recent season is not a 35-year history."
+    },
+    {
+      "country": "Spain",
+      "gameLeagues": [
+        "La Liga",
+        "La Liga 2"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tabless/spanhist.html"
+      ],
+      "notes": "Collect Copa del Rey and lower-division records where needed. Reserve sides, including Celta Fortuna, remain distinct from their first teams."
+    },
+    {
+      "country": "Turkey",
+      "gameLeagues": [
+        "Süper Lig"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/tablest/turkhist.html"
+      ],
+      "notes": "Expand season table/results links and add domestic cup and continental match records."
+    },
+    {
+      "country": "United States / MLS Canadian clubs",
+      "gameLeagues": [
+        "MLS"
+      ],
+      "entryPoints": [
+        "https://www.rsssf.org/usadave/intro.html",
+        "https://www.rsssf.org/histdom.html"
+      ],
+      "notes": "MLS began inside the 35-year window and expansion clubs have shorter genuine histories. Regular season and playoffs are separate stages. Include relevant US/Canadian domestic cups and Concacaf matches while preserving each club's canonical association."
+    }
+  ],
+  "nationalTeamHistory": {
+    "officialFifaRanking": "https://inside.fifa.com/fifa-rankings/world-ranking/men",
+    "publishedNationalElo": "https://eloratings.net/",
+    "notes": "No national points or Elo values were collected in this pack. Dynamic ranking pages can expose empty tables. Official national points, published national Elo, historical results and predecessor-state identity require separate acquisition and auditing."
+  },
+  "note": "Archive entry points only; no 35-season results ingested in this upgrade."
+}

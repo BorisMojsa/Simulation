@@ -48,6 +48,7 @@ export const NATION_CONFEDERATION = {
   Greece: "UEFA",
   Haiti: "CONCACAF",
   Honduras: "CONCACAF",
+  Hungary: "UEFA",
   Iceland: "UEFA",
   Iran: "AFC",
   Iraq: "AFC",
@@ -56,6 +57,7 @@ export const NATION_CONFEDERATION = {
   Jamaica: "CONCACAF",
   Japan: "AFC",
   Jordan: "AFC",
+  Mali: "CAF",
   Mexico: "CONCACAF",
   Morocco: "CAF",
   Netherlands: "UEFA",
@@ -92,6 +94,7 @@ export const NATION_CONFEDERATION = {
   "United States": "CONCACAF",
   Uruguay: "CONMEBOL",
   Uzbekistan: "AFC",
+  Venezuela: "CONMEBOL",
   Wales: "UEFA",
 };
 
@@ -138,32 +141,35 @@ export function tournamentsForYear(year) {
   }
 
   if (y % 2 === 1) {
+    // Field sizes match the selectable WORLD_CUP_NATIONS pool (CAF 14, CONCACAF 10).
+    // Simplified vs real 24/16-team tournaments — must stay fillable without inventing nations.
     list.push({
       id: "afcon",
       name: "Africa Cup of Nations",
       shortName: "AFCON",
       confederation: "CAF",
-      fieldSize: 16,
-      groupSize: 4,
+      fieldSize: 12,
+      groupSize: 3,
     });
     list.push({
       id: "gold-cup",
       name: "CONCACAF Gold Cup",
       shortName: "Gold Cup",
       confederation: "CONCACAF",
-      fieldSize: 12,
-      groupSize: 3,
+      fieldSize: 8,
+      groupSize: 4,
     });
   }
 
   if (y % 4 === 3) {
+    // AFC selectable pool is 12 nations in this project.
     list.push({
       id: "asian-cup",
       name: "AFC Asian Cup",
       shortName: "Asian Cup",
       confederation: "AFC",
-      fieldSize: 16,
-      groupSize: 4,
+      fieldSize: 12,
+      groupSize: 3,
     });
   }
 

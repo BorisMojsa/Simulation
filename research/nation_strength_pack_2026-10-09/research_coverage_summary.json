@@ -1,0 +1,64 @@
+{
+  "researchDate": "2026-10-09",
+  "datasetId": "fifa-men-2026-10-07-inventory79-secondary-v1",
+  "applicationNationInventory": 79,
+  "publishedPointsMapped": 79,
+  "previousVerifiedRowsMatchedExactly": 20,
+  "previousRankOnlyRowsMatchedExactly": 30,
+  "previousUnresolvedBaselinesReplaced": 59,
+  "defaultPriorValuePreviouslyUsedForEveryGap": 1180,
+  "remainingUnresolvedInventoryIdsInResearchPack": 0,
+  "arbitraryPointEstimatesOrInterpolationsSupplied": 0,
+  "uniquePointValues": 79,
+  "pointRange": [
+    1151.05,
+    2011.57
+  ],
+  "sourceEvidenceTier": "corroborated_secondary",
+  "directPrimaryPointsVerified": 0,
+  "twoTablePublisherAgreement": 79,
+  "thirdTablePublisherPointAgreement": 78,
+  "thirdTablePublisherPointDisagreements": 1,
+  "confederationCorrections": [
+    {
+      "nationId": "nation:hungary",
+      "name": "Hungary",
+      "oldConfederation": "FIFA",
+      "correctConfederation": "UEFA",
+      "primarySourceUrl": "https://inside.fifa.com/en/associations/HUN/organisation",
+      "membershipSourceTier": "primary_official_fifa_association_profile",
+      "note": "Correct canonical identity/competition eligibility metadata separately from strength."
+    },
+    {
+      "nationId": "nation:mali",
+      "name": "Mali",
+      "oldConfederation": "FIFA",
+      "correctConfederation": "CAF",
+      "primarySourceUrl": "https://inside.fifa.com/en/associations/MLI/organisation",
+      "membershipSourceTier": "primary_official_fifa_association_profile",
+      "note": "Correct canonical identity/competition eligibility metadata separately from strength."
+    },
+    {
+      "nationId": "nation:venezuela",
+      "name": "Venezuela",
+      "oldConfederation": "FIFA",
+      "correctConfederation": "CONMEBOL",
+      "primarySourceUrl": "https://inside.fifa.com/associations/ven",
+      "membershipSourceTier": "primary_official_fifa_association_profile",
+      "note": "Correct canonical identity/competition eligibility metadata separately from strength."
+    }
+  ],
+  "confederationCounts": {
+    "AFC": 12,
+    "CAF": 15,
+    "CONCACAF": 10,
+    "CONMEBOL": 10,
+    "OFC": 1,
+    "UEFA": 31
+  },
+  "clubAuditScope": 5,
+  "clubTargetExtrapolationFlags": [
+    "AVS"
+  ],
+  "currentImplementationCodeAudited": false
+}

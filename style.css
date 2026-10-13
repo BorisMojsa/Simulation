@@ -522,6 +522,14 @@ button:disabled {
   font-size: 0.95rem;
 }
 
+.club-heading .club-strength {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--bone);
+  font-size: 0.88rem;
+  letter-spacing: 0.01em;
+}
+
 .player-metrics {
   display: grid;
   gap: 0.55rem;

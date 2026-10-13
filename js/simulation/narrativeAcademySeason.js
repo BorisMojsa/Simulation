@@ -2,7 +2,7 @@ import { POSITION_PROFILES } from "../config/playerConfig.js";
 import { clubNameForDisplay, clamp, randFloat, randInt } from "../utils/helpers.js";
 import { academyNationOf, buildAcademyOfferStories } from "../data/academyOfferStories.js";
 import { academyOfferWeight } from "../data/academyGeography.js";
-import { agePerformanceModifier } from "./playerDevelopment.js?v=40";
+import { agePerformanceModifier } from "./playerDevelopment.js?v=60";
 
 /** Each offer slot prefers a home club this often when home clubs exist. */
 const HOME_SLOT_CHANCE = 0.9;

@@ -1,0 +1,348 @@
+Implement the next source upgrade in BorisMojsa/Simulation: replace all remaining national-team point priors with the supplied published FIFA points, correct nation identities used by competitions, and audit the five existing FootballDatabase-to-ClubElo conversions.
+
+This is implementation work. Inspect the current repository, make the changes, rebuild the bundled data offline, run the appropriate checks, and return an accurate completion report. Keep the established globally comparable club strength system and shared match engine. Do not claim work is complete based only on coverage counts.
+
+INPUTS AND CURRENT STATE
+
+Place the accompanying Simulation_National_Strength_Research_Pack folder under research/nation_strength_pack_2026-10-09/ before starting. The pack includes source observations, explicit identity mappings, the two reports supplied by the user, a calibration audit, a validator, and the complete 79-nation points list.
+
+The uploaded national report contains 79 nations:
+- 20 have stored FIFA points.
+- 59 have no published points in the report.
+- Of those 59, 30 have a known rank.
+- All 59 unresolved rows use gameplayPointsPrior = 1180.
+- Hungary, Mali and Venezuela have the invalid confederation value FIFA.
+- The report says baselineSnapshotId = fifa-men-2026-10-07 and transformVersion = team-quality-v3.
+
+The new research maps all 79 existing IDs uniquely to published points for the edition labelled 2026-10-07. The existing 20 point values match exactly, and all 30 rank-only observations match their existing ranks. No new nation IDs or guessed point values are required.
+
+The previous club implementation reports 490 clubs: 485 direct ClubElo observations and 5 calibrated FootballDatabase observations. Preserve that work unless a concrete defect is found. The research review audited the supplied reports and published observation pairs; it did not inspect your latest uncommitted implementation. You must inspect the actual fitting and runtime code.
+
+1. INSPECT THE CURRENT IMPLEMENTATION BEFORE EDITING
+
+Read the project instructions, current source documentation, raw snapshots, builders, identity resolver, nation profiles, transform configuration, career world state, match engine, international calendar, qualification rules, competition runners and relevant tests.
+
+Likely paths include:
+- js/data/strength/nationProfiles.js
+- js/data/strength/raw/
+- scripts/buildNationStrengthDb.mjs
+- js/data/identity/resolver.js
+- js/simulation/teamStrength.js
+- js/simulation/matchEngine.js
+- js/simulation/worldState.js
+- js/data/internationalCalendar.js
+- js/data/competitions/qualification.js
+- reports/nation-strength-coverage-report.json
+- reports/strength-calibration-report.json
+
+Search for gameplayPointsPrior, 1180, fifaRank, knownRankWithoutPoints, unresolved_conversion, confederation defaults, anonymous nation fallbacks, baseline snapshot IDs and provider-specific transforms. Determine where the 1180 prior actually enters gameplay and remove it from the new production national snapshot.
+
+Use the actual repository structure when paths differ. Do not rebuild features that already work. Preserve user edits and stable club/nation IDs.
+
+Cross-check the inventory against every implemented international participant pool and qualification path. If the code has an additional distinct nation beyond the supplied 79, report that discrepancy and obtain its published points from the same edition before claiming complete coverage. Never quietly map it onto another nation or give it a generic prior.
+
+2. IMPORT THE OBSERVATIONS WITH HONEST PROVENANCE
+
+Use nation_observations_79.json as the selected numeric dataset. nation_replacements_59.json identifies the previously unresolved IDs. Reconcile using nation_identity_mappings.json and inspect the raw observations yourself.
+
+The evidence is:
+- Betimate and Futbor publish full pages labelled as the 7 October 2026 FIFA men's ranking. Their points agree for every one of the 79 inventory nations.
+- B-Empire Magazine agrees on points for 78 of those nations.
+- Australia differs: B-Empire displays 1585.52; Betimate and Futbor display 1580.52. An additional FIFA Ranking Calculator country profile also displays 1580.52 for 2026-10-07.
+- Select the published 1580.52 observation for Australia. Retain the conflicting raw 1585.52 observation and the selection rationale. Do not average them or silently change a raw source.
+- North Korea is named DPR Korea on the two main tables and Korea DPR on B-Empire. Both explicitly refer to the same mapped existing North Korea ID.
+
+These are published FIFA points republished by secondary sources. The research pack did not obtain a direct official FIFA numeric export. It has zero directly verified primary FIFA point rows. Agreement among publishers is corroboration; they may share an upstream feed.
+
+Separate these fields:
+- origin provider: fifa
+- publisher: the actual site supplying the numeric observation
+- sourceEvidenceTier: corroborated_secondary for the supplied selected observations
+- rankingEditionDate/ratingAsOfDate: 2026-10-07
+- retrievedAt: 2026-10-09 for this supplied capture
+- publicationDate: unknown unless an actual publication timestamp is evidenced
+- raw fifaPoints and fifaRank
+- raw snapshot/content hash and evidence references
+- strength derivation: normalized_from_published_rating after applying the game transform
+- transform ID and version
+
+Use an explicit published_rating status or adapt the repository's existing enums consistently. Do not falsely label the secondary download as primary_verified, official_download or a direct FIFA API export. Do not label these observed numeric values as arbitrary estimates. If an existing row genuinely has preserved primary evidence, retain that evidence and its justified tier; a previous verified label alone is insufficient.
+
+Archive checked-in raw snapshots under js/data/strength/raw/. Preserve points to their published two decimal places. Keep raw observations unchanged and make selected values and any conflict resolution separate and reviewable.
+
+The page's ranking edition date is not its article publication timestamp. The current report's generatedAt is also not the source date. Do not reuse an unsupported timestamp or make network-access claims such as API returned 403 without a recorded result.
+
+The sources cover 211 teams on their pages, but this pack captures the application's 79-team inventory. Do not advertise a complete official 211-row export.
+
+If you can obtain a direct official FIFA table in your environment, verify its edition, numeric precision and identities against the pack. Store that new primary evidence separately and explicitly resolve differences. The supplied corroborated data is an authorized usable baseline; do not leave the 59 generic priors in production while waiting for optional primary access.
+
+Source URLs:
+https://betimate.com/en/fifa-ranking
+https://futbor.com/fifa-rankings/
+https://b-empiremagazine.com/en/classement-fifa/
+https://fifarankingcalculator.com/team/australia/
+https://inside.fifa.com/fifa-rankings/world-ranking/procedure-men
+
+3. KEEP THE STRENGTH SCALES AND DERIVED RATINGS CORRECT
+
+Replace missing points with their selected published observation. Do not infer points from ranks, interpolate between ranks, apply regional average points, use wealth/reputation as quality, or return 1180 when data is missing.
+
+Treat FIFA points and ClubElo ratings as different provider scales. Do not send FIFA points through the ClubElo linear transform, calibrate them using the five club conversions, or normalize each confederation independently. All nations must share one documented FIFA-points-to-game-quality mapping.
+
+Inspect the existing FIFA transform. Retain it if it is documented, monotonic and behaves sensibly over the supplied observed range, 1151.05 to 2011.57. If a correction is needed, use a versioned, explicit design choice and validate its consequences. Do not imply a game-quality mapping is a published FIFA formula.
+
+Preserve floating-point strength internally so rounding in a display does not create identical runtime baselines. Check for clipping that flattens materially different nations. Higher published points should produce higher baseline quality before player changes, form and venue effects.
+
+Derive ATK/MID/DEF/GK and positional replacement OVRs only using documented model rules. FIFA supplies one points total here, not four independently verified positional ratings or a full squad. Label those attributes derived. Preserve the existing bounded contribution of the actual player replacing the relevant positional baseline; avoid adding the same player improvement twice.
+
+Keep national baselines separate from live career form/development. Use actual venue or neutral-site metadata for home advantage. Do not give a national team a permanent bonus merely because it appears first in a fixture.
+
+The FIFA SUM method carries previous points forward and changes them after results. Historic results already influence that evolving total. This upgrade does not need a 35-year trophy model because all 59 gaps now have published numeric observations. Do not add an arbitrary historic-title bonus on top of the current ratings. Do not claim the pack contains 35 years of researched results.
+
+4. FIX THE CANONICAL NATION REGISTRY AND COMPETITION ELIGIBILITY
+
+Apply the independently verified membership corrections:
+- Hungary: UEFA
+- Mali: CAF
+- Venezuela: CONMEBOL
+
+Official evidence:
+https://inside.fifa.com/en/associations/HUN/organisation
+https://inside.fifa.com/en/associations/MLI/organisation
+https://inside.fifa.com/associations/ven
+
+Fix the underlying canonical registry and generators, not just the report output. FIFA is the governing body, not a seventh confederation. New national profiles must have exactly one of UEFA, CAF, CONMEBOL, CONCACAF, AFC or OFC.
+
+Keep qualification and participant eligibility tied to stable identities and explicit competition rules. Do not derive confederation from rank, source provider, a spelling heuristic or a fallback string.
+
+Use explicit aliases for:
+IR Iran / Iran
+Côte d'Ivoire / Ivory Coast
+Türkiye / Turkey
+Korea Republic / South Korea
+DPR Korea / Korea DPR / North Korea
+Congo DR / DR Congo
+China PR / China
+Czechia / Czech Republic
+Cabo Verde / Cape Verde
+USA / United States
+
+Do not accept bare Congo, Korea or Ireland as unambiguous automatic aliases. Never merge North and South Korea, DR Congo and Republic of the Congo, or Republic of Ireland and Northern Ireland.
+
+Ensure the corrections affect every implemented relevant continental cup, qualification path and international schedule. Respect explicit tournament guest rules if they exist; do not expand a tournament's participant pool simply because a rating table includes a team. Preserve the existing correction preventing Jordan entering Copa America.
+
+For the supplied inventory, expected canonical counts are UEFA 31, CAF 15, CONCACAF 10, CONMEBOL 10, AFC 12 and OFC 1.
+
+5. KEEP BUILDS OFFLINE, DETERMINISTIC AND FAILING CLEARLY ON DATA GAPS
+
+The normal builder and game must use bundled snapshots without a network connection. Optional fetching must be a separate, reproducible research/import step.
+
+Use explicit identity mappings. Fail the build on missing inventory IDs, duplicates, ambiguous matches, invalid confederations, malformed/nonfinite points or a source date mismatch. Output a row-level report explaining any actual gap. Do not silently assign a prior to make the report green.
+
+Give the improved snapshot a new content/version identifier. Reusing only fifa-men-2026-10-07 would obscure the difference between the old 20-point/59-prior dataset and the new complete dataset. Record the content hash and normalization version, not just the date.
+
+Rebuild twice and ensure the generated profiles and semantic snapshot hash are identical. Keep generatedAt separate from semantic data identity if needed.
+
+Audit every output profile against the selected input observation and evidence. Every one of the 79 existing IDs must appear exactly once.
+
+6. PRESERVE CAREER SNAPSHOTS
+
+Extend the existing career baseline freeze to include national observations and their transforms if it does not already do so.
+
+Freeze at least:
+- nationId
+- selected provider points
+- effective baseline quality and derived positional/replacement values
+- provider and publisher/evidence references
+- source tier and dataset content/version ID
+- transform version/parameters
+- derivation status
+- any resolved source conflict that affected the selected value
+
+Updating a bundled table must affect new careers while an existing career retains its frozen baseline. Do not silently strengthen an existing saved national team when it reloads after this update.
+
+Handle old careers with a documented version-aware migration. Preserve their already frozen baseline values and identify legacy priors honestly where necessary. Removing priors from new snapshots does not authorize destroying old career saves or replacing their baseline in place.
+
+Verify serialization/deserialization preserves national values, evidence and deterministic seed state using the persistence helpers that actually exist. Do not add an unrelated localStorage feature if persistence remains session-only.
+
+7. AUDIT THE FIVE CLUB CONVERSIONS WITHOUT ARBITRARY RE-RATING
+
+Inspect fdbToClubEloCalibration.json and the fitting code. Use club_calibration_audit.json, the uploaded calibration report and paired_club_observations_75.json as audit inputs.
+
+Reported results:
+Global linear LOO MAE 60.42 Elo; regularized country-aware LOO MAE 28.34.
+Country-aware MAE/RMSE:
+Belgium 32.25 / 40.66, n=15
+Colombia 16.37 / 20.57, n=19
+Croatia 17.26 / 20.72, n=9
+Portugal 29.46 / 34.54, n=17
+Serbia 44.99 / 61.82, n=15
+
+The targets are:
+RAAL La Louviere: FDB 1312 -> calibrated ClubElo 1432
+Alianza: FDB 1364 -> calibrated ClubElo 1486
+Varazdin: FDB 1427 -> calibrated ClubElo 1485
+AVS: FDB 1335 -> calibrated ClubElo 1423
+Vojvodina: FDB 1517 -> calibrated ClubElo 1506
+
+These remain calibrated_from_published_rating. The predicted numbers are not direct ClubElo observations.
+
+Verify every leave-one-club-out fold refits all learned global and country parameters using only that fold's training rows. A model fitted once to all 75 observations and merely scored on them is not a held-out test. Document the residual sign.
+
+Document whether regularization was fixed before validation or tuned. If tuned using these same folds, distinguish model selection from independent final validation; use nested validation or another appropriate holdout when needed. Do not optimize a regularizer and report its minimum error as unbiased evidence.
+
+Retain all paired observations, including Zemun and Macva Sabac. The report has Serbia outliers of 181.40 and 96.39 absolute Elo error. Check identity/date support for these points rather than deleting them to improve a headline metric.
+
+Add per-target audit metadata:
+- country sample size
+- observed FootballDatabase input range
+- whether the target extrapolates outside that range
+- held-out country MAE, RMSE and defined signed bias
+- parameter/version references and provider observation dates
+- a plain uncertainty limitation
+
+AVS is mild extrapolation: Portuguese paired FDB range is 1344-1846; its raw value is 1335, nine points below the minimum. The other four targets are within their paired country ranges.
+
+Use training-data refits or properly designed sensitivity analysis to flag unstable target predictions. Do not turn MAE into a purported 95% confidence interval, and do not guess country offsets or manually boost Vojvodina. If you calculate intervals, state the statistical method and its limits.
+
+The two paired provider snapshots differ by four days: ClubElo 2026-10-08 and FootballDatabase 2026-10-04. Preserve and disclose that difference.
+
+Keep current converted baselines if the implementation reproduces its reported diagnostics and no concrete defect is found. A weak sample does not justify arbitrary replacement ratings. If the audit reveals leakage, identity mismatch or another real error, correct the model, version it, rebuild, rerun diagnostics and explain the resulting five target changes.
+
+The current ClubElo-to-quality transform is a game design mapping using chosen internal anchors. Its calibration report does not establish accurate match-winning probabilities. Keep scale-conversion checks separate from match-outcome calibration.
+
+8. VERIFY THE FIX IN EVERY IMPLEMENTED COMPETITION PATH
+
+Run existing required tests first and extend the relevant meaningful checks. Likely commands:
+node scripts/buildNationStrengthDb.mjs
+node tests/strengthProvenance.test.mjs
+node tests/teamStrength.test.mjs
+node tests/careerFlowSmoke.test.mjs
+
+Add equivalent checks using the actual test structure:
+A. Coverage/provenance
+All 79 supplied nation IDs map once to exact selected points and valid confederations. All 59 former gaps are filled. No rank-to-points interpolation, manual point estimates or generic 1180 baseline remains in the new national snapshot. All selected values retain their numeric evidence. Australia has explicit discrepancy metadata. Counts distinguish published/corroborated data from directly verified primary data.
+
+B. Strength integration
+Every implemented international match path uses the national effective strength calculated from the new points: friendlies, qualifiers, group stages, continental cups, knockout rounds, extra time and penalties where present. Scan for alternate result generators, rank-based winner picking and generic fallback baselines.
+
+Use deterministic xG or other pre-random strength output to verify clear ordering, such as Spain vs Togo and Iran vs China. Use several seeds only where a stochastic outcome check is necessary. Do not require the stronger nation to win every match.
+
+Verify meaningful player-OVR improvements affect the player's national side through the existing relevant position logic; a player who is not selected must not contribute. Check neutral venues, a genuine home venue and team swapping.
+
+C. Competition integrity
+Hungary follows UEFA eligibility, Mali CAF and Venezuela CONMEBOL. Jordan cannot enter Copa America unless an explicit supported competition rule intentionally invites it. Group table goals/GD and player statistics must not include shootout kicks. Existing valid extra-time and penalty phase behavior remains intact.
+
+D. Snapshot integrity
+A new career uses the complete snapshot. An old frozen career retains its baseline after the bundled snapshot changes. Serialize/restore gives the same national strengths, provenance and deterministic simulation behavior.
+
+E. Club regression
+Existing league, domestic cup and continental club matches still use the same shared engine and the 490-club baseline. Player OVR still affects club strength. Reproduce the five conversion diagnostics from the actual fitting code if the audit changes it; otherwise verify the stored report is generated from that code.
+
+Build-time invariants, source matching and deterministic integration checks matter more than a single stochastic upset percentage. Do not change the match engine merely to reproduce an arbitrary desired scoreline or to guarantee famous clubs/nations win cups.
+
+9. REPORT WHAT WAS ACTUALLY COMPLETED
+
+Update the nation coverage, matching and calibration reports and js/data/strength/README.md. Include the selected input snapshot hashes and the exact reproducible build/test commands.
+
+The completion summary must state:
+- published point coverage: 79/79 supplied inventory IDs
+- former unresolved priors replaced: 59/59
+- remaining actual gaps, if any discovered in the current code
+- arbitrary point estimates/interpolations in the new snapshot: 0
+- primary versus corroborated-secondary counts, justified by retained evidence
+- Hungary/Mali/Venezuela registry and competition corrections
+- Australia's conflicting observation and selected published value
+- national transform version and career snapshot/migration behavior
+- the five club conversions' audit findings and any justified changes
+- exact tests/calibration checks run and their results
+- material remaining limitations
+
+Do not describe all rows as official primary-verified FIFA simply because FIFA is the originating ranking provider. Do not say zero estimated positional attributes: ATK/MID/DEF/GK are model-derived unless actual separate evidence exists. Do not say a 35-year history analysis was completed.
+
+Implement the authorized changes and finish the checks. Do not create a commit, push or deploy unless the user requests it.
+
+APPENDIX: COMPLETE SELECTED POINTS
+The following table is a convenience copy of nation_observations_79.json. The JSON, raw evidence and explicit identity mappings remain the reproducible inputs.
+
+
+Nation ID | Team | Confederation | FIFA rank | FIFA points
+nation:algeria | Algeria | CAF | 28 | 1574.77
+nation:angola | Angola | CAF | 83 | 1281.79
+nation:argentina | Argentina | CONMEBOL | 2 | 1972.80
+nation:australia | Australia | AFC | 26 | 1580.52
+nation:austria | Austria | UEFA | 22 | 1600.66
+nation:belgium | Belgium | UEFA | 8 | 1779.17
+nation:bolivia | Bolivia | CONMEBOL | 78 | 1322.19
+nation:bosnia-and-herzegovina | Bosnia and Herzegovina | UEFA | 57 | 1429.32
+nation:brazil | Brazil | CONMEBOL | 6 | 1806.51
+nation:bulgaria | Bulgaria | UEFA | 90 | 1262.57
+nation:cameroon | Cameroon | CAF | 42 | 1485.30
+nation:canada | Canada | CONCACAF | 27 | 1575.31
+nation:cape-verde | Cape Verde | CAF | 68 | 1373.58
+nation:chile | Chile | CONMEBOL | 50 | 1458.97
+nation:china | China | AFC | 96 | 1241.90
+nation:colombia | Colombia | CONMEBOL | 11 | 1735.80
+nation:costa-rica | Costa Rica | CONCACAF | 54 | 1444.85
+nation:croatia | Croatia | UEFA | 14 | 1714.74
+nation:curacao | Curaçao | CONCACAF | 80 | 1304.98
+nation:czech-republic | Czech Republic | UEFA | 51 | 1457.12
+nation:denmark | Denmark | UEFA | 21 | 1619.62
+nation:dr-congo | DR Congo | CAF | 40 | 1506.37
+nation:ecuador | Ecuador | CONMEBOL | 24 | 1587.07
+nation:egypt | Egypt | CAF | 25 | 1585.86
+nation:england | England | UEFA | 4 | 1925.59
+nation:france | France | UEFA | 3 | 1958.86
+nation:germany | Germany | UEFA | 13 | 1717.52
+nation:ghana | Ghana | CAF | 70 | 1361.27
+nation:greece | Greece | UEFA | 41 | 1498.71
+nation:haiti | Haiti | CONCACAF | 84 | 1280.91
+nation:honduras | Honduras | CONCACAF | 67 | 1375.40
+nation:hungary | Hungary | UEFA | 38 | 1511.24
+nation:iceland | Iceland | UEFA | 73 | 1349.42
+nation:iran | Iran | AFC | 23 | 1597.31
+nation:iraq | Iraq | AFC | 63 | 1400.91
+nation:italy | Italy | UEFA | 15 | 1713.04
+nation:ivory-coast | Ivory Coast | CAF | 29 | 1569.32
+nation:jamaica | Jamaica | CONCACAF | 69 | 1361.97
+nation:japan | Japan | AFC | 17 | 1684.75
+nation:jordan | Jordan | AFC | 72 | 1350.88
+nation:mali | Mali | CAF | 47 | 1474.14
+nation:mexico | Mexico | CONCACAF | 10 | 1738.48
+nation:morocco | Morocco | CAF | 7 | 1805.34
+nation:netherlands | Netherlands | UEFA | 9 | 1778.61
+nation:new-zealand | New Zealand | OFC | 88 | 1277.02
+nation:nigeria | Nigeria | CAF | 30 | 1567.97
+nation:north-korea | North Korea | AFC | 121 | 1151.05
+nation:norway | Norway | UEFA | 19 | 1637.89
+nation:panama | Panama | CONCACAF | 46 | 1476.97
+nation:paraguay | Paraguay | CONMEBOL | 33 | 1552.30
+nation:peru | Peru | CONMEBOL | 53 | 1450.95
+nation:poland | Poland | UEFA | 37 | 1514.58
+nation:portugal | Portugal | UEFA | 5 | 1807.69
+nation:qatar | Qatar | AFC | 60 | 1416.47
+nation:republic-of-ireland | Republic of Ireland | UEFA | 56 | 1438.62
+nation:romania | Romania | UEFA | 58 | 1428.88
+nation:russia | Russia | UEFA | 35 | 1537.45
+nation:saudi-arabia | Saudi Arabia | AFC | 55 | 1443.17
+nation:scotland | Scotland | UEFA | 43 | 1483.57
+nation:senegal | Senegal | CAF | 18 | 1648.84
+nation:serbia | Serbia | UEFA | 44 | 1482.24
+nation:slovakia | Slovakia | UEFA | 45 | 1477.34
+nation:slovenia | Slovenia | UEFA | 52 | 1452.48
+nation:south-africa | South Africa | CAF | 48 | 1468.88
+nation:south-korea | South Korea | AFC | 32 | 1562.49
+nation:spain | Spain | UEFA | 1 | 2011.57
+nation:sweden | Sweden | UEFA | 34 | 1543.80
+nation:switzerland | Switzerland | UEFA | 12 | 1725.39
+nation:togo | Togo | CAF | 120 | 1153.04
+nation:trinidad-and-tobago | Trinidad and Tobago | CONCACAF | 105 | 1198.85
+nation:tunisia | Tunisia | CAF | 61 | 1415.38
+nation:turkey | Turkey | UEFA | 31 | 1563.54
+nation:ukraine | Ukraine | UEFA | 36 | 1535.27
+nation:united-arab-emirates | United Arab Emirates | AFC | 65 | 1376.95
+nation:united-states | United States | CONCACAF | 16 | 1705.47
+nation:uruguay | Uruguay | CONMEBOL | 20 | 1635.54
+nation:uzbekistan | Uzbekistan | AFC | 59 | 1416.61
+nation:venezuela | Venezuela | CONMEBOL | 49 | 1465.87
+nation:wales | Wales | UEFA | 39 | 1510.37

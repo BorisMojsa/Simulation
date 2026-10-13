@@ -1,0 +1,456 @@
+clubId,clubName,gameLeague,country,provider,providerName,rawRating,publishedAsOfDate,sourceUrl,gameStrengthStatus
+club:argentina:aldosivi,Aldosivi,Argentina - Liga Profesional,Argentina,ClubElo,Aldosivi,1565,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:argentinos-juniors,Argentinos Juniors,Argentina - Liga Profesional,Argentina,ClubElo,Argentinos Junio,1745,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:atletico-tucuman,Atlético Tucumán,Argentina - Liga Profesional,Argentina,ClubElo,Atlético Tucumán,1635,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:banfield,Banfield,Argentina - Liga Profesional,Argentina,ClubElo,Banfield,1599,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:barracas-central,Barracas Central,Argentina - Liga Profesional,Argentina,ClubElo,Barracas Central,1631,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:belgrano,Belgrano,Argentina - Liga Profesional,Argentina,ClubElo,Belgrano,1703,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:boca-juniors,Boca Juniors,Argentina - Liga Profesional,Argentina,ClubElo,Boca Juniors,1776,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:central-cordoba,Central Córdoba,Argentina - Liga Profesional,Argentina,ClubElo,Central Córdoba,1618,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:defensa-y-justicia,Defensa y Justicia,Argentina - Liga Profesional,Argentina,ClubElo,Defensa y Justic,1652,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:deportivo-riestra,Deportivo Riestra,Argentina - Liga Profesional,Argentina,ClubElo,Riestra,1615,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:estudiantes,Estudiantes,Argentina - Liga Profesional,Argentina,ClubElo,Estudiantes,1724,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:estudiantes-rio-cuarto,Estudiantes Río Cuarto,Argentina - Liga Profesional,Argentina,ClubElo,Río Cuarto,1540,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:gimnasia-la-plata,Gimnasia La Plata,Argentina - Liga Profesional,Argentina,ClubElo,Gimnasia LP,1682,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:gimnasia-mendoza,Gimnasia Mendoza,Argentina - Liga Profesional,Argentina,ClubElo,GyE Mendoza,1643,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:huracan,Huracán,Argentina - Liga Profesional,Argentina,ClubElo,Huracán,1695,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:independiente,Independiente,Argentina - Liga Profesional,Argentina,ClubElo,Independiente,1689,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:independiente-rivadavia,Independiente Rivadavia,Argentina - Liga Profesional,Argentina,ClubElo,Ind Rivadavia,1731,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:instituto,Instituto,Argentina - Liga Profesional,Argentina,ClubElo,Instituto,1688,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:lanus,Lanús,Argentina - Liga Profesional,Argentina,ClubElo,Lanús,1699,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:newell-s-old-boys,Newell's Old Boys,Argentina - Liga Profesional,Argentina,ClubElo,Newell's Old Boy,1628,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:platense,Platense,Argentina - Liga Profesional,Argentina,ClubElo,Platense,1632,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:racing-club,Racing Club,Argentina - Liga Profesional,Argentina,ClubElo,Racing Club,1710,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:river-plate,River Plate,Argentina - Liga Profesional,Argentina,ClubElo,River Plate,1732,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:rosario-central,Rosario Central,Argentina - Liga Profesional,Argentina,ClubElo,Rosario Central,1735,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:san-lorenzo,San Lorenzo,Argentina - Liga Profesional,Argentina,ClubElo,San Lorenzo,1637,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:sarmiento,Sarmiento,Argentina - Liga Profesional,Argentina,ClubElo,Sarmiento,1616,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:talleres,Talleres,Argentina - Liga Profesional,Argentina,ClubElo,Talleres,1637,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:tigre,Tigre,Argentina - Liga Profesional,Argentina,ClubElo,Tigre,1652,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:union,Unión,Argentina - Liga Profesional,Argentina,ClubElo,Unión de Santa F,1636,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:argentina:velez-sarsfield,Vélez Sarsfield,Argentina - Liga Profesional,Argentina,ClubElo,Vélez Sarsfield,1725,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:anderlecht,Anderlecht,Belgium - Belgian Pro League,Belgium,ClubElo,Anderlecht,1663,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:antwerp,Antwerp,Belgium - Belgian Pro League,Belgium,ClubElo,Antwerp,1582,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:cercle-brugge,Cercle Brugge,Belgium - Belgian Pro League,Belgium,ClubElo,Cercle Brugge,1543,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:charleroi,Charleroi,Belgium - Belgian Pro League,Belgium,ClubElo,Charleroi,1627,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:dender,Dender,Belgium - Belgian Pro League,Belgium,ClubElo,Dender,1481,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:genk,Genk,Belgium - Belgian Pro League,Belgium,ClubElo,Genk,1676,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:gent,Gent,Belgium - Belgian Pro League,Belgium,ClubElo,Gent,1632,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:mechelen,Mechelen,Belgium - Belgian Pro League,Belgium,ClubElo,Mechelen,1546,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:oh-leuven,OH Leuven,Belgium - Belgian Pro League,Belgium,ClubElo,Leuven,1510,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:raal-la-louviere,RAAL La Louvière,Belgium - Belgian Pro League,Belgium,FootballDatabase,RAAL La Louvière,1312,2026-10-04,https://footballdatabase.com/ranking/belgium/1,requires_validated_cross_provider_conversion
+club:belgium:sint-truiden,Sint-Truiden,Belgium - Belgian Pro League,Belgium,ClubElo,St Truiden,1612,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:standard-liege,Standard Liège,Belgium - Belgian Pro League,Belgium,ClubElo,Standard,1584,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:union-saint-gilloise,Union Saint-Gilloise,Belgium - Belgian Pro League,Belgium,ClubElo,St Gillis,1812,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:westerlo,Westerlo,Belgium - Belgian Pro League,Belgium,ClubElo,Westerlo,1575,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:belgium:zulte-waregem,Zulte Waregem,Belgium - Belgian Pro League,Belgium,ClubElo,Zulte Waregem,1567,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:athletico-paranaense,Athletico Paranaense,Brazil - Brasileirão Série A,Brazil,ClubElo,Ath Paranaense,1730,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:atletico-mineiro,Atlético Mineiro,Brazil - Brasileirão Série A,Brazil,ClubElo,Atlético Mineiro,1719,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:bahia,Bahia,Brazil - Brasileirão Série A,Brazil,ClubElo,Bahia,1732,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:botafogo,Botafogo,Brazil - Brasileirão Série A,Brazil,ClubElo,Botafogo,1711,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:chapecoense,Chapecoense,Brazil - Brasileirão Série A,Brazil,ClubElo,Chapecoense,1587,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:corinthians,Corinthians,Brazil - Brasileirão Série A,Brazil,ClubElo,Corinthians,1713,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:coritiba,Coritiba,Brazil - Brasileirão Série A,Brazil,ClubElo,Coritiba,1650,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:cruzeiro,Cruzeiro,Brazil - Brasileirão Série A,Brazil,ClubElo,Cruzeiro,1775,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:flamengo,Flamengo,Brazil - Brasileirão Série A,Brazil,ClubElo,Flamengo,1871,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:fluminense,Fluminense,Brazil - Brasileirão Série A,Brazil,ClubElo,Fluminense,1765,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:gremio,Grêmio,Brazil - Brasileirão Série A,Brazil,ClubElo,Grêmio,1689,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:internacional,Internacional,Brazil - Brasileirão Série A,Brazil,ClubElo,Internacional,1693,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:mirassol,Mirassol,Brazil - Brasileirão Série A,Brazil,ClubElo,Mirassol,1719,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:palmeiras,Palmeiras,Brazil - Brasileirão Série A,Brazil,ClubElo,Palmeiras,1853,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:red-bull-bragantino,Red Bull Bragantino,Brazil - Brasileirão Série A,Brazil,ClubElo,Bragantino,1689,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:remo,Remo,Brazil - Brasileirão Série A,Brazil,ClubElo,Remo,1633,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:santos,Santos,Brazil - Brasileirão Série A,Brazil,ClubElo,Santos,1720,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:sao-paulo,São Paulo,Brazil - Brasileirão Série A,Brazil,ClubElo,São Paulo,1716,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:vasco-da-gama,Vasco da Gama,Brazil - Brasileirão Série A,Brazil,ClubElo,Vasco da Gama,1710,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:brazil:vitoria,Vitória,Brazil - Brasileirão Série A,Brazil,ClubElo,Vitória,1667,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:aguilas-doradas,Águilas Doradas,Colombia - Categoría Primera A,Colombia,ClubElo,Águilas Doradas,1550,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:alianza,Alianza,Colombia - Categoría Primera A,Colombia,FootballDatabase,Alianza FC,1364,2026-10-04,https://footballdatabase.com/ranking/colombia/1,requires_validated_cross_provider_conversion
+club:colombia:america-de-cali,América de Cali,Colombia - Categoría Primera A,Colombia,ClubElo,América de Cali,1676,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:atletico-bucaramanga,Atlético Bucaramanga,Colombia - Categoría Primera A,Colombia,ClubElo,Bucaramanga,1643,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:atletico-nacional,Atlético Nacional,Colombia - Categoría Primera A,Colombia,ClubElo,Atlético Naciona,1729,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:boyaca-chico,Boyacá Chicó,Colombia - Categoría Primera A,Colombia,ClubElo,Boyacá Chicó,1470,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:cucuta-deportivo,Cúcuta Deportivo,Colombia - Categoría Primera A,Colombia,ClubElo,Cúcuta,1486,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:deportes-tolima,Deportes Tolima,Colombia - Categoría Primera A,Colombia,ClubElo,Tolima,1644,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:deportivo-cali,Deportivo Cali,Colombia - Categoría Primera A,Colombia,ClubElo,Deportivo Cali,1598,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:deportivo-pasto,Deportivo Pasto,Colombia - Categoría Primera A,Colombia,ClubElo,Pasto,1530,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:deportivo-pereira,Deportivo Pereira,Colombia - Categoría Primera A,Colombia,ClubElo,Pereira,1484,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:fortaleza-ceif,Fortaleza CEIF,Colombia - Categoría Primera A,Colombia,ClubElo,Fortaleza,1536,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:independiente-medellin,Independiente Medellín,Colombia - Categoría Primera A,Colombia,ClubElo,DIM,1659,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:internacional-de-bogota,Internacional de Bogotá,Colombia - Categoría Primera A,Colombia,ClubElo,La Equidad,1497,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:jaguares,Jaguares,Colombia - Categoría Primera A,Colombia,ClubElo,Jaguares,1450,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:junior,Junior,Colombia - Categoría Primera A,Colombia,ClubElo,Atlético Junior,1623,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:llaneros,Llaneros,Colombia - Categoría Primera A,Colombia,ClubElo,Llaneros,1535,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:millonarios,Millonarios,Colombia - Categoría Primera A,Colombia,ClubElo,Millonarios,1648,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:once-caldas,Once Caldas,Colombia - Categoría Primera A,Colombia,ClubElo,Once Caldas,1617,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:colombia:santa-fe,Santa Fe,Colombia - Categoría Primera A,Colombia,ClubElo,Santa Fe,1661,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:croatia:dinamo-zagreb,Dinamo Zagreb,Croatia - HNL,Croatia,ClubElo,Dinamo Zagreb,1672,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:croatia:gorica,Gorica,Croatia - HNL,Croatia,ClubElo,HNK Gorica,1397,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:croatia:hajduk-split,Hajduk Split,Croatia - HNL,Croatia,ClubElo,Hajduk,1580,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:croatia:istra-1961,Istra 1961,Croatia - HNL,Croatia,ClubElo,Istra 1961,1442,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:croatia:lokomotiva-zagreb,Lokomotiva Zagreb,Croatia - HNL,Croatia,ClubElo,Lok Zagreb,1434,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:croatia:osijek,Osijek,Croatia - HNL,Croatia,ClubElo,Osijek,1459,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:croatia:rijeka,Rijeka,Croatia - HNL,Croatia,ClubElo,Rijeka,1550,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:croatia:rudes,Rudeš,Croatia - HNL,Croatia,ClubElo,Rudes Zagreb,1187,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:croatia:slaven-belupo,Slaven Belupo,Croatia - HNL,Croatia,ClubElo,Slaven Belupo,1400,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:croatia:varazdin,Varaždin,Croatia - HNL,Croatia,FootballDatabase,NK Varaždin,1427,2026-10-04,https://footballdatabase.com/ranking/croatia/1,requires_validated_cross_provider_conversion
+club:czech-republic:artis-brno,Artis Brno,Czechia - Czech First League,Czech Republic,ClubElo,Artis Brno,1213,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:banik-ostrava,Baník Ostrava,Czechia - Czech First League,Czech Republic,ClubElo,Banik Ostrava,1472,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:bohemians-1905,Bohemians 1905,Czechia - Czech First League,Czech Republic,ClubElo,Bohemians,1462,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:dukla-prague,Dukla Prague,Czechia - Czech First League,Czech Republic,ClubElo,Dukla,1368,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:hradec-kralove,Hradec Králové,Czechia - Czech First League,Czech Republic,ClubElo,Hradec Kralove,1561,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:jablonec,Jablonec,Czechia - Czech First League,Czech Republic,ClubElo,Jablonec,1544,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:mlada-boleslav,Mladá Boleslav,Czechia - Czech First League,Czech Republic,ClubElo,Mlada Boleslav,1496,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:pardubice,Pardubice,Czechia - Czech First League,Czech Republic,ClubElo,Pardubice,1439,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:sigma-olomouc,Sigma Olomouc,Czechia - Czech First League,Czech Republic,ClubElo,Sigma Olomouc,1510,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:slavia-prague,Slavia Prague,Czechia - Czech First League,Czech Republic,ClubElo,Slavia Praha,1762,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:slovacko,Slovácko,Czechia - Czech First League,Czech Republic,ClubElo,Slovacko,1399,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:slovan-liberec,Slovan Liberec,Czechia - Czech First League,Czech Republic,ClubElo,Slovan Liberec,1552,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:sparta-prague,Sparta Prague,Czechia - Czech First League,Czech Republic,ClubElo,Sparta Praha,1652,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:teplice,Teplice,Czechia - Czech First League,Czech Republic,ClubElo,Teplice,1501,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:viktoria-plzen,Viktoria Plzeň,Czechia - Czech First League,Czech Republic,ClubElo,Viktoria Plzeň,1629,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:czech-republic:zlin,Zlín,Czechia - Czech First League,Czech Republic,ClubElo,Zlín,1378,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:agf,AGF,Denmark - Superliga,Denmark,ClubElo,Aarhus,1600,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:brondby,Brøndby,Denmark - Superliga,Denmark,ClubElo,Brondby,1577,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:fc-copenhagen,FC Copenhagen,Denmark - Superliga,Denmark,ClubElo,FC Kobenhavn,1694,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:fc-midtjylland,FC Midtjylland,Denmark - Superliga,Denmark,ClubElo,Midtjylland,1716,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:fredericia,Fredericia,Denmark - Superliga,Denmark,ClubElo,FC Fredericia,1478,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:nordsjaelland,Nordsjælland,Denmark - Superliga,Denmark,ClubElo,Nordsjaelland,1643,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:ob,OB,Denmark - Superliga,Denmark,ClubElo,Odense,1496,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:randers,Randers,Denmark - Superliga,Denmark,ClubElo,Randers,1510,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:silkeborg,Silkeborg,Denmark - Superliga,Denmark,ClubElo,Silkeborg,1515,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:sonderjyske,Sønderjyske,Denmark - Superliga,Denmark,ClubElo,SonderjyskE,1487,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:vejle,Vejle,Denmark - Superliga,Denmark,ClubElo,Vejle,1441,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:denmark:viborg,Viborg,Denmark - Superliga,Denmark,ClubElo,Viborg,1583,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:aucas,Aucas,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Aucas,1613,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:barcelona-sc,Barcelona SC,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Barcelona,1643,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:delfin,Delfín,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Delfín,1505,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:deportivo-cuenca,Deportivo Cuenca,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Cuenca,1549,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:emelec,Emelec,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Emelec,1569,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:guayaquil-city,Guayaquil City,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Guayaquil,1572,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:independiente-del-valle,Independiente del Valle,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Ind del Valle,1783,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:ldu-quito,LDU Quito,Ecuador - LigaPro Serie A,Ecuador,ClubElo,LDU Quito,1706,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:leones,Leones,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Leones del Norte,1569,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:libertad,Libertad,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Libertad de Loja,1595,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:macara,Macará,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Macará,1655,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:manta,Manta,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Manta,1463,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:mushuc-runa,Mushuc Runa,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Mushuc Runa,1571,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:orense,Orense,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Orense,1556,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:tecnico-universitario,Técnico Universitario,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Técnico Uni,1509,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:ecuador:universidad-catolica,Universidad Católica,Ecuador - LigaPro Serie A,Ecuador,ClubElo,Uni Catolica,1685,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:birmingham-city,Birmingham City,England - Championship,England,ClubElo,Birmingham,1622,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:blackburn-rovers,Blackburn Rovers,England - Championship,England,ClubElo,Blackburn,1576,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:bolton-wanderers,Bolton Wanderers,England - Championship,England,ClubElo,Bolton,1537,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:bristol-city,Bristol City,England - Championship,England,ClubElo,Bristol City,1582,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:cardiff-city,Cardiff City,England - Championship,England,ClubElo,Cardiff,1569,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:charlton-athletic,Charlton Athletic,England - Championship,England,ClubElo,Charlton,1546,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:coventry-city,Coventry City,England - Premier League,England,ClubElo,Coventry,1689,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:derby-county,Derby County,England - Championship,England,ClubElo,Derby,1569,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:hull-city,Hull City,England - Premier League,England,ClubElo,Hull,1634,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:ipswich-town,Ipswich Town,England - Premier League,England,ClubElo,Ipswich,1694,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:lincoln-city,Lincoln City,England - Championship,England,ClubElo,Lincoln City,1610,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:middlesbrough,Middlesbrough,England - Championship,England,ClubElo,Middlesbrough,1650,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:millwall,Millwall,England - Championship,England,ClubElo,Millwall,1639,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:norwich-city,Norwich City,England - Championship,England,ClubElo,Norwich,1611,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:portsmouth,Portsmouth,England - Championship,England,ClubElo,Portsmouth,1554,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:preston-north-end,Preston North End,England - Championship,England,ClubElo,Preston,1525,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:queens-park-rangers,Queens Park Rangers,England - Championship,England,ClubElo,QPR,1572,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:sheffield-united,Sheffield United,England - Championship,England,ClubElo,Sheffield United,1609,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:southampton,Southampton,England - Championship,England,ClubElo,Southampton,1699,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:stoke-city,Stoke City,England - Championship,England,ClubElo,Stoke,1559,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:swansea-city,Swansea City,England - Championship,England,ClubElo,Swansea,1614,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:watford,Watford,England - Championship,England,ClubElo,Watford,1527,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:west-bromwich-albion,West Bromwich Albion,England - Championship,England,ClubElo,West Brom,1590,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:england:wrexham,Wrexham,England - Championship,England,ClubElo,Wrexham,1617,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:angers,Angers,France - Ligue 1,France,ClubElo,Angers,1620,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:annecy,Annecy,France - Ligue 2,France,ClubElo,Annecy,1555,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:auxerre,Auxerre,France - Ligue 1,France,ClubElo,Auxerre,1651,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:boulogne,Boulogne,France - Ligue 2,France,ClubElo,Boulogne,1478,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:brest,Brest,France - Ligue 1,France,ClubElo,Brest,1672,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:clermont,Clermont,France - Ligue 2,France,ClubElo,Clermont,1498,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:dijon,Dijon,France - Ligue 2,France,ClubElo,Dijon,1546,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:dunkerque,Dunkerque,France - Ligue 2,France,ClubElo,Dunkerque,1529,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:grenoble,Grenoble,France - Ligue 2,France,ClubElo,Grenoble,1510,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:guingamp,Guingamp,France - Ligue 2,France,ClubElo,Guingamp,1521,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:laval,Laval,France - Ligue 2,France,ClubElo,Laval,1484,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:le-havre,Le Havre,France - Ligue 1,France,ClubElo,Le Havre,1606,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:le-mans,Le Mans,France - Ligue 1,France,ClubElo,Le Mans,1596,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:lens,Lens,France - Ligue 1,France,ClubElo,Lens,1812,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:lille,Lille,France - Ligue 1,France,ClubElo,Lille,1780,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:lorient,Lorient,France - Ligue 1,France,ClubElo,Lorient,1688,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:lyon,Lyon,France - Ligue 1,France,ClubElo,Lyon,1800,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:marseille,Marseille,France - Ligue 1,France,ClubElo,Marseille,1762,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:metz,Metz,France - Ligue 2,France,ClubElo,Metz,1568,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:monaco,Monaco,France - Ligue 1,France,ClubElo,Monaco,1802,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:montpellier,Montpellier,France - Ligue 2,France,ClubElo,Montpellier,1579,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:nancy,Nancy,France - Ligue 2,France,ClubElo,Nancy,1498,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:nantes,Nantes,France - Ligue 2,France,ClubElo,Nantes,1576,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:nice,Nice,France - Ligue 1,France,ClubElo,Nice,1667,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:paris-fc,Paris FC,France - Ligue 1,France,ClubElo,Paris FC,1705,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:pau,Pau,France - Ligue 2,France,ClubElo,Pau,1497,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:red-star,Red Star,France - Ligue 2,France,ClubElo,Red Star,1580,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:reims,Reims,France - Ligue 2,France,ClubElo,Reims,1634,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:rennes,Rennes,France - Ligue 1,France,ClubElo,Rennes,1754,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:rodez,Rodez,France - Ligue 2,France,ClubElo,Rodez,1564,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:saint-etienne,Saint-Étienne,France - Ligue 2,France,ClubElo,Saint-Etienne,1612,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:sochaux,Sochaux,France - Ligue 2,France,ClubElo,Sochaux,1517,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:strasbourg,Strasbourg,France - Ligue 1,France,ClubElo,Strasbourg,1742,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:toulouse,Toulouse,France - Ligue 1,France,ClubElo,Toulouse,1688,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:france:troyes,Troyes,France - Ligue 1,France,ClubElo,Troyes,1603,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:1-fc-heidenheim,1. FC Heidenheim,Germany - 2. Bundesliga,Germany,ClubElo,Heidenheim,1640,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:1-fc-kaiserslautern,1. FC Kaiserslautern,Germany - 2. Bundesliga,Germany,ClubElo,Lautern,1607,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:1-fc-koln,1. FC Köln,Germany - Bundesliga,Germany,ClubElo,Köln,1652,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:1-fc-magdeburg,1. FC Magdeburg,Germany - 2. Bundesliga,Germany,ClubElo,Magdeburg,1580,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:1-fc-nurnberg,1. FC Nürnberg,Germany - 2. Bundesliga,Germany,ClubElo,Nürnberg,1617,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:arminia-bielefeld,Arminia Bielefeld,Germany - 2. Bundesliga,Germany,ClubElo,Bielefeld,1571,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:borussia-monchengladbach,Borussia Mönchengladbach,Germany - Bundesliga,Germany,ClubElo,Gladbach,1672,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:darmstadt-98,Darmstadt 98,Germany - 2. Bundesliga,Germany,ClubElo,Darmstadt,1582,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:dynamo-dresden,Dynamo Dresden,Germany - 2. Bundesliga,Germany,ClubElo,Dresden,1556,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:eintracht-braunschweig,Eintracht Braunschweig,Germany - 2. Bundesliga,Germany,ClubElo,Braunschweig,1511,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:eintracht-frankfurt,Eintracht Frankfurt,Germany - Bundesliga,Germany,ClubElo,Frankfurt,1740,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:energie-cottbus,Energie Cottbus,Germany - 2. Bundesliga,Germany,ClubElo,Cottbus,1549,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:fc-augsburg,FC Augsburg,Germany - Bundesliga,Germany,ClubElo,Augsburg,1724,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:fc-st-pauli,FC St. Pauli,Germany - 2. Bundesliga,Germany,ClubElo,St Pauli,1611,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:greuther-furth,Greuther Fürth,Germany - 2. Bundesliga,Germany,ClubElo,Fürth,1527,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:hamburger-sv,Hamburger SV,Germany - Bundesliga,Germany,ClubElo,Hamburg,1671,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:hannover-96,Hannover 96,Germany - 2. Bundesliga,Germany,ClubElo,Hannover,1631,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:hertha-bsc,Hertha BSC,Germany - 2. Bundesliga,Germany,ClubElo,Hertha,1655,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:holstein-kiel,Holstein Kiel,Germany - 2. Bundesliga,Germany,ClubElo,Holstein,1585,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:karlsruher-sc,Karlsruher SC,Germany - 2. Bundesliga,Germany,ClubElo,Karlsruhe,1567,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:mainz-05,Mainz 05,Germany - Bundesliga,Germany,ClubElo,Mainz,1742,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:rb-leipzig,RB Leipzig,Germany - Bundesliga,Germany,ClubElo,RB Leipzig,1816,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:sc-freiburg,SC Freiburg,Germany - Bundesliga,Germany,ClubElo,Freiburg,1790,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:sc-paderborn,SC Paderborn,Germany - Bundesliga,Germany,ClubElo,Paderborn,1665,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:schalke-04,Schalke 04,Germany - Bundesliga,Germany,ClubElo,Schalke,1649,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:sv-elversberg,SV Elversberg,Germany - Bundesliga,Germany,ClubElo,Elversberg,1675,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:tsg-hoffenheim,TSG Hoffenheim,Germany - Bundesliga,Germany,ClubElo,Hoffenheim,1728,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:union-berlin,Union Berlin,Germany - Bundesliga,Germany,ClubElo,Union Berlin,1676,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:vfb-stuttgart,VfB Stuttgart,Germany - Bundesliga,Germany,ClubElo,Stuttgart,1818,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:vfl-bochum,VfL Bochum,Germany - 2. Bundesliga,Germany,ClubElo,Bochum,1601,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:vfl-osnabruck,VfL Osnabrück,Germany - 2. Bundesliga,Germany,ClubElo,Osnabrück,1555,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:vfl-wolfsburg,VfL Wolfsburg,Germany - 2. Bundesliga,Germany,ClubElo,Wolfsburg,1677,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:germany:werder-bremen,Werder Bremen,Germany - Bundesliga,Germany,ClubElo,Werder,1688,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:ac-milan,AC Milan,Italy - Serie A,Italy,ClubElo,Milan,1823,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:arezzo,Arezzo,Italy - Serie B,Italy,ClubElo,Arezzo,1504,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:ascoli,Ascoli,Italy - Serie B,Italy,ClubElo,Ascoli,1534,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:atalanta,Atalanta,Italy - Serie A,Italy,ClubElo,Atalanta,1807,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:avellino,Avellino,Italy - Serie B,Italy,ClubElo,Avellino,1522,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:benevento,Benevento,Italy - Serie B,Italy,ClubElo,Benevento,1554,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:bologna,Bologna,Italy - Serie A,Italy,ClubElo,Bologna,1753,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:cagliari,Cagliari,Italy - Serie A,Italy,ClubElo,Cagliari,1678,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:carrarese,Carrarese,Italy - Serie B,Italy,ClubElo,Carrarese,1483,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:catanzaro,Catanzaro,Italy - Serie B,Italy,ClubElo,Catanzaro,1574,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:cesena,Cesena,Italy - Serie B,Italy,ClubElo,Cesena,1524,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:como,Como,Italy - Serie A,Italy,ClubElo,Como,1806,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:cremonese,Cremonese,Italy - Serie B,Italy,ClubElo,Cremonese,1607,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:empoli,Empoli,Italy - Serie B,Italy,ClubElo,Empoli,1540,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:fiorentina,Fiorentina,Italy - Serie A,Italy,ClubElo,Fiorentina,1721,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:frosinone,Frosinone,Italy - Serie A,Italy,ClubElo,Frosinone,1690,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:genoa,Genoa,Italy - Serie A,Italy,ClubElo,Genoa,1660,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:hellas-verona,Hellas Verona,Italy - Serie B,Italy,ClubElo,Verona,1580,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:juve-stabia,Juve Stabia,Italy - Serie B,Italy,ClubElo,Juve Stabia,1532,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:lazio,Lazio,Italy - Serie A,Italy,ClubElo,Lazio,1777,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:lecce,Lecce,Italy - Serie A,Italy,ClubElo,Lecce,1615,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:mantova,Mantova,Italy - Serie B,Italy,ClubElo,Mantova,1542,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:modena,Modena,Italy - Serie B,Italy,ClubElo,Modena,1557,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:monza,Monza,Italy - Serie A,Italy,ClubElo,Monza,1642,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:padova,Padova,Italy - Serie B,Italy,ClubElo,Padova,1513,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:palermo,Palermo,Italy - Serie B,Italy,ClubElo,Palermo,1647,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:parma,Parma,Italy - Serie A,Italy,ClubElo,Parma,1648,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:pisa,Pisa,Italy - Serie B,Italy,ClubElo,Pisa,1541,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:reggiana,Reggiana,Italy - Serie B,Italy,ClubElo,Reggiana,1481,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:sampdoria,Sampdoria,Italy - Serie B,Italy,ClubElo,Sampdoria,1500,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:sassuolo,Sassuolo,Italy - Serie A,Italy,ClubElo,Sassuolo,1697,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:spezia,Spezia,Italy - Serie B,Italy,ClubElo,Spezia,1555,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:sudtirol,Südtirol,Italy - Serie B,Italy,ClubElo,Südtirol,1537,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:torino,Torino,Italy - Serie A,Italy,ClubElo,Torino,1682,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:udinese,Udinese,Italy - Serie A,Italy,ClubElo,Udinese,1696,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:italy:venezia,Venezia,Italy - Serie A,Italy,ClubElo,Venezia,1645,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:america,América,Mexico - Liga MX,Mexico,ClubElo,América,1708,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:atlas,Atlas,Mexico - Liga MX,Mexico,ClubElo,Atlas,1572,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:atletico-san-luis,Atlético San Luis,Mexico - Liga MX,Mexico,ClubElo,San Luis,1558,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:cruz-azul,Cruz Azul,Mexico - Liga MX,Mexico,ClubElo,Cruz Azul,1712,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:guadalajara,Guadalajara,Mexico - Liga MX,Mexico,ClubElo,Guadalajara,1674,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:juarez,Juárez,Mexico - Liga MX,Mexico,ClubElo,Juárez,1507,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:leon,León,Mexico - Liga MX,Mexico,ClubElo,León,1565,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:mazatlan,Mazatlán,Mexico - Liga MX,Mexico,ClubElo,Mazatlán,1504,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:monterrey,Monterrey,Mexico - Liga MX,Mexico,ClubElo,Monterrey,1635,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:necaxa,Necaxa,Mexico - Liga MX,Mexico,ClubElo,Necaxa,1539,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:pachuca,Pachuca,Mexico - Liga MX,Mexico,ClubElo,Pachuca,1646,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:puebla,Puebla,Mexico - Liga MX,Mexico,ClubElo,Puebla,1491,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:queretaro,Querétaro,Mexico - Liga MX,Mexico,ClubElo,Querétaro,1592,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:santos-laguna,Santos Laguna,Mexico - Liga MX,Mexico,ClubElo,Santos Laguna,1484,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:tigres-uanl,Tigres UANL,Mexico - Liga MX,Mexico,ClubElo,UANL,1670,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:tijuana,Tijuana,Mexico - Liga MX,Mexico,ClubElo,Tijuana,1606,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:toluca,Toluca,Mexico - Liga MX,Mexico,ClubElo,Toluca,1727,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:mexico:unam,UNAM,Mexico - Liga MX,Mexico,ClubElo,UNAM,1628,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:ajax,Ajax,Netherlands - Eredivisie,Netherlands,ClubElo,Ajax,1687,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:az,AZ,Netherlands - Eredivisie,Netherlands,ClubElo,AZ,1691,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:excelsior,Excelsior,Netherlands - Eredivisie,Netherlands,ClubElo,Excelsior,1506,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:feyenoord,Feyenoord,Netherlands - Eredivisie,Netherlands,ClubElo,Feyenoord,1718,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:fortuna-sittard,Fortuna Sittard,Netherlands - Eredivisie,Netherlands,ClubElo,Sittard,1488,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:go-ahead-eagles,Go Ahead Eagles,Netherlands - Eredivisie,Netherlands,ClubElo,Go Ahead Eagles,1551,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:groningen,Groningen,Netherlands - Eredivisie,Netherlands,ClubElo,Groningen,1526,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:heerenveen,Heerenveen,Netherlands - Eredivisie,Netherlands,ClubElo,Heerenveen,1552,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:heracles-almelo,Heracles Almelo,Netherlands - Eredivisie,Netherlands,ClubElo,Heracles,1442,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:nac-breda,NAC Breda,Netherlands - Eredivisie,Netherlands,ClubElo,Breda,1395,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:nec,NEC,Netherlands - Eredivisie,Netherlands,ClubElo,Nijmegen,1585,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:pec-zwolle,PEC Zwolle,Netherlands - Eredivisie,Netherlands,ClubElo,Zwolle,1465,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:psv,PSV,Netherlands - Eredivisie,Netherlands,ClubElo,PSV,1784,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:sparta-rotterdam,Sparta Rotterdam,Netherlands - Eredivisie,Netherlands,ClubElo,Sparta,1495,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:telstar,Telstar,Netherlands - Eredivisie,Netherlands,ClubElo,Telstar,1448,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:twente,Twente,Netherlands - Eredivisie,Netherlands,ClubElo,Twente,1666,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:utrecht,Utrecht,Netherlands - Eredivisie,Netherlands,ClubElo,Utrecht,1574,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:netherlands:volendam,Volendam,Netherlands - Eredivisie,Netherlands,ClubElo,Volendam,1407,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:bodo-glimt,Bodø/Glimt,Norway - Eliteserien,Norway,ClubElo,Bodø/Glimt,1779,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:brann,Brann,Norway - Eliteserien,Norway,ClubElo,Brann,1588,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:bryne,Bryne,Norway - Eliteserien,Norway,ClubElo,Bryne,1359,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:fredrikstad,Fredrikstad,Norway - Eliteserien,Norway,ClubElo,Fredrikstad,1500,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:hamkam,HamKam,Norway - Eliteserien,Norway,ClubElo,Ham-Kam,1448,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:haugesund,Haugesund,Norway - Eliteserien,Norway,ClubElo,Haugesund,1352,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:kfum-oslo,KFUM Oslo,Norway - Eliteserien,Norway,ClubElo,Kfum,1457,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:kristiansund,Kristiansund,Norway - Eliteserien,Norway,ClubElo,Kristiansund,1418,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:molde,Molde,Norway - Eliteserien,Norway,ClubElo,Molde,1557,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:rosenborg,Rosenborg,Norway - Eliteserien,Norway,ClubElo,Rosenborg,1568,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:sandefjord,Sandefjord,Norway - Eliteserien,Norway,ClubElo,Sandefjord,1487,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:sarpsborg-08,Sarpsborg 08,Norway - Eliteserien,Norway,ClubElo,Sarpsborg,1489,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:stromsgodset,Strømsgodset,Norway - Eliteserien,Norway,ClubElo,Stromsgodset,1409,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:tromso,Tromsø,Norway - Eliteserien,Norway,ClubElo,Tromsø,1571,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:valerenga,Vålerenga,Norway - Eliteserien,Norway,ClubElo,Valerenga,1470,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:norway:viking,Viking,Norway - Eliteserien,Norway,ClubElo,Viking,1693,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:arka-gdynia,Arka Gdynia,Poland - Ekstraklasa,Poland,ClubElo,Arka,1500,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:cracovia,Cracovia,Poland - Ekstraklasa,Poland,ClubElo,KS Cracovia,1504,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:gks-katowice,GKS Katowice,Poland - Ekstraklasa,Poland,ClubElo,Katowice,1552,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:gornik-zabrze,Górnik Zabrze,Poland - Ekstraklasa,Poland,ClubElo,Gornik,1583,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:jagiellonia-bia-ystok,Jagiellonia Białystok,Poland - Ekstraklasa,Poland,ClubElo,Jagiellonia,1605,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:korona-kielce,Korona Kielce,Poland - Ekstraklasa,Poland,ClubElo,Korona,1539,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:lech-poznan,Lech Poznań,Poland - Ekstraklasa,Poland,ClubElo,Lech,1674,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:lechia-gdansk,Lechia Gdańsk,Poland - Ekstraklasa,Poland,ClubElo,Lechia,1510,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:legia-warsaw,Legia Warsaw,Poland - Ekstraklasa,Poland,ClubElo,Legia,1619,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:motor-lublin,Motor Lublin,Poland - Ekstraklasa,Poland,ClubElo,Motor Lublin,1492,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:nieciecza,Nieciecza,Poland - Ekstraklasa,Poland,ClubElo,Nieciecza,1471,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:piast-gliwice,Piast Gliwice,Poland - Ekstraklasa,Poland,ClubElo,Piast Gliwice,1530,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:pogon-szczecin,Pogoń Szczecin,Poland - Ekstraklasa,Poland,ClubElo,Pogon,1582,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:radomiak-radom,Radomiak Radom,Poland - Ekstraklasa,Poland,ClubElo,Radomiak,1487,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:rakow-czestochowa,Raków Częstochowa,Poland - Ekstraklasa,Poland,ClubElo,Rakow,1587,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:widzew-odz,Widzew Łódź,Poland - Ekstraklasa,Poland,ClubElo,Widzew,1503,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:wis-a-p-ock,Wisła Płock,Poland - Ekstraklasa,Poland,ClubElo,Plock,1519,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:poland:zag-ebie-lubin,Zagłębie Lubin,Poland - Ekstraklasa,Poland,ClubElo,Lubin,1518,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:alverca,Alverca,Portugal - Primeira Liga,Portugal,ClubElo,Alverca,1538,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:arouca,Arouca,Portugal - Primeira Liga,Portugal,ClubElo,Arouca,1572,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:avs,AVS,Portugal - Primeira Liga,Portugal,FootballDatabase,AVS Futebol SAD,1335,2026-10-04,https://footballdatabase.com/ranking/portugal/1,requires_validated_cross_provider_conversion
+club:portugal:braga,Braga,Portugal - Primeira Liga,Portugal,ClubElo,Braga,1730,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:casa-pia,Casa Pia,Portugal - Primeira Liga,Portugal,ClubElo,Casa Pia,1493,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:estoril,Estoril,Portugal - Primeira Liga,Portugal,ClubElo,Estoril,1515,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:estrela-amadora,Estrela Amadora,Portugal - Primeira Liga,Portugal,ClubElo,Estrela Amadora,1495,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:famalicao,Famalicão,Portugal - Primeira Liga,Portugal,ClubElo,Famalicao,1613,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:gil-vicente,Gil Vicente,Portugal - Primeira Liga,Portugal,ClubElo,Gil Vicente,1564,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:moreirense,Moreirense,Portugal - Primeira Liga,Portugal,ClubElo,Moreirense,1548,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:nacional,Nacional,Portugal - Primeira Liga,Portugal,ClubElo,Nacional,1481,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:rio-ave,Rio Ave,Portugal - Primeira Liga,Portugal,ClubElo,Rio Ave,1497,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:santa-clara,Santa Clara,Portugal - Primeira Liga,Portugal,ClubElo,Santa Clara,1573,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:tondela,Tondela,Portugal - Primeira Liga,Portugal,ClubElo,Tondela,1472,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:portugal:vitoria-guimaraes,Vitória Guimarães,Portugal - Primeira Liga,Portugal,ClubElo,Guimaraes,1570,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:cukaricki,Čukarički,Serbia - SuperLiga,Serbia,ClubElo,FK Čukarički,1342,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:imt,IMT,Serbia - SuperLiga,Serbia,ClubElo,IMT Beograd,1325,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:macva-sabac,Mačva Šabac,Serbia - SuperLiga,Serbia,ClubElo,Macva Sabac,1258,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:mladost-lucani,Mladost Lučani,Serbia - SuperLiga,Serbia,ClubElo,Mladost Lucani,1310,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:napredak-krusevac,Napredak Kruševac,Serbia - SuperLiga,Serbia,ClubElo,Krusevac,1181,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:novi-pazar,Novi Pazar,Serbia - SuperLiga,Serbia,ClubElo,FK Novi Pazar,1337,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:ofk-beograd,OFK Beograd,Serbia - SuperLiga,Serbia,ClubElo,OFK,1342,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:partizan,Partizan,Serbia - SuperLiga,Serbia,ClubElo,Partizan,1481,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:radnicki-1923,Radnički 1923,Serbia - SuperLiga,Serbia,ClubElo,Kragujevac,1360,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:radnicki-nis,Radnički Niš,Serbia - SuperLiga,Serbia,ClubElo,Radnički Niš,1285,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:radnik-surdulica,Radnik Surdulica,Serbia - SuperLiga,Serbia,ClubElo,Radnik Surdulica,1315,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:red-star-belgrade,Red Star Belgrade,Serbia - SuperLiga,Serbia,ClubElo,Crvena Zvezda,1664,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:tsc-backa-topola,TSC Bačka Topola,Serbia - SuperLiga,Serbia,ClubElo,Backa Topola,1345,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:vojvodina,Vojvodina,Serbia - SuperLiga,Serbia,FootballDatabase,Vojvodina,1517,2026-10-04,https://footballdatabase.com/ranking/serbia/1,requires_validated_cross_provider_conversion
+club:serbia:zeleznicar-pancevo,Železničar Pančevo,Serbia - SuperLiga,Serbia,ClubElo,Železničar Panče,1372,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:serbia:zemun,Zemun,Serbia - SuperLiga,Serbia,ClubElo,Zemun,1076,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:ad-ceuta,AD Ceuta,Spain - LaLiga 2,Spain,ClubElo,CA Ceuta,1567,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:albacete,Albacete,Spain - LaLiga 2,Spain,ClubElo,Albacete,1595,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:almeria,Almería,Spain - LaLiga 2,Spain,ClubElo,Almeria,1696,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:athletic-bilbao,Athletic Bilbao,Spain - La Liga,Spain,ClubElo,Athletic Club,1764,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:burgos,Burgos,Spain - LaLiga 2,Spain,ClubElo,Burgos,1661,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:cadiz,Cádiz,Spain - LaLiga 2,Spain,ClubElo,Cadiz,1563,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:castellon,Castellón,Spain - LaLiga 2,Spain,ClubElo,Castellon,1691,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:celta-fortuna,Celta Fortuna,Spain - LaLiga 2,Spain,ClubElo,RC Celta B,1569,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:celta-vigo,Celta Vigo,Spain - La Liga,Spain,ClubElo,Celta,1750,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:cordoba,Córdoba,Spain - LaLiga 2,Spain,ClubElo,Cordoba,1598,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:deportivo-alaves,Deportivo Alavés,Spain - La Liga,Spain,ClubElo,Alaves,1723,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:deportivo-de-la-coruna,Deportivo de La Coruña,Spain - La Liga,Spain,ClubElo,Depor,1691,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:eibar,Eibar,Spain - LaLiga 2,Spain,ClubElo,Eibar,1693,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:elche,Elche,Spain - La Liga,Spain,ClubElo,Elche,1701,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:eldense,Eldense,Spain - LaLiga 2,Spain,ClubElo,Eldense,1590,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:espanyol,Espanyol,Spain - La Liga,Spain,ClubElo,Espanyol,1697,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:fc-andorra,FC Andorra,Spain - LaLiga 2,Spain,ClubElo,FC Andorra,1590,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:getafe,Getafe,Spain - La Liga,Spain,ClubElo,Getafe,1700,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:girona,Girona,Spain - LaLiga 2,Spain,ClubElo,Girona,1720,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:granada,Granada,Spain - LaLiga 2,Spain,ClubElo,Granada,1615,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:las-palmas,Las Palmas,Spain - LaLiga 2,Spain,ClubElo,Las Palmas,1661,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:leganes,Leganés,Spain - LaLiga 2,Spain,ClubElo,Leganes,1600,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:levante,Levante,Spain - La Liga,Spain,ClubElo,Levante,1708,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:malaga,Málaga,Spain - La Liga,Spain,ClubElo,Malaga,1666,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:mallorca,Mallorca,Spain - LaLiga 2,Spain,ClubElo,Mallorca,1713,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:osasuna,Osasuna,Spain - La Liga,Spain,ClubElo,Osasuna,1717,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:racing-santander,Racing Santander,Spain - La Liga,Spain,ClubElo,Santander,1685,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:rayo-vallecano,Rayo Vallecano,Spain - La Liga,Spain,ClubElo,Rayo Vallecano,1744,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:real-betis,Real Betis,Spain - La Liga,Spain,ClubElo,Betis,1818,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:real-oviedo,Real Oviedo,Spain - LaLiga 2,Spain,ClubElo,Oviedo,1636,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:real-sociedad,Real Sociedad,Spain - La Liga,Spain,ClubElo,Real Sociedad,1769,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:real-sociedad-b,Real Sociedad B,Spain - LaLiga 2,Spain,ClubElo,Real Sociedad B,1567,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:real-valladolid,Real Valladolid,Spain - LaLiga 2,Spain,ClubElo,Real Valladolid,1360,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:sabadell,Sabadell,Spain - LaLiga 2,Spain,ClubElo,Sabadell,1585,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:sevilla,Sevilla,Spain - La Liga,Spain,ClubElo,Sevilla,1725,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:sporting-gijon,Sporting Gijón,Spain - LaLiga 2,Spain,ClubElo,Gijon,1627,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:tenerife,Tenerife,Spain - LaLiga 2,Spain,ClubElo,Tenerife,1614,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:valencia,Valencia,Spain - La Liga,Spain,ClubElo,Valencia,1741,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:spain:villarreal,Villarreal,Spain - La Liga,Spain,ClubElo,Villarreal,1798,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:alanyaspor,Alanyaspor,Türkiye - Süper Lig,Turkey,ClubElo,Alanyaspor,1579,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:antalyaspor,Antalyaspor,Türkiye - Süper Lig,Turkey,ClubElo,Antalyaspor,1505,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:basaksehir,Başakşehir,Türkiye - Süper Lig,Turkey,ClubElo,Başakşehir,1629,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:besiktas,Beşiktaş,Türkiye - Süper Lig,Turkey,ClubElo,Besiktas,1699,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:eyupspor,Eyüpspor,Türkiye - Süper Lig,Turkey,ClubElo,Eyupspor,1527,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:fatih-karagumruk,Fatih Karagümrük,Türkiye - Süper Lig,Turkey,ClubElo,Karagümrük,1503,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:fenerbahce,Fenerbahçe,Türkiye - Süper Lig,Turkey,ClubElo,Fenerbahçe,1780,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:galatasaray,Galatasaray,Türkiye - Süper Lig,Turkey,ClubElo,Galatasaray,1795,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:gaziantep,Gaziantep,Türkiye - Süper Lig,Turkey,ClubElo,Gaziantep,1541,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:genclerbirligi,Gençlerbirliği,Türkiye - Süper Lig,Turkey,ClubElo,Genclerbirligi,1559,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:goztepe,Göztepe,Türkiye - Süper Lig,Turkey,ClubElo,Göztepe,1600,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:kas-mpasa,Kasımpaşa,Türkiye - Süper Lig,Turkey,ClubElo,Kasimpasa,1566,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:kayserispor,Kayserispor,Türkiye - Süper Lig,Turkey,ClubElo,Kayseri,1512,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:kocaelispor,Kocaelispor,Türkiye - Süper Lig,Turkey,ClubElo,Kocaelispor,1586,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:konyaspor,Konyaspor,Türkiye - Süper Lig,Turkey,ClubElo,Konyaspor,1538,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:rizespor,Rizespor,Türkiye - Süper Lig,Turkey,ClubElo,Rizespor,1569,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:samsunspor,Samsunspor,Türkiye - Süper Lig,Turkey,ClubElo,Samsunspor,1596,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:turkey:trabzonspor,Trabzonspor,Türkiye - Süper Lig,Turkey,ClubElo,Trabzonspor,1664,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:atlanta-united,Atlanta United,United States - MLS,United States,ClubElo,Atlanta United,1514,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:austin-fc,Austin FC,United States - MLS,United States,ClubElo,Austin,1548,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:cf-montreal,CF Montréal,United States - MLS,United States,ClubElo,Montréal,1489,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:charlotte-fc,Charlotte FC,United States - MLS,United States,ClubElo,Charlotte,1604,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:chicago-fire,Chicago Fire,United States - MLS,United States,ClubElo,Chicago Fire,1600,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:colorado-rapids,Colorado Rapids,United States - MLS,United States,ClubElo,Colorado Rapids,1541,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:columbus-crew,Columbus Crew,United States - MLS,United States,ClubElo,Columbus,1599,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:dc-united,DC United,United States - MLS,United States,ClubElo,DC United,1499,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:fc-cincinnati,FC Cincinnati,United States - MLS,United States,ClubElo,Cincinnati,1595,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:fc-dallas,FC Dallas,United States - MLS,United States,ClubElo,FC Dallas,1611,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:houston-dynamo,Houston Dynamo,United States - MLS,United States,ClubElo,Houston Dynamo,1588,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:inter-miami,Inter Miami,United States - MLS,United States,ClubElo,Inter Miami,1680,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:la-galaxy,LA Galaxy,United States - MLS,United States,ClubElo,LA Galaxy,1554,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:los-angeles-fc,Los Angeles FC,United States - MLS,United States,ClubElo,LAFC,1654,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:minnesota-united,Minnesota United,United States - MLS,United States,ClubElo,Minnesota Utd,1563,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:nashville-sc,Nashville SC,United States - MLS,United States,ClubElo,Nashville,1682,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:new-england-revolution,New England Revolution,United States - MLS,United States,ClubElo,NE Revolution,1568,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:new-york-city-fc,New York City FC,United States - MLS,United States,ClubElo,NYC FC,1596,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:new-york-red-bulls,New York Red Bulls,United States - MLS,United States,ClubElo,New York RB,1541,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:orlando-city,Orlando City,United States - MLS,United States,ClubElo,Orlando City,1590,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:philadelphia-union,Philadelphia Union,United States - MLS,United States,ClubElo,Philadelphia,1646,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:portland-timbers,Portland Timbers,United States - MLS,United States,ClubElo,Portland Timbers,1557,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:real-salt-lake,Real Salt Lake,United States - MLS,United States,ClubElo,Real Salt Lake,1545,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:san-diego-fc,San Diego FC,United States - MLS,United States,ClubElo,San Diego FC,1611,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:san-jose-earthquakes,San Jose Earthquakes,United States - MLS,United States,ClubElo,San Jose,1568,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:seattle-sounders,Seattle Sounders,United States - MLS,United States,ClubElo,Seattle Sounders,1614,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:sporting-kansas-city,Sporting Kansas City,United States - MLS,United States,ClubElo,Sporting KC,1457,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:st-louis-city,St. Louis City,United States - MLS,United States,ClubElo,St. Louis City,1620,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:toronto-fc,Toronto FC,United States - MLS,United States,ClubElo,Toronto FC,1516,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform
+club:united-states:vancouver-whitecaps,Vancouver Whitecaps,United States - MLS,United States,ClubElo,Vancouver,1653,2026-10-08,https://clubelo.com/Ranking,requires_versioned_transform

@@ -1,0 +1,270 @@
+{
+  "auditedAt": "2026-10-09",
+  "calibrationId": "fdb-to-clubelo-regularized-country-v1",
+  "method": "Shared positive-slope OLS on FootballDatabase→ClubElo, then ridge-shrunk country offsets: offset_c = sum(y - (a+bx)) / (n_c + lambda).",
+  "lambda": 5,
+  "lambdaSelection": "Fixed before validation (not selected by scanning LOO MAE on these folds).",
+  "signedResidualDefinition": "signedErrorElo = observedClubElo - predictedClubElo (positive ⇒ model under-predicted ClubElo)",
+  "coefficientsReproduceStored": true,
+  "leaveOneClubOut": {
+    "globalLinear": {
+      "n": 75,
+      "maeElo": 60.42,
+      "rmseElo": 73.97,
+      "meanSignedErrorElo": -0.46
+    },
+    "regularizedCountryAware": {
+      "n": 75,
+      "maeElo": 28.34,
+      "rmseElo": 39.04,
+      "meanSignedErrorElo": -1.52
+    },
+    "byCountry": {
+      "Belgium": {
+        "n": 15,
+        "maeElo": 32.25,
+        "rmseElo": 40.66,
+        "meanSignedErrorElo": 14.33
+      },
+      "Colombia": {
+        "n": 19,
+        "maeElo": 16.37,
+        "rmseElo": 20.57,
+        "meanSignedErrorElo": 12.39
+      },
+      "Croatia": {
+        "n": 9,
+        "maeElo": 17.26,
+        "rmseElo": 20.72,
+        "meanSignedErrorElo": -12.76
+      },
+      "Portugal": {
+        "n": 17,
+        "maeElo": 29.46,
+        "rmseElo": 34.54,
+        "meanSignedErrorElo": 1.93
+      },
+      "Serbia": {
+        "n": 15,
+        "maeElo": 44.99,
+        "rmseElo": 61.82,
+        "meanSignedErrorElo": -32.14
+      }
+    },
+    "improvementVsGlobalMaeElo": 32.08
+  },
+  "retainedDiscrepantPairs": [
+    "Zemun",
+    "Mačva Šabac"
+  ],
+  "largeResiduals": [
+    {
+      "clubName": "Zemun",
+      "country": "Serbia",
+      "signedErrorElo": -181.4,
+      "absErrorElo": 181.4
+    },
+    {
+      "clubName": "Mačva Šabac",
+      "country": "Serbia",
+      "signedErrorElo": 96.39,
+      "absErrorElo": 96.39
+    }
+  ],
+  "providerDateDifferenceDays": 4,
+  "targets": [
+    {
+      "clubId": "club:belgium:raal-la-louviere",
+      "clubName": "RAAL La Louvière",
+      "country": "Belgium",
+      "footballDatabasePoints": 1312,
+      "predictedClubElo": 1432,
+      "predictedClubEloUnrounded": 1431.6139,
+      "withinAcceptanceRange": true,
+      "strengthDerivationStatus": "calibrated_from_published_rating",
+      "pairedCountrySampleSize": 15,
+      "pairedFootballDatabaseRange": [
+        1290,
+        1756
+      ],
+      "extrapolatesOutsidePairedCountryRange": false,
+      "heldOutCountryMaeElo": 32.25,
+      "heldOutCountryRmseElo": 40.66,
+      "heldOutCountryMeanSignedErrorElo": 14.33,
+      "signedResidualDefinition": "signedErrorElo = observedClubElo - predictedClubElo (positive ⇒ model under-predicted ClubElo)",
+      "providerObservationDates": {
+        "clubElo": "2026-10-08",
+        "footballDatabase": "2026-10-04",
+        "dateDifferenceDays": 4
+      },
+      "calibrationId": "fdb-to-clubelo-regularized-country-v1",
+      "lambda": 5,
+      "lambdaSelection": "Fixed a priori at 5 pseudo-observations before reporting these LOO diagnostics; not tuned by minimizing LOO MAE on the same folds (no nested model selection).",
+      "sensitivityDropLargestCountryResidual": {
+        "clubId": "club:belgium:raal-la-louviere",
+        "droppedInfluentialPair": "Dender",
+        "predictedClubEloFull": 1431.6139,
+        "predictedClubEloSensitivity": 1425.2926,
+        "deltaElo": -6.32
+      },
+      "uncertaintyLimitation": "LOO MAE/RMSE describe conversion error on paired clubs, not a 95% confidence interval for the target prediction, and do not calibrate match-win probabilities."
+    },
+    {
+      "clubId": "club:colombia:alianza",
+      "clubName": "Alianza",
+      "country": "Colombia",
+      "footballDatabasePoints": 1364,
+      "predictedClubElo": 1486,
+      "predictedClubEloUnrounded": 1486.1599,
+      "withinAcceptanceRange": true,
+      "strengthDerivationStatus": "calibrated_from_published_rating",
+      "pairedCountrySampleSize": 19,
+      "pairedFootballDatabaseRange": [
+        1297,
+        1630
+      ],
+      "extrapolatesOutsidePairedCountryRange": false,
+      "heldOutCountryMaeElo": 16.37,
+      "heldOutCountryRmseElo": 20.57,
+      "heldOutCountryMeanSignedErrorElo": 12.39,
+      "signedResidualDefinition": "signedErrorElo = observedClubElo - predictedClubElo (positive ⇒ model under-predicted ClubElo)",
+      "providerObservationDates": {
+        "clubElo": "2026-10-08",
+        "footballDatabase": "2026-10-04",
+        "dateDifferenceDays": 4
+      },
+      "calibrationId": "fdb-to-clubelo-regularized-country-v1",
+      "lambda": 5,
+      "lambdaSelection": "Fixed a priori at 5 pseudo-observations before reporting these LOO diagnostics; not tuned by minimizing LOO MAE on the same folds (no nested model selection).",
+      "sensitivityDropLargestCountryResidual": {
+        "clubId": "club:colombia:alianza",
+        "droppedInfluentialPair": "Deportivo Pereira",
+        "predictedClubEloFull": 1486.1599,
+        "predictedClubEloSensitivity": 1483.6024,
+        "deltaElo": -2.56
+      },
+      "uncertaintyLimitation": "LOO MAE/RMSE describe conversion error on paired clubs, not a 95% confidence interval for the target prediction, and do not calibrate match-win probabilities."
+    },
+    {
+      "clubId": "club:croatia:varazdin",
+      "clubName": "Varaždin",
+      "country": "Croatia",
+      "footballDatabasePoints": 1427,
+      "predictedClubElo": 1485,
+      "predictedClubEloUnrounded": 1484.8124,
+      "withinAcceptanceRange": true,
+      "strengthDerivationStatus": "calibrated_from_published_rating",
+      "pairedCountrySampleSize": 9,
+      "pairedFootballDatabaseRange": [
+        1156,
+        1648
+      ],
+      "extrapolatesOutsidePairedCountryRange": false,
+      "heldOutCountryMaeElo": 17.26,
+      "heldOutCountryRmseElo": 20.72,
+      "heldOutCountryMeanSignedErrorElo": -12.76,
+      "signedResidualDefinition": "signedErrorElo = observedClubElo - predictedClubElo (positive ⇒ model under-predicted ClubElo)",
+      "providerObservationDates": {
+        "clubElo": "2026-10-08",
+        "footballDatabase": "2026-10-04",
+        "dateDifferenceDays": 4
+      },
+      "calibrationId": "fdb-to-clubelo-regularized-country-v1",
+      "lambda": 5,
+      "lambdaSelection": "Fixed a priori at 5 pseudo-observations before reporting these LOO diagnostics; not tuned by minimizing LOO MAE on the same folds (no nested model selection).",
+      "sensitivityDropLargestCountryResidual": {
+        "clubId": "club:croatia:varazdin",
+        "droppedInfluentialPair": "Rudeš",
+        "predictedClubEloFull": 1484.8124,
+        "predictedClubEloSensitivity": 1487.7483,
+        "deltaElo": 2.94
+      },
+      "uncertaintyLimitation": "LOO MAE/RMSE describe conversion error on paired clubs, not a 95% confidence interval for the target prediction, and do not calibrate match-win probabilities."
+    },
+    {
+      "clubId": "club:portugal:avs",
+      "clubName": "AVS",
+      "country": "Portugal",
+      "footballDatabasePoints": 1335,
+      "predictedClubElo": 1423,
+      "predictedClubEloUnrounded": 1422.7945,
+      "withinAcceptanceRange": true,
+      "strengthDerivationStatus": "calibrated_from_published_rating",
+      "pairedCountrySampleSize": 17,
+      "pairedFootballDatabaseRange": [
+        1344,
+        1846
+      ],
+      "extrapolatesOutsidePairedCountryRange": true,
+      "heldOutCountryMaeElo": 29.46,
+      "heldOutCountryRmseElo": 34.54,
+      "heldOutCountryMeanSignedErrorElo": 1.93,
+      "signedResidualDefinition": "signedErrorElo = observedClubElo - predictedClubElo (positive ⇒ model under-predicted ClubElo)",
+      "providerObservationDates": {
+        "clubElo": "2026-10-08",
+        "footballDatabase": "2026-10-04",
+        "dateDifferenceDays": 4
+      },
+      "calibrationId": "fdb-to-clubelo-regularized-country-v1",
+      "lambda": 5,
+      "lambdaSelection": "Fixed a priori at 5 pseudo-observations before reporting these LOO diagnostics; not tuned by minimizing LOO MAE on the same folds (no nested model selection).",
+      "sensitivityDropLargestCountryResidual": {
+        "clubId": "club:portugal:avs",
+        "droppedInfluentialPair": "Benfica",
+        "predictedClubEloFull": 1422.7945,
+        "predictedClubEloSensitivity": 1423.546,
+        "deltaElo": 0.75
+      },
+      "uncertaintyLimitation": "LOO MAE/RMSE describe conversion error on paired clubs, not a 95% confidence interval for the target prediction, and do not calibrate match-win probabilities."
+    },
+    {
+      "clubId": "club:serbia:vojvodina",
+      "clubName": "Vojvodina",
+      "country": "Serbia",
+      "footballDatabasePoints": 1517,
+      "predictedClubElo": 1506,
+      "predictedClubEloUnrounded": 1506.3958,
+      "withinAcceptanceRange": true,
+      "strengthDerivationStatus": "calibrated_from_published_rating",
+      "pairedCountrySampleSize": 15,
+      "pairedFootballDatabaseRange": [
+        1171,
+        1705
+      ],
+      "extrapolatesOutsidePairedCountryRange": false,
+      "heldOutCountryMaeElo": 44.99,
+      "heldOutCountryRmseElo": 61.82,
+      "heldOutCountryMeanSignedErrorElo": -32.14,
+      "signedResidualDefinition": "signedErrorElo = observedClubElo - predictedClubElo (positive ⇒ model under-predicted ClubElo)",
+      "providerObservationDates": {
+        "clubElo": "2026-10-08",
+        "footballDatabase": "2026-10-04",
+        "dateDifferenceDays": 4
+      },
+      "calibrationId": "fdb-to-clubelo-regularized-country-v1",
+      "lambda": 5,
+      "lambdaSelection": "Fixed a priori at 5 pseudo-observations before reporting these LOO diagnostics; not tuned by minimizing LOO MAE on the same folds (no nested model selection).",
+      "sensitivityDropLargestCountryResidual": {
+        "clubId": "club:serbia:vojvodina",
+        "droppedInfluentialPair": "Zemun",
+        "predictedClubEloFull": 1506.3958,
+        "predictedClubEloSensitivity": 1511.6996,
+        "deltaElo": 5.3
+      },
+      "uncertaintyLimitation": "LOO MAE/RMSE describe conversion error on paired clubs, not a 95% confidence interval for the target prediction, and do not calibrate match-win probabilities."
+    }
+  ],
+  "packAuditCrossCheck": {
+    "reportedGlobalLooMaeElo": 60.42,
+    "reportedRegularizedLooMaeElo": 28.34,
+    "matchesImplementation": true
+  },
+  "defectsFound": [],
+  "decision": "No leakage, identity mismatch, or coefficient defect found. Retain the five calibrated_from_published_rating baselines unchanged.",
+  "notes": [
+    "Each LOO fold refits intercept, slope, and all country offsets using only that fold's training rows.",
+    "Zemun and Mačva Šabac residuals retained; not deleted to improve headline MAE.",
+    "AVS is mild extrapolation: Portuguese paired FDB range 1344–1846; AVS raw 1335.",
+    "ClubElo→team-quality transform remains a separate game-design mapping; this audit does not validate match outcomes."
+  ]
+}

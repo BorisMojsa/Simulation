@@ -1,0 +1,130 @@
+{
+  "inputClubTotal": 490,
+  "inputVerified": 35,
+  "inputProvisional": 455,
+  "gapObservationTotal": 455,
+  "gapClubElo": 450,
+  "gapFootballDatabase": 5,
+  "additionalExistingClubEloNames": 35,
+  "rawProviderGaps": 0,
+  "readyToUseGameStrengthsClaimed": 0,
+  "crossProviderConversionPending": [
+    {
+      "clubId": "club:belgium:raal-la-louviere",
+      "clubName": "RAAL La Louvière",
+      "rawRating": 1312,
+      "provider": "FootballDatabase"
+    },
+    {
+      "clubId": "club:colombia:alianza",
+      "clubName": "Alianza",
+      "rawRating": 1364,
+      "provider": "FootballDatabase"
+    },
+    {
+      "clubId": "club:croatia:varazdin",
+      "clubName": "Varaždin",
+      "rawRating": 1427,
+      "provider": "FootballDatabase"
+    },
+    {
+      "clubId": "club:portugal:avs",
+      "clubName": "AVS",
+      "rawRating": 1335,
+      "provider": "FootballDatabase"
+    },
+    {
+      "clubId": "club:serbia:vojvodina",
+      "clubName": "Vojvodina",
+      "rawRating": 1517,
+      "provider": "FootballDatabase"
+    }
+  ],
+  "historicalSeasonsIngested": 0,
+  "nationalTeamsIncluded": false,
+  "byLeague": {
+    "Argentina - Liga Profesional": {
+      "ClubElo": 30
+    },
+    "Belgium - Belgian Pro League": {
+      "ClubElo": 14,
+      "FootballDatabase": 1
+    },
+    "Brazil - Brasileirão Série A": {
+      "ClubElo": 20
+    },
+    "Colombia - Categoría Primera A": {
+      "ClubElo": 19,
+      "FootballDatabase": 1
+    },
+    "Croatia - HNL": {
+      "ClubElo": 9,
+      "FootballDatabase": 1
+    },
+    "Czechia - Czech First League": {
+      "ClubElo": 16
+    },
+    "Denmark - Superliga": {
+      "ClubElo": 12
+    },
+    "Ecuador - LigaPro Serie A": {
+      "ClubElo": 16
+    },
+    "England - Championship": {
+      "ClubElo": 21
+    },
+    "England - Premier League": {
+      "ClubElo": 3
+    },
+    "France - Ligue 1": {
+      "ClubElo": 17
+    },
+    "France - Ligue 2": {
+      "ClubElo": 18
+    },
+    "Germany - 2. Bundesliga": {
+      "ClubElo": 18
+    },
+    "Germany - Bundesliga": {
+      "ClubElo": 15
+    },
+    "Italy - Serie A": {
+      "ClubElo": 16
+    },
+    "Italy - Serie B": {
+      "ClubElo": 20
+    },
+    "Mexico - Liga MX": {
+      "ClubElo": 18
+    },
+    "Netherlands - Eredivisie": {
+      "ClubElo": 18
+    },
+    "Norway - Eliteserien": {
+      "ClubElo": 16
+    },
+    "Poland - Ekstraklasa": {
+      "ClubElo": 18
+    },
+    "Portugal - Primeira Liga": {
+      "ClubElo": 14,
+      "FootballDatabase": 1
+    },
+    "Serbia - SuperLiga": {
+      "ClubElo": 15,
+      "FootballDatabase": 1
+    },
+    "Spain - La Liga": {
+      "ClubElo": 17
+    },
+    "Spain - LaLiga 2": {
+      "ClubElo": 22
+    },
+    "Türkiye - Süper Lig": {
+      "ClubElo": 18
+    },
+    "United States - MLS": {
+      "ClubElo": 30
+    }
+  }
+}

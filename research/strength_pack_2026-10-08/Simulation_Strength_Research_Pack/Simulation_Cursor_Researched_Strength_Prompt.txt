@@ -1,0 +1,196 @@
+Implement the next source upgrade in BorisMojsa/Simulation using the attached Simulation_Strength_Research_Pack. Read the actual repository first and complete the work, including validation and exact coverage reports. This is a follow-up to the existing shared teamStrength/matchEngine system, not a request to replace working competition logic.
+
+OBJECTIVE
+
+Give every club a credible, globally comparable baseline based on identifiable published observations or a reproducible model fitted to actual results. Remove the league-centre guesses used for the current 455 provisional clubs. Player overall and position must continue to influence effective team strength. Domestic leagues, domestic cups, continental club competitions and international national-team competitions must continue to use the shared engine.
+
+The owner explicitly rejects arbitrary league estimates. Do not invent club ratings, assign league averages, rank clubs by their array position, use finance/reputation as match strength, or manufacture source coverage. If a genuine source gap remains, use the documented 35-year actual-results process below and label its output results_derived. Do not silently replace missing evidence with a new estimate.
+
+INPUT AND WHAT HAS ACTUALLY BEEN RESEARCHED
+
+The uploaded strength-coverage-report.json reported 490 clubs: 35 verified_rating, zero manual_estimate and 455 provisional_estimate. All 455 unresolved club IDs have a published raw observation in this research pack:
+
+- 450 ClubElo observations from the publicly rendered ranking country tables displayed on 2026-10-08.
+- Five FootballDatabase observations from tables updated after matches played on 2026-10-04: RAAL La Louvière 1312, Alianza 1364, Varaždin 1427, AVS 1335, Vojvodina 1517.
+- ClubElo observations for the other 35 club names, so all 490 clubs can move to one primary provider for new careers, with only five calibrated secondary-provider observations.
+- 75 paired ClubElo/FootballDatabase observations for the same clubs: Belgium 15, Portugal 17, Croatia 9, Serbia 15, Colombia 19.
+- Checked historical archive entry points covering all 21 countries in the 26 game leagues, domestic cups and continental competitions. No 35-season archive has been ingested in this pack.
+
+Published observations are not finished game strengths. Do not describe FootballDatabase points as ClubElo or Opta numbers. Do not describe converted qualities, ATK/MID/DEF/GK or replacement OVRs as verified provider data. No national-team rating dataset is supplied in this pack; the uploaded report contains clubs only.
+
+Read these files before editing:
+
+1. README.md and research_coverage_summary.json.
+2. replacement_observations_455.json: exact existing club IDs, values, source URLs, source dates, explicit name mappings and flags.
+3. clubelo_observations_existing_35.json: resolve these names to IDs from the current repository. Their IDs were not present in the gap report, so they deliberately have clubId=null.
+4. raw_clubelo_country_tables.json and raw_footballdatabase_country_tables.json: original provider labels and values.
+5. cross_provider_anchor_pairs.json and calibration_diagnostics.json: inputs for conversion, not a prevalidated formula.
+6. historical_source_manifest.json: genuine historical collection entry points and known limitations.
+
+A. INSPECT AND RECONCILE THE CURRENT IMPLEMENTATION
+
+Read the repository's instructions and inspect its actual canonical club/nation inventories, identity resolver, raw snapshots, generated profiles, source builders, strength transformations, match engine, career world serialization, qualification logic and tests. The implementation summary previously supplied by the owner is context; verify it against the code.
+
+Expected relevant files include:
+js/data/identity/resolver.js
+js/data/strength/clubProfiles.generated.js
+js/data/strength/nationProfiles.js
+js/data/strength/raw/
+js/data/strength/README.md
+scripts/buildClubStrengthDb.mjs
+scripts/buildNationStrengthDb.mjs
+js/simulation/teamStrength.js
+js/simulation/matchEngine.js
+js/simulation/worldState.js
+js/data/competitions/qualification.js
+reports/strength-coverage-report.json
+tests/strengthProvenance.test.mjs
+tests/teamStrength.test.mjs
+tests/careerFlowSmoke.test.mjs
+
+Names and paths may have changed. Follow the actual structure rather than creating a parallel unused system.
+
+Reconcile the uploaded 455 IDs with the current roster. Report additions/removals explicitly. Preserve existing canonical IDs, including imperfect existing slugs; use aliases to fix spelling rather than regenerating IDs. The expected inventory is 26 leagues, 21 countries and 490 clubs, including Championship, Ligue 2, 2. Bundesliga, Serie B and La Liga 2. Do not upgrade only the first divisions or only UEFA clubs.
+
+Resolve all 35 additional names to the current IDs and verify that the combined import covers each current club exactly once. Refuse ambiguous joins and duplicate assignments. Do not auto-accept fuzzy name matching. Country context, senior/reserve status and explicit provider names must identify the club. Provider country/league grouping is source metadata, not a replacement for canonical associationId or competition eligibility. MLS includes Canadian clubs; preserve their correct football associations and the existing game IDs.
+
+B. IMPORT AN OFFLINE, AUDITABLE SNAPSHOT
+
+Add the selected raw observations and reviewed mappings to checked-in data under the existing strength/raw structure. The larger research pack may live under a clearly documented research directory; runtime imports should be small and generated.
+
+Import the 450 primary-provider gap observations and the 35 additional primary-provider observations. Import the five secondary observations separately. Do not require a ClubElo bulk API: the public country tables supplied the actual displayed numbers. Do not call these transcribed tables an official bulk export. A failed API is not a reason to leave available published observations unused.
+
+Treat the pack as a pinned research snapshot. Recheck suspicious identities and values against their source pages where possible. If a newer page differs, retain this dated snapshot or ingest a separate, internally consistent new snapshot with its actual dates. Do not splice later profile values into the pinned 2026-10-08 ranking or pretend all providers were observed on one day.
+
+Store, at minimum:
+- canonical clubId and provider identity;
+- provider, rawRating and rawRatingScale;
+- original provider name/code and source row/section locator;
+- source URL, displayed snapshot date, retrieval date, and actual rating-as-of date when explicitly known;
+- provider provisional marker, or unknown when the source does not expose it;
+- snapshotId, content hash, parser/mapping version and transform version;
+- identity evidence/selection note for special cases;
+- attribution/license information where supplied.
+
+A page's publication/display date and a club's last rated match date are different. Do not invent the latter. Preserve integer display precision; do not invent decimal ratings. Larger raw ClubElo tables contain rows marked p. None of the 485 selected primary observations has that marker, but do not generalize that fact to every raw row. FootballDatabase does not expose per-row provisional status in the captured tables; keep it unknown unless you find supporting evidence.
+
+Important identity cases:
+- Internacional de Bogotá may use the ClubElo La Equidad label because the club's official history documents that continuity: https://interbogota.com/historia . Preserve the current game ID and display name.
+- Celta Fortuna is the reserve side formerly called Celta B, confirmed by the official RC Celta announcement in the observation's identityEvidenceUrls. Never assign first-team Celta Vigo's rating to it.
+- ClubElo's CA Ceuta link resolves to https://clubelo.com/ad-ceuta-fc . The pack selects that observation for AD Ceuta, not an unrelated historic club solely sharing the city name.
+- AC Milan maps to Milan, not AC Milan II. Athletic Bilbao maps to Athletic Club, not Athletic Club B. NEC maps to Nijmegen. Wisła Płock maps to Plock, not Wisla/Kraków. New York City and New York Red Bulls are separate clubs. Lech and Lechia are separate clubs.
+- Do not assign UR La Louvière C's provider-provisional 1768 to RAAL La Louvière. Use the explicit FootballDatabase RAAL observation unless additional primary identity evidence resolves the alternative.
+- Do not substitute CD das Aves for AVS Futebol SAD. They are separate rows in the secondary table.
+- Do not substitute NK Varteks for modern Varaždin or the ambiguous Novi Sad label for Vojvodina without independent identity evidence. The secondary current-name observations remove that need.
+- The Alianza observation uses the secondary provider's current name. Do not automatically carry every historical Alianza Petrolera identity into the game or a historical trophy table.
+
+Make all builds deterministic and offline after snapshots are checked in. Network access belongs in explicit acquisition/update tools, not normal builds, gameplay or tests. Preserve existing Opta snapshots as archived provenance; do not keep June Opta values mixed with October ClubElo values merely because those 35 clubs were previously marked verified.
+
+C. CALIBRATE PROVIDERS AND GAME UNITS WITHOUT LEAGUE GUESSES
+
+Use ClubElo as the primary source scale for new club baselines. All 485 directly observed primary clubs should use their own observed rating. The five secondary clubs need an evidence-based, versioned conversion into the primary scale before the normal game-strength conversion.
+
+Never paste the five FootballDatabase numbers into a ClubElo field unchanged. Never use a raw rank number as strength. Do not normalize each league independently to identical means/minima/maxima: that would destroy continental comparability.
+
+The supplied 75 pairs are the calibration evidence. The diagnostic file compares leave-one-club-out linear fits: one global fit had MAE 60.42 Elo; separate country fits had combined MAE 14.28, with Serbia still materially less consistent. These figures are preliminary cross-provider diagnostics, not validation against future match results and not a mandated final formula.
+
+Implement and compare a simple positive-slope global transform with a regularized country-aware transform fitted to the paired observations. Any country effect must be learned from same-club pairs, regularized and documented. It must convert the secondary provider's measurements; it must not introduce a league-centre prior or change the primary ratings. Do not hand-select offsets, trophy bonuses or ranks to obtain attractive coverage numbers. Avoid a flexible curve that overfits Croatia's nine pairs.
+
+Use deterministic held-out evaluation that never evaluates a club on a model trained with that club's own pair. Report MAE, RMSE, signed bias, large residuals and country/rating-range coverage. Check positive monotonicity, extrapolation at the five target values and bootstrap/leave-one-out sensitivity. Fit a robust alternative when justified, but retain the discrepant raw records and explain how the method treats them. Zemun and Mačva Šabac have substantial source disagreement; do not delete them solely to improve the metric. An independently documented identity/data error may be corrected with provenance.
+
+Choose a conservative conversion supported by the evidence, commit its coefficients and diagnostics, and label converted values calibrated_from_published_rating. Define an explicit acceptance rule and explain it in Elo/game-strength terms. If a target cannot be converted reliably, resolve its identity with a primary-provider profile or derive strength from actual results under section F; leave an explicit unresolved_conversion status until then. A published raw value alone is not proof that the final club strength has been validated.
+
+Then map the primary-scale rating to the game's existing quality units using one monotonic club-domain transform. Inspect the current match-engine and player-OVR scales; do not assume a linear Opta-to-quality formula remains suitable for Elo. Calibrate the transformation with the engine's real probability behavior and available independently sourced match outcomes. Preserve source-rating ordering without flattening weak clubs into one floor or top clubs into one ceiling. Document coefficients, target range, clipping and confidence. No finance/tier or arbitrary per-league modifiers may enter this transform.
+
+Treat raw evidence and derived game values separately, for example:
+ratingSourceStatus = verified_rating / results_derived / unresolved
+strengthDerivationStatus = normalized_from_published_rating / calibrated_from_published_rating / results_derived / unresolved_conversion
+componentDerivationStatus = derived_neutral / derived_from_squad_data
+
+Adapt the existing schema rather than necessarily using these exact names. Coverage reports must distinguish raw observations, validated transformations and unresolved identities/conversions. Labels must not imply that a provider verified our neutral positional components or replacement OVRs.
+
+D. PRESERVE PLAYER IMPACT, SHARED MATCH LOGIC AND CAREER FREEZING
+
+Keep effectiveTeamStrength() as the shared entry point. A stronger player should improve the team through the existing, bounded, position-aware replacement contribution, relative to the player/position the lineup replaces. Recompute any derived replacement OVRs consistently with the new seed qualities and document that they are model parameters. Do not add the same player's OVR twice or treat baseline squad quality and a full squad average as two independent strength bonuses.
+
+Keep form, squad availability/development and genuine venue advantage distinct from the imported baseline. Neutral venues must be neutral. Reputation and money may affect transfers/development where already appropriate, but must not directly determine match strength. Historical prestige must not restore a weak current club to elite match strength.
+
+All domestic leagues/cups, two-legged and single-match knockouts, continental competitions and national-team tournaments must continue to reach the same match engine. Preserve Poisson regulation goals, genuine extra time and the separate penalty-shootout result contract. Penalty kicks must not become match goals, goal difference or player goals. Do not restore scripted progression, pickExitRound, post-hoc score rewrites or winner coin flips. Match-stage pressure/fatigue may be explicit model inputs; competition names must not supply a hidden team-strength override.
+
+Keep deterministic simulation RNG separate from UI randomness. Source changes must affect new careers and explicitly opted-in migrations only. Existing career worlds must retain their frozen seed qualities, per-team provider/snapshot provenance, calibrated values and transform versions. A global snapshotId alone is insufficient when five teams depend on another provider and a calibrated conversion.
+
+Inspect schema-v2 world migration behavior. Serialize everything needed to reproduce a career without consulting newer generated profiles. Do not silently rebase an existing career on startup. If an old save lacks sufficient data, preserve the documented legacy snapshot deterministically and report the compatibility limitation rather than pretending to recover missing historical values.
+
+E. INTERNATIONAL NATIONAL TEAMS: AUDIT SEPARATELY
+
+The club report does not enumerate the national-team gaps. Inspect every national team used by tournaments, qualifiers and calendar paths in the current code. Reconcile the reported 20 verified FIFA points, 30 manual rank-to-points interpolations and 29 provisional profiles against the actual inventory; these counts must not be assumed complete.
+
+Produce reports/nation-strength-coverage-report.json with every canonical nationId, name, confederation, provider/date, raw value or missing field, source status and exact unresolved reason. A team's position in a FIFA table is not its points total. Remove rank-to-points interpolation as a production source and do not treat confederation bands as verified points.
+
+Prefer full dated official FIFA points, or a full published primary World Football Elo snapshot if that source can actually be accessed and verified. Official entry points:
+https://inside.fifa.com/fifa-rankings/world-ranking/men
+https://eloratings.net/
+
+Dynamic empty tables are not retrieved datasets. Do not fabricate a dump endpoint, claim a complete import from an article showing only some teams, or relabel national Elo as FIFA points. Import exact published observations when available, preserve their actual dates and use a separately calibrated national-team transformation into the shared engine's quality units. Do not numerically equate club Elo, national Elo and FIFA points just because their displayed values have similar magnitudes. Club and national squads are different domains; using the same engine does not require pretending they play each other in calibration matches.
+
+For actual national gaps, use sourced international match histories with a reproducible results-derived model, documenting predecessor-state identity and FIFA methodology changes. Do not add a second historical bonus on top of a current published rating that already reflects past results. If source access blocks completion, keep the exact gap report and clearly state it; do not claim the national data problem was fixed by this club pack. Complete the club work independently.
+
+Preserve valid competition/confederation eligibility: no Jordan in Copa América because of a random fallback, and no qualification tied to fragile display-name substring matching. Association qualification and historical club ratings are separate systems.
+
+F. 35-YEAR ACTUAL-RESULTS FALLBACK FOR GENUINE GAPS
+
+Published current observations are available for all 455 uploaded club gaps, so do not invent a 35-year-derived score merely to replace a usable sourced value. This section is required if a source/identity/conversion gap remains after the direct imports, or a future club genuinely lacks a usable published rating.
+
+Use historical_source_manifest.json to start actual collection. The checked manifest is an archive index, not a complete results database. Some linked country histories stop in the 1990s/2000s; continue through the archive's annual/decade indexes and official federation/competition records. Champion-only lists are insufficient for the current-strength calculation. Keep all downloaded/raw season records and source provenance.
+
+For each affected league, enumerate the game's current clubs and the real first-division membership at the chosen source cutoff. Record discrepancies; do not silently replace the game's roster. Research every current first-division club in that affected league over the window, rather than cherry-picking prestigious clubs to anchor the rest. Include game lower-division clubs that remain uncovered too.
+
+Use 35 completed season editions: normally 1991/92 through 2025/26 for leagues using split-year seasons, or 1991 through 2025 for calendar-year leagues. Record country-specific season calendars. Current incomplete 2026/2026-27 results may form a separate dated update; do not count an unfinished season as completed or use matches after the cutoff. Clubs created later have shorter genuine histories. Do not invent seasons before foundation or inherit an unrelated predecessor's trophies.
+
+Collect, where available:
+- season, division, competition stage, final position and size of division;
+- played/wins/draws/losses, goals for/against, points and actual points rule;
+- dated match results, opponent identity, venue and competition;
+- domestic cup matches, participation and genuine progression;
+- continental qualifiers/groups/knockouts, including UEFA, Libertadores/Sudamericana, Concacaf and intercontinental competitions relevant to the club;
+- promotion/relegation, sanctions/administrative adjustments and identity changes;
+- exact missing-data and not-applicable markers.
+
+Do not double count regular-season points and playoff points, two legs and their aggregate, normal/extra-time goals, or a penalty shootout as a goal-scoring win. Account for Apertura/Clausura and regional/state competitions without treating every title as an equivalent full national season. Track reserve teams separately.
+
+Preferred current-strength method: fit a reproducible match-results model such as chronological Elo or an opponent/venue-adjusted goal model, connected across leagues through actual continental matches and documented published anchors. Use the long history for initialization and evidence, with recent results dominating the current prediction. Select recency decay, competition weights and any shrinkage through dated held-out outcome evaluation, not a fixed prestige ladder. Do not infer a precise global rating for a disconnected match graph without anchors and uncertainty.
+
+If only season tables are accessible, normalize actual points by matches and rules, goals by matches and finishing position by league size. Fit their relation to observed ratings using covered clubs; validate on held-out clubs/seasons. Do not replace missing rows with zeros or give every uncovered team the league's mean. Store this lower-confidence derivation as results_derived, with the source inputs, coefficients, uncertainty and coverage limitations. If evidence remains insufficient, report a real gap.
+
+A separate 35-year history/reputation ranking can summarize documented league, cup and continental achievements with transparent weights. Keep it separate from current match strength. Do not add lifetime trophies as a strength bonus to a current published rating. FIFA ranks apply to national teams; never use a country's FIFA rank as a direct club rating.
+
+G. VERIFICATION AND ACCEPTANCE
+
+Run the existing relevant tests after the source/schema changes, including provenance, team strength and career-flow smoke tests. Add meaningful checks for this change, including:
+
+1. Every current canonical club has exactly one selected baseline; the uploaded 455 IDs are unchanged; all 35 other names resolve uniquely. Counts reconcile by league and provider.
+2. Raw values reproduce the attached source observations and their displayed precision. Source date/provider/provisional flags survive generation. Invalid aliases and duplicates fail loudly.
+3. The five secondary values never bypass their validated conversion. Calibration parameters and inputs have stable hashes, held-out diagnostics and deterministic rebuilds.
+4. No configured_league_center_prior, single_league_anchor_below, league_verified_anchor_below_min, rank interpolation, array ordering or finance/tier shortcut remains in new-career club baselines. Explicit old-career compatibility must be isolated from new baselines.
+5. All 26 leagues, domestic cups and continental paths use the same effective-strength calculation. At least representative cross-country and cross-confederation fixtures exercise the new baselines. National teams use their own valid source transformation through the shared engine.
+6. Seeded simulations show monotonic improvement as baseline quality or a relevant starting player's OVR increases, bounded replacement impact, genuine home advantage and neutral finals. A 62-to-88 starting striker change should improve expected goals without making any club automatically unbeatable.
+7. Report probability distributions and Monte Carlo uncertainty for equal teams, large gaps and moderate knockout gaps, including extra time and penalties. Do not make previous illustrative Arsenal/City-vs-weak-team win percentages exact acceptance targets; calibrate against actual data where available. Upsets must remain possible, while repeated weak-club domination of major competitions should not be caused by hidden shortcuts.
+8. Old career worlds serialize/reload with identical frozen baseline values and seeded results after rebuilding a newer snapshot. New worlds select the new snapshot and exact per-team provenance. Builds and normal gameplay work without network access.
+
+Do not write tests that only compare a function to a duplicate implementation. Ensure assertions cover source integrity, identity collisions, transformations, player effects, competition integration and career freezing.
+
+H. REQUIRED DELIVERABLES
+
+Finish the implementation and provide:
+- committed raw snapshots, explicit mappings, deterministic builders and generated profiles;
+- a documented source/quality schema that separates raw evidence from derivations;
+- the selected provider conversion, coefficients, evidence and held-out diagnostics;
+- updated club coverage/matching/audit reports with every unresolved club identified;
+- the separate complete national-team coverage report, plus actual imports made or exact remaining access gaps;
+- any genuine historical results-derived datasets/models used, with season-level coverage and missing records;
+- updated source README, attribution, snapshot-freezing/migration notes and cache identifiers where needed;
+- relevant test results and seeded calibration summaries.
+
+The final implementation summary must give actual counts for direct primary observations, direct secondary observations, validated calibrated baselines, results-derived baselines and unresolved cases. Distinguish pending conversion from missing raw data. Do not report 490 verified game strengths merely because 490 names now have a published number, and do not claim 35-year research was collected unless the actual season records were imported and audited.
+
+Proceed with the authorized source upgrade and normal implementation choices. If evidence is insufficient, complete all independent work and return a concrete gap list and source limitation rather than inventing an answer or stopping at a generic plan.

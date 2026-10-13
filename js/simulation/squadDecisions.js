@@ -1,0 +1,259 @@
+/**
+ * Manager squad reviews and loan recommendations (academy-style decision cards).
+ */
+import { SQUAD_REVIEW } from "../config/recruitmentConfig.js";
+import { createStreamRng } from "./rng.js";
+import { evaluateSportingFit } from "./recruitmentModel.js";
+import { generateLoanOffers } from "./loanMarket.js";
+import { isAvailable } from "./playerHealth.js";
+
+function decisionId(kind, player, seasonIndex) {
+  return `decision:${kind}:${player.careerId || player.name}:${seasonIndex}`;
+}
+
+/**
+ * Club minutes share among fit/eligible club matches only.
+ */
+export function clubMinutesShare(player, opts = {}) {
+  const season = opts.season || player.seasons?.[player.seasons.length - 1];
+  if (!season) return { share: 0, eligibleMatches: 0, minutes: 0 };
+
+  const matches = season.matches || 0;
+  const minutes = season.minutes || season.clubMinutes || 0;
+  // Approximate eligible denominator: matches where not injured for the whole game.
+  // Prefer explicit ledger if present.
+  const ledger = season.participationLedger || player.seasonLedger;
+  if (ledger?.eligibleClubMatches != null && ledger?.availableClubMinutes != null) {
+    const avail = Math.max(1, ledger.availableClubMinutes);
+    return {
+      share: clamp01((ledger.clubMinutesPlayed || minutes) / avail),
+      eligibleMatches: ledger.eligibleClubMatches,
+      minutes: ledger.clubMinutesPlayed || minutes,
+    };
+  }
+
+  const injuryAbsences = season.injuryAbsences || 0;
+  const eligibleMatches = Math.max(0, matches - injuryAbsences);
+  const denom = Math.max(1, eligibleMatches * 90);
+  return { share: clamp01(minutes / denom), eligibleMatches, minutes };
+}
+
+function clamp01(x) {
+  return Math.max(0, Math.min(1, x));
+}
+
+function hasCooldown(player, kind, seasonIndex) {
+  const cd = player.decisionCooldowns?.[kind];
+  if (!cd) return false;
+  return seasonIndex < cd.nextReviewSeason;
+}
+
+function setCooldown(player, kind, seasonIndex) {
+  if (!player.decisionCooldowns) player.decisionCooldowns = {};
+  player.decisionCooldowns[kind] = {
+    nextReviewSeason: seasonIndex + 1,
+    decidedAtSeason: seasonIndex,
+  };
+}
+
+/**
+ * Evaluate manager discussion at a dated checkpoint.
+ * @returns {null|object} decision payload for UI
+ */
+export function evaluateSquadDecision(player, opts = {}) {
+  if (!player?.club || player.club.isAcademy || player.isRetired) return null;
+  if (player.activeLoan?.status === "active") {
+    return buildLoanEndingDecision(player, opts);
+  }
+
+  const seasonIndex = opts.seasonIndex ?? player.seasons?.length ?? 0;
+  const age = Number(player.age) || 20;
+  const minutes = clubMinutesShare(player, opts);
+  const injuredNow = player.health?.activeInjury && !isAvailable(player.health, opts.date);
+
+  // Injury recovery — do not treat as failure to compete.
+  if (injuredNow || (minutes.eligibleMatches < 3 && player.health?.activeInjury)) {
+    if (hasCooldown(player, "injury-recovery", seasonIndex)) return null;
+    return {
+      decisionId: decisionId("injury-recovery", player, seasonIndex),
+      kind: "injury-recovery",
+      headline: "Recovery comes first",
+      lead:
+        "The medical staff and manager agree your low minutes are about availability, not commitment. Focus on recovery; your place will be reviewed when you are fit.",
+      choices: [{ id: "acknowledge", label: "Focus on recovery" }],
+      cooldownKind: "injury-recovery",
+    };
+  }
+
+  // Non-renewal notice
+  const rem =
+    player.contractEndSeason == null ? 99 : player.contractEndSeason - seasonIndex;
+  if (rem === 1 && !player.renewalPlanned && !hasCooldown(player, "non-renewal", seasonIndex)) {
+    return {
+      decisionId: decisionId("non-renewal", player, seasonIndex),
+      kind: "non-renewal",
+      headline: "Contract situation",
+      lead:
+        "The club does not plan to offer a renewal at this stage. You remain contracted until expiry and may seek a future club in the meantime.",
+      choices: [
+        { id: "seek-move", label: "Seek a new club" },
+        { id: "see-out", label: "See out the contract" },
+      ],
+      cooldownKind: "non-renewal",
+    };
+  }
+
+  const [ageLo, ageHi] = SQUAD_REVIEW.developmentLoanAges;
+  const fit = evaluateSportingFit(player, player.club, {
+    seasonIndex,
+    careerId: player.careerId || player.name,
+    forceParent: true,
+  });
+
+  const lowMinutes = minutes.share < SQUAD_REVIEW.lowMinutesShare;
+  const enoughEvidence =
+    minutes.eligibleMatches >= SQUAD_REVIEW.midSeasonMinEligibleMatches || opts.checkpoint === "pre-season";
+
+  if (
+    age >= ageLo &&
+    age <= ageHi &&
+    lowMinutes &&
+    enoughEvidence &&
+    (fit.projection.role === "prospect" || fit.projection.role === "cover" || fit.projection.role === "ineligible") &&
+    !hasCooldown(player, "development-loan", seasonIndex)
+  ) {
+    const loans = generateLoanOffers(player, { maxOffers: 3, performanceScore: opts.performanceScore ?? 65 });
+    return {
+      decisionId: decisionId("development-loan", player, seasonIndex),
+      kind: "development-loan",
+      headline: "Development discussion",
+      lead:
+        "The manager wants to discuss your development. We expect you to get limited first-team minutes this season. A loan could give you regular senior football. You can review the available clubs, stay and compete for your place, or ask us to consider a permanent move.",
+      choices: [
+        { id: "review-loans", label: "Review loan options", offers: loans.offers },
+        { id: "stay-compete", label: "Stay and compete" },
+        { id: "request-permanent", label: "Request a permanent move" },
+      ],
+      loanOffers: loans.offers,
+      cooldownKind: "development-loan",
+      projectedHomeMinutes: fit.projection.minutesShare,
+    };
+  }
+
+  if (
+    lowMinutes &&
+    enoughEvidence &&
+    fit.projection.role === "ineligible" &&
+    !hasCooldown(player, "surplus", seasonIndex)
+  ) {
+    const loans = generateLoanOffers(player, { maxOffers: 2 });
+    return {
+      decisionId: decisionId("surplus", player, seasonIndex),
+      kind: "surplus",
+      headline: "Squad plans",
+      lead:
+        "You are outside current first-team plans while under contract. You can seek a permanent move, consider a suitable loan, or remain with a limited role.",
+      choices: [
+        { id: "seek-move", label: "Seek a transfer" },
+        { id: "review-loans", label: "Consider a loan", offers: loans.offers },
+        { id: "remain", label: "Remain at the club" },
+      ],
+      loanOffers: loans.offers,
+      cooldownKind: "surplus",
+    };
+  }
+
+  if (
+    fit.projection.role === "cover" ||
+    fit.projection.role === "rotation"
+  ) {
+    if (hasCooldown(player, "stay-compete", seasonIndex)) return null;
+    if (opts.checkpoint === "mid-season" && !lowMinutes) {
+      return {
+        decisionId: decisionId("stay-compete", player, seasonIndex),
+        kind: "stay-compete",
+        headline: "Role confirmed",
+        lead: `The manager sees you as ${fit.projection.role} cover. Keep competing; the next formal review is scheduled later this season.`,
+        choices: [{ id: "acknowledge", label: "Keep working" }],
+        cooldownKind: "stay-compete",
+        expectedRole: fit.projection.role,
+      };
+    }
+  }
+
+  return null;
+}
+
+function buildLoanEndingDecision(player, opts = {}) {
+  const seasonIndex = opts.seasonIndex ?? player.seasons?.length ?? 0;
+  if (hasCooldown(player, "loan-return", seasonIndex)) return null;
+  if (opts.checkpoint !== "loan-return" && player.activeLoan?.endSeason !== seasonIndex) {
+    return null;
+  }
+  return {
+    decisionId: decisionId("loan-return", player, seasonIndex),
+    kind: "loan-return",
+    headline: "Loan ending",
+    lead:
+      "Your loan spell is ending. The parent club will reassess: reintegration, a new loan, a sale, or preparing for free agency if your contract is nearly up.",
+    choices: [
+      { id: "reintegrate", label: "Return to parent club" },
+      { id: "new-loan", label: "Seek another loan" },
+      { id: "seek-sale", label: "Ask to be sold" },
+    ],
+    cooldownKind: "loan-return",
+    loan: player.activeLoan,
+  };
+}
+
+/**
+ * Resolve a decision choice. Declining a loan keeps the live contract.
+ */
+export function resolveSquadDecision(player, decision, choiceId, opts = {}) {
+  if (!decision) return { ok: false, reason: "no-decision" };
+  const seasonIndex = opts.seasonIndex ?? player.seasons?.length ?? 0;
+  setCooldown(player, decision.cooldownKind || decision.kind, seasonIndex);
+
+  if (choiceId === "review-loans" || choiceId === "new-loan") {
+    const offers = decision.loanOffers || generateLoanOffers(player).offers;
+    player.pendingOffers = offers;
+    player.pendingDecision = null;
+    return { ok: true, action: "show-loans", offers };
+  }
+
+  if (choiceId === "stay-compete" || choiceId === "remain" || choiceId === "acknowledge" || choiceId === "see-out") {
+    player.pendingDecision = null;
+    // Contract preserved
+    return { ok: true, action: "stay", contractIntact: true };
+  }
+
+  if (choiceId === "request-permanent" || choiceId === "seek-move" || choiceId === "seek-sale") {
+    player.transferListed = true;
+    player.pendingDecision = null;
+    return { ok: true, action: "transfer-listed" };
+  }
+
+  if (choiceId === "reintegrate") {
+    player.pendingDecision = null;
+    return { ok: true, action: "reintegrate" };
+  }
+
+  return { ok: false, reason: "unknown-choice" };
+}
+
+/**
+ * Attach a pending decision for resumable chronological simulation.
+ */
+export function queueSquadDecision(player, checkpoint = "pre-season", opts = {}) {
+  const decision = evaluateSquadDecision(player, { ...opts, checkpoint });
+  if (!decision) {
+    player.pendingDecision = null;
+    return null;
+  }
+  player.pendingDecision = {
+    ...decision,
+    checkpoint,
+    queuedAtSeason: opts.seasonIndex ?? player.seasons?.length ?? 0,
+  };
+  return player.pendingDecision;
+}

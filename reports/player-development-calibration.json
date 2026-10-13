@@ -1,0 +1,151 @@
+{
+  "modelVersion": "player-development-v2",
+  "playerModelVersion": 2,
+  "revision": "c3536363c19ec61e18b1b82e667cee4277fcbf7f",
+  "configHash": "3b7ae2a033789c3f",
+  "generatedAt": "2026-10-09T23:58:19.589Z",
+  "light": false,
+  "runtimeMs": 171120,
+  "cohorts": {
+    "trajectories": 10000,
+    "holdoutTrajectories": 5000,
+    "integratedCareers": 2000,
+    "controlledArsenalRw": 200
+  },
+  "ordinaryTrajectories": {
+    "peak": {
+      "n": 10000,
+      "mean": 73.316,
+      "median": 72.95,
+      "p10": 67.325,
+      "p90": 79.808,
+      "p95": 81.863,
+      "p99": 85.304
+    },
+    "peakAge": {
+      "n": 10000,
+      "mean": 28.329,
+      "median": 29,
+      "p10": 25,
+      "p90": 31,
+      "p95": 32,
+      "p99": 33
+    },
+    "youngDeltas": {
+      "n": 14191,
+      "mean": 2.01,
+      "median": 2.126,
+      "p10": 0.896,
+      "p90": 2.853,
+      "p95": 2.922,
+      "p99": 2.995
+    },
+    "abilityAt22": {
+      "n": 8559,
+      "mean": 70.671,
+      "median": 70.697,
+      "p10": 64.001,
+      "p90": 77.094,
+      "p95": 78.837,
+      "p99": 81.981
+    },
+    "ever99Rate": 0,
+    "at99by22Rate": 0,
+    "attain90Rate": 0.0006,
+    "attain95Rate": 0,
+    "first90Ages": {
+      "n": 6,
+      "mean": 28,
+      "median": 28,
+      "p10": 25.5,
+      "p90": 30.5,
+      "p95": 30.75,
+      "p99": 30.95
+    },
+    "first95Ages": {
+      "n": 0,
+      "mean": 0,
+      "median": null,
+      "p10": null,
+      "p90": null,
+      "p95": null,
+      "p99": null
+    },
+    "earlyDeclineRate": 0,
+    "stagnation3yrRate": 0.8019,
+    "comebackRate": 0,
+    "forecastCoverageRate": 1
+  },
+  "holdout": {
+    "peak": {
+      "n": 5000,
+      "mean": 73.377,
+      "median": 72.932,
+      "p10": 67.48,
+      "p90": 79.83,
+      "p95": 82.018,
+      "p99": 85.433
+    },
+    "peakAge": {
+      "n": 5000,
+      "mean": 28.348,
+      "median": 29,
+      "p10": 26,
+      "p90": 31,
+      "p95": 32,
+      "p99": 33
+    },
+    "ever99Rate": 0,
+    "attain90Rate": 0.0002,
+    "earlyDeclineRate": 0,
+    "comebackRate": 0
+  },
+  "controlledScenario": {
+    "description": "Age 17, ~70 base, budget≤82, RW, US — must not routinely reach 90 by 22 / 99 by 25",
+    "hit90by22": 0,
+    "hit99by25": 0,
+    "n": 200,
+    "meanAt22": {
+      "n": 200,
+      "mean": 77.237,
+      "median": 78.328,
+      "p10": 71.816,
+      "p90": 80.826,
+      "p95": 81.124,
+      "p99": 81.565
+    },
+    "meanAt25": {
+      "n": 200,
+      "mean": 77.694,
+      "median": 79.031,
+      "p10": 71.895,
+      "p90": 81.757,
+      "p95": 81.969,
+      "p99": 82
+    }
+  },
+  "exceptionalFixture": {
+    "age": 20,
+    "baseOverallRaw": 91.39624734978332,
+    "rating": 91,
+    "worldClassAt20": true,
+    "forecastPotential": 98
+  },
+  "integratedCareers": {
+    "completed": 2000,
+    "errors": 0,
+    "sampleErrors": [],
+    "ever99Rate": 0,
+    "peak": {
+      "n": 2000,
+      "mean": 70.807,
+      "median": 70.971,
+      "p10": 62.016,
+      "p90": 79.556,
+      "p95": 81.858,
+      "p99": 84.711
+    },
+    "meanInjuries": 7.329
+  },
+  "targetsNote": "Design targets from the implementation prompt; these results are measured, not forced by clipping. Chronological season orchestrator is active for integrated careers."
+}

@@ -1,0 +1,96 @@
+{
+  "method": "Leave-one-club-out ordinary least squares; diagnostic only, not a recommended final conversion. Positive slopes observed; no current game strengths generated.",
+  "anchorCount": 75,
+  "sourceDateDifferenceDays": 4,
+  "global": {
+    "n": 75,
+    "maeElo": 60.42,
+    "rmseElo": 73.97,
+    "p90AbsoluteErrorElo": 119.51,
+    "meanSignedErrorElo": 0.46
+  },
+  "countryModels": {
+    "Belgium": {
+      "n": 15,
+      "maeElo": 10.09,
+      "rmseElo": 11.74,
+      "p90AbsoluteErrorElo": 19.79,
+      "meanSignedErrorElo": -0.36
+    },
+    "Colombia": {
+      "n": 19,
+      "maeElo": 6.23,
+      "rmseElo": 7.4,
+      "p90AbsoluteErrorElo": 11.95,
+      "meanSignedErrorElo": 0.07
+    },
+    "Croatia": {
+      "n": 9,
+      "maeElo": 17.0,
+      "rmseElo": 23.04,
+      "p90AbsoluteErrorElo": 29.67,
+      "meanSignedErrorElo": 3.7
+    },
+    "Portugal": {
+      "n": 17,
+      "maeElo": 8.45,
+      "rmseElo": 10.62,
+      "p90AbsoluteErrorElo": 16.88,
+      "meanSignedErrorElo": -0.28
+    },
+    "Serbia": {
+      "n": 15,
+      "maeElo": 33.63,
+      "rmseElo": 59.49,
+      "p90AbsoluteErrorElo": 104.23,
+      "meanSignedErrorElo": -2.35
+    }
+  },
+  "combinedCountryModels": {
+    "n": 75,
+    "maeElo": 14.28,
+    "rmseElo": 28.96,
+    "p90AbsoluteErrorElo": 22.31,
+    "meanSignedErrorElo": -0.14
+  },
+  "largestCountryResiduals": [
+    {
+      "clubName": "Zemun",
+      "signedErrorElo": 165.04
+    },
+    {
+      "clubName": "Mačva Šabac",
+      "signedErrorElo": -146.02
+    },
+    {
+      "clubName": "Rudeš",
+      "signedErrorElo": 55.48
+    },
+    {
+      "clubName": "Red Star Belgrade",
+      "signedErrorElo": -41.55
+    },
+    {
+      "clubName": "OFK Beograd",
+      "signedErrorElo": -29.58
+    },
+    {
+      "clubName": "Radnik Surdulica",
+      "signedErrorElo": -27.9
+    },
+    {
+      "clubName": "Dinamo Zagreb",
+      "signedErrorElo": 23.22
+    },
+    {
+      "clubName": "Famalicão",
+      "signedErrorElo": 23.12
+    }
+  ],
+  "limitations": [
+    "Cross-provider agreement is not a match-outcome backtest.",
+    "Country models are diagnostic and not regularized.",
+    "Low sample size in Croatia; Serbia contains material source disagreement.",
+    "Do not drop outlier clubs without independent identity or source evidence."
+  ]
+}

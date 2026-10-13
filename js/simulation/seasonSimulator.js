@@ -1,20 +1,29 @@
 import { POSITION_PROFILES, STATS_KEYS } from "../config/playerConfig.js";
-import { agePerformanceModifier, adjustAttributes } from "./playerDevelopment.js?v=49";
+import { getDisplayAttributeKeys } from "./playerAbility.js";
+import { ensurePlayerModel } from "./playerModelMigration.js";
+import { developSeason, stableCareerId } from "./playerDevelopmentModel.js";
+import { getOrUpdateForecast } from "./playerPotential.js";
+import { createEmptyLedger, recordMatchObservation, aggregateSeason } from "./playerSeasonLedger.js";
+import { createStreamRng } from "./rng.js";
+import { refreshAbilityCaches } from "./playerAbility.js";
 import {
   applyDivisionMovement,
   divisionMoveSlots,
   findSisterLeagues,
   qualificationForPosition,
-} from "./leaguePhase.js?v=45";
-import { simulateLeagueSeason } from "./leagueFixtures.js?v=45";
-import {
-  simulateEuropeanCampaign,
-  simulateEuropeanFinalsShowcase,
-} from "./europeanCompetition.js?v=49";
-import { simulateDomesticCup } from "./domesticCup.js?v=49";
+} from "./leaguePhase.js";
+import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js";
 import { simulateIndividualAwards } from "./individualAwards.js";
-import { simulateInternationalSeason } from "./nationalTeam.js?v=49";
 import { clubNameForDisplay, clamp, pickRandom, randFloat } from "../utils/helpers.js";
+import { applySeasonDevelopment, attachClubIdentity, ensureWorldState, getWorldState } from "./worldState.js";
+
+/** Legacy 0–100 adapter for awards/transfers — not used for durable development. */
+export function legacyPerformanceScoreAdapter({ reliableSignal, avgMatchRating, appearances }) {
+  const signal = Number(reliableSignal) || 0;
+  const ratingPart = avgMatchRating != null ? (avgMatchRating - 6.5) * 18 : 0;
+  const appsPart = clamp((appearances || 0) / 30, 0, 1) * 8;
+  return clamp(62 + signal * 28 + ratingPart + appsPart, 20, 98);
+}
 
 /** How much an assist counts vs a goal for “match impact” by position. */
 function assistWeightForPosition(position) {
@@ -119,42 +128,102 @@ function computeAvgMatchRatingFromOutput({
   return clamp(parseFloat(raw.toFixed(2)), 5.28, cap);
 }
 
-export function simulateSeason(player, leagues, leagueLookup) {
+/**
+ * @param {object} [opts]
+ * @param {boolean} [opts.pauseForDecisions] — winter-window interactive pause
+ * @param {string|object|null} [opts.autoDecisionPolicy] — "stay" for tests/calibration
+ * @param {object|null} [opts.checkpoint] — resume a paused season
+ */
+export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
+  ensureWorldState(player);
+  ensurePlayerModel(player);
+  if (player.club && !player.club.isAcademy) {
+    player.club = attachClubIdentity(player.club);
+  }
   const profile = POSITION_PROFILES[player.position] || POSITION_PROFILES.DEFAULT;
   const seasonIndex = player.seasons.length;
+  const seasonId = `season-${seasonIndex + 1}`;
+  const resuming = Boolean(opts.checkpoint || player.seasonCheckpoint?.status === "awaiting_decision");
+  if (!resuming && player.development?.lastProcessedSeasonId === seasonId) {
+    throw new Error(`simulateSeason: season ${seasonId} already applied`);
+  }
+  const previousRating = player.rating;
+  const previousBaseRaw = player.baseOverallRaw;
+  const previousAttributes = { ...player.attributes };
+  const previousForecast = player.potentialForecast ? { ...player.potentialForecast } : null;
+
+  // Age advances only when the season completes (not at a January pause).
   const age = player.age + 1;
   const league = leagueLookup.get(player.club.league) || pickRandom(leagues);
-  const formSeed = 65 + (player.rating - 65) * 0.8 + randFloat(-6, 8);
 
-  const leagueSim = simulateLeagueSeason(league, player, formSeed);
+  const ledger = createEmptyLedger(seasonId);
+  const storedCheckpoint = opts.checkpoint || player.seasonCheckpoint || null;
+  const chronoOpts = {
+    player,
+    league,
+    seasonIndex,
+    pauseForDecisions: Boolean(opts.pauseForDecisions),
+    // Tests/calibration default to auto-stay so one-shot seasons still complete.
+    autoDecisionPolicy:
+      opts.autoDecisionPolicy !== undefined
+        ? opts.autoDecisionPolicy
+        : opts.pauseForDecisions
+          ? null
+          : "stay",
+    checkpoint: storedCheckpoint,
+  };
+  const chrono =
+    storedCheckpoint?.status === "awaiting_decision"
+      ? resumeChronologicalSeason({ ...chronoOpts, checkpoint: storedCheckpoint })
+      : simulateChronologicalSeason(chronoOpts);
+
+  if (chrono.status === "awaiting_decision") {
+    // Do not finalize development, history, or age. Caller must resume after the user chooses.
+    return {
+      awaitingDecision: true,
+      checkpoint: chrono.checkpoint,
+      decision: chrono.decision,
+      offers: chrono.offers,
+      partialPlayerMatchStats: chrono.partialPlayerMatchStats,
+      seasonIndex,
+      seasonId,
+      league,
+    };
+  }
+
+  for (const rec of chrono.ledgerRecords || []) {
+    recordMatchObservation(ledger, { ...rec, seasonId });
+  }
   const sisters = findSisterLeagues(league, leagues);
   const { promoteSlots, relegateSlots } = divisionMoveSlots(league, sisters);
 
-  leagueSim.table.forEach((row) => {
+  chrono.table.forEach((row) => {
     row.qualification = qualificationForPosition(row.position, league, sisters);
     if (sisters.higher && row.position <= promoteSlots) row.divisionMove = "promoted";
-    if (sisters.lower && row.position > leagueSim.table.length - relegateSlots) row.divisionMove = "relegated";
+    if (sisters.lower && row.position > chrono.table.length - relegateSlots) row.divisionMove = "relegated";
   });
 
-  const playerRow = leagueSim.playerRecord;
+  const playerRow = chrono.playerRecord;
   if (playerRow) {
     playerRow.qualification = qualificationForPosition(playerRow.position, league, sisters);
-    playerRow.divisionMove = leagueSim.table.find((r) => r.name === playerRow.name)?.divisionMove || null;
+    playerRow.divisionMove = chrono.table.find((r) => r.name === playerRow.name)?.divisionMove || null;
   }
 
-  let matches = leagueSim.playerMatchStats.played;
-  let goals = leagueSim.playerMatchStats.goals;
-  let assists = leagueSim.playerMatchStats.assists;
+  let matches = chrono.playerMatchStats.played;
+  let goals = chrono.playerMatchStats.goals;
+  let assists = chrono.playerMatchStats.assists;
   let cleanSheets = 0;
   if (player.position === "GK") {
-    cleanSheets = leagueSim.playerMatches.filter((m) => {
+    cleanSheets = chrono.playerMatches.filter((m) => {
+      const mins = m.playerStats?.minutes || 0;
       const conceded = m.playerSide === "home" ? m.awayGoals : m.homeGoals;
-      return conceded === 0;
+      return mins >= 60 && conceded === 0;
     }).length;
   } else if (["CB", "RB", "LB", "CDM"].includes(player.position)) {
-    cleanSheets = leagueSim.playerMatches.filter((m) => {
+    cleanSheets = chrono.playerMatches.filter((m) => {
+      const mins = m.playerStats?.minutes || 0;
       const conceded = m.playerSide === "home" ? m.awayGoals : m.homeGoals;
-      return conceded === 0 && Math.random() < 0.55;
+      return mins >= 60 && conceded === 0;
     }).length;
   }
 
@@ -168,69 +237,36 @@ export function simulateSeason(player, leagues, leagueLookup) {
         matches: playerRow.matches,
         goalDiff: playerRow.goalDiff,
         strength: playerRow.strength,
-        table: leagueSim.table,
+        table: chrono.table,
       }
     : null;
 
-  let yellowCards = leagueSim.playerMatchStats.yellow;
-  let redCards = leagueSim.playerMatchStats.red;
+  let yellowCards = chrono.playerMatchStats.yellow;
+  let redCards = chrono.playerMatchStats.red;
 
-  const domesticCupResult = simulateDomesticCup(league, formSeed, standing, player);
-  for (const m of domesticCupResult.playerMatches || []) {
-    goals += m.playerStats?.goals || 0;
-    assists += m.playerStats?.assists || 0;
-    yellowCards += m.playerStats?.yellow || 0;
-    redCards += m.playerStats?.red || 0;
-  }
+  const domesticCupResult = chrono.domesticCupResult;
+  const europeanCampaign = chrono.europeanCampaign;
+  const internationalSeason = chrono.internationalSeason;
 
-  let europeanCampaign = simulateEuropeanCampaign({ standing, league, performanceScore: formSeed, player });
-  if (!europeanCampaign) {
-    europeanCampaign = simulateEuropeanFinalsShowcase(league);
-  } else {
-    for (const m of europeanCampaign.playerMatches || []) {
-      goals += m.playerStats?.goals || 0;
-      assists += m.playerStats?.assists || 0;
-      yellowCards += m.playerStats?.yellow || 0;
-      redCards += m.playerStats?.red || 0;
-    }
-  }
-
-  // Provisional club form for national call-up decisions
   const clubRated = [
-    ...(leagueSim.playerMatches || []),
-    ...(domesticCupResult.playerMatches || []),
+    ...(chrono.playerMatches || []),
+    ...(domesticCupResult?.playerMatches || []),
     ...((europeanCampaign?.qualified !== false && europeanCampaign?.playerMatches) || []),
   ].filter((m) => m.playerStats?.rating != null);
-  const clubFormAvg =
-    clubRated.length > 0
-      ? clubRated.reduce((s, m) => s + m.playerStats.rating, 0) / clubRated.length
-      : 6.8;
 
-  const calendarYear = (player.startYear || new Date().getFullYear()) + seasonIndex;
-  const internationalSeason = simulateInternationalSeason({
-    player,
-    calendarYear,
-    avgMatchRating: clubFormAvg,
-  });
-  for (const m of internationalSeason.playerMatches || []) {
-    goals += m.playerStats?.goals || 0;
-    assists += m.playerStats?.assists || 0;
-    yellowCards += m.playerStats?.yellow || 0;
-    redCards += m.playerStats?.red || 0;
-  }
-
-  // True average of per-match ratings (WhoScored-style), then blend with output model
   const ratedMatches = [
     ...clubRated,
-    ...(internationalSeason.playerMatches || []).filter((m) => m.playerStats?.rating != null),
+    ...(internationalSeason?.playerMatches || []).filter(
+      (m) => m.playerStats?.rating != null && (m.playerStats?.minutes || 0) > 0
+    ),
   ];
-
   const liveAvg =
     ratedMatches.length > 0
-      ? ratedMatches.reduce((s, m) => s + m.playerStats.rating, 0) / ratedMatches.length
+      ? ratedMatches.reduce((s, m) => s + m.playerStats.rating * (m.playerStats.minutes || 90), 0) /
+        ratedMatches.reduce((s, m) => s + (m.playerStats.minutes || 90), 0)
       : null;
 
-  const ageModifier = agePerformanceModifier(age);
+  // Optional light blend with output model for display continuity (not for development).
   const outputAvg = computeAvgMatchRatingFromOutput({
     position: player.position,
     profile,
@@ -238,78 +274,50 @@ export function simulateSeason(player, leagues, leagueLookup) {
     goals,
     assists,
     cleanSheets,
-    ratingInfluence: player.rating / 100,
-    ageModifier,
+    ratingInfluence: (player.baseOverallRaw || player.rating) / 100,
+    ageModifier: 1,
   });
   const avgMatchRating = parseFloat(
-    (liveAvg != null ? liveAvg * 0.72 + outputAvg * 0.28 : outputAvg).toFixed(2)
+    (liveAvg != null ? liveAvg * 0.85 + outputAvg * 0.15 : outputAvg).toFixed(2)
   );
 
-  const performanceScore =
-    avgMatchRating * 11 +
-    goals * (profile.goalRate > 0.2 ? 2.3 : 1.2) +
-    assists * 1.5 +
-    cleanSheets * (profile.cleanSheetRate > 0.25 ? 2 : 1);
+  const agg = aggregateSeason(ledger);
+  const usefulMinutes = agg.combined.minutes;
+  matches = agg.club.appearances;
 
-  if (age <= 30) {
-    if (player.position === "GK") {
-      const csRate = matches > 0 ? cleanSheets / matches : 0;
-      if (cleanSheets >= 14 && csRate >= 0.36) player.potential = clamp(player.potential + randFloat(1.0, 3.0), player.rating + 1, 99);
-      else if (cleanSheets >= 10 && csRate >= 0.28) player.potential = clamp(player.potential + randFloat(0.45, 1.7), player.rating + 1, 97);
-      else if (cleanSheets <= 4 && matches >= 24) player.potential = Math.max(player.rating + 1, player.potential - randFloat(0.12, 0.65));
-    } else {
-      const contrib = goals + assists;
-      if (contrib >= 32) player.potential = clamp(player.potential + randFloat(1.2, 3.8), player.rating + 1, 99);
-      else if (contrib >= 24) player.potential = clamp(player.potential + randFloat(0.65, 2.2), player.rating + 1, 98);
-      else if (contrib >= 18 && performanceScore > 80) player.potential = clamp(player.potential + randFloat(0.3, 1.35), player.rating + 1, 96);
-      const quietThreshold = Math.max(4, Math.round(matches * (profile.goalRate + profile.assistRate) * 0.28));
-      if (contrib < quietThreshold && matches >= 22) player.potential = Math.max(player.rating + 1, player.potential - randFloat(0.12, 0.7));
-    }
-  }
+  const performanceScore = legacyPerformanceScoreAdapter({
+    reliableSignal: agg.reliableSignal,
+    avgMatchRating: agg.combined.avgMatchRating ?? avgMatchRating,
+    appearances: agg.combined.appearances,
+  });
 
-  let ratingDelta = 0;
-  if (performanceScore > 92) ratingDelta = randFloat(2.0, 4.0);
-  else if (performanceScore > 85) ratingDelta = randFloat(1.0, 2.5);
-  else if (performanceScore > 78) ratingDelta = randFloat(0.2, 1.8);
-  else if (performanceScore > 68) ratingDelta = randFloat(-0.5, 1.2);
-  else if (performanceScore > 58) ratingDelta = randFloat(-1.2, 0.5);
-  else if (performanceScore > 45) ratingDelta = -randFloat(0.5, 2.0);
-  else if (performanceScore > 34) ratingDelta = -randFloat(1.5, 3.0);
-  else ratingDelta = -randFloat(2.5, 4.5);
-
-  // Season average match rating (WhoScored scale) pulls OVR hard
-  if (avgMatchRating >= 8.2) ratingDelta += randFloat(0.55, 1.35);
-  else if (avgMatchRating >= 7.6) ratingDelta += randFloat(0.25, 0.75);
-  else if (avgMatchRating >= 7.1) ratingDelta += randFloat(0.05, 0.35);
-  else if (avgMatchRating < 6.2) ratingDelta -= randFloat(0.35, 1.1);
-  else if (avgMatchRating < 6.6) ratingDelta -= randFloat(0.1, 0.45);
-
-  ratingDelta += clamp((goals - matches * profile.goalRate) * 0.05, -1.8, 1.8);
-  ratingDelta += clamp((assists - matches * profile.assistRate) * 0.04, -1.4, 1.4);
-  if (age >= 30) ratingDelta -= (age - 29) * 0.12;
-  if (age <= 27 && performanceScore > 88) ratingDelta += randFloat(0.15, 0.55);
-  if (age >= 28 && performanceScore < 55) ratingDelta -= randFloat(0.2, 0.8);
-  if (age >= 34) {
-    if (ratingDelta > 0) ratingDelta = Math.min(ratingDelta, age <= 35 ? 0.3 : 0.15);
-    const declineBase = 0.45 + (age - 34) * 0.35;
-    if (ratingDelta > -declineBase) ratingDelta = -declineBase + randFloat(-0.35, 0.15);
-  }
-  if (seasonIndex < 3 && ratingDelta > 0 && randFloat(0, 1) < 0.45) ratingDelta += randFloat(0, 0.35);
-  ratingDelta = clamp(ratingDelta, -5.5, 5.5);
-
-  const previousRating = player.rating;
-  const newRating = clamp(Math.round(previousRating + ratingDelta), 40, 99);
-  const ratingChange = newRating - previousRating;
-  const previousAttributes = { ...player.attributes };
-
+  // Age advances once per simulated year after the campaign.
   player.age = age;
-  player.rating = newRating;
-  adjustAttributes(player, profile.growthBias, ratingChange !== 0 ? ratingChange : ratingDelta);
-  if (age >= 33) {
-    const decay = age >= 37 ? randFloat(0.7, 1.6) : randFloat(0.3, 1.0);
-    player.potential = Math.max(newRating + 1, player.potential - decay);
-  }
-  player.careerTotals.matches += matches;
+
+  const envProxy = clamp(0.85 + ((player.club?.overall || 70) - 70) / 80, 0.55, 1.35);
+  const devRng = createStreamRng(stableCareerId(player), `development:${seasonId}`);
+  const already = player.development?.academyGrowthApplied || 0;
+  const developmentResult = developSeason(player, {
+    elapsedYears: 1,
+    usefulMinutes,
+    healthyTrainingFraction: player.health?.activeInjury ? 0.35 : 0.9,
+    reliableSignal: agg.reliableSignal,
+    P_long: usefulMinutes >= 900 ? agg.seasonP : null,
+    reliability: agg.reliability,
+    environmentMultiplier: envProxy,
+    rng: devRng,
+    seasonId,
+    alreadyAppliedLearningGain: already,
+    longFormReliable: usefulMinutes >= 900,
+  });
+
+  getOrUpdateForecast(player, { sampleCount: 48 });
+  refreshAbilityCaches(player);
+
+  const newRating = player.rating;
+  const ratingChange = newRating - previousRating;
+
+  player.careerTotals.matches += agg.combined.appearances;
   player.careerTotals.goals += goals;
   player.careerTotals.assists += assists;
   player.careerTotals.cleanSheets += cleanSheets;
@@ -376,15 +384,32 @@ export function simulateSeason(player, leagues, leagueLookup) {
     league: player.club.league,
     leagueDisplay: player.club.leagueDisplay ?? player.club.league,
     badge: player.club.badge,
-    matches,
+    matches: agg.combined.appearances,
+    starts: agg.combined.starts,
+    minutes: agg.combined.minutes,
     goals,
     assists,
     cleanSheets,
     yellowCards,
     redCards,
-    avgMatchRating,
+    avgMatchRating: agg.combined.avgMatchRating ?? avgMatchRating,
     ratingChange,
     ratingAfter: newRating,
+    baseOverallBefore: previousBaseRaw,
+    baseOverallAfter: player.baseOverallRaw,
+    currentOverallAfter: player.currentOverall,
+    potentialForecastBefore: previousForecast,
+    potentialForecastAfter: player.potentialForecast ? { ...player.potentialForecast } : null,
+    developmentExplanations: developmentResult?.explanations || [],
+    breakthrough: Boolean(developmentResult?.breakthroughTriggered),
+    ledgerSummary: {
+      club: agg.club,
+      international: agg.international,
+      reliableSignal: agg.reliableSignal,
+      nonParticipation: agg.nonParticipation,
+    },
+    playerModelVersion: player.playerModelVersion,
+    developmentModelVersion: player.developmentModelVersion,
     standing,
     honors,
     europeanCampaign,
@@ -393,12 +418,13 @@ export function simulateSeason(player, leagues, leagueLookup) {
     individualAwards,
     trophies,
     divisionMove: null,
-    leagueMatches: leagueSim.playerMatches,
+    leagueMatches: chrono.playerMatches,
+    chronology: chrono.chronology || null,
   };
 
   player.seasons.push(season);
   player.latestStanding = standing
-    ? { league: league.name, leagueDisplay: league.displayName ?? league.name, table: leagueSim.table, playerRow }
+    ? { league: league.name, leagueDisplay: league.displayName ?? league.name, table: chrono.table, playerRow }
     : null;
 
   const divisionMove = applyDivisionMovement(player, playerRow, league, leagues);
@@ -407,19 +433,35 @@ export function simulateSeason(player, leagues, leagueLookup) {
     if (standing) standing.divisionMove = divisionMove.type;
   }
 
+  applySeasonDevelopment(getWorldState());
+
   const attributeChanges = {};
-  STATS_KEYS.forEach((key) => {
+  const keys = getDisplayAttributeKeys(player.position);
+  keys.forEach((key) => {
+    const oldV = previousAttributes[key];
+    const newV = player.attributes[key];
     attributeChanges[key] = {
-      old: previousAttributes[key],
-      new: player.attributes[key],
-      change: player.attributes[key] - previousAttributes[key],
+      old: oldV,
+      new: newV,
+      change: Number.isFinite(newV) && Number.isFinite(oldV) ? newV - oldV : 0,
     };
+  });
+  // Also expose outfield keys for UI continuity when GK
+  STATS_KEYS.forEach((key) => {
+    if (attributeChanges[key]) return;
+    if (player.attributes?.[key] != null) {
+      attributeChanges[key] = {
+        old: previousAttributes[key],
+        new: player.attributes[key],
+        change: (player.attributes[key] || 0) - (previousAttributes[key] || 0),
+      };
+    }
   });
 
   return {
     season,
     league,
-    standings: { table: leagueSim.table, playerRecord: playerRow },
+    standings: { table: chrono.table, playerRecord: playerRow },
     europeanCampaign,
     internationalSeason,
     domesticCupResult,
@@ -428,5 +470,6 @@ export function simulateSeason(player, leagues, leagueLookup) {
     previousRating,
     newRating,
     performanceScore,
+    developmentResult,
   };
 }

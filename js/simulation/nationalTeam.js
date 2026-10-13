@@ -1,82 +1,53 @@
 import {
-  allTournamentNations,
   confederationForNation,
   flagForNation,
   nationsInConfederation,
   tournamentsForYear,
-} from "../data/internationalCalendar.js?v=47";
-import { clamp, pickRandom, randFloat } from "../utils/helpers.js";
-import { resolveKnockout, simulateMatch } from "./matchEngine.js?v=45";
-
-function shuffle(list) {
-  const copy = [...list];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
+} from "../data/internationalCalendar.js";
+import {
+  COPA_AMERICA_CORE,
+  COPA_AMERICA_INVITES,
+} from "../data/competitions/qualification.js";
+import { clamp } from "../utils/helpers.js";
+import { resolveKnockout, simulateMatch, formatMatchScoreline } from "./matchEngine.js";
+import { getNationProfile } from "../data/strength/nationProfiles.js";
+import { getSimRng } from "./rng.js";
+import { applyMatchFormUpdate, getWorldState } from "./worldState.js";
 
 function nationTeam(name) {
+  const profile = getNationProfile(name);
   return {
     name,
     displayName: name,
     badge: flagForNation(name),
+    nationId: profile?.nationId,
+    isNation: true,
+    overall: profile?.overall,
+    attack: profile?.attack,
+    midfield: profile?.midfield,
+    defence: profile?.defence,
+    goalkeeper: profile?.goalkeeper,
     financialTier: 3,
     tier: 4,
-    isNation: true,
   };
 }
 
-function strengthForNation(name, playerNation, playerRating) {
-  // Rough tiering: big nations stronger
-  const elite = new Set([
-    "Brazil",
-    "France",
-    "Argentina",
-    "Spain",
-    "Germany",
-    "England",
-    "Portugal",
-    "Netherlands",
-    "Italy",
-    "Belgium",
-  ]);
-  const strong = new Set([
-    "Uruguay",
-    "Croatia",
-    "Denmark",
-    "Switzerland",
-    "Colombia",
-    "Mexico",
-    "Japan",
-    "Senegal",
-    "Morocco",
-    "USA",
-    "United States",
-    "Serbia",
-    "Poland",
-    "Turkey",
-    "South Korea",
-    "Nigeria",
-  ]);
-  let base = elite.has(name) ? 86 : strong.has(name) ? 76 : 64;
-  if (name === playerNation) base = Math.max(base, 58 + (playerRating - 60) * 0.35);
-  return clamp(base + randFloat(-5, 5), 45, 95);
-}
-
-/** Call-up probability from OVR + season form (avg match rating). */
+/** Call-up probability from OVR + form + club sporting quality (not wealth). */
 export function nationalCallUpChance(player, avgMatchRating = 6.8) {
   const r = player.rating || 60;
+  const nation = getNationProfile(player.nationality);
+  const nationPos = nation?.replacementOvr?.[player.position] ?? nation?.overall ?? 75;
+  // Relative to nation's typical starter in that role
+  const relative = r - nationPos;
+
   let chance;
-  if (r < 64) chance = 0.03;
-  else if (r < 68) chance = 0.08;
-  else if (r < 72) chance = 0.16;
-  else if (r < 76) chance = 0.28;
-  else if (r < 80) chance = 0.45;
-  else if (r < 84) chance = 0.62;
-  else if (r < 88) chance = 0.78;
-  else chance = 0.9;
+  if (relative < -12) chance = 0.03;
+  else if (relative < -6) chance = 0.1;
+  else if (relative < 0) chance = 0.22;
+  else if (relative < 4) chance = 0.4;
+  else if (relative < 8) chance = 0.58;
+  else if (relative < 12) chance = 0.74;
+  else chance = 0.88;
 
   const form = Number(avgMatchRating) || 6.8;
   if (form >= 8.2) chance += 0.14;
@@ -85,23 +56,23 @@ export function nationalCallUpChance(player, avgMatchRating = 6.8) {
   else if (form < 6.2) chance -= 0.12;
   else if (form < 6.6) chance -= 0.06;
 
-  // Youngsters get a small look-in; veterans slightly preferred once established
   if (player.age <= 21) chance += 0.03;
   if (player.age >= 33) chance -= 0.04;
 
-  // Club level hint
-  const ft = player.club?.financialTier ?? 2;
-  if (ft >= 4) chance += 0.04;
-  if (ft <= 2) chance -= 0.03;
+  const clubOverall = player.club?.overall ?? 68;
+  if (clubOverall >= 84) chance += 0.05;
+  else if (clubOverall >= 76) chance += 0.02;
+  else if (clubOverall <= 62) chance -= 0.04;
 
   return clamp(chance, 0.01, 0.96);
 }
 
 function pickCallUpMessage({ calledUp, chance, player, tournamentName }) {
   const pct = Math.round(chance * 100);
+  const rng = getSimRng();
   if (calledUp) {
     if (chance < 0.28) {
-      return pickRandom([
+      return rng.pick([
         `Surprise call-up: the ${player.nationality} manager has taken a personal liking to your game (${pct}% chance).`,
         `A late injury in the squad opened the door — you're on the plane for the ${tournamentName}.`,
         `The federation is blooding youth. You've been handed a chance few expected at your level.`,
@@ -109,22 +80,21 @@ function pickCallUpMessage({ calledUp, chance, player, tournamentName }) {
       ]);
     }
     if (chance < 0.55) {
-      return pickRandom([
+      return rng.pick([
         `You've been named in the ${player.nationality} squad for the ${tournamentName}.`,
         `International duty: selected for ${tournamentName} after a solid club season.`,
         `The manager trusts your minutes. You're in for the ${tournamentName}.`,
       ]);
     }
-    return pickRandom([
+    return rng.pick([
       `As expected, you're locked into the ${player.nationality} squad for the ${tournamentName}.`,
       `Automatic pick: named among the first names for ${tournamentName}.`,
       `No surprises — you're central to ${player.nationality}'s plans at the ${tournamentName}.`,
     ]);
   }
 
-  // Not called up
   if (chance >= 0.7) {
-    return pickRandom([
+    return rng.pick([
       `Shock omission: a new ${player.nationality} manager is reshaping the squad and left you out.`,
       `You were favourite to go (${pct}%), but the coach prefers a different profile in your position.`,
       `Politics at the federation. A crowded squad list squeezed you out of the ${tournamentName}.`,
@@ -132,54 +102,134 @@ function pickCallUpMessage({ calledUp, chance, player, tournamentName }) {
     ]);
   }
   if (chance >= 0.4) {
-    return pickRandom([
+    return rng.pick([
       `Close, but not this time. ${player.nationality} went with experience ahead of you for the ${tournamentName}.`,
       `You were discussed. The final cut came down to form elsewhere.`,
       `Near miss: provisional lists had your name; the confirmed squad did not.`,
     ]);
   }
-  return pickRandom([
+  return rng.pick([
     `No call-up for the ${tournamentName}. Keep performing and the door may open.`,
     `${player.nationality}'s squad is set — you're not in it this window.`,
     `International break without you. Focus stays on club football for now.`,
   ]);
 }
 
-function buildField(tournament, playerNation, ensurePlayerNation) {
-  let pool;
+function eligiblePool(tournament) {
+  if (tournament.id === "copa-america") {
+    const core = COPA_AMERICA_CORE.filter((n) => getNationProfile(n));
+    const invites = COPA_AMERICA_INVITES.filter((n) => getNationProfile(n));
+    return [...new Set([...core, ...invites])];
+  }
   if (tournament.confederation === "FIFA") {
-    pool = allTournamentNations();
-  } else {
-    pool = nationsInConfederation(tournament.confederation);
+    return nationsInConfederation("UEFA")
+      .concat(nationsInConfederation("CONMEBOL"))
+      .concat(nationsInConfederation("CAF"))
+      .concat(nationsInConfederation("CONCACAF"))
+      .concat(nationsInConfederation("AFC"))
+      .concat(nationsInConfederation("OFC"));
   }
-  if (!pool.length) pool = allTournamentNations();
+  return nationsInConfederation(tournament.confederation);
+}
 
-  // Seed stronger nations more often into major tournaments
+/**
+ * Build a valid field. Call-up does NOT force qualification.
+ * ensurePlayerNation only applies when the nation is already eligible for the pool.
+ */
+function largestValidFieldSize(poolSize, configuredSize, groupSize) {
+  const g = Math.max(2, groupSize || 4);
+  let size = Math.min(configuredSize, poolSize);
+  size -= size % g;
+  // Prefer sizes where top-2-per-group yields a power-of-two knockout.
+  while (size >= g) {
+    const groups = size / g;
+    const ko = groups * 2;
+    if (Number.isInteger(groups) && ko >= 2 && (ko & (ko - 1)) === 0) return size;
+    size -= g;
+  }
+  // Otherwise any multiple of group size that fits the pool.
+  size = Math.min(configuredSize, poolSize);
+  size -= size % g;
+  return size >= g ? size : 0;
+}
+
+function buildField(tournament, playerNation, { forceIncludeEligibleNation = false } = {}) {
+  const rng = getSimRng();
+  const pool = [...new Set(eligiblePool(tournament))];
+  if (!pool.length) {
+    throw new Error(`${tournament.name}: empty eligible pool`);
+  }
+
+  const groupSize = tournament.groupSize || 4;
+  let usable = largestValidFieldSize(pool.length, tournament.fieldSize, groupSize);
+  if (usable < groupSize) {
+    throw new Error(
+      `${tournament.name}: invalid field/group config (pool=${pool.length}, field=${tournament.fieldSize}, group=${groupSize})`
+    );
+  }
+  // Stash effective size for group loop consumers
+  tournament._resolvedFieldSize = usable;
+
   const ranked = [...pool]
-    .map((name) => ({ name, seed: strengthForNation(name, playerNation, 75) + randFloat(-6, 6) }))
-    .sort((a, b) => b.seed - a.seed)
-    .map((x) => x.name);
-  const cut = Math.ceil(tournament.fieldSize * 0.7);
-  const top = ranked.slice(0, cut);
-  const rest = ranked.slice(cut);
-  let field = shuffle([
-    ...shuffle(top).slice(0, Math.min(top.length, Math.max(2, tournament.fieldSize - 2))),
-    ...shuffle(rest).slice(0, Math.max(2, tournament.fieldSize - top.length)),
-  ]).slice(0, tournament.fieldSize);
+    .map((name) => ({ name, seed: getNationProfile(name)?.overall ?? 60 }))
+    .sort((a, b) => b.seed - a.seed);
 
-  if (ensurePlayerNation && playerNation && !field.includes(playerNation)) {
-    field[field.length - 1] = playerNation;
-    field = shuffle(field);
+  const cut = Math.ceil(usable * 0.7);
+  const top = ranked.slice(0, cut).map((x) => x.name);
+  const rest = ranked.slice(cut).map((x) => x.name);
+  let field = rng
+    .shuffle([
+      ...rng.shuffle(top).slice(0, Math.min(top.length, Math.max(2, usable - 2))),
+      ...rng.shuffle(rest).slice(0, Math.max(0, usable)),
+    ])
+    .slice(0, usable);
+
+  // Deduplicate
+  field = [...new Set(field)].slice(0, usable);
+
+  // Fill from remaining eligible only — never foreign confederations for continental cups
+  const leftover = ranked.map((x) => x.name).filter((n) => !field.includes(n));
+  while (field.length < usable && leftover.length) {
+    field.push(leftover.shift());
   }
-  while (field.length < Math.min(4, tournament.fieldSize)) {
-    const extra = pickRandom(allTournamentNations());
-    if (!field.includes(extra)) field.push(extra);
+
+  if (field.length < usable) {
+    // Last resort: shrink to what we can fill (still eligible-only)
+    usable = largestValidFieldSize(field.length, field.length, groupSize);
+    field = field.slice(0, usable);
+    tournament._resolvedFieldSize = usable;
   }
-  const usable = tournament.fieldSize - (tournament.fieldSize % tournament.groupSize);
+  if (field.length < groupSize || field.length % groupSize !== 0) {
+    throw new Error(
+      `${tournament.name}: could not build valid field (have ${field.length}, need multiple of ${groupSize}) from ${pool.length} eligible nations`
+    );
+  }
+
+  if (
+    forceIncludeEligibleNation &&
+    playerNation &&
+    pool.includes(playerNation) &&
+    !field.includes(playerNation)
+  ) {
+    // Replace weakest seeded slot — still within eligible pool
+    let weakestIdx = 0;
+    let weakest = Infinity;
+    field.forEach((n, i) => {
+      const o = getNationProfile(n)?.overall ?? 99;
+      if (o < weakest) {
+        weakest = o;
+        weakestIdx = i;
+      }
+    });
+    field[weakestIdx] = playerNation;
+  }
+
   return field.slice(0, usable);
 }
 
 function simulateGroup(teams, { playerNation, player, playerInSquad }) {
+  const rng = getSimRng();
+  const world = getWorldState();
   const records = teams.map((name) => ({
     name,
     displayName: name,
@@ -202,10 +252,6 @@ function simulateGroup(teams, { playerNation, player, playerInSquad }) {
       const bName = teams[j];
       const a = nationTeam(aName);
       const b = nationTeam(bName);
-      a.financialTier = Math.max(1, Math.round(strengthForNation(aName, playerNation, player.rating) / 18));
-      b.financialTier = Math.max(1, Math.round(strengthForNation(bName, playerNation, player.rating) / 18));
-      a.tier = Math.max(1, Math.round(strengthForNation(aName, playerNation, player.rating) / 20));
-      b.tier = Math.max(1, Math.round(strengthForNation(bName, playerNation, player.rating) / 20));
 
       const playerIn =
         playerInSquad && (aName === playerNation || bName === playerNation)
@@ -214,29 +260,36 @@ function simulateGroup(teams, { playerNation, player, playerInSquad }) {
             : "away"
           : null;
 
-      let match = simulateMatch(a, b, {
+      const match = simulateMatch(a, b, {
         playerSide: playerIn,
         player: playerIn ? player : null,
         competition: "international",
+        venue: "neutral",
+        worldState: world,
+        rng,
+        competitionId: "international-group",
       });
       match.round = "Group stage";
       match.cupName = "International";
+      applyMatchFormUpdate(world, match);
       matches.push(match);
       if (playerIn) playerMatches.push(match);
 
       const home = byName[aName];
       const away = byName[bName];
+      const hg = match.matchHomeGoals ?? match.homeGoals;
+      const ag = match.matchAwayGoals ?? match.awayGoals;
       home.played += 1;
       away.played += 1;
-      home.gf += match.homeGoals;
-      home.ga += match.awayGoals;
-      away.gf += match.awayGoals;
-      away.ga += match.homeGoals;
-      if (match.homeGoals > match.awayGoals) {
+      home.gf += hg;
+      home.ga += ag;
+      away.gf += ag;
+      away.ga += hg;
+      if (hg > ag) {
         home.wins += 1;
         home.points += 3;
         away.losses += 1;
-      } else if (match.awayGoals > match.homeGoals) {
+      } else if (ag > hg) {
         away.wins += 1;
         away.points += 3;
         home.losses += 1;
@@ -253,10 +306,18 @@ function simulateGroup(teams, { playerNation, player, playerInSquad }) {
     .map((r) => ({ ...r, gd: r.gf - r.ga }))
     .sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf);
 
-  return { table, matches, playerMatches, qualifiers: table.slice(0, 2).map((t) => t.name) };
+  const qualifiersNeeded = 2;
+  return {
+    table,
+    matches,
+    playerMatches,
+    qualifiers: table.slice(0, qualifiersNeeded).map((t) => t.name),
+  };
 }
 
 function simulateKnockout(teams, { playerNation, player, playerInSquad, competitionName }) {
+  const rng = getSimRng();
+  const world = getWorldState();
   let remaining = teams.map(nationTeam);
   const playerMatches = [];
   const rounds = [];
@@ -271,8 +332,21 @@ function simulateKnockout(teams, { playerNation, player, playerInSquad, competit
     return `Round of ${n}`;
   };
 
+  // Trim to power of two from actual qualifiers only — never invent nations
+  let size = 1;
+  while (size * 2 <= remaining.length) size *= 2;
+  if (size < 2) {
+    throw new Error(`${competitionName}: knockout needs at least 2 teams, got ${remaining.length}`);
+  }
+  if (remaining.length !== size) {
+    // Keep highest group finish order as passed; drop from end
+    remaining = remaining.slice(0, size);
+  }
+
   while (remaining.length > 1) {
-    if (remaining.length % 2 === 1) remaining.push(nationTeam(pickRandom(allTournamentNations())));
+    if (remaining.length % 2 === 1) {
+      throw new Error(`${competitionName}: odd knockout field ${remaining.length}`);
+    }
     const label = labelFor(remaining.length);
     const next = [];
     const roundMatches = [];
@@ -280,10 +354,6 @@ function simulateKnockout(teams, { playerNation, player, playerInSquad, competit
     for (let i = 0; i < remaining.length; i += 2) {
       const a = remaining[i];
       const b = remaining[i + 1];
-      a.financialTier = Math.max(1, Math.round(strengthForNation(a.name, playerNation, player.rating) / 18));
-      b.financialTier = Math.max(1, Math.round(strengthForNation(b.name, playerNation, player.rating) / 18));
-      a.tier = Math.max(1, Math.round(strengthForNation(a.name, playerNation, player.rating) / 20));
-      b.tier = Math.max(1, Math.round(strengthForNation(b.name, playerNation, player.rating) / 20));
 
       const playerIn =
         playerInSquad && (a.name === playerNation || b.name === playerNation)
@@ -296,10 +366,15 @@ function simulateKnockout(teams, { playerNation, player, playerInSquad, competit
         playerSide: playerIn,
         player: playerIn ? player : null,
         competition: "international",
+        venue: "neutral",
+        worldState: world,
+        rng,
+        competitionId: competitionName,
       });
-      match = resolveKnockout(match);
+      match = resolveKnockout(match, { player: playerIn ? player : null, rng });
       match.round = label;
       match.cupName = competitionName;
+      applyMatchFormUpdate(world, match);
       const winner = match.winnerSide === "home" ? a : b;
       next.push(winner);
       roundMatches.push(match);
@@ -322,7 +397,7 @@ function simulateKnockout(teams, { playerNation, player, playerInSquad, competit
           round: label,
           opponent: opp.displayName,
           opponentBadge: opp.badge,
-          score: last.playerSide === "home" ? last.scoreline : `${last.awayGoals}-${last.homeGoals}`,
+          score: formatMatchScoreline(last, { fromPlayerSide: last.playerSide }),
           qualified,
           match: last,
         });
@@ -348,30 +423,49 @@ function simulateKnockout(teams, { playerNation, player, playerInSquad, competit
     finalists: finalMatch ? [finalMatch.home, finalMatch.away] : null,
     winner: winner?.displayName ?? null,
     winnerData: winner
-      ? { name: winner.name, displayName: winner.displayName, badge: winner.badge }
+      ? { name: winner.name, displayName: winner.displayName, badge: winner.badge, nationId: winner.nationId }
       : null,
     won,
     result,
   };
 }
 
-function simulateOneTournament(tournament, player, { calledUp, avgMatchRating, ensurePlayerNation }) {
+function simulateOneTournament(tournament, player, { calledUp, forceIncludeIfEligible }) {
   const playerNation = player.nationality;
-  const field = buildField(
-    tournament,
-    playerNation,
-    Boolean(calledUp || ensurePlayerNation)
-  );
+  const pool = eligiblePool(tournament);
+  const nationEligible = pool.includes(playerNation);
+
+  // Call-up cannot invent qualification for an ineligible nation
+  const field = buildField(tournament, playerNation, {
+    forceIncludeEligibleNation: Boolean(forceIncludeIfEligible && nationEligible),
+  });
+
+  if (field.includes("Jordan") && tournament.id === "copa-america") {
+    throw new Error("Copa América field leaked ineligible nation Jordan");
+  }
+
   const groupSize = tournament.groupSize || 4;
+  if (field.length % groupSize !== 0) {
+    throw new Error(`${tournament.name}: field ${field.length} not divisible by group ${groupSize}`);
+  }
+  // Knockout: top 2 per group must form a power-of-two when possible
+  const qualifiersPerGroup = 2;
+  const expectedKo = (field.length / groupSize) * qualifiersPerGroup;
+  if (expectedKo < 2) {
+    throw new Error(`${tournament.name}: knockout would have fewer than 2 teams`);
+  }
+
   const groups = [];
   const allPlayerMatches = [];
+  const playerActuallyIn =
+    Boolean(calledUp) && nationEligible && field.includes(playerNation);
 
   for (let g = 0; g < field.length / groupSize; g++) {
     const teams = field.slice(g * groupSize, (g + 1) * groupSize);
     const group = simulateGroup(teams, {
       playerNation,
       player,
-      playerInSquad: calledUp,
+      playerInSquad: playerActuallyIn,
     });
     groups.push({
       name: `Group ${String.fromCharCode(65 + g)}`,
@@ -380,20 +474,19 @@ function simulateOneTournament(tournament, player, { calledUp, avgMatchRating, e
     allPlayerMatches.push(...group.playerMatches);
   }
 
-  // Knockout: top 2 from each group
   let knockoutTeams = groups.flatMap((g) => g.qualifiers);
-  // Ensure power of 2
-  while (knockoutTeams.length > 2 && knockoutTeams.length % 2 === 1) {
-    knockoutTeams.pop();
+  // Must be power of 2 from real qualifiers only
+  let koSize = 1;
+  while (koSize * 2 <= knockoutTeams.length) koSize *= 2;
+  if (koSize < 2) {
+    throw new Error(`${tournament.name}: not enough group qualifiers for knockout`);
   }
-  if (knockoutTeams.length < 2) {
-    knockoutTeams = shuffle(field).slice(0, 4);
-  }
+  knockoutTeams = knockoutTeams.slice(0, koSize);
 
   const ko = simulateKnockout(knockoutTeams, {
     playerNation,
     player,
-    playerInSquad: calledUp,
+    playerInSquad: playerActuallyIn,
     competitionName: tournament.name,
   });
   allPlayerMatches.push(...ko.playerMatches);
@@ -404,22 +497,17 @@ function simulateOneTournament(tournament, player, { calledUp, avgMatchRating, e
     shortName: tournament.shortName,
     confederation: tournament.confederation,
     year: tournament.year,
-    calledUp,
+    calledUp: playerActuallyIn,
     groups,
     ...ko,
     playerMatches: allPlayerMatches,
     playerNationInTournament: field.includes(playerNation),
+    field,
   };
 }
 
-/**
- * Full international window for a season.
- * @param {object} opts
- * @param {object} opts.player
- * @param {number} opts.calendarYear
- * @param {number} opts.avgMatchRating
- */
 export function simulateInternationalSeason({ player, calendarYear, avgMatchRating = 6.8 }) {
+  const rng = getSimRng();
   const year = calendarYear || new Date().getFullYear();
   const tournaments = tournamentsForYear(year).map((t) => ({ ...t, year }));
   const conf = confederationForNation(player.nationality);
@@ -439,14 +527,13 @@ export function simulateInternationalSeason({ player, calendarYear, avgMatchRati
     };
   }
 
-  // Prefer continental tournament for call-up; World Cup if available
   const relevant = tournaments.filter(
     (t) => t.confederation === "FIFA" || t.confederation === conf
   );
 
   if (!relevant.length) {
     const simulated = tournaments.map((t) =>
-      simulateOneTournament(t, player, { calledUp: false, avgMatchRating })
+      simulateOneTournament(t, player, { calledUp: false, forceIncludeIfEligible: false })
     );
     return {
       year,
@@ -465,30 +552,39 @@ export function simulateInternationalSeason({ player, calendarYear, avgMatchRati
   }
 
   const callUpTarget = relevant[0];
-  const chance = nationalCallUpChance(player, avgMatchRating);
-  const calledUp = Math.random() < chance;
+  const pool = eligiblePool(callUpTarget);
+  const nationEligible = pool.includes(player.nationality);
 
-  const announcement = pickCallUpMessage({
-    calledUp,
-    chance,
-    player,
-    tournamentName: callUpTarget.name,
-  });
+  // Qualification/participation decided first; call-up only if nation is in the field path
+  const chance = nationEligible ? nationalCallUpChance(player, avgMatchRating) : 0;
+  const calledUp = nationEligible && rng.random() < chance;
+
+  const announcement = nationEligible
+    ? pickCallUpMessage({
+        calledUp,
+        chance,
+        player,
+        tournamentName: callUpTarget.name,
+      })
+    : `${player.nationality} are not in the ${callUpTarget.name} field this cycle.`;
+
   let announcementTone = "neutral";
-  if (calledUp && chance < 0.28) announcementTone = "surprise-in";
+  if (!nationEligible) announcementTone = "neutral";
+  else if (calledUp && chance < 0.28) announcementTone = "surprise-in";
   else if (calledUp) announcementTone = "called-up";
   else if (!calledUp && chance >= 0.7) announcementTone = "shock-out";
   else announcementTone = "out";
 
   const simulated = tournaments.map((t) => {
     const playIn = calledUp && t.id === callUpTarget.id;
-    const ensureNation = t.id === callUpTarget.id;
+    // Prefer including eligible nation in their continental/WC tournament for storytelling,
+    // but never for Copa if not eligible, and never invent nations.
+    const forceInclude = t.id === callUpTarget.id && nationEligible;
     const result = simulateOneTournament(t, player, {
       calledUp: playIn,
-      avgMatchRating,
-      ensurePlayerNation: ensureNation,
+      forceIncludeIfEligible: forceInclude,
     });
-    result.calledUp = playIn;
+    result.calledUp = playIn && result.playerNationInTournament;
     return result;
   });
 
@@ -499,7 +595,7 @@ export function simulateInternationalSeason({ player, calendarYear, avgMatchRati
     year,
     confederation: conf,
     hasTournaments: true,
-    calledUp,
+    calledUp: Boolean(primary),
     callUpChance: parseFloat(chance.toFixed(3)),
     callUpChancePct: Math.round(chance * 100),
     announcement,

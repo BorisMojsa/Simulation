@@ -1,0 +1,23 @@
+{
+  "algorithm": "SHA-256",
+  "files": {
+    "Cursor_Prompt.txt": "7dedb50cc84a80bcf81116ea6ba6a313a0c7580c279c085af7bc0605c3688780",
+    "README.md": "13eb3de67ac5ca2f13c5c2d5234c219b1ffcbcc4bb4a8e2973fe3b1d5dbde946",
+    "club_calibration_audit.json": "61214761a49e2b88d3e0994f96669f1a92c659c6dce5b12c6b142a635622416a",
+    "club_calibration_audit.md": "c6360591f6fdc231279043a61fd2eafb78f49f14f7d5dacf102ac65fa813acd9",
+    "input_reports/nation-strength-coverage-report.json": "f5f3bb9748e5766c24ec01ec9548fec2dd73c2fddeca638a88be48399ad3d823",
+    "input_reports/strength-calibration-report.json": "babe7cfd8ccd2da3bbe1c2f9a66ae622a875d33a28054ef650c2f6116266cfe0",
+    "nation_identity_mappings.json": "cab6107f4affa8993aff00ecd19a8e7b1189a2b9b50c3a6b1ff94909c285b513",
+    "nation_observations_79.json": "d5c38143e25d4c7a16b1b94fe59e8f55b26c987083ca811e4913b5ea55784780",
+    "nation_replacements_59.json": "b193eadd3484bd30ae0702f6176518670916e5bb4faf9897aa5a224061ee18fd",
+    "paired_club_observations_75.json": "68f8527221462b6b2b7a32d5a0da12e9d05074955c3b0c15afe28421119b1e5b",
+    "raw/australia_supplement_2026-10-07.json": "5741788e35053a25b62fbad907ff0c1d5f0b8b05b93bc235b0b23a8b9b4d03a8",
+    "raw/b_empire_fifa_2026-10-07_inventory79.json": "dcdefbfaa199ff9715bd58a39e57f2767670c172449834108666b84d56c7d8e1",
+    "raw/betimate_fifa_2026-10-07_inventory79.json": "1d5bdd9947629a00dff10b657ba653e18ec0693039b163912f09393c9aab0f06",
+    "raw/futbor_fifa_2026-10-07_inventory79.json": "fda1693c59553746b22c2587fd303a9f8cd3c6e128ffef3167ddc07b44ef5659",
+    "research_coverage_summary.json": "c63514193b1acf77fe3cb25d1aaf7e6c6cd310a41b87269a81320f49251bb16e",
+    "source_discrepancies.json": "2452da8e4c34be4ac3f72b1572b86567430ea8fbe4a686341d63fde833b54c31",
+    "source_manifest.json": "7e22a3f4c0ae8ee844a2316a690b7cf26835e760b64d33f75dea421609dbe3f5",
+    "validate_pack.py": "04537c3a7aa8bf6195a5b111bbec6c5008b3e0a7bba28031efd645f4215fc11f"
+  }
+}

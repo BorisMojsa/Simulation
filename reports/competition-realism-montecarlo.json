@@ -1,0 +1,3420 @@
+{
+  "generatedAt": "2026-10-09T22:28:47.686Z",
+  "baseSeed": 20261009,
+  "method": "Fresh world + Mulberry32 RNG per iteration. Favorite = higher effectiveStrength.overall at kickoff. Upset = weaker side wins in open play (draws excluded from favorite/upset split denominators are still counted in drawPct over all decided+drawn matches). Title quartiles use preseason/field strength ranks. Probe player placed on weak club with replacement-level OVR; national call-ups suppressed via low avgMatchRating.",
+  "config": {
+    "LEAGUE_ITERS": 120,
+    "CUP_ITERS": 100,
+    "CONTINENTAL_ITERS": 150,
+    "NATIONAL_ITERS": 100,
+    "PAIR_ITERS": 2500
+  },
+  "elapsedMs": 11206,
+  "pairProbe": [
+    {
+      "label": "Elite vs mid (Arsenal vs Brentford)",
+      "n": 2500,
+      "meanStrengthGap": 10.32,
+      "strongerSideWinPct": 63.8,
+      "favoriteWinPct": 63.8,
+      "upsetPct": 15.6,
+      "drawPct": 20.6,
+      "homeWinPct": 63.8,
+      "awayWinPct": 15.6
+    },
+    {
+      "label": "Elite vs weak (Bayern vs Paderborn)",
+      "n": 2500,
+      "meanStrengthGap": 22.1,
+      "strongerSideWinPct": 87.4,
+      "favoriteWinPct": 87.4,
+      "upsetPct": 3.2,
+      "drawPct": 9.4,
+      "homeWinPct": 87.4,
+      "awayWinPct": 3.2
+    },
+    {
+      "label": "Close top (Real Madrid vs Barcelona)",
+      "n": 2500,
+      "meanStrengthGap": 3.02,
+      "strongerSideWinPct": 45,
+      "favoriteWinPct": 45,
+      "upsetPct": 29.8,
+      "drawPct": 25.2,
+      "homeWinPct": 29.8,
+      "awayWinPct": 45
+    },
+    {
+      "label": "Nation elite vs weak (Spain vs Togo)",
+      "n": 2500,
+      "meanStrengthGap": 45.58,
+      "strongerSideWinPct": 93.1,
+      "favoriteWinPct": 93.1,
+      "upsetPct": 0.7,
+      "drawPct": 6.2,
+      "homeWinPct": 93.1,
+      "awayWinPct": 0.7
+    },
+    {
+      "label": "Nation mid gap (Iran vs China)",
+      "n": 2500,
+      "meanStrengthGap": 19.55,
+      "strongerSideWinPct": 82,
+      "favoriteWinPct": 82,
+      "upsetPct": 5,
+      "drawPct": 13.1,
+      "homeWinPct": 82,
+      "awayWinPct": 5
+    }
+  ],
+  "leagues": [
+    {
+      "league": "England - Premier League",
+      "nation": "England",
+      "clubs": 20,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "Arsenal",
+        "overall": 93.26
+      },
+      "topSeedTitlePct": 45.8,
+      "top4PreseasonTitlePct": 97.5,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 119,
+          "pct": 99.2
+        },
+        "Q2": {
+          "titles": 1,
+          "pct": 0.8
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Manchester City",
+          "titles": 57,
+          "titlePct": 47.5,
+          "preseasonRank": 2,
+          "overall": 92.57
+        },
+        {
+          "name": "Arsenal",
+          "titles": 55,
+          "titlePct": 45.8,
+          "preseasonRank": 1,
+          "overall": 93.26
+        },
+        {
+          "name": "Liverpool",
+          "titles": 5,
+          "titlePct": 4.2,
+          "preseasonRank": 3,
+          "overall": 87.29
+        },
+        {
+          "name": "Brighton & Hove Albion",
+          "titles": 2,
+          "titlePct": 1.7,
+          "preseasonRank": 5,
+          "overall": 84.62
+        },
+        {
+          "name": "Manchester United",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 7,
+          "overall": 83.92
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 45350,
+        "favoriteWinPct": 54.4,
+        "upsetPct": 23.6,
+        "drawPct": 21.9,
+        "byGap": {
+          "5-10": {
+            "n": 13070,
+            "favoriteWinPct": 56.6,
+            "upsetPct": 21.3,
+            "drawPct": 22
+          },
+          "10-15": {
+            "n": 8708,
+            "favoriteWinPct": 68.3,
+            "upsetPct": 13.5,
+            "drawPct": 18.2
+          },
+          "2-5": {
+            "n": 11990,
+            "favoriteWinPct": 46.3,
+            "upsetPct": 28.8,
+            "drawPct": 24.8
+          },
+          "15+": {
+            "n": 2693,
+            "favoriteWinPct": 81.9,
+            "upsetPct": 6.8,
+            "drawPct": 11.3
+          },
+          "0-2": {
+            "n": 8889,
+            "favoriteWinPct": 40.3,
+            "upsetPct": 35,
+            "drawPct": 24.7
+          }
+        },
+        "homeVenue": {
+          "n": 45350,
+          "homeWinPct": 42.4,
+          "drawPct": 21.9,
+          "awayWinPct": 35.6
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "league": "Spain - La Liga",
+      "nation": "Spain",
+      "clubs": 20,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "FC Barcelona",
+        "overall": 92.34
+      },
+      "topSeedTitlePct": 75,
+      "top4PreseasonTitlePct": 98.3,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 119,
+          "pct": 99.2
+        },
+        "Q2": {
+          "titles": 1,
+          "pct": 0.8
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "FC Barcelona",
+          "titles": 90,
+          "titlePct": 75,
+          "preseasonRank": 1,
+          "overall": 92.34
+        },
+        {
+          "name": "Real Madrid",
+          "titles": 26,
+          "titlePct": 21.7,
+          "preseasonRank": 2,
+          "overall": 89.32
+        },
+        {
+          "name": "Atlético Madrid",
+          "titles": 2,
+          "titlePct": 1.7,
+          "preseasonRank": 3,
+          "overall": 85.32
+        },
+        {
+          "name": "Athletic Bilbao",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 7,
+          "overall": 77.25
+        },
+        {
+          "name": "Villarreal",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 5,
+          "overall": 79.23
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 45261,
+        "favoriteWinPct": 51.6,
+        "upsetPct": 25.5,
+        "drawPct": 22.9,
+        "byGap": {
+          "0-2": {
+            "n": 13254,
+            "favoriteWinPct": 40.2,
+            "upsetPct": 34.3,
+            "drawPct": 25.5
+          },
+          "2-5": {
+            "n": 14367,
+            "favoriteWinPct": 44.7,
+            "upsetPct": 29.7,
+            "drawPct": 25.6
+          },
+          "5-10": {
+            "n": 7694,
+            "favoriteWinPct": 55,
+            "upsetPct": 22.2,
+            "drawPct": 22.7
+          },
+          "15+": {
+            "n": 4750,
+            "favoriteWinPct": 80.2,
+            "upsetPct": 7,
+            "drawPct": 12.8
+          },
+          "10-15": {
+            "n": 5196,
+            "favoriteWinPct": 68.6,
+            "upsetPct": 13,
+            "drawPct": 18.3
+          }
+        },
+        "homeVenue": {
+          "n": 45261,
+          "homeWinPct": 42,
+          "drawPct": 22.9,
+          "awayWinPct": 35.1
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "league": "Italy - Serie A",
+      "nation": "Italy",
+      "clubs": 20,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "Inter Milan",
+        "overall": 87.81
+      },
+      "topSeedTitlePct": 73.3,
+      "top4PreseasonTitlePct": 95,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 115,
+          "pct": 95.8
+        },
+        "Q2": {
+          "titles": 5,
+          "pct": 4.2
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Inter Milan",
+          "titles": 88,
+          "titlePct": 73.3,
+          "preseasonRank": 1,
+          "overall": 87.81
+        },
+        {
+          "name": "Roma",
+          "titles": 11,
+          "titlePct": 9.2,
+          "preseasonRank": 2,
+          "overall": 82.65
+        },
+        {
+          "name": "Juventus",
+          "titles": 10,
+          "titlePct": 8.3,
+          "preseasonRank": 3,
+          "overall": 81.72
+        },
+        {
+          "name": "Napoli",
+          "titles": 5,
+          "titlePct": 4.2,
+          "preseasonRank": 4,
+          "overall": 81.26
+        },
+        {
+          "name": "Como",
+          "titles": 5,
+          "titlePct": 4.2,
+          "preseasonRank": 7,
+          "overall": 79.69
+        },
+        {
+          "name": "AC Milan",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 5,
+          "overall": 80.68
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 45350,
+        "favoriteWinPct": 52.6,
+        "upsetPct": 24.2,
+        "drawPct": 23.2,
+        "byGap": {
+          "2-5": {
+            "n": 11735,
+            "favoriteWinPct": 46.3,
+            "upsetPct": 28.3,
+            "drawPct": 25.4
+          },
+          "15+": {
+            "n": 1729,
+            "favoriteWinPct": 78.7,
+            "upsetPct": 7.9,
+            "drawPct": 13.4
+          },
+          "0-2": {
+            "n": 9666,
+            "favoriteWinPct": 39.5,
+            "upsetPct": 34.7,
+            "drawPct": 25.8
+          },
+          "5-10": {
+            "n": 15654,
+            "favoriteWinPct": 56.5,
+            "upsetPct": 20.7,
+            "drawPct": 22.9
+          },
+          "10-15": {
+            "n": 6566,
+            "favoriteWinPct": 66.9,
+            "upsetPct": 14.1,
+            "drawPct": 19.1
+          }
+        },
+        "homeVenue": {
+          "n": 45350,
+          "homeWinPct": 41.6,
+          "drawPct": 23.2,
+          "awayWinPct": 35.2
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "league": "Germany - Bundesliga",
+      "nation": "Germany",
+      "clubs": 18,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "Bayern Munich",
+        "overall": 93.61
+      },
+      "topSeedTitlePct": 92.5,
+      "top4PreseasonTitlePct": 100,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 120,
+          "pct": 100
+        },
+        "Q2": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Bayern Munich",
+          "titles": 111,
+          "titlePct": 92.5,
+          "preseasonRank": 1,
+          "overall": 93.61
+        },
+        {
+          "name": "Borussia Dortmund",
+          "titles": 6,
+          "titlePct": 5,
+          "preseasonRank": 2,
+          "overall": 85.14
+        },
+        {
+          "name": "Bayer Leverkusen",
+          "titles": 2,
+          "titlePct": 1.7,
+          "preseasonRank": 3,
+          "overall": 83.4
+        },
+        {
+          "name": "VfB Stuttgart",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 4,
+          "overall": 80.39
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 36483,
+        "favoriteWinPct": 54.4,
+        "upsetPct": 23.6,
+        "drawPct": 22.1,
+        "byGap": {
+          "2-5": {
+            "n": 9992,
+            "favoriteWinPct": 47,
+            "upsetPct": 28.5,
+            "drawPct": 24.4
+          },
+          "5-10": {
+            "n": 10118,
+            "favoriteWinPct": 56.8,
+            "upsetPct": 20.6,
+            "drawPct": 22.6
+          },
+          "15+": {
+            "n": 3204,
+            "favoriteWinPct": 84.8,
+            "upsetPct": 5.1,
+            "drawPct": 10.1
+          },
+          "10-15": {
+            "n": 5042,
+            "favoriteWinPct": 68.3,
+            "upsetPct": 12.5,
+            "drawPct": 19.2
+          },
+          "0-2": {
+            "n": 8127,
+            "favoriteWinPct": 39.7,
+            "upsetPct": 35.3,
+            "drawPct": 25
+          }
+        },
+        "homeVenue": {
+          "n": 36483,
+          "homeWinPct": 42.1,
+          "drawPct": 22.1,
+          "awayWinPct": 35.8
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "league": "France - Ligue 1",
+      "nation": "France",
+      "clubs": 18,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "Paris Saint-Germain",
+        "overall": 88.39
+      },
+      "topSeedTitlePct": 87.5,
+      "top4PreseasonTitlePct": 97.5,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 120,
+          "pct": 100
+        },
+        "Q2": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Paris Saint-Germain",
+          "titles": 105,
+          "titlePct": 87.5,
+          "preseasonRank": 1,
+          "overall": 88.39
+        },
+        {
+          "name": "Lens",
+          "titles": 6,
+          "titlePct": 5,
+          "preseasonRank": 2,
+          "overall": 80.04
+        },
+        {
+          "name": "Lyon",
+          "titles": 4,
+          "titlePct": 3.3,
+          "preseasonRank": 4,
+          "overall": 79.34
+        },
+        {
+          "name": "Lille",
+          "titles": 3,
+          "titlePct": 2.5,
+          "preseasonRank": 5,
+          "overall": 78.18
+        },
+        {
+          "name": "Monaco",
+          "titles": 2,
+          "titlePct": 1.7,
+          "preseasonRank": 3,
+          "overall": 79.46
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 36530,
+        "favoriteWinPct": 52.6,
+        "upsetPct": 24.5,
+        "drawPct": 22.9,
+        "byGap": {
+          "2-5": {
+            "n": 10619,
+            "favoriteWinPct": 45.5,
+            "upsetPct": 28.9,
+            "drawPct": 25.5
+          },
+          "10-15": {
+            "n": 4661,
+            "favoriteWinPct": 67.7,
+            "upsetPct": 13.4,
+            "drawPct": 19
+          },
+          "5-10": {
+            "n": 12306,
+            "favoriteWinPct": 56,
+            "upsetPct": 21.9,
+            "drawPct": 22.1
+          },
+          "0-2": {
+            "n": 6943,
+            "favoriteWinPct": 39.4,
+            "upsetPct": 35,
+            "drawPct": 25.6
+          },
+          "15+": {
+            "n": 2001,
+            "favoriteWinPct": 79.6,
+            "upsetPct": 7.1,
+            "drawPct": 13.3
+          }
+        },
+        "homeVenue": {
+          "n": 36530,
+          "homeWinPct": 41.7,
+          "drawPct": 22.9,
+          "awayWinPct": 35.5
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "league": "Netherlands - Eredivisie",
+      "nation": "Netherlands",
+      "clubs": 18,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "PSV",
+        "overall": 78.41
+      },
+      "topSeedTitlePct": 62.5,
+      "top4PreseasonTitlePct": 92.5,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 119,
+          "pct": 99.2
+        },
+        "Q2": {
+          "titles": 1,
+          "pct": 0.8
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "PSV",
+          "titles": 75,
+          "titlePct": 62.5,
+          "preseasonRank": 1,
+          "overall": 78.41
+        },
+        {
+          "name": "Ajax",
+          "titles": 14,
+          "titlePct": 11.7,
+          "preseasonRank": 4,
+          "overall": 72.79
+        },
+        {
+          "name": "Feyenoord",
+          "titles": 14,
+          "titlePct": 11.7,
+          "preseasonRank": 2,
+          "overall": 74.59
+        },
+        {
+          "name": "Twente",
+          "titles": 8,
+          "titlePct": 6.7,
+          "preseasonRank": 5,
+          "overall": 71.57
+        },
+        {
+          "name": "AZ",
+          "titles": 8,
+          "titlePct": 6.7,
+          "preseasonRank": 3,
+          "overall": 73.02
+        },
+        {
+          "name": "Utrecht",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 7,
+          "overall": 66.23
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 36596,
+        "favoriteWinPct": 55.8,
+        "upsetPct": 21.8,
+        "drawPct": 22.5,
+        "byGap": {
+          "0-2": {
+            "n": 5436,
+            "favoriteWinPct": 38.7,
+            "upsetPct": 35.3,
+            "drawPct": 26
+          },
+          "15+": {
+            "n": 4259,
+            "favoriteWinPct": 79.8,
+            "upsetPct": 7.1,
+            "drawPct": 13.1
+          },
+          "5-10": {
+            "n": 11348,
+            "favoriteWinPct": 55.6,
+            "upsetPct": 20.9,
+            "drawPct": 23.5
+          },
+          "2-5": {
+            "n": 8554,
+            "favoriteWinPct": 44.7,
+            "upsetPct": 29.2,
+            "drawPct": 26.1
+          },
+          "10-15": {
+            "n": 6999,
+            "favoriteWinPct": 68,
+            "upsetPct": 12.6,
+            "drawPct": 19.4
+          }
+        },
+        "homeVenue": {
+          "n": 36596,
+          "homeWinPct": 42,
+          "drawPct": 22.5,
+          "awayWinPct": 35.5
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "league": "Portugal - Primeira Liga",
+      "nation": "Portugal",
+      "clubs": 18,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "Sporting CP",
+        "overall": 83.46
+      },
+      "topSeedTitlePct": 45,
+      "top4PreseasonTitlePct": 100,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 120,
+          "pct": 100
+        },
+        "Q2": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Sporting CP",
+          "titles": 54,
+          "titlePct": 45,
+          "preseasonRank": 1,
+          "overall": 83.46
+        },
+        {
+          "name": "Benfica",
+          "titles": 41,
+          "titlePct": 34.2,
+          "preseasonRank": 2,
+          "overall": 82.47
+        },
+        {
+          "name": "Porto",
+          "titles": 24,
+          "titlePct": 20,
+          "preseasonRank": 3,
+          "overall": 81.6
+        },
+        {
+          "name": "Braga",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 4,
+          "overall": 75.28
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 36512,
+        "favoriteWinPct": 57.4,
+        "upsetPct": 21.6,
+        "drawPct": 21,
+        "byGap": {
+          "15+": {
+            "n": 9578,
+            "favoriteWinPct": 82.5,
+            "upsetPct": 5.7,
+            "drawPct": 11.8
+          },
+          "2-5": {
+            "n": 9474,
+            "favoriteWinPct": 45.8,
+            "upsetPct": 29,
+            "drawPct": 25.2
+          },
+          "10-15": {
+            "n": 3025,
+            "favoriteWinPct": 69.5,
+            "upsetPct": 12.4,
+            "drawPct": 18.1
+          },
+          "0-2": {
+            "n": 7369,
+            "favoriteWinPct": 38,
+            "upsetPct": 35.7,
+            "drawPct": 26.3
+          },
+          "5-10": {
+            "n": 7066,
+            "favoriteWinPct": 53.9,
+            "upsetPct": 22.4,
+            "drawPct": 23.7
+          }
+        },
+        "homeVenue": {
+          "n": 36512,
+          "homeWinPct": 42.4,
+          "drawPct": 21,
+          "awayWinPct": 36.5
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "league": "England - Championship",
+      "nation": "England",
+      "clubs": 24,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "West Ham United",
+        "overall": 78.01
+      },
+      "topSeedTitlePct": 63.3,
+      "top4PreseasonTitlePct": 93.3,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 113,
+          "pct": 94.2
+        },
+        "Q2": {
+          "titles": 5,
+          "pct": 4.2
+        },
+        "Q3": {
+          "titles": 2,
+          "pct": 1.7
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "West Ham United",
+          "titles": 76,
+          "titlePct": 63.3,
+          "preseasonRank": 1,
+          "overall": 78.01
+        },
+        {
+          "name": "Wolverhampton Wanderers",
+          "titles": 22,
+          "titlePct": 18.3,
+          "preseasonRank": 2,
+          "overall": 75.05
+        },
+        {
+          "name": "Southampton",
+          "titles": 10,
+          "titlePct": 8.3,
+          "preseasonRank": 3,
+          "overall": 73.48
+        },
+        {
+          "name": "Middlesbrough",
+          "titles": 4,
+          "titlePct": 3.3,
+          "preseasonRank": 4,
+          "overall": 70.64
+        },
+        {
+          "name": "Sheffield United",
+          "titles": 2,
+          "titlePct": 1.7,
+          "preseasonRank": 12,
+          "overall": 68.26
+        },
+        {
+          "name": "Birmingham City",
+          "titles": 2,
+          "titlePct": 1.7,
+          "preseasonRank": 7,
+          "overall": 69.02
+        },
+        {
+          "name": "Burnley",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 5,
+          "overall": 70.41
+        },
+        {
+          "name": "Wrexham",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 8,
+          "overall": 68.73
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 65682,
+        "favoriteWinPct": 47.1,
+        "upsetPct": 28,
+        "drawPct": 24.9,
+        "byGap": {
+          "0-2": {
+            "n": 21226,
+            "favoriteWinPct": 39.4,
+            "upsetPct": 34.2,
+            "drawPct": 26.4
+          },
+          "2-5": {
+            "n": 24832,
+            "favoriteWinPct": 45.1,
+            "upsetPct": 29,
+            "drawPct": 25.9
+          },
+          "5-10": {
+            "n": 15120,
+            "favoriteWinPct": 54.9,
+            "upsetPct": 22,
+            "drawPct": 23.1
+          },
+          "10-15": {
+            "n": 4293,
+            "favoriteWinPct": 67.6,
+            "upsetPct": 13.3,
+            "drawPct": 19.1
+          },
+          "15+": {
+            "n": 211,
+            "favoriteWinPct": 70.1,
+            "upsetPct": 12.3,
+            "drawPct": 17.5
+          }
+        },
+        "homeVenue": {
+          "n": 65682,
+          "homeWinPct": 40.9,
+          "drawPct": 24.9,
+          "awayWinPct": 34.1
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "league": "Serbia - SuperLiga",
+      "nation": "Serbia",
+      "clubs": 16,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "Red Star Belgrade",
+        "overall": 71.45
+      },
+      "topSeedTitlePct": 97.5,
+      "top4PreseasonTitlePct": 100,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 120,
+          "pct": 100
+        },
+        "Q2": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Red Star Belgrade",
+          "titles": 117,
+          "titlePct": 97.5,
+          "preseasonRank": 1,
+          "overall": 71.45
+        },
+        {
+          "name": "Vojvodina",
+          "titles": 2,
+          "titlePct": 1.7,
+          "preseasonRank": 2,
+          "overall": 62.29
+        },
+        {
+          "name": "Partizan",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 3,
+          "overall": 60.84
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 28615,
+        "favoriteWinPct": 55.8,
+        "upsetPct": 21.8,
+        "drawPct": 22.4,
+        "byGap": {
+          "5-10": {
+            "n": 6769,
+            "favoriteWinPct": 55.9,
+            "upsetPct": 20,
+            "drawPct": 24.1
+          },
+          "10-15": {
+            "n": 4233,
+            "favoriteWinPct": 65.4,
+            "upsetPct": 14.7,
+            "drawPct": 19.9
+          },
+          "15+": {
+            "n": 5206,
+            "favoriteWinPct": 82.1,
+            "upsetPct": 6.1,
+            "drawPct": 11.8
+          },
+          "0-2": {
+            "n": 6689,
+            "favoriteWinPct": 39.2,
+            "upsetPct": 34.1,
+            "drawPct": 26.7
+          },
+          "2-5": {
+            "n": 5718,
+            "favoriteWinPct": 44.1,
+            "upsetPct": 29.3,
+            "drawPct": 26.6
+          }
+        },
+        "homeVenue": {
+          "n": 28615,
+          "homeWinPct": 41.8,
+          "drawPct": 22.4,
+          "awayWinPct": 35.8
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "league": "Brazil - Brasileirão Série A",
+      "nation": "Brazil",
+      "clubs": 20,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "Flamengo",
+        "overall": 83.46
+      },
+      "topSeedTitlePct": 51.7,
+      "top4PreseasonTitlePct": 92.5,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 112,
+          "pct": 93.3
+        },
+        "Q2": {
+          "titles": 5,
+          "pct": 4.2
+        },
+        "Q3": {
+          "titles": 3,
+          "pct": 2.5
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Flamengo",
+          "titles": 62,
+          "titlePct": 51.7,
+          "preseasonRank": 1,
+          "overall": 83.46
+        },
+        {
+          "name": "Palmeiras",
+          "titles": 38,
+          "titlePct": 31.7,
+          "preseasonRank": 2,
+          "overall": 82.42
+        },
+        {
+          "name": "Cruzeiro",
+          "titles": 6,
+          "titlePct": 5,
+          "preseasonRank": 3,
+          "overall": 77.89
+        },
+        {
+          "name": "Fluminense",
+          "titles": 5,
+          "titlePct": 4.2,
+          "preseasonRank": 4,
+          "overall": 77.31
+        },
+        {
+          "name": "Mirassol",
+          "titles": 3,
+          "titlePct": 2.5,
+          "preseasonRank": 9,
+          "overall": 74.64
+        },
+        {
+          "name": "Athletico Paranaense",
+          "titles": 2,
+          "titlePct": 1.7,
+          "preseasonRank": 6,
+          "overall": 75.28
+        },
+        {
+          "name": "Corinthians",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 11,
+          "overall": 74.3
+        },
+        {
+          "name": "Bahia",
+          "titles": 1,
+          "titlePct": 0.8,
+          "preseasonRank": 5,
+          "overall": 75.4
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 45120,
+        "favoriteWinPct": 47.6,
+        "upsetPct": 28.1,
+        "drawPct": 24.3,
+        "byGap": {
+          "2-5": {
+            "n": 14739,
+            "favoriteWinPct": 44.9,
+            "upsetPct": 29.5,
+            "drawPct": 25.6
+          },
+          "5-10": {
+            "n": 11980,
+            "favoriteWinPct": 55.6,
+            "upsetPct": 22,
+            "drawPct": 22.4
+          },
+          "0-2": {
+            "n": 15299,
+            "favoriteWinPct": 40.1,
+            "upsetPct": 34.4,
+            "drawPct": 25.5
+          },
+          "10-15": {
+            "n": 2742,
+            "favoriteWinPct": 65,
+            "upsetPct": 14.7,
+            "drawPct": 20.2
+          },
+          "15+": {
+            "n": 360,
+            "favoriteWinPct": 77.5,
+            "upsetPct": 6.9,
+            "drawPct": 15.6
+          }
+        },
+        "homeVenue": {
+          "n": 45120,
+          "homeWinPct": 41.8,
+          "drawPct": 24.3,
+          "awayWinPct": 33.9
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "league": "Argentina - Liga Profesional",
+      "nation": "Argentina",
+      "clubs": 30,
+      "iterations": 120,
+      "strongestClub": {
+        "name": "Boca Juniors",
+        "overall": 77.95
+      },
+      "topSeedTitlePct": 30.8,
+      "top4PreseasonTitlePct": 57.5,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 98,
+          "pct": 81.7
+        },
+        "Q2": {
+          "titles": 22,
+          "pct": 18.3
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Boca Juniors",
+          "titles": 37,
+          "titlePct": 30.8,
+          "preseasonRank": 1,
+          "overall": 77.95
+        },
+        {
+          "name": "Argentinos Juniors",
+          "titles": 14,
+          "titlePct": 11.7,
+          "preseasonRank": 2,
+          "overall": 76.15
+        },
+        {
+          "name": "Independiente Rivadavia",
+          "titles": 12,
+          "titlePct": 10,
+          "preseasonRank": 5,
+          "overall": 75.34
+        },
+        {
+          "name": "River Plate",
+          "titles": 11,
+          "titlePct": 9.2,
+          "preseasonRank": 4,
+          "overall": 75.4
+        },
+        {
+          "name": "Belgrano",
+          "titles": 9,
+          "titlePct": 7.5,
+          "preseasonRank": 9,
+          "overall": 73.72
+        },
+        {
+          "name": "Vélez Sarsfield",
+          "titles": 7,
+          "titlePct": 5.8,
+          "preseasonRank": 6,
+          "overall": 74.99
+        },
+        {
+          "name": "Estudiantes",
+          "titles": 7,
+          "titlePct": 5.8,
+          "preseasonRank": 7,
+          "overall": 74.93
+        },
+        {
+          "name": "Rosario Central",
+          "titles": 7,
+          "titlePct": 5.8,
+          "preseasonRank": 3,
+          "overall": 75.57
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 103492,
+        "favoriteWinPct": 46.8,
+        "upsetPct": 28.6,
+        "drawPct": 24.6,
+        "byGap": {
+          "10-15": {
+            "n": 2892,
+            "favoriteWinPct": 65.6,
+            "upsetPct": 13.6,
+            "drawPct": 20.9
+          },
+          "0-2": {
+            "n": 32342,
+            "favoriteWinPct": 39.6,
+            "upsetPct": 34.9,
+            "drawPct": 25.5
+          },
+          "5-10": {
+            "n": 28818,
+            "favoriteWinPct": 54.2,
+            "upsetPct": 22.2,
+            "drawPct": 23.6
+          },
+          "2-5": {
+            "n": 39414,
+            "favoriteWinPct": 46,
+            "upsetPct": 29.1,
+            "drawPct": 24.9
+          },
+          "15+": {
+            "n": 26,
+            "favoriteWinPct": 73.1,
+            "upsetPct": 3.8,
+            "drawPct": 23.1
+          }
+        },
+        "homeVenue": {
+          "n": 103492,
+          "homeWinPct": 41.2,
+          "drawPct": 24.6,
+          "awayWinPct": 34.2
+        },
+        "neutralVenue": null
+      }
+    }
+  ],
+  "cups": [
+    {
+      "nation": "England",
+      "cupLeagueAnchor": "England - Premier League",
+      "poolSize": 44,
+      "iterations": 100,
+      "topSeedTitlePct": 28,
+      "top8PreseasonTitlePct": 84,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 91,
+          "pct": 91
+        },
+        "Q2": {
+          "titles": 8,
+          "pct": 8
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 1,
+          "pct": 1
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Manchester City",
+          "titles": 29,
+          "titlePct": 29,
+          "preseasonRank": 2,
+          "overall": 92.57
+        },
+        {
+          "name": "Arsenal",
+          "titles": 28,
+          "titlePct": 28,
+          "preseasonRank": 1,
+          "overall": 93.26
+        },
+        {
+          "name": "Liverpool",
+          "titles": 8,
+          "titlePct": 8,
+          "preseasonRank": 3,
+          "overall": 87.29
+        },
+        {
+          "name": "Aston Villa",
+          "titles": 6,
+          "titlePct": 6,
+          "preseasonRank": 4,
+          "overall": 84.85
+        },
+        {
+          "name": "Newcastle United",
+          "titles": 5,
+          "titlePct": 5,
+          "preseasonRank": 8,
+          "overall": 83.92
+        },
+        {
+          "name": "Manchester United",
+          "titles": 5,
+          "titlePct": 5,
+          "preseasonRank": 7,
+          "overall": 83.92
+        },
+        {
+          "name": "Brentford",
+          "titles": 4,
+          "titlePct": 4,
+          "preseasonRank": 9,
+          "overall": 82.94
+        },
+        {
+          "name": "Leeds United",
+          "titles": 3,
+          "titlePct": 3,
+          "preseasonRank": 13,
+          "overall": 80.33
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 4288,
+        "favoriteWinPct": 67.5,
+        "upsetPct": 23.1,
+        "drawPct": 9.4,
+        "byGap": {
+          "15+": {
+            "n": 910,
+            "favoriteWinPct": 86.9,
+            "upsetPct": 8.4,
+            "drawPct": 4.7
+          },
+          "5-10": {
+            "n": 995,
+            "favoriteWinPct": 65,
+            "upsetPct": 23.3,
+            "drawPct": 11.7
+          },
+          "10-15": {
+            "n": 879,
+            "favoriteWinPct": 76.1,
+            "upsetPct": 17.1,
+            "drawPct": 6.8
+          },
+          "0-2": {
+            "n": 645,
+            "favoriteWinPct": 46.7,
+            "upsetPct": 41.9,
+            "drawPct": 11.5
+          },
+          "2-5": {
+            "n": 859,
+            "favoriteWinPct": 56.7,
+            "upsetPct": 30.5,
+            "drawPct": 12.8
+          }
+        },
+        "homeVenue": {
+          "n": 4288,
+          "homeWinPct": 47.9,
+          "drawPct": 9.4,
+          "awayWinPct": 42.7
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "nation": "Spain",
+      "cupLeagueAnchor": "Spain - La Liga",
+      "poolSize": 42,
+      "iterations": 100,
+      "topSeedTitlePct": 38,
+      "top8PreseasonTitlePct": 92,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 94,
+          "pct": 94
+        },
+        "Q2": {
+          "titles": 3,
+          "pct": 3
+        },
+        "Q3": {
+          "titles": 3,
+          "pct": 3
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "FC Barcelona",
+          "titles": 38,
+          "titlePct": 38,
+          "preseasonRank": 1,
+          "overall": 92.34
+        },
+        {
+          "name": "Real Madrid",
+          "titles": 23,
+          "titlePct": 23,
+          "preseasonRank": 2,
+          "overall": 89.32
+        },
+        {
+          "name": "Atlético Madrid",
+          "titles": 16,
+          "titlePct": 16,
+          "preseasonRank": 3,
+          "overall": 85.32
+        },
+        {
+          "name": "Real Betis",
+          "titles": 6,
+          "titlePct": 6,
+          "preseasonRank": 4,
+          "overall": 80.39
+        },
+        {
+          "name": "Villarreal",
+          "titles": 3,
+          "titlePct": 3,
+          "preseasonRank": 5,
+          "overall": 79.23
+        },
+        {
+          "name": "Celta Vigo",
+          "titles": 3,
+          "titlePct": 3,
+          "preseasonRank": 8,
+          "overall": 76.44
+        },
+        {
+          "name": "Real Sociedad",
+          "titles": 2,
+          "titlePct": 2,
+          "preseasonRank": 6,
+          "overall": 77.54
+        },
+        {
+          "name": "Rayo Vallecano",
+          "titles": 1,
+          "titlePct": 1,
+          "preseasonRank": 9,
+          "overall": 76.09
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 4083,
+        "favoriteWinPct": 62.6,
+        "upsetPct": 28,
+        "drawPct": 9.4,
+        "byGap": {
+          "2-5": {
+            "n": 946,
+            "favoriteWinPct": 53.1,
+            "upsetPct": 35.4,
+            "drawPct": 11.5
+          },
+          "10-15": {
+            "n": 507,
+            "favoriteWinPct": 76.3,
+            "upsetPct": 17.6,
+            "drawPct": 6.1
+          },
+          "15+": {
+            "n": 610,
+            "favoriteWinPct": 87.4,
+            "upsetPct": 8.7,
+            "drawPct": 3.9
+          },
+          "0-2": {
+            "n": 853,
+            "favoriteWinPct": 46.1,
+            "upsetPct": 42.6,
+            "drawPct": 11.4
+          },
+          "5-10": {
+            "n": 1167,
+            "favoriteWinPct": 63.5,
+            "upsetPct": 26,
+            "drawPct": 10.5
+          }
+        },
+        "homeVenue": {
+          "n": 4083,
+          "homeWinPct": 47.4,
+          "drawPct": 9.4,
+          "awayWinPct": 43.2
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "nation": "Germany",
+      "cupLeagueAnchor": "Germany - Bundesliga",
+      "poolSize": 36,
+      "iterations": 100,
+      "topSeedTitlePct": 60,
+      "top8PreseasonTitlePct": 95,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 96,
+          "pct": 96
+        },
+        "Q2": {
+          "titles": 3,
+          "pct": 3
+        },
+        "Q3": {
+          "titles": 1,
+          "pct": 1
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Bayern Munich",
+          "titles": 60,
+          "titlePct": 60,
+          "preseasonRank": 1,
+          "overall": 93.61
+        },
+        {
+          "name": "Borussia Dortmund",
+          "titles": 13,
+          "titlePct": 13,
+          "preseasonRank": 2,
+          "overall": 85.14
+        },
+        {
+          "name": "Bayer Leverkusen",
+          "titles": 9,
+          "titlePct": 9,
+          "preseasonRank": 3,
+          "overall": 83.4
+        },
+        {
+          "name": "VfB Stuttgart",
+          "titles": 5,
+          "titlePct": 5,
+          "preseasonRank": 4,
+          "overall": 80.39
+        },
+        {
+          "name": "RB Leipzig",
+          "titles": 5,
+          "titlePct": 5,
+          "preseasonRank": 5,
+          "overall": 80.27
+        },
+        {
+          "name": "SC Freiburg",
+          "titles": 2,
+          "titlePct": 2,
+          "preseasonRank": 6,
+          "overall": 78.76
+        },
+        {
+          "name": "TSG Hoffenheim",
+          "titles": 1,
+          "titlePct": 1,
+          "preseasonRank": 9,
+          "overall": 75.17
+        },
+        {
+          "name": "FC Augsburg",
+          "titles": 1,
+          "titlePct": 1,
+          "preseasonRank": 10,
+          "overall": 74.93
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 3494,
+        "favoriteWinPct": 64.5,
+        "upsetPct": 25.2,
+        "drawPct": 10.3,
+        "byGap": {
+          "0-2": {
+            "n": 583,
+            "favoriteWinPct": 47,
+            "upsetPct": 38.9,
+            "drawPct": 14.1
+          },
+          "5-10": {
+            "n": 1031,
+            "favoriteWinPct": 63.7,
+            "upsetPct": 24.8,
+            "drawPct": 11.4
+          },
+          "10-15": {
+            "n": 547,
+            "favoriteWinPct": 75.1,
+            "upsetPct": 15,
+            "drawPct": 9.9
+          },
+          "2-5": {
+            "n": 834,
+            "favoriteWinPct": 54.9,
+            "upsetPct": 34.5,
+            "drawPct": 10.6
+          },
+          "15+": {
+            "n": 499,
+            "favoriteWinPct": 91,
+            "upsetPct": 5.2,
+            "drawPct": 3.8
+          }
+        },
+        "homeVenue": {
+          "n": 3494,
+          "homeWinPct": 50.5,
+          "drawPct": 10.3,
+          "awayWinPct": 39.2
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "nation": "Italy",
+      "cupLeagueAnchor": "Italy - Serie A",
+      "poolSize": 40,
+      "iterations": 100,
+      "topSeedTitlePct": 36,
+      "top8PreseasonTitlePct": 90,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 92,
+          "pct": 92
+        },
+        "Q2": {
+          "titles": 8,
+          "pct": 8
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Inter Milan",
+          "titles": 36,
+          "titlePct": 36,
+          "preseasonRank": 1,
+          "overall": 87.81
+        },
+        {
+          "name": "Roma",
+          "titles": 18,
+          "titlePct": 18,
+          "preseasonRank": 2,
+          "overall": 82.65
+        },
+        {
+          "name": "Juventus",
+          "titles": 10,
+          "titlePct": 10,
+          "preseasonRank": 3,
+          "overall": 81.72
+        },
+        {
+          "name": "Napoli",
+          "titles": 8,
+          "titlePct": 8,
+          "preseasonRank": 4,
+          "overall": 81.26
+        },
+        {
+          "name": "AC Milan",
+          "titles": 7,
+          "titlePct": 7,
+          "preseasonRank": 5,
+          "overall": 80.68
+        },
+        {
+          "name": "Atalanta",
+          "titles": 6,
+          "titlePct": 6,
+          "preseasonRank": 6,
+          "overall": 79.75
+        },
+        {
+          "name": "Como",
+          "titles": 5,
+          "titlePct": 5,
+          "preseasonRank": 7,
+          "overall": 79.69
+        },
+        {
+          "name": "Frosinone",
+          "titles": 4,
+          "titlePct": 4,
+          "preseasonRank": 13,
+          "overall": 72.96
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 3892,
+        "favoriteWinPct": 65.8,
+        "upsetPct": 24.3,
+        "drawPct": 9.9,
+        "byGap": {
+          "5-10": {
+            "n": 1275,
+            "favoriteWinPct": 65.9,
+            "upsetPct": 23.8,
+            "drawPct": 10.3
+          },
+          "2-5": {
+            "n": 691,
+            "favoriteWinPct": 53.4,
+            "upsetPct": 33.6,
+            "drawPct": 13
+          },
+          "10-15": {
+            "n": 672,
+            "favoriteWinPct": 76.5,
+            "upsetPct": 15,
+            "drawPct": 8.5
+          },
+          "0-2": {
+            "n": 668,
+            "favoriteWinPct": 48.4,
+            "upsetPct": 39.8,
+            "drawPct": 11.8
+          },
+          "15+": {
+            "n": 586,
+            "favoriteWinPct": 87.5,
+            "upsetPct": 7.5,
+            "drawPct": 4.9
+          }
+        },
+        "homeVenue": {
+          "n": 3892,
+          "homeWinPct": 48.6,
+          "drawPct": 9.9,
+          "awayWinPct": 41.4
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "nation": "France",
+      "cupLeagueAnchor": "France - Ligue 1",
+      "poolSize": 36,
+      "iterations": 100,
+      "topSeedTitlePct": 50,
+      "top8PreseasonTitlePct": 91,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 94,
+          "pct": 94
+        },
+        "Q2": {
+          "titles": 6,
+          "pct": 6
+        },
+        "Q3": {
+          "titles": 0,
+          "pct": 0
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Paris Saint-Germain",
+          "titles": 50,
+          "titlePct": 50,
+          "preseasonRank": 1,
+          "overall": 88.39
+        },
+        {
+          "name": "Lens",
+          "titles": 10,
+          "titlePct": 10,
+          "preseasonRank": 2,
+          "overall": 80.04
+        },
+        {
+          "name": "Monaco",
+          "titles": 9,
+          "titlePct": 9,
+          "preseasonRank": 3,
+          "overall": 79.46
+        },
+        {
+          "name": "Lille",
+          "titles": 7,
+          "titlePct": 7,
+          "preseasonRank": 5,
+          "overall": 78.18
+        },
+        {
+          "name": "Lyon",
+          "titles": 7,
+          "titlePct": 7,
+          "preseasonRank": 4,
+          "overall": 79.34
+        },
+        {
+          "name": "Lorient",
+          "titles": 4,
+          "titlePct": 4,
+          "preseasonRank": 10,
+          "overall": 72.84
+        },
+        {
+          "name": "Rennes",
+          "titles": 3,
+          "titlePct": 3,
+          "preseasonRank": 7,
+          "overall": 76.67
+        },
+        {
+          "name": "Paris FC",
+          "titles": 3,
+          "titlePct": 3,
+          "preseasonRank": 9,
+          "overall": 73.83
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 3487,
+        "favoriteWinPct": 62.8,
+        "upsetPct": 26.6,
+        "drawPct": 10.5,
+        "byGap": {
+          "0-2": {
+            "n": 572,
+            "favoriteWinPct": 43.9,
+            "upsetPct": 42.8,
+            "drawPct": 13.3
+          },
+          "5-10": {
+            "n": 1004,
+            "favoriteWinPct": 63.6,
+            "upsetPct": 25.6,
+            "drawPct": 10.8
+          },
+          "2-5": {
+            "n": 784,
+            "favoriteWinPct": 51.4,
+            "upsetPct": 36,
+            "drawPct": 12.6
+          },
+          "15+": {
+            "n": 390,
+            "favoriteWinPct": 86.9,
+            "upsetPct": 7.4,
+            "drawPct": 5.6
+          },
+          "10-15": {
+            "n": 737,
+            "favoriteWinPct": 75.8,
+            "upsetPct": 15.7,
+            "drawPct": 8.4
+          }
+        },
+        "homeVenue": {
+          "n": 3487,
+          "homeWinPct": 48.3,
+          "drawPct": 10.5,
+          "awayWinPct": 41.2
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "nation": "Serbia",
+      "cupLeagueAnchor": "Serbia - SuperLiga",
+      "poolSize": 16,
+      "iterations": 100,
+      "topSeedTitlePct": 62,
+      "top8PreseasonTitlePct": 96,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 89,
+          "pct": 89
+        },
+        "Q2": {
+          "titles": 7,
+          "pct": 7
+        },
+        "Q3": {
+          "titles": 4,
+          "pct": 4
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Red Star Belgrade",
+          "titles": 62,
+          "titlePct": 62,
+          "preseasonRank": 1,
+          "overall": 71.45
+        },
+        {
+          "name": "Vojvodina",
+          "titles": 19,
+          "titlePct": 19,
+          "preseasonRank": 2,
+          "overall": 62.29
+        },
+        {
+          "name": "Partizan",
+          "titles": 5,
+          "titlePct": 5,
+          "preseasonRank": 3,
+          "overall": 60.84
+        },
+        {
+          "name": "Železničar Pančevo",
+          "titles": 3,
+          "titlePct": 3,
+          "preseasonRank": 4,
+          "overall": 54.51
+        },
+        {
+          "name": "Radnički 1923",
+          "titles": 3,
+          "titlePct": 3,
+          "preseasonRank": 5,
+          "overall": 53.82
+        },
+        {
+          "name": "IMT",
+          "titles": 2,
+          "titlePct": 2,
+          "preseasonRank": 10,
+          "overall": 51.79
+        },
+        {
+          "name": "TSC Bačka Topola",
+          "titles": 2,
+          "titlePct": 2,
+          "preseasonRank": 6,
+          "overall": 52.95
+        },
+        {
+          "name": "OFK Beograd",
+          "titles": 2,
+          "titlePct": 2,
+          "preseasonRank": 8,
+          "overall": 52.77
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 1493,
+        "favoriteWinPct": 66.8,
+        "upsetPct": 23.5,
+        "drawPct": 9.7,
+        "byGap": {
+          "10-15": {
+            "n": 188,
+            "favoriteWinPct": 70.2,
+            "upsetPct": 18.6,
+            "drawPct": 11.2
+          },
+          "0-2": {
+            "n": 336,
+            "favoriteWinPct": 50.9,
+            "upsetPct": 38.4,
+            "drawPct": 10.7
+          },
+          "15+": {
+            "n": 343,
+            "favoriteWinPct": 88.6,
+            "upsetPct": 6.4,
+            "drawPct": 5
+          },
+          "2-5": {
+            "n": 237,
+            "favoriteWinPct": 56.5,
+            "upsetPct": 31.6,
+            "drawPct": 11.8
+          },
+          "5-10": {
+            "n": 389,
+            "favoriteWinPct": 65.8,
+            "upsetPct": 23.1,
+            "drawPct": 11.1
+          }
+        },
+        "homeVenue": {
+          "n": 1493,
+          "homeWinPct": 48.2,
+          "drawPct": 9.7,
+          "awayWinPct": 42.1
+        },
+        "neutralVenue": null
+      }
+    },
+    {
+      "nation": "Portugal",
+      "cupLeagueAnchor": "Portugal - Primeira Liga",
+      "poolSize": 18,
+      "iterations": 100,
+      "topSeedTitlePct": 44,
+      "top8PreseasonTitlePct": 99,
+      "titlesByStrengthQuartile": {
+        "Q1 strongest": {
+          "titles": 96,
+          "pct": 96
+        },
+        "Q2": {
+          "titles": 3,
+          "pct": 3
+        },
+        "Q3": {
+          "titles": 1,
+          "pct": 1
+        },
+        "Q4 weakest": {
+          "titles": 0,
+          "pct": 0
+        }
+      },
+      "topWinners": [
+        {
+          "name": "Sporting CP",
+          "titles": 44,
+          "titlePct": 44,
+          "preseasonRank": 1,
+          "overall": 83.46
+        },
+        {
+          "name": "Benfica",
+          "titles": 30,
+          "titlePct": 30,
+          "preseasonRank": 2,
+          "overall": 82.47
+        },
+        {
+          "name": "Porto",
+          "titles": 16,
+          "titlePct": 16,
+          "preseasonRank": 3,
+          "overall": 81.6
+        },
+        {
+          "name": "Braga",
+          "titles": 5,
+          "titlePct": 5,
+          "preseasonRank": 4,
+          "overall": 75.28
+        },
+        {
+          "name": "Santa Clara",
+          "titles": 2,
+          "titlePct": 2,
+          "preseasonRank": 6,
+          "overall": 66.17
+        },
+        {
+          "name": "Rio Ave",
+          "titles": 1,
+          "titlePct": 1,
+          "preseasonRank": 13,
+          "overall": 61.77
+        },
+        {
+          "name": "Vitória Guimarães",
+          "titles": 1,
+          "titlePct": 1,
+          "preseasonRank": 8,
+          "overall": 66
+        },
+        {
+          "name": "Famalicão",
+          "titles": 1,
+          "titlePct": 1,
+          "preseasonRank": 5,
+          "overall": 68.49
+        }
+      ],
+      "matchOutcomes": {
+        "matches": 1688,
+        "favoriteWinPct": 67.6,
+        "upsetPct": 23.3,
+        "drawPct": 9.1,
+        "byGap": {
+          "0-2": {
+            "n": 359,
+            "favoriteWinPct": 47.9,
+            "upsetPct": 39.6,
+            "drawPct": 12.5
+          },
+          "15+": {
+            "n": 530,
+            "favoriteWinPct": 88.5,
+            "upsetPct": 6.8,
+            "drawPct": 4.7
+          },
+          "5-10": {
+            "n": 309,
+            "favoriteWinPct": 66.3,
+            "upsetPct": 23.6,
+            "drawPct": 10
+          },
+          "2-5": {
+            "n": 332,
+            "favoriteWinPct": 53,
+            "upsetPct": 36.1,
+            "drawPct": 10.8
+          },
+          "10-15": {
+            "n": 158,
+            "favoriteWinPct": 75.3,
+            "upsetPct": 14.6,
+            "drawPct": 10.1
+          }
+        },
+        "homeVenue": {
+          "n": 1688,
+          "homeWinPct": 51.7,
+          "drawPct": 9.1,
+          "awayWinPct": 39.3
+        },
+        "neutralVenue": null
+      }
+    }
+  ],
+  "continental": {
+    "competitions": [
+      {
+        "competition": "Champions League",
+        "iterations": 300,
+        "topSeedTitlePct": 26.7,
+        "top4FieldTitlePct": 70.7,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 212,
+            "pct": 70.7
+          },
+          "Q2": {
+            "titles": 45,
+            "pct": 15
+          },
+          "Q3": {
+            "titles": 26,
+            "pct": 8.7
+          },
+          "Q4 weakest": {
+            "titles": 17,
+            "pct": 5.7
+          }
+        },
+        "topWinners": [
+          {
+            "name": "Bayern Munich",
+            "titles": 29,
+            "titlePct": 9.7,
+            "overall": 93.61
+          },
+          {
+            "name": "FC Barcelona",
+            "titles": 27,
+            "titlePct": 9,
+            "overall": null
+          },
+          {
+            "name": "Manchester City",
+            "titles": 26,
+            "titlePct": 8.7,
+            "overall": 92.57
+          },
+          {
+            "name": "Arsenal",
+            "titles": 26,
+            "titlePct": 8.7,
+            "overall": 93.26
+          },
+          {
+            "name": "Real Madrid",
+            "titles": 23,
+            "titlePct": 7.7,
+            "overall": 89.32
+          },
+          {
+            "name": "Liverpool",
+            "titles": 20,
+            "titlePct": 6.7,
+            "overall": 87.29
+          },
+          {
+            "name": "Borussia Dortmund",
+            "titles": 17,
+            "titlePct": 5.7,
+            "overall": 85.14
+          },
+          {
+            "name": "Paris Saint-Germain",
+            "titles": 17,
+            "titlePct": 5.7,
+            "overall": 88.39
+          },
+          {
+            "name": "Inter Milan",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 87.81
+          },
+          {
+            "name": "Aston Villa",
+            "titles": 10,
+            "titlePct": 3.3,
+            "overall": 84.85
+          }
+        ]
+      },
+      {
+        "competition": "Europa League",
+        "iterations": 300,
+        "topSeedTitlePct": 32.7,
+        "top4FieldTitlePct": 72.3,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 217,
+            "pct": 72.3
+          },
+          "Q2": {
+            "titles": 50,
+            "pct": 16.7
+          },
+          "Q3": {
+            "titles": 19,
+            "pct": 6.3
+          },
+          "Q4 weakest": {
+            "titles": 14,
+            "pct": 4.7
+          }
+        },
+        "topWinners": [
+          {
+            "name": "Bayern Munich",
+            "titles": 42,
+            "titlePct": 14,
+            "overall": 93.61
+          },
+          {
+            "name": "FC Barcelona",
+            "titles": 40,
+            "titlePct": 13.3,
+            "overall": null
+          },
+          {
+            "name": "Arsenal",
+            "titles": 30,
+            "titlePct": 10,
+            "overall": 93.26
+          },
+          {
+            "name": "Manchester City",
+            "titles": 19,
+            "titlePct": 6.3,
+            "overall": 92.57
+          },
+          {
+            "name": "Paris Saint-Germain",
+            "titles": 16,
+            "titlePct": 5.3,
+            "overall": 88.39
+          },
+          {
+            "name": "Liverpool",
+            "titles": 15,
+            "titlePct": 5,
+            "overall": 87.29
+          },
+          {
+            "name": "Real Madrid",
+            "titles": 13,
+            "titlePct": 4.3,
+            "overall": 89.32
+          },
+          {
+            "name": "Inter Milan",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 87.81
+          },
+          {
+            "name": "Brentford",
+            "titles": 8,
+            "titlePct": 2.7,
+            "overall": 82.94
+          },
+          {
+            "name": "Manchester United",
+            "titles": 8,
+            "titlePct": 2.7,
+            "overall": 83.92
+          }
+        ]
+      },
+      {
+        "competition": "Conference League",
+        "iterations": 300,
+        "topSeedTitlePct": 32.3,
+        "top4FieldTitlePct": 73.3,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 220,
+            "pct": 73.3
+          },
+          "Q2": {
+            "titles": 46,
+            "pct": 15.3
+          },
+          "Q3": {
+            "titles": 18,
+            "pct": 6
+          },
+          "Q4 weakest": {
+            "titles": 16,
+            "pct": 5.3
+          }
+        },
+        "topWinners": [
+          {
+            "name": "Bayern Munich",
+            "titles": 33,
+            "titlePct": 11,
+            "overall": 93.61
+          },
+          {
+            "name": "Arsenal",
+            "titles": 30,
+            "titlePct": 10,
+            "overall": 93.26
+          },
+          {
+            "name": "FC Barcelona",
+            "titles": 30,
+            "titlePct": 10,
+            "overall": null
+          },
+          {
+            "name": "Manchester City",
+            "titles": 29,
+            "titlePct": 9.7,
+            "overall": 92.57
+          },
+          {
+            "name": "Real Madrid",
+            "titles": 19,
+            "titlePct": 6.3,
+            "overall": 89.32
+          },
+          {
+            "name": "Paris Saint-Germain",
+            "titles": 16,
+            "titlePct": 5.3,
+            "overall": 88.39
+          },
+          {
+            "name": "Manchester United",
+            "titles": 15,
+            "titlePct": 5,
+            "overall": 83.92
+          },
+          {
+            "name": "Aston Villa",
+            "titles": 13,
+            "titlePct": 4.3,
+            "overall": 84.85
+          },
+          {
+            "name": "Liverpool",
+            "titles": 12,
+            "titlePct": 4,
+            "overall": 87.29
+          },
+          {
+            "name": "Inter Milan",
+            "titles": 9,
+            "titlePct": 3,
+            "overall": 87.81
+          }
+        ]
+      },
+      {
+        "competition": "Copa Libertadores",
+        "iterations": 300,
+        "topSeedTitlePct": 23,
+        "top4FieldTitlePct": 51.7,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 155,
+            "pct": 51.7
+          },
+          "Q2": {
+            "titles": 67,
+            "pct": 22.3
+          },
+          "Q3": {
+            "titles": 59,
+            "pct": 19.7
+          },
+          "Q4 weakest": {
+            "titles": 19,
+            "pct": 6.3
+          }
+        },
+        "topWinners": [
+          {
+            "name": "Flamengo",
+            "titles": 39,
+            "titlePct": 13,
+            "overall": 83.46
+          },
+          {
+            "name": "Palmeiras",
+            "titles": 19,
+            "titlePct": 6.3,
+            "overall": 82.42
+          },
+          {
+            "name": "Rosario Central",
+            "titles": 12,
+            "titlePct": 4,
+            "overall": 75.57
+          },
+          {
+            "name": "Boca Juniors",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 77.95
+          },
+          {
+            "name": "Cruzeiro",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 77.89
+          },
+          {
+            "name": "Fluminense",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 77.31
+          },
+          {
+            "name": "River Plate",
+            "titles": 10,
+            "titlePct": 3.3,
+            "overall": 75.4
+          },
+          {
+            "name": "Bahia",
+            "titles": 10,
+            "titlePct": 3.3,
+            "overall": 75.4
+          },
+          {
+            "name": "Independiente del Valle",
+            "titles": 10,
+            "titlePct": 3.3,
+            "overall": 78.36
+          },
+          {
+            "name": "Athletico Paranaense",
+            "titles": 9,
+            "titlePct": 3,
+            "overall": 75.28
+          }
+        ]
+      },
+      {
+        "competition": "Copa Sudamericana",
+        "iterations": 300,
+        "topSeedTitlePct": 22.3,
+        "top4FieldTitlePct": 50.7,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 152,
+            "pct": 50.7
+          },
+          "Q2": {
+            "titles": 62,
+            "pct": 20.7
+          },
+          "Q3": {
+            "titles": 55,
+            "pct": 18.3
+          },
+          "Q4 weakest": {
+            "titles": 31,
+            "pct": 10.3
+          }
+        },
+        "topWinners": [
+          {
+            "name": "Flamengo",
+            "titles": 33,
+            "titlePct": 11,
+            "overall": 83.46
+          },
+          {
+            "name": "Palmeiras",
+            "titles": 26,
+            "titlePct": 8.7,
+            "overall": 82.42
+          },
+          {
+            "name": "Cruzeiro",
+            "titles": 14,
+            "titlePct": 4.7,
+            "overall": 77.89
+          },
+          {
+            "name": "Fluminense",
+            "titles": 12,
+            "titlePct": 4,
+            "overall": 77.31
+          },
+          {
+            "name": "Racing Club",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 74.12
+          },
+          {
+            "name": "Bahia",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 75.4
+          },
+          {
+            "name": "Belgrano",
+            "titles": 9,
+            "titlePct": 3,
+            "overall": 73.72
+          },
+          {
+            "name": "Independiente del Valle",
+            "titles": 9,
+            "titlePct": 3,
+            "overall": 78.36
+          },
+          {
+            "name": "Argentinos Juniors",
+            "titles": 9,
+            "titlePct": 3,
+            "overall": 76.15
+          },
+          {
+            "name": "São Paulo",
+            "titles": 8,
+            "titlePct": 2.7,
+            "overall": 74.47
+          }
+        ]
+      },
+      {
+        "competition": "CONCACAF Champions Cup",
+        "iterations": 300,
+        "topSeedTitlePct": 31.7,
+        "top4FieldTitlePct": 79.7,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 158,
+            "pct": 52.7
+          },
+          "Q2": {
+            "titles": 81,
+            "pct": 27
+          },
+          "Q3": {
+            "titles": 45,
+            "pct": 15
+          },
+          "Q4 weakest": {
+            "titles": 16,
+            "pct": 5.3
+          }
+        },
+        "topWinners": [
+          {
+            "name": "América",
+            "titles": 20,
+            "titlePct": 6.7,
+            "overall": 74.01
+          },
+          {
+            "name": "Tigres UANL",
+            "titles": 20,
+            "titlePct": 6.7,
+            "overall": 71.8
+          },
+          {
+            "name": "Toluca",
+            "titles": 18,
+            "titlePct": 6,
+            "overall": 75.11
+          },
+          {
+            "name": "Philadelphia Union",
+            "titles": 12,
+            "titlePct": 4,
+            "overall": 70.41
+          },
+          {
+            "name": "Tijuana",
+            "titles": 12,
+            "titlePct": 4,
+            "overall": 68.09
+          },
+          {
+            "name": "Pachuca",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 70.41
+          },
+          {
+            "name": "Inter Miami",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 72.38
+          },
+          {
+            "name": "Columbus Crew",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 67.68
+          },
+          {
+            "name": "UNAM",
+            "titles": 11,
+            "titlePct": 3.7,
+            "overall": 69.36
+          },
+          {
+            "name": "San Diego FC",
+            "titles": 10,
+            "titlePct": 3.3,
+            "overall": 68.38
+          }
+        ]
+      }
+    ],
+    "matchOutcomes": {
+      "matches": 24405,
+      "favoriteWinPct": 55.8,
+      "upsetPct": 32.7,
+      "drawPct": 11.6,
+      "byGap": {
+        "2-5": {
+          "n": 8590,
+          "favoriteWinPct": 53.9,
+          "upsetPct": 33.9,
+          "drawPct": 12.2
+        },
+        "10-15": {
+          "n": 2116,
+          "favoriteWinPct": 77.5,
+          "upsetPct": 15.3,
+          "drawPct": 7.2
+        },
+        "0-2": {
+          "n": 8229,
+          "favoriteWinPct": 46.5,
+          "upsetPct": 40.3,
+          "drawPct": 13.2
+        },
+        "5-10": {
+          "n": 5418,
+          "favoriteWinPct": 64.1,
+          "upsetPct": 26.1,
+          "drawPct": 9.8
+        },
+        "15+": {
+          "n": 52,
+          "favoriteWinPct": 75,
+          "upsetPct": 13.5,
+          "drawPct": 11.5
+        }
+      },
+      "homeVenue": {
+        "n": 24405,
+        "homeWinPct": 48.4,
+        "drawPct": 11.6,
+        "awayWinPct": 40
+      },
+      "neutralVenue": null
+    }
+  },
+  "national": {
+    "tournaments": [
+      {
+        "tournament": "FIFA World Cup",
+        "id": "world-cup",
+        "iterations": 100,
+        "topSeedTitlePct": 36,
+        "top4FieldTitlePct": 93,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 93,
+            "pct": 93
+          },
+          "Q2": {
+            "titles": 6,
+            "pct": 6
+          },
+          "Q3": {
+            "titles": 1,
+            "pct": 1
+          },
+          "Q4 weakest": {
+            "titles": 0,
+            "pct": 0
+          }
+        },
+        "topWinners": [
+          {
+            "name": "Spain",
+            "titles": 22,
+            "titlePct": 22,
+            "overall": 93,
+            "globalStrengthRank": 1
+          },
+          {
+            "name": "England",
+            "titles": 20,
+            "titlePct": 20,
+            "overall": 89.91,
+            "globalStrengthRank": 4
+          },
+          {
+            "name": "Argentina",
+            "titles": 19,
+            "titlePct": 19,
+            "overall": 92.5,
+            "globalStrengthRank": 2
+          },
+          {
+            "name": "France",
+            "titles": 17,
+            "titlePct": 17,
+            "overall": 91.74,
+            "globalStrengthRank": 3
+          },
+          {
+            "name": "Brazil",
+            "titles": 10,
+            "titlePct": 10,
+            "overall": 83.36,
+            "globalStrengthRank": 6
+          },
+          {
+            "name": "Portugal",
+            "titles": 3,
+            "titlePct": 3,
+            "overall": 83.42,
+            "globalStrengthRank": 5
+          },
+          {
+            "name": "Belgium",
+            "titles": 3,
+            "titlePct": 3,
+            "overall": 81.85,
+            "globalStrengthRank": 8
+          },
+          {
+            "name": "Colombia",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 79.47,
+            "globalStrengthRank": 11
+          },
+          {
+            "name": "Morocco",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 83.29,
+            "globalStrengthRank": 7
+          },
+          {
+            "name": "Netherlands",
+            "titles": 1,
+            "titlePct": 1,
+            "overall": 81.82,
+            "globalStrengthRank": 9
+          }
+        ]
+      },
+      {
+        "tournament": "UEFA European Championship",
+        "id": "euro",
+        "iterations": 100,
+        "topSeedTitlePct": 43,
+        "top4FieldTitlePct": 85,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 85,
+            "pct": 85
+          },
+          "Q2": {
+            "titles": 15,
+            "pct": 15
+          },
+          "Q3": {
+            "titles": 0,
+            "pct": 0
+          },
+          "Q4 weakest": {
+            "titles": 0,
+            "pct": 0
+          }
+        },
+        "topWinners": [
+          {
+            "name": "England",
+            "titles": 35,
+            "titlePct": 35,
+            "overall": 89.91,
+            "globalStrengthRank": 4
+          },
+          {
+            "name": "Spain",
+            "titles": 27,
+            "titlePct": 27,
+            "overall": 93,
+            "globalStrengthRank": 1
+          },
+          {
+            "name": "France",
+            "titles": 15,
+            "titlePct": 15,
+            "overall": 91.74,
+            "globalStrengthRank": 3
+          },
+          {
+            "name": "Belgium",
+            "titles": 6,
+            "titlePct": 6,
+            "overall": 81.85,
+            "globalStrengthRank": 8
+          },
+          {
+            "name": "Italy",
+            "titles": 4,
+            "titlePct": 4,
+            "overall": 78.22,
+            "globalStrengthRank": 15
+          },
+          {
+            "name": "Croatia",
+            "titles": 3,
+            "titlePct": 3,
+            "overall": 78.31,
+            "globalStrengthRank": 14
+          },
+          {
+            "name": "Denmark",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 73.08,
+            "globalStrengthRank": 21
+          },
+          {
+            "name": "Portugal",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 83.42,
+            "globalStrengthRank": 5
+          },
+          {
+            "name": "Netherlands",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 81.82,
+            "globalStrengthRank": 9
+          },
+          {
+            "name": "Switzerland",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 78.9,
+            "globalStrengthRank": 12
+          }
+        ]
+      },
+      {
+        "tournament": "Copa América",
+        "id": "copa-america",
+        "iterations": 100,
+        "topSeedTitlePct": 64,
+        "top4FieldTitlePct": 95,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 88,
+            "pct": 88
+          },
+          "Q2": {
+            "titles": 11,
+            "pct": 11
+          },
+          "Q3": {
+            "titles": 1,
+            "pct": 1
+          },
+          "Q4 weakest": {
+            "titles": 0,
+            "pct": 0
+          }
+        },
+        "topWinners": [
+          {
+            "name": "Argentina",
+            "titles": 64,
+            "titlePct": 64,
+            "overall": 92.5,
+            "globalStrengthRank": 2
+          },
+          {
+            "name": "Brazil",
+            "titles": 11,
+            "titlePct": 11,
+            "overall": 83.36,
+            "globalStrengthRank": 6
+          },
+          {
+            "name": "Colombia",
+            "titles": 9,
+            "titlePct": 9,
+            "overall": 79.47,
+            "globalStrengthRank": 11
+          },
+          {
+            "name": "Mexico",
+            "titles": 6,
+            "titlePct": 6,
+            "overall": 79.62,
+            "globalStrengthRank": 10
+          },
+          {
+            "name": "Uruguay",
+            "titles": 3,
+            "titlePct": 3,
+            "overall": 73.95,
+            "globalStrengthRank": 20
+          },
+          {
+            "name": "United States",
+            "titles": 3,
+            "titlePct": 3,
+            "overall": 77.8,
+            "globalStrengthRank": 16
+          },
+          {
+            "name": "Ecuador",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 71.29,
+            "globalStrengthRank": 24
+          },
+          {
+            "name": "Canada",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 70.64,
+            "globalStrengthRank": 27
+          }
+        ]
+      },
+      {
+        "tournament": "Africa Cup of Nations",
+        "id": "afcon",
+        "iterations": 100,
+        "topSeedTitlePct": 59,
+        "top4FieldTitlePct": 85,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 81,
+            "pct": 81
+          },
+          "Q2": {
+            "titles": 13,
+            "pct": 13
+          },
+          "Q3": {
+            "titles": 5,
+            "pct": 5
+          },
+          "Q4 weakest": {
+            "titles": 1,
+            "pct": 1
+          }
+        },
+        "topWinners": [
+          {
+            "name": "Morocco",
+            "titles": 59,
+            "titlePct": 59,
+            "overall": 83.29,
+            "globalStrengthRank": 7
+          },
+          {
+            "name": "Senegal",
+            "titles": 15,
+            "titlePct": 15,
+            "overall": 74.69,
+            "globalStrengthRank": 18
+          },
+          {
+            "name": "Algeria",
+            "titles": 6,
+            "titlePct": 6,
+            "overall": 70.61,
+            "globalStrengthRank": 28
+          },
+          {
+            "name": "Nigeria",
+            "titles": 5,
+            "titlePct": 5,
+            "overall": 70.24,
+            "globalStrengthRank": 30
+          },
+          {
+            "name": "Ivory Coast",
+            "titles": 5,
+            "titlePct": 5,
+            "overall": 70.31,
+            "globalStrengthRank": 29
+          },
+          {
+            "name": "DR Congo",
+            "titles": 4,
+            "titlePct": 4,
+            "overall": 66.85,
+            "globalStrengthRank": 40
+          },
+          {
+            "name": "Cameroon",
+            "titles": 3,
+            "titlePct": 3,
+            "overall": 65.69,
+            "globalStrengthRank": 42
+          },
+          {
+            "name": "Egypt",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 71.22,
+            "globalStrengthRank": 25
+          },
+          {
+            "name": "Ghana",
+            "titles": 1,
+            "titlePct": 1,
+            "overall": 58.87,
+            "globalStrengthRank": 67
+          }
+        ]
+      },
+      {
+        "tournament": "CONCACAF Gold Cup",
+        "id": "gold-cup",
+        "iterations": 100,
+        "topSeedTitlePct": 60,
+        "top4FieldTitlePct": 99,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 90,
+            "pct": 90
+          },
+          "Q2": {
+            "titles": 9,
+            "pct": 9
+          },
+          "Q3": {
+            "titles": 0,
+            "pct": 0
+          },
+          "Q4 weakest": {
+            "titles": 1,
+            "pct": 1
+          }
+        },
+        "topWinners": [
+          {
+            "name": "Mexico",
+            "titles": 60,
+            "titlePct": 60,
+            "overall": 79.62,
+            "globalStrengthRank": 10
+          },
+          {
+            "name": "United States",
+            "titles": 29,
+            "titlePct": 29,
+            "overall": 77.8,
+            "globalStrengthRank": 16
+          },
+          {
+            "name": "Panama",
+            "titles": 4,
+            "titlePct": 4,
+            "overall": 65.23,
+            "globalStrengthRank": 46
+          },
+          {
+            "name": "Canada",
+            "titles": 4,
+            "titlePct": 4,
+            "overall": 70.64,
+            "globalStrengthRank": 27
+          },
+          {
+            "name": "Curaçao",
+            "titles": 1,
+            "titlePct": 1,
+            "overall": 55.77,
+            "globalStrengthRank": 71
+          },
+          {
+            "name": "Honduras",
+            "titles": 1,
+            "titlePct": 1,
+            "overall": 59.65,
+            "globalStrengthRank": 64
+          },
+          {
+            "name": "Costa Rica",
+            "titles": 1,
+            "titlePct": 1,
+            "overall": 63.47,
+            "globalStrengthRank": 54
+          }
+        ]
+      },
+      {
+        "tournament": "AFC Asian Cup",
+        "id": "asian-cup",
+        "iterations": 100,
+        "topSeedTitlePct": 38,
+        "top4FieldTitlePct": 85,
+        "titlesByStrengthQuartile": {
+          "Q1 strongest": {
+            "titles": 74,
+            "pct": 74
+          },
+          "Q2": {
+            "titles": 18,
+            "pct": 18
+          },
+          "Q3": {
+            "titles": 7,
+            "pct": 7
+          },
+          "Q4 weakest": {
+            "titles": 1,
+            "pct": 1
+          }
+        },
+        "topWinners": [
+          {
+            "name": "Japan",
+            "titles": 38,
+            "titlePct": 38,
+            "overall": 76.66,
+            "globalStrengthRank": 17
+          },
+          {
+            "name": "Iran",
+            "titles": 18,
+            "titlePct": 18,
+            "overall": 71.85,
+            "globalStrengthRank": 23
+          },
+          {
+            "name": "Australia",
+            "titles": 18,
+            "titlePct": 18,
+            "overall": 70.93,
+            "globalStrengthRank": 26
+          },
+          {
+            "name": "South Korea",
+            "titles": 11,
+            "titlePct": 11,
+            "overall": 69.94,
+            "globalStrengthRank": 32
+          },
+          {
+            "name": "Saudi Arabia",
+            "titles": 5,
+            "titlePct": 5,
+            "overall": 63.37,
+            "globalStrengthRank": 55
+          },
+          {
+            "name": "United Arab Emirates",
+            "titles": 4,
+            "titlePct": 4,
+            "overall": 59.73,
+            "globalStrengthRank": 63
+          },
+          {
+            "name": "Qatar",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 61.91,
+            "globalStrengthRank": 59
+          },
+          {
+            "name": "Uzbekistan",
+            "titles": 2,
+            "titlePct": 2,
+            "overall": 61.91,
+            "globalStrengthRank": 60
+          },
+          {
+            "name": "China",
+            "titles": 1,
+            "titlePct": 1,
+            "overall": 52.3,
+            "globalStrengthRank": 76
+          },
+          {
+            "name": "Iraq",
+            "titles": 1,
+            "titlePct": 1,
+            "overall": 61.05,
+            "globalStrengthRank": 62
+          }
+        ]
+      }
+    ],
+    "matchOutcomes": {
+      "matches": 13358,
+      "favoriteWinPct": 64.3,
+      "upsetPct": 18.6,
+      "drawPct": 17.2,
+      "byGap": {
+        "10-15": {
+          "n": 2878,
+          "favoriteWinPct": 70.7,
+          "upsetPct": 13.6,
+          "drawPct": 15.7
+        },
+        "2-5": {
+          "n": 2029,
+          "favoriteWinPct": 46.8,
+          "upsetPct": 30.5,
+          "drawPct": 22.7
+        },
+        "15+": {
+          "n": 3592,
+          "favoriteWinPct": 85.2,
+          "upsetPct": 5,
+          "drawPct": 9.7
+        },
+        "0-2": {
+          "n": 1588,
+          "favoriteWinPct": 40.5,
+          "upsetPct": 36.1,
+          "drawPct": 23.4
+        },
+        "5-10": {
+          "n": 3271,
+          "favoriteWinPct": 57.9,
+          "upsetPct": 21.9,
+          "drawPct": 20.1
+        }
+      },
+      "homeVenue": null,
+      "neutralVenue": {
+        "n": 13358,
+        "favoriteWinPct": 64.3,
+        "upsetPct": 18.6,
+        "drawPct": 17.2
+      }
+    }
+  },
+  "summary": {
+    "leagueTopSeedTitlePctMean": 65.9,
+    "leagueTop4TitlePctMean": 93.1,
+    "leagueMatchUpsetPctMean": 24.66,
+    "cupTop8TitlePctMean": 92.43,
+    "continentalTopSeedTitlePctMean": 28.12,
+    "nationalTopSeedTitlePctMean": 50
+  }
+}

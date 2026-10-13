@@ -1,19 +1,24 @@
 import { pickRandomBackstory } from "../data/careerBackstories.js";
 import { buildAcademyIntro } from "../data/academyOfferStories.js";
-import { pickChoiceResult, pickScenariosForPosition } from "../data/careerOpeningScenarios.js?v=40";
+import { pickChoiceResult, pickScenariosForPosition } from "../data/careerOpeningScenarios.js?v=60";
 import {
   pickThreeAcademies,
   buildNarrativeAcademySeason,
-} from "../simulation/narrativeAcademySeason.js?v=40";
+} from "../simulation/narrativeAcademySeason.js?v=60";
 import {
   applyOpeningChoiceResult,
   finalizeAcademyPlayer,
-} from "../simulation/playerDevelopment.js?v=40";
+} from "../simulation/playerDevelopment.js?v=60";
 import {
   buildFirstProContractDecision,
   signFirstProfessionalContract,
-} from "../simulation/proContractOffers.js?v=40";
-import { escapeHtml } from "../utils/helpers.js";
+} from "../simulation/proContractOffers.js?v=60";
+import { escapeHtml, formatCurrency } from "../utils/helpers.js";
+import {
+  formatAbilityDisplayChange,
+  formatAbilityForDisplay,
+  roundAbilityForDisplay,
+} from "./abilityFormatting.js";
 
 const ACADEMY_MOMENT_COUNT = 5;
 const ACADEMY_CLAMP = { min: 50, max: 88 };
@@ -78,7 +83,7 @@ function ensureScenarioList(position, count) {
 
 function updateLiveOverall(player) {
   const el = document.getElementById("career-scenario-ovr");
-  if (el) el.textContent = String(player.rating);
+  if (el) el.textContent = formatAbilityForDisplay(player.rating);
 }
 
 function wait(ms) {
@@ -108,15 +113,16 @@ function animateCountUp(el, target, durationMs = 1600) {
       resolve();
       return;
     }
+    const end = roundAbilityForDisplay(target) ?? 0;
     const start = performance.now();
-    const from = Math.max(40, target - 12);
+    const from = Math.max(40, end - 12);
     function frame(now) {
       const t = Math.min(1, (now - start) / durationMs);
       const eased = 1 - Math.pow(1 - t, 3);
-      el.textContent = String(Math.round(from + (target - from) * eased));
+      el.textContent = String(Math.round(from + (end - from) * eased));
       if (t < 1) requestAnimationFrame(frame);
       else {
-        el.textContent = String(target);
+        el.textContent = formatAbilityForDisplay(end);
         el.classList.add("career-rating-landed");
         resolve();
       }
@@ -220,7 +226,13 @@ export function skipCareerIntroBootstrap(player, academyPool) {
   player.latestStanding = null;
   player.careerIntroComplete = true;
   const decision = buildFirstProContractDecision(player);
-  signFirstProfessionalContract(player, decision.offers[0]);
+  if (decision.offers[0]) {
+    signFirstProfessionalContract(player, decision.offers[0]);
+  } else {
+    // Deterministic continuation: remain on academy pathway without inventing eligibility.
+    player.suppressParentContractOffer = true;
+    player.pendingOffers = [];
+  }
 }
 
 export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComplete }) {
@@ -410,12 +422,16 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
 
         const deltaNote = document.createElement("p");
         deltaNote.className = "career-delta-note";
-        if (applied > 0) {
-          deltaNote.textContent = `Overall +${applied}. Now ${player.rating}.`;
-        } else if (applied < 0) {
-          deltaNote.textContent = `Overall ${applied}. Now ${player.rating}.`;
+        const now = formatAbilityForDisplay(player.rating);
+        const badge = formatAbilityDisplayChange(
+          Number.isFinite(player.rating) ? player.rating - applied : null,
+          player.rating,
+          "unchanged"
+        );
+        if (badge === "unchanged") {
+          deltaNote.textContent = `Overall unchanged. Still ${now}.`;
         } else {
-          deltaNote.textContent = `Overall unchanged. Still ${player.rating}.`;
+          deltaNote.textContent = `Overall ${badge}. Now ${now}.`;
         }
         choicesEl.appendChild(deltaNote);
         nextScenarioBtn.classList.remove("hidden");
@@ -478,31 +494,68 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     const grid = document.getElementById("career-pro-deals-grid");
     if (titleEl) titleEl.textContent = decision.verdict.headline;
     if (leadEl) {
-      leadEl.textContent = `${decision.verdict.lead} Overall ${decision.rating}. Choose where you sign.`;
+      leadEl.textContent = decision.emptyOffers
+        ? `${decision.verdict.lead} Overall ${formatAbilityForDisplay(decision.rating)}.`
+        : `${decision.verdict.lead} Overall ${formatAbilityForDisplay(
+            decision.rating
+          )}. Choose where you sign.`;
     }
     if (grid) {
       grid.innerHTML = "";
-      decision.offers.forEach((deal, i) => {
-        const card = document.createElement("button");
-        card.type = "button";
-        card.className = `career-pro-deal-card is-${deal.kind}`;
-        card.style.setProperty("--reveal-delay", `${120 + i * 160}ms`);
-        const club = deal.club;
-        const badge = club.badge
-          ? `<img src="${escapeHtml(club.badge)}" alt="" class="career-academy-badge" loading="lazy" />`
-          : "";
-        card.innerHTML = `
-          <span class="career-academy-tag">${escapeHtml(kindLabel(deal.kind))}</span>
-          <div class="career-academy-badge-wrap">${badge}</div>
-          <span class="career-academy-name">${escapeHtml(club.displayName ?? club.name)}</span>
-          <span class="career-academy-league">${escapeHtml(club.leagueDisplay ?? club.league)}</span>
-          <span class="career-pro-deal-blurb">${escapeHtml(deal.blurb)}</span>
-          <span class="career-pro-deal-meta">${deal.contractYears}-year professional contract</span>
+      if (decision.emptyOffers || !decision.offers.length) {
+        const cont = document.createElement("button");
+        cont.type = "button";
+        cont.className = "career-pro-deal-card is-counter";
+        cont.innerHTML = `
+          <span class="career-academy-tag">Continue</span>
+          <span class="career-academy-name">Stay in the system</span>
+          <span class="career-pro-deal-blurb">${escapeHtml(
+            "No suitable senior contract passed sporting and financial checks. You can continue developing and wait for a fitting offer — the game will not invent an elite deal."
+          )}</span>
         `;
-        card.addEventListener("click", () => acceptProDeal(deal));
-        grid.appendChild(card);
-        requestAnimationFrame(() => card.classList.add("is-shown"));
-      });
+        cont.addEventListener("click", () => {
+          // Keep academy registration; usable continuation.
+          player.suppressParentContractOffer = true;
+          player.pendingOffers = [];
+          const titleEl = document.getElementById("career-year-end-title");
+          const bodyEl = document.getElementById("career-year-end-body");
+          if (titleEl) titleEl.textContent = "Patience in the academy";
+          if (bodyEl) {
+            bodyEl.textContent =
+              "No professional contract was signed today. You remain with the academy pathway and can chase a suitable deal later.";
+          }
+          showStep(overlay, "career-step-year-end");
+        });
+        grid.appendChild(cont);
+        requestAnimationFrame(() => cont.classList.add("is-shown"));
+      } else {
+        decision.offers.forEach((deal, i) => {
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = `career-pro-deal-card is-${deal.kind}`;
+          card.style.setProperty("--reveal-delay", `${120 + i * 160}ms`);
+          const club = deal.club;
+          const badge = club.badge
+            ? `<img src="${escapeHtml(club.badge)}" alt="" class="career-academy-badge" loading="lazy" />`
+            : "";
+          const wageLine =
+            deal.wage != null
+              ? ` · ${formatCurrency(deal.wage)}/wk gross`
+              : "";
+          const roleLine = deal.expectedRole ? ` · ${deal.expectedRole}` : "";
+          card.innerHTML = `
+            <span class="career-academy-tag">${escapeHtml(kindLabel(deal.kind))}</span>
+            <div class="career-academy-badge-wrap">${badge}</div>
+            <span class="career-academy-name">${escapeHtml(club.displayName ?? club.name)}</span>
+            <span class="career-academy-league">${escapeHtml(club.leagueDisplay ?? club.league)}</span>
+            <span class="career-pro-deal-blurb">${escapeHtml(deal.blurb)}</span>
+            <span class="career-pro-deal-meta">${deal.contractYears}-year professional contract${wageLine}${roleLine}</span>
+          `;
+          card.addEventListener("click", () => acceptProDeal(deal));
+          grid.appendChild(card);
+          requestAnimationFrame(() => card.classList.add("is-shown"));
+        });
+      }
     }
     showStep(overlay, "career-step-pro-deals");
   }

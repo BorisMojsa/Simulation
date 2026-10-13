@@ -1,0 +1,310 @@
+{
+  "mappingVersion": "clubelo-identity-v1",
+  "notes": "Explicit reviewed mappings. Fuzzy matches are refused. Preserve existing canonical clubIds.",
+  "existing35": [
+    {
+      "clubId": "club:england:arsenal",
+      "gameName": "Arsenal",
+      "country": "England",
+      "providerName": "Arsenal",
+      "providerCode": "ARS",
+      "rawRating": 2040
+    },
+    {
+      "clubId": "club:england:aston-villa",
+      "gameName": "Aston Villa",
+      "country": "England",
+      "providerName": "Aston Villa",
+      "providerCode": "AVL",
+      "rawRating": 1895
+    },
+    {
+      "clubId": "club:england:afc-bournemouth",
+      "gameName": "AFC Bournemouth",
+      "country": "England",
+      "providerName": "Bournemouth",
+      "providerCode": "BOU",
+      "rawRating": 1861
+    },
+    {
+      "clubId": "club:england:brentford",
+      "gameName": "Brentford",
+      "country": "England",
+      "providerName": "Brentford",
+      "providerCode": "BRE",
+      "rawRating": 1862
+    },
+    {
+      "clubId": "club:england:brighton-and-hove-albion",
+      "gameName": "Brighton & Hove Albion",
+      "country": "England",
+      "providerName": "Brighton",
+      "providerCode": "BRI",
+      "rawRating": 1891
+    },
+    {
+      "clubId": "club:england:chelsea",
+      "gameName": "Chelsea",
+      "country": "England",
+      "providerName": "Chelsea",
+      "providerCode": "CHE",
+      "rawRating": 1881
+    },
+    {
+      "clubId": "club:england:crystal-palace",
+      "gameName": "Crystal Palace",
+      "country": "England",
+      "providerName": "Crystal Palace",
+      "providerCode": "CRY",
+      "rawRating": 1824
+    },
+    {
+      "clubId": "club:england:everton",
+      "gameName": "Everton",
+      "country": "England",
+      "providerName": "Everton",
+      "providerCode": "EVE",
+      "rawRating": 1827
+    },
+    {
+      "clubId": "club:england:fulham",
+      "gameName": "Fulham",
+      "country": "England",
+      "providerName": "Fulham",
+      "providerCode": "FUL",
+      "rawRating": 1807
+    },
+    {
+      "clubId": "club:england:leeds-united",
+      "gameName": "Leeds United",
+      "country": "England",
+      "providerName": "Leeds",
+      "providerCode": "LEE",
+      "rawRating": 1817
+    },
+    {
+      "clubId": "club:england:liverpool",
+      "gameName": "Liverpool",
+      "country": "England",
+      "providerName": "Liverpool",
+      "providerCode": "LIV",
+      "rawRating": 1937
+    },
+    {
+      "clubId": "club:england:manchester-city",
+      "gameName": "Manchester City",
+      "country": "England",
+      "providerName": "Man City",
+      "providerCode": "MCI",
+      "rawRating": 2028
+    },
+    {
+      "clubId": "club:england:manchester-united",
+      "gameName": "Manchester United",
+      "country": "England",
+      "providerName": "Man United",
+      "providerCode": "MNU",
+      "rawRating": 1879
+    },
+    {
+      "clubId": "club:england:newcastle-united",
+      "gameName": "Newcastle United",
+      "country": "England",
+      "providerName": "Newcastle",
+      "providerCode": "NEW",
+      "rawRating": 1879
+    },
+    {
+      "clubId": "club:england:nottingham-forest",
+      "gameName": "Nottingham Forest",
+      "country": "England",
+      "providerName": "Forest",
+      "providerCode": "FOR",
+      "rawRating": 1805
+    },
+    {
+      "clubId": "club:england:sunderland",
+      "gameName": "Sunderland",
+      "country": "England",
+      "providerName": "Sunderland",
+      "providerCode": "SUN",
+      "rawRating": 1737
+    },
+    {
+      "clubId": "club:england:tottenham-hotspur",
+      "gameName": "Tottenham Hotspur",
+      "country": "England",
+      "providerName": "Tottenham",
+      "providerCode": "TOT",
+      "rawRating": 1798
+    },
+    {
+      "clubId": "club:england:burnley",
+      "gameName": "Burnley",
+      "country": "England",
+      "providerName": "Burnley",
+      "providerCode": "BUR",
+      "rawRating": 1646
+    },
+    {
+      "clubId": "club:england:west-ham-united",
+      "gameName": "West Ham United",
+      "country": "England",
+      "providerName": "West Ham",
+      "providerCode": "WHU",
+      "rawRating": 1777
+    },
+    {
+      "clubId": "club:england:wolverhampton-wanderers",
+      "gameName": "Wolverhampton Wanderers",
+      "country": "England",
+      "providerName": "Wolves",
+      "providerCode": "WOL",
+      "rawRating": 1726
+    },
+    {
+      "clubId": "club:germany:borussia-dortmund",
+      "gameName": "Borussia Dortmund",
+      "country": "Germany",
+      "providerName": "Dortmund",
+      "providerCode": "DOR",
+      "rawRating": 1900
+    },
+    {
+      "clubId": "club:germany:bayer-leverkusen",
+      "gameName": "Bayer Leverkusen",
+      "country": "Germany",
+      "providerName": "Leverkusen",
+      "providerCode": "LEV",
+      "rawRating": 1870
+    },
+    {
+      "clubId": "club:germany:bayern-munich",
+      "gameName": "Bayern Munich",
+      "country": "Germany",
+      "providerName": "Bayern München",
+      "providerCode": "BMU",
+      "rawRating": 2046
+    },
+    {
+      "clubId": "club:spain:atletico-madrid",
+      "gameName": "Atlético Madrid",
+      "country": "Spain",
+      "providerName": "Atlético",
+      "providerCode": "ATM",
+      "rawRating": 1903
+    },
+    {
+      "clubId": "club:spain:fc-barcelona",
+      "gameName": "FC Barcelona",
+      "country": "Spain",
+      "providerName": "Barcelona",
+      "providerCode": "BAR",
+      "rawRating": 2024
+    },
+    {
+      "clubId": "club:spain:real-madrid",
+      "gameName": "Real Madrid",
+      "country": "Spain",
+      "providerName": "Real Madrid",
+      "providerCode": "RMA",
+      "rawRating": 1972
+    },
+    {
+      "clubId": "club:italy:inter-milan",
+      "gameName": "Inter Milan",
+      "country": "Italy",
+      "providerName": "Internazionale",
+      "providerCode": "INT",
+      "rawRating": 1946
+    },
+    {
+      "clubId": "club:italy:juventus",
+      "gameName": "Juventus",
+      "country": "Italy",
+      "providerName": "Juventus",
+      "providerCode": "JUV",
+      "rawRating": 1841
+    },
+    {
+      "clubId": "club:italy:napoli",
+      "gameName": "Napoli",
+      "country": "Italy",
+      "providerName": "Napoli",
+      "providerCode": "NAP",
+      "rawRating": 1833
+    },
+    {
+      "clubId": "club:italy:roma",
+      "gameName": "Roma",
+      "country": "Italy",
+      "providerName": "Roma",
+      "providerCode": "ROM",
+      "rawRating": 1857
+    },
+    {
+      "clubId": "club:france:paris-saint-germain",
+      "gameName": "Paris Saint-Germain",
+      "country": "France",
+      "providerName": "Paris SG",
+      "providerCode": "PSG",
+      "rawRating": 1956
+    },
+    {
+      "clubId": "club:belgium:club-brugge",
+      "gameName": "Club Brugge",
+      "country": "Belgium",
+      "providerName": "Brugge",
+      "providerCode": "BRU",
+      "rawRating": 1809
+    },
+    {
+      "clubId": "club:portugal:benfica",
+      "gameName": "Benfica",
+      "country": "Portugal",
+      "providerName": "Benfica",
+      "providerCode": "BEN",
+      "rawRating": 1854
+    },
+    {
+      "clubId": "club:portugal:porto",
+      "gameName": "Porto",
+      "country": "Portugal",
+      "providerName": "Porto",
+      "providerCode": "POR",
+      "rawRating": 1839
+    },
+    {
+      "clubId": "club:portugal:sporting-cp",
+      "gameName": "Sporting CP",
+      "country": "Portugal",
+      "providerName": "Sporting",
+      "providerCode": "SPO",
+      "rawRating": 1871
+    }
+  ],
+  "specialCases": [
+    {
+      "clubId": "club:colombia:internacional-de-bogota",
+      "providerName": "La Equidad",
+      "note": "Official club history documents La Equidad continuity.",
+      "evidenceUrls": [
+        "https://interbogota.com/historia"
+      ]
+    },
+    {
+      "clubId": "club:spain:celta-fortuna",
+      "providerName": "RC Celta B",
+      "note": "Reserve side formerly Celta B; never assign Celta Vigo first-team rating.",
+      "evidenceUrls": [
+        "https://rccelta.es/club/actualidad/el-filial-celeste-se-denominara-desde-la-proxima-temporada-celta-fortuna-como-homenaje-a-los-origenes-del-club/"
+      ]
+    },
+    {
+      "clubId": "club:spain:ad-ceuta",
+      "providerName": "CA Ceuta",
+      "providerProfileUrl": "https://clubelo.com/ad-ceuta-fc",
+      "note": "ClubElo CA Ceuta link resolves to ad-ceuta-fc for AD Ceuta."
+    }
+  ]
+}

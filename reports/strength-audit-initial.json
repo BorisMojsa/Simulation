@@ -1,0 +1,20 @@
+{
+  "auditedAt": "2026-10-08",
+  "priorClaim": {
+    "verified_rating": 35,
+    "provisional_estimate": 455,
+    "note": "Prior rebuild used Opta top tables + league-centre priors."
+  },
+  "afterRebuild": {
+    "clubEloPrimary": 485,
+    "footballDatabaseCalibrated": 5,
+    "provisional_estimate": 0,
+    "results_derived": 0,
+    "unresolved": 0
+  },
+  "providerMigration": {
+    "from": "opta-public-top30-spursweb-2026-06-06 (+ league priors)",
+    "to": "clubelo-public-ranking-2026-10-08",
+    "archivedOptaKept": true
+  }
+}

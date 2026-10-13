@@ -1,0 +1,490 @@
+{
+  "sourceId": "b_empire",
+  "sourceUrl": "https://b-empiremagazine.com/en/classement-fifa/",
+  "publisher": "B-Empire Magazine",
+  "originProviderClaimedByPublisher": "FIFA",
+  "sourceEvidenceTier": "secondary_republisher",
+  "publicationDate": null,
+  "rankingEditionDate": "2026-10-07",
+  "retrievedAt": "2026-10-09",
+  "claimedFullTableSize": 211,
+  "capturedRows": 79,
+  "captureScope": "Only the 79 nations in the user supplied inventory; not a full official FIFA export.",
+  "pointValuesAltered": false,
+  "rows": [
+    {
+      "providerTeamName": "Spain",
+      "fifaRank": 1,
+      "fifaPoints": 2011.57,
+      "fifaPointsDecimal": "2011.57"
+    },
+    {
+      "providerTeamName": "Argentina",
+      "fifaRank": 2,
+      "fifaPoints": 1972.8,
+      "fifaPointsDecimal": "1972.80"
+    },
+    {
+      "providerTeamName": "France",
+      "fifaRank": 3,
+      "fifaPoints": 1958.86,
+      "fifaPointsDecimal": "1958.86"
+    },
+    {
+      "providerTeamName": "England",
+      "fifaRank": 4,
+      "fifaPoints": 1925.59,
+      "fifaPointsDecimal": "1925.59"
+    },
+    {
+      "providerTeamName": "Portugal",
+      "fifaRank": 5,
+      "fifaPoints": 1807.69,
+      "fifaPointsDecimal": "1807.69"
+    },
+    {
+      "providerTeamName": "Brazil",
+      "fifaRank": 6,
+      "fifaPoints": 1806.51,
+      "fifaPointsDecimal": "1806.51"
+    },
+    {
+      "providerTeamName": "Morocco",
+      "fifaRank": 7,
+      "fifaPoints": 1805.34,
+      "fifaPointsDecimal": "1805.34"
+    },
+    {
+      "providerTeamName": "Belgium",
+      "fifaRank": 8,
+      "fifaPoints": 1779.17,
+      "fifaPointsDecimal": "1779.17"
+    },
+    {
+      "providerTeamName": "Netherlands",
+      "fifaRank": 9,
+      "fifaPoints": 1778.61,
+      "fifaPointsDecimal": "1778.61"
+    },
+    {
+      "providerTeamName": "Mexico",
+      "fifaRank": 10,
+      "fifaPoints": 1738.48,
+      "fifaPointsDecimal": "1738.48"
+    },
+    {
+      "providerTeamName": "Colombia",
+      "fifaRank": 11,
+      "fifaPoints": 1735.8,
+      "fifaPointsDecimal": "1735.80"
+    },
+    {
+      "providerTeamName": "Switzerland",
+      "fifaRank": 12,
+      "fifaPoints": 1725.39,
+      "fifaPointsDecimal": "1725.39"
+    },
+    {
+      "providerTeamName": "Germany",
+      "fifaRank": 13,
+      "fifaPoints": 1717.52,
+      "fifaPointsDecimal": "1717.52"
+    },
+    {
+      "providerTeamName": "Croatia",
+      "fifaRank": 14,
+      "fifaPoints": 1714.74,
+      "fifaPointsDecimal": "1714.74"
+    },
+    {
+      "providerTeamName": "Italy",
+      "fifaRank": 15,
+      "fifaPoints": 1713.04,
+      "fifaPointsDecimal": "1713.04"
+    },
+    {
+      "providerTeamName": "USA",
+      "fifaRank": 16,
+      "fifaPoints": 1705.47,
+      "fifaPointsDecimal": "1705.47"
+    },
+    {
+      "providerTeamName": "Japan",
+      "fifaRank": 17,
+      "fifaPoints": 1684.75,
+      "fifaPointsDecimal": "1684.75"
+    },
+    {
+      "providerTeamName": "Senegal",
+      "fifaRank": 18,
+      "fifaPoints": 1648.84,
+      "fifaPointsDecimal": "1648.84"
+    },
+    {
+      "providerTeamName": "Norway",
+      "fifaRank": 19,
+      "fifaPoints": 1637.89,
+      "fifaPointsDecimal": "1637.89"
+    },
+    {
+      "providerTeamName": "Uruguay",
+      "fifaRank": 20,
+      "fifaPoints": 1635.54,
+      "fifaPointsDecimal": "1635.54"
+    },
+    {
+      "providerTeamName": "Denmark",
+      "fifaRank": 21,
+      "fifaPoints": 1619.62,
+      "fifaPointsDecimal": "1619.62"
+    },
+    {
+      "providerTeamName": "Austria",
+      "fifaRank": 22,
+      "fifaPoints": 1600.66,
+      "fifaPointsDecimal": "1600.66"
+    },
+    {
+      "providerTeamName": "IR Iran",
+      "fifaRank": 23,
+      "fifaPoints": 1597.31,
+      "fifaPointsDecimal": "1597.31"
+    },
+    {
+      "providerTeamName": "Ecuador",
+      "fifaRank": 24,
+      "fifaPoints": 1587.07,
+      "fifaPointsDecimal": "1587.07"
+    },
+    {
+      "providerTeamName": "Egypt",
+      "fifaRank": 25,
+      "fifaPoints": 1585.86,
+      "fifaPointsDecimal": "1585.86"
+    },
+    {
+      "providerTeamName": "Australia",
+      "fifaRank": 26,
+      "fifaPoints": 1585.52,
+      "fifaPointsDecimal": "1585.52"
+    },
+    {
+      "providerTeamName": "Canada",
+      "fifaRank": 27,
+      "fifaPoints": 1575.31,
+      "fifaPointsDecimal": "1575.31"
+    },
+    {
+      "providerTeamName": "Algeria",
+      "fifaRank": 28,
+      "fifaPoints": 1574.77,
+      "fifaPointsDecimal": "1574.77"
+    },
+    {
+      "providerTeamName": "Côte d'Ivoire",
+      "fifaRank": 29,
+      "fifaPoints": 1569.32,
+      "fifaPointsDecimal": "1569.32"
+    },
+    {
+      "providerTeamName": "Nigeria",
+      "fifaRank": 30,
+      "fifaPoints": 1567.97,
+      "fifaPointsDecimal": "1567.97"
+    },
+    {
+      "providerTeamName": "Türkiye",
+      "fifaRank": 31,
+      "fifaPoints": 1563.54,
+      "fifaPointsDecimal": "1563.54"
+    },
+    {
+      "providerTeamName": "Korea Republic",
+      "fifaRank": 32,
+      "fifaPoints": 1562.49,
+      "fifaPointsDecimal": "1562.49"
+    },
+    {
+      "providerTeamName": "Paraguay",
+      "fifaRank": 33,
+      "fifaPoints": 1552.3,
+      "fifaPointsDecimal": "1552.30"
+    },
+    {
+      "providerTeamName": "Sweden",
+      "fifaRank": 34,
+      "fifaPoints": 1543.8,
+      "fifaPointsDecimal": "1543.80"
+    },
+    {
+      "providerTeamName": "Russia",
+      "fifaRank": 35,
+      "fifaPoints": 1537.45,
+      "fifaPointsDecimal": "1537.45"
+    },
+    {
+      "providerTeamName": "Ukraine",
+      "fifaRank": 36,
+      "fifaPoints": 1535.27,
+      "fifaPointsDecimal": "1535.27"
+    },
+    {
+      "providerTeamName": "Poland",
+      "fifaRank": 37,
+      "fifaPoints": 1514.58,
+      "fifaPointsDecimal": "1514.58"
+    },
+    {
+      "providerTeamName": "Hungary",
+      "fifaRank": 38,
+      "fifaPoints": 1511.24,
+      "fifaPointsDecimal": "1511.24"
+    },
+    {
+      "providerTeamName": "Wales",
+      "fifaRank": 39,
+      "fifaPoints": 1510.37,
+      "fifaPointsDecimal": "1510.37"
+    },
+    {
+      "providerTeamName": "Congo DR",
+      "fifaRank": 40,
+      "fifaPoints": 1506.37,
+      "fifaPointsDecimal": "1506.37"
+    },
+    {
+      "providerTeamName": "Greece",
+      "fifaRank": 41,
+      "fifaPoints": 1498.71,
+      "fifaPointsDecimal": "1498.71"
+    },
+    {
+      "providerTeamName": "Cameroon",
+      "fifaRank": 42,
+      "fifaPoints": 1485.3,
+      "fifaPointsDecimal": "1485.30"
+    },
+    {
+      "providerTeamName": "Scotland",
+      "fifaRank": 43,
+      "fifaPoints": 1483.57,
+      "fifaPointsDecimal": "1483.57"
+    },
+    {
+      "providerTeamName": "Serbia",
+      "fifaRank": 44,
+      "fifaPoints": 1482.24,
+      "fifaPointsDecimal": "1482.24"
+    },
+    {
+      "providerTeamName": "Slovakia",
+      "fifaRank": 45,
+      "fifaPoints": 1477.34,
+      "fifaPointsDecimal": "1477.34"
+    },
+    {
+      "providerTeamName": "Panama",
+      "fifaRank": 46,
+      "fifaPoints": 1476.97,
+      "fifaPointsDecimal": "1476.97"
+    },
+    {
+      "providerTeamName": "Mali",
+      "fifaRank": 47,
+      "fifaPoints": 1474.14,
+      "fifaPointsDecimal": "1474.14"
+    },
+    {
+      "providerTeamName": "South Africa",
+      "fifaRank": 48,
+      "fifaPoints": 1468.88,
+      "fifaPointsDecimal": "1468.88"
+    },
+    {
+      "providerTeamName": "Venezuela",
+      "fifaRank": 49,
+      "fifaPoints": 1465.87,
+      "fifaPointsDecimal": "1465.87"
+    },
+    {
+      "providerTeamName": "Chile",
+      "fifaRank": 50,
+      "fifaPoints": 1458.97,
+      "fifaPointsDecimal": "1458.97"
+    },
+    {
+      "providerTeamName": "Czechia",
+      "fifaRank": 51,
+      "fifaPoints": 1457.12,
+      "fifaPointsDecimal": "1457.12"
+    },
+    {
+      "providerTeamName": "Slovenia",
+      "fifaRank": 52,
+      "fifaPoints": 1452.48,
+      "fifaPointsDecimal": "1452.48"
+    },
+    {
+      "providerTeamName": "Peru",
+      "fifaRank": 53,
+      "fifaPoints": 1450.95,
+      "fifaPointsDecimal": "1450.95"
+    },
+    {
+      "providerTeamName": "Costa Rica",
+      "fifaRank": 54,
+      "fifaPoints": 1444.85,
+      "fifaPointsDecimal": "1444.85"
+    },
+    {
+      "providerTeamName": "Saudi Arabia",
+      "fifaRank": 55,
+      "fifaPoints": 1443.17,
+      "fifaPointsDecimal": "1443.17"
+    },
+    {
+      "providerTeamName": "Republic of Ireland",
+      "fifaRank": 56,
+      "fifaPoints": 1438.62,
+      "fifaPointsDecimal": "1438.62"
+    },
+    {
+      "providerTeamName": "Bosnia and Herzegovina",
+      "fifaRank": 57,
+      "fifaPoints": 1429.32,
+      "fifaPointsDecimal": "1429.32"
+    },
+    {
+      "providerTeamName": "Romania",
+      "fifaRank": 58,
+      "fifaPoints": 1428.88,
+      "fifaPointsDecimal": "1428.88"
+    },
+    {
+      "providerTeamName": "Uzbekistan",
+      "fifaRank": 59,
+      "fifaPoints": 1416.61,
+      "fifaPointsDecimal": "1416.61"
+    },
+    {
+      "providerTeamName": "Qatar",
+      "fifaRank": 60,
+      "fifaPoints": 1416.47,
+      "fifaPointsDecimal": "1416.47"
+    },
+    {
+      "providerTeamName": "Tunisia",
+      "fifaRank": 61,
+      "fifaPoints": 1415.38,
+      "fifaPointsDecimal": "1415.38"
+    },
+    {
+      "providerTeamName": "Iraq",
+      "fifaRank": 63,
+      "fifaPoints": 1400.91,
+      "fifaPointsDecimal": "1400.91"
+    },
+    {
+      "providerTeamName": "United Arab Emirates",
+      "fifaRank": 65,
+      "fifaPoints": 1376.95,
+      "fifaPointsDecimal": "1376.95"
+    },
+    {
+      "providerTeamName": "Honduras",
+      "fifaRank": 67,
+      "fifaPoints": 1375.4,
+      "fifaPointsDecimal": "1375.40"
+    },
+    {
+      "providerTeamName": "Cabo Verde",
+      "fifaRank": 68,
+      "fifaPoints": 1373.58,
+      "fifaPointsDecimal": "1373.58"
+    },
+    {
+      "providerTeamName": "Jamaica",
+      "fifaRank": 69,
+      "fifaPoints": 1361.97,
+      "fifaPointsDecimal": "1361.97"
+    },
+    {
+      "providerTeamName": "Ghana",
+      "fifaRank": 70,
+      "fifaPoints": 1361.27,
+      "fifaPointsDecimal": "1361.27"
+    },
+    {
+      "providerTeamName": "Jordan",
+      "fifaRank": 72,
+      "fifaPoints": 1350.88,
+      "fifaPointsDecimal": "1350.88"
+    },
+    {
+      "providerTeamName": "Iceland",
+      "fifaRank": 73,
+      "fifaPoints": 1349.42,
+      "fifaPointsDecimal": "1349.42"
+    },
+    {
+      "providerTeamName": "Bolivia",
+      "fifaRank": 78,
+      "fifaPoints": 1322.19,
+      "fifaPointsDecimal": "1322.19"
+    },
+    {
+      "providerTeamName": "Curaçao",
+      "fifaRank": 80,
+      "fifaPoints": 1304.98,
+      "fifaPointsDecimal": "1304.98"
+    },
+    {
+      "providerTeamName": "Angola",
+      "fifaRank": 83,
+      "fifaPoints": 1281.79,
+      "fifaPointsDecimal": "1281.79"
+    },
+    {
+      "providerTeamName": "Haiti",
+      "fifaRank": 84,
+      "fifaPoints": 1280.91,
+      "fifaPointsDecimal": "1280.91"
+    },
+    {
+      "providerTeamName": "New Zealand",
+      "fifaRank": 88,
+      "fifaPoints": 1277.02,
+      "fifaPointsDecimal": "1277.02"
+    },
+    {
+      "providerTeamName": "Bulgaria",
+      "fifaRank": 90,
+      "fifaPoints": 1262.57,
+      "fifaPointsDecimal": "1262.57"
+    },
+    {
+      "providerTeamName": "China PR",
+      "fifaRank": 96,
+      "fifaPoints": 1241.9,
+      "fifaPointsDecimal": "1241.90"
+    },
+    {
+      "providerTeamName": "Trinidad and Tobago",
+      "fifaRank": 105,
+      "fifaPoints": 1198.85,
+      "fifaPointsDecimal": "1198.85"
+    },
+    {
+      "providerTeamName": "Togo",
+      "fifaRank": 120,
+      "fifaPoints": 1153.04,
+      "fifaPointsDecimal": "1153.04"
+    },
+    {
+      "providerTeamName": "Korea DPR",
+      "fifaRank": 121,
+      "fifaPoints": 1151.05,
+      "fifaPointsDecimal": "1151.05"
+    }
+  ]
+}

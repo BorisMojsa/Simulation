@@ -1,0 +1,1446 @@
+{
+  "snapshotId": "cross-provider-anchor-pairs-2026-10",
+  "purpose": "Empirical paired observations for conversion validation. No coefficients have been preselected or declared verified.",
+  "countsByCountry": {
+    "Belgium": 15,
+    "Portugal": 17,
+    "Croatia": 9,
+    "Serbia": 15,
+    "Colombia": 19
+  },
+  "warning": "Provider scales and calibration may differ by country. Test a global conversion against a regularized country-aware conversion, disclose held-out errors, and do not choose manual offsets.",
+  "clubEloSnapshotId": "clubelo-public-ranking-2026-10-08",
+  "footballDatabaseSnapshotIds": [
+    "footballdatabase-country-tables-2026-10-04"
+  ],
+  "sourceDateDifferenceDays": 4,
+  "parserVersion": "research-pack-2026-10-08",
+  "contentHash": "2ed0c215ed8c08c14c55dac4d94f8fd242666d8eb61a80b64f694a3db0b2f045",
+  "pairs": [
+    {
+      "clubId": "club:belgium:union-saint-gilloise",
+      "clubName": "Union Saint-Gilloise",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1812,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "St Gillis"
+      },
+      "footballDatabase": {
+        "rating": 1756,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Union St.Gilloise"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": null,
+      "clubName": "Club Brugge",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1809,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Brugge"
+      },
+      "footballDatabase": {
+        "rating": 1750,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Club Brugge"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:genk",
+      "clubName": "Genk",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1676,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Genk"
+      },
+      "footballDatabase": {
+        "rating": 1579,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "KRC Genk"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:anderlecht",
+      "clubName": "Anderlecht",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1663,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Anderlecht"
+      },
+      "footballDatabase": {
+        "rating": 1539,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "RSC Anderlecht"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:gent",
+      "clubName": "Gent",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1632,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Gent"
+      },
+      "footballDatabase": {
+        "rating": 1516,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Gent"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:charleroi",
+      "clubName": "Charleroi",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1627,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Charleroi"
+      },
+      "footballDatabase": {
+        "rating": 1493,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Sporting Charleroi"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:sint-truiden",
+      "clubName": "Sint-Truiden",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1612,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "St Truiden"
+      },
+      "footballDatabase": {
+        "rating": 1478,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Sint-Truiden"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:standard-liege",
+      "clubName": "Standard Liège",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1584,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Standard"
+      },
+      "footballDatabase": {
+        "rating": 1459,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Standard Liège"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:westerlo",
+      "clubName": "Westerlo",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1575,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Westerlo"
+      },
+      "footballDatabase": {
+        "rating": 1457,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Westerlo"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:antwerp",
+      "clubName": "Antwerp",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1582,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Antwerp"
+      },
+      "footballDatabase": {
+        "rating": 1442,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Royal Antwerp FC"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:mechelen",
+      "clubName": "Mechelen",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1546,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Mechelen"
+      },
+      "footballDatabase": {
+        "rating": 1407,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "KV Mechelen"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:zulte-waregem",
+      "clubName": "Zulte Waregem",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1567,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Zulte Waregem"
+      },
+      "footballDatabase": {
+        "rating": 1393,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Zulte Waregem"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:cercle-brugge",
+      "clubName": "Cercle Brugge",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1543,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Cercle Brugge"
+      },
+      "footballDatabase": {
+        "rating": 1362,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Cercle Brugge"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:oh-leuven",
+      "clubName": "OH Leuven",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1510,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Leuven"
+      },
+      "footballDatabase": {
+        "rating": 1352,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "Oud-Heverlee Leuven"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:belgium:dender",
+      "clubName": "Dender",
+      "country": "Belgium",
+      "clubelo": {
+        "rating": 1481,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Dender"
+      },
+      "footballDatabase": {
+        "rating": 1290,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/belgium/1",
+        "providerName": "F.C.V. Dender E.H."
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": null,
+      "clubName": "Sporting CP",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1871,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Sporting"
+      },
+      "footballDatabase": {
+        "rating": 1846,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Sporting"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": null,
+      "clubName": "Benfica",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1854,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Benfica"
+      },
+      "footballDatabase": {
+        "rating": 1831,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Benfica"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": null,
+      "clubName": "Porto",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1839,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Porto"
+      },
+      "footballDatabase": {
+        "rating": 1804,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "FC Porto"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:braga",
+      "clubName": "Braga",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1730,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Braga"
+      },
+      "footballDatabase": {
+        "rating": 1667,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Braga"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:famalicao",
+      "clubName": "Famalicão",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1613,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Famalicao"
+      },
+      "footballDatabase": {
+        "rating": 1556,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "FC Famalicão"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:arouca",
+      "clubName": "Arouca",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1572,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Arouca"
+      },
+      "footballDatabase": {
+        "rating": 1494,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Arouca"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:santa-clara",
+      "clubName": "Santa Clara",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1573,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Santa Clara"
+      },
+      "footballDatabase": {
+        "rating": 1492,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "CD Santa Clara"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:gil-vicente",
+      "clubName": "Gil Vicente",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1564,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Gil Vicente"
+      },
+      "footballDatabase": {
+        "rating": 1468,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Gil Vicente FC"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:moreirense",
+      "clubName": "Moreirense",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1548,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Moreirense"
+      },
+      "footballDatabase": {
+        "rating": 1452,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Moreirense"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:vitoria-guimaraes",
+      "clubName": "Vitória Guimarães",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1570,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Guimaraes"
+      },
+      "footballDatabase": {
+        "rating": 1451,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Vitória Guimarães"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:alverca",
+      "clubName": "Alverca",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1538,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Alverca"
+      },
+      "footballDatabase": {
+        "rating": 1433,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "F.C. Alverca"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:estoril",
+      "clubName": "Estoril",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1515,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Estoril"
+      },
+      "footballDatabase": {
+        "rating": 1409,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Estoril"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:rio-ave",
+      "clubName": "Rio Ave",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1497,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Rio Ave"
+      },
+      "footballDatabase": {
+        "rating": 1396,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Rio Ave"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:estrela-amadora",
+      "clubName": "Estrela Amadora",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1495,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Estrela Amadora"
+      },
+      "footballDatabase": {
+        "rating": 1385,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "C.F. Estrela da Amadora"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:casa-pia",
+      "clubName": "Casa Pia",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1493,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Casa Pia"
+      },
+      "footballDatabase": {
+        "rating": 1370,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Casa Pia"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:nacional",
+      "clubName": "Nacional",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1481,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Nacional"
+      },
+      "footballDatabase": {
+        "rating": 1348,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Nacional"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:portugal:tondela",
+      "clubName": "Tondela",
+      "country": "Portugal",
+      "clubelo": {
+        "rating": 1472,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Tondela"
+      },
+      "footballDatabase": {
+        "rating": 1344,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/portugal/1",
+        "providerName": "Tondela"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:croatia:dinamo-zagreb",
+      "clubName": "Dinamo Zagreb",
+      "country": "Croatia",
+      "clubelo": {
+        "rating": 1672,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Dinamo Zagreb"
+      },
+      "footballDatabase": {
+        "rating": 1648,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/croatia/1",
+        "providerName": "Dinamo Zagreb"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:croatia:hajduk-split",
+      "clubName": "Hajduk Split",
+      "country": "Croatia",
+      "clubelo": {
+        "rating": 1580,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Hajduk"
+      },
+      "footballDatabase": {
+        "rating": 1546,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/croatia/1",
+        "providerName": "Hajduk Split"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:croatia:rijeka",
+      "clubName": "Rijeka",
+      "country": "Croatia",
+      "clubelo": {
+        "rating": 1550,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Rijeka"
+      },
+      "footballDatabase": {
+        "rating": 1506,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/croatia/1",
+        "providerName": "Rijeka"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:croatia:osijek",
+      "clubName": "Osijek",
+      "country": "Croatia",
+      "clubelo": {
+        "rating": 1459,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Osijek"
+      },
+      "footballDatabase": {
+        "rating": 1417,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/croatia/1",
+        "providerName": "Osijek"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:croatia:lokomotiva-zagreb",
+      "clubName": "Lokomotiva Zagreb",
+      "country": "Croatia",
+      "clubelo": {
+        "rating": 1434,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Lok Zagreb"
+      },
+      "footballDatabase": {
+        "rating": 1383,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/croatia/1",
+        "providerName": "Lokomotiva"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:croatia:istra-1961",
+      "clubName": "Istra 1961",
+      "country": "Croatia",
+      "clubelo": {
+        "rating": 1442,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Istra 1961"
+      },
+      "footballDatabase": {
+        "rating": 1376,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/croatia/1",
+        "providerName": "NK Istra 1961"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:croatia:slaven-belupo",
+      "clubName": "Slaven Belupo",
+      "country": "Croatia",
+      "clubelo": {
+        "rating": 1400,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Slaven Belupo"
+      },
+      "footballDatabase": {
+        "rating": 1337,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/croatia/1",
+        "providerName": "Slaven"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:croatia:gorica",
+      "clubName": "Gorica",
+      "country": "Croatia",
+      "clubelo": {
+        "rating": 1397,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "HNK Gorica"
+      },
+      "footballDatabase": {
+        "rating": 1329,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/croatia/1",
+        "providerName": "HNK Gorica"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:croatia:rudes",
+      "clubName": "Rudeš",
+      "country": "Croatia",
+      "clubelo": {
+        "rating": 1187,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Rudes Zagreb"
+      },
+      "footballDatabase": {
+        "rating": 1156,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/croatia/1",
+        "providerName": "NK Rudeš"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:red-star-belgrade",
+      "clubName": "Red Star Belgrade",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1664,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Crvena Zvezda"
+      },
+      "footballDatabase": {
+        "rating": 1705,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "FK Red Star Belgrade"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:partizan",
+      "clubName": "Partizan",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1481,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Partizan"
+      },
+      "footballDatabase": {
+        "rating": 1538,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "Partizan Beograd"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:zeleznicar-pancevo",
+      "clubName": "Železničar Pančevo",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1372,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Železničar Panče"
+      },
+      "footballDatabase": {
+        "rating": 1397,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "Železničar Pančevo"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:tsc-backa-topola",
+      "clubName": "TSC Bačka Topola",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1345,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Backa Topola"
+      },
+      "footballDatabase": {
+        "rating": 1396,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "Topolski Sportski Club"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:cukaricki",
+      "clubName": "Čukarički",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1342,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "FK Čukarički"
+      },
+      "footballDatabase": {
+        "rating": 1395,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "Čukarički"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:radnicki-1923",
+      "clubName": "Radnički 1923",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1360,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Kragujevac"
+      },
+      "footballDatabase": {
+        "rating": 1391,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "Radnički 1923 Kragujevac"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:novi-pazar",
+      "clubName": "Novi Pazar",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1337,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "FK Novi Pazar"
+      },
+      "footballDatabase": {
+        "rating": 1379,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "Novi Pazar"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:imt",
+      "clubName": "IMT",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1325,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "IMT Beograd"
+      },
+      "footballDatabase": {
+        "rating": 1359,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "FK IMT"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:mladost-lucani",
+      "clubName": "Mladost Lučani",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1310,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Mladost Lucani"
+      },
+      "footballDatabase": {
+        "rating": 1354,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "FK Mladost Lučani"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:ofk-beograd",
+      "clubName": "OFK Beograd",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1342,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "OFK"
+      },
+      "footballDatabase": {
+        "rating": 1350,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "OFK Beograd"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:radnik-surdulica",
+      "clubName": "Radnik Surdulica",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1315,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Radnik Surdulica"
+      },
+      "footballDatabase": {
+        "rating": 1323,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "FK Radnik Surdulica"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:radnicki-nis",
+      "clubName": "Radnički Niš",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1285,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Radnički Niš"
+      },
+      "footballDatabase": {
+        "rating": 1320,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "Radnički Niš"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:zemun",
+      "clubName": "Zemun",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1076,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Zemun"
+      },
+      "footballDatabase": {
+        "rating": 1248,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "FK Zemun"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:napredak-krusevac",
+      "clubName": "Napredak Kruševac",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1181,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Krusevac"
+      },
+      "footballDatabase": {
+        "rating": 1220,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "Napredak"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:serbia:macva-sabac",
+      "clubName": "Mačva Šabac",
+      "country": "Serbia",
+      "clubelo": {
+        "rating": 1258,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Macva Sabac"
+      },
+      "footballDatabase": {
+        "rating": 1171,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/serbia/1",
+        "providerName": "Mačva Šabac"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:atletico-nacional",
+      "clubName": "Atlético Nacional",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1729,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Atlético Naciona"
+      },
+      "footballDatabase": {
+        "rating": 1630,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Atlético Nacional"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:america-de-cali",
+      "clubName": "América de Cali",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1676,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "América de Cali"
+      },
+      "footballDatabase": {
+        "rating": 1557,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "América de Cali"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:santa-fe",
+      "clubName": "Santa Fe",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1661,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Santa Fe"
+      },
+      "footballDatabase": {
+        "rating": 1545,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Santa Fe"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:independiente-medellin",
+      "clubName": "Independiente Medellín",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1659,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "DIM"
+      },
+      "footballDatabase": {
+        "rating": 1539,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Independiente Medellín"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:millonarios",
+      "clubName": "Millonarios",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1648,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Millonarios"
+      },
+      "footballDatabase": {
+        "rating": 1536,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Millonarios"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:atletico-bucaramanga",
+      "clubName": "Atlético Bucaramanga",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1643,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Bucaramanga"
+      },
+      "footballDatabase": {
+        "rating": 1530,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Club Atlético Bucaramanga"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:deportes-tolima",
+      "clubName": "Deportes Tolima",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1644,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Tolima"
+      },
+      "footballDatabase": {
+        "rating": 1521,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Tolima"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:junior",
+      "clubName": "Junior",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1623,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Atlético Junior"
+      },
+      "footballDatabase": {
+        "rating": 1507,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Junior FC"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:once-caldas",
+      "clubName": "Once Caldas",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1617,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Once Caldas"
+      },
+      "footballDatabase": {
+        "rating": 1477,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Once Caldas"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:deportivo-cali",
+      "clubName": "Deportivo Cali",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1598,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Deportivo Cali"
+      },
+      "footballDatabase": {
+        "rating": 1462,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Deportivo Cali"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:aguilas-doradas",
+      "clubName": "Águilas Doradas",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1550,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Águilas Doradas"
+      },
+      "footballDatabase": {
+        "rating": 1425,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Águilas Doradas"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:deportivo-pasto",
+      "clubName": "Deportivo Pasto",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1530,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Pasto"
+      },
+      "footballDatabase": {
+        "rating": 1394,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Deportivo Pasto"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:llaneros",
+      "clubName": "Llaneros",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1535,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Llaneros"
+      },
+      "footballDatabase": {
+        "rating": 1390,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Llaneros F.C."
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:fortaleza-ceif",
+      "clubName": "Fortaleza CEIF",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1536,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Fortaleza"
+      },
+      "footballDatabase": {
+        "rating": 1383,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Fortaleza CEIF FC"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:internacional-de-bogota",
+      "clubName": "Internacional de Bogotá",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1497,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "La Equidad"
+      },
+      "footballDatabase": {
+        "rating": 1348,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Internacional de Bogotá"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:cucuta-deportivo",
+      "clubName": "Cúcuta Deportivo",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1486,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Cúcuta"
+      },
+      "footballDatabase": {
+        "rating": 1333,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Cúcuta Deportivo"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:boyaca-chico",
+      "clubName": "Boyacá Chicó",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1470,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Boyacá Chicó"
+      },
+      "footballDatabase": {
+        "rating": 1331,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "Boyacá Chicó FC"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:deportivo-pereira",
+      "clubName": "Deportivo Pereira",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1484,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Pereira"
+      },
+      "footballDatabase": {
+        "rating": 1323,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "CS Deportivo Pereira"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    },
+    {
+      "clubId": "club:colombia:jaguares",
+      "clubName": "Jaguares",
+      "country": "Colombia",
+      "clubelo": {
+        "rating": 1450,
+        "publishedAsOfDate": "2026-10-08",
+        "sourceUrl": "https://clubelo.com/Ranking",
+        "providerName": "Jaguares"
+      },
+      "footballDatabase": {
+        "rating": 1297,
+        "publishedAsOfDate": "2026-10-04",
+        "sourceUrl": "https://footballdatabase.com/ranking/colombia/1",
+        "providerName": "CD Jaguares"
+      },
+      "identityMatch": "same current club, explicit provider aliases or exact current name",
+      "dateDifferenceDays": 4
+    }
+  ]
+}

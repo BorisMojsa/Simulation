@@ -1,28 +1,12 @@
-import { LEAGUES } from "../data/leagues.js";
 import { rivalsForClub } from "../data/clubRivals.js";
-import { calculateContractLength } from "./transferMarket.js";
-import { pickRandom, randInt } from "../utils/helpers.js";
+import { allSeniorClubs, findSeniorClub } from "./seniorClubs.js";
+import { buildValidatedOffer, applyOfferToPlayer, acceptPipelineOffer } from "./dealPipeline.js";
+import { evaluateSportingFit } from "./recruitmentModel.js";
+import { createStreamRng } from "./rng.js";
+import { safePlayerOverall } from "./playerOverallSafe.js";
+import { calculateContractLength } from "./playerValuation.js";
 
-/** Flatten senior clubs with league metadata. */
-export function allSeniorClubs() {
-  return LEAGUES.flatMap((league) =>
-    league.clubs.map((club) => ({
-      name: club.name,
-      displayName: club.displayName ?? club.name,
-      badge: club.badge,
-      financialTier: club.financialTier,
-      tier: league.tier,
-      league: league.name,
-      leagueDisplay: league.displayName,
-      nation: league.nation,
-    }))
-  );
-}
-
-export function findSeniorClub(clubName) {
-  if (!clubName) return null;
-  return allSeniorClubs().find((c) => c.name === clubName || c.displayName === clubName) ?? null;
-}
+export { allSeniorClubs, findSeniorClub } from "./seniorClubs.js";
 
 function parentOfferChance(rating) {
   if (rating >= 74) return 0.97;
@@ -32,141 +16,202 @@ function parentOfferChance(rating) {
   return 0.42;
 }
 
-function counterOfferCount(rating) {
-  if (rating >= 72) return Math.random() < 0.55 ? 2 : 1;
-  if (rating >= 64) return Math.random() < 0.65 ? 1 : Math.random() < 0.35 ? 2 : 0;
-  if (rating >= 58) return Math.random() < 0.45 ? 1 : 0;
-  return Math.random() < 0.25 ? 1 : 0;
-}
-
-function buildDeal(club, { kind, blurb, performanceHint }) {
-  const years = calculateContractLength(16, 60, 75, performanceHint);
-  return {
-    kind,
-    club,
-    blurb,
-    contractYears: years,
-    performanceHint,
-  };
+function counterOfferCount(rating, rng) {
+  if (rating >= 72) return rng.chance(0.55) ? 2 : 1;
+  if (rating >= 64) return rng.chance(0.65) ? 1 : rng.chance(0.35) ? 2 : 0;
+  if (rating >= 58) return rng.chance(0.45) ? 1 : 0;
+  return rng.chance(0.25) ? 1 : 0;
 }
 
 /**
- * After academy moments: decide if the parent offers a pro deal,
- * plus rare rival interest and other counter offers.
+ * After academy moments: parent / rival / counter offers via shared pipeline.
+ * No random famous-club fallback that bypasses constraints.
  */
 export function buildFirstProContractDecision(player) {
   const parent = player.club?.parentClub ? findSeniorClub(player.club.parentClub.name) : null;
-  const rating = player.rating;
+  const rating = safePlayerOverall(player);
   const performanceHint = Math.round(58 + (rating - 54) * 1.1);
+  const careerId = player.careerId || player.name || "career";
+  const rng = createStreamRng(careerId, `first-pro:${rating}`);
   const clubs = allSeniorClubs();
   const offers = [];
+  const rejectionLog = [];
 
-  const parentOffers = parent && Math.random() < parentOfferChance(rating);
+  const parentOffers = parent && rng.chance(parentOfferChance(rating));
   if (parentOffers && parent) {
-    offers.push(
-      buildDeal(parent, {
+    const built = buildValidatedOffer({
+      player,
+      club: parent,
+      dealType: "first_pro",
+      performanceScore: performanceHint,
+      rng,
+      forceParent: true,
+    });
+    if (built.ok) {
+      offers.push({
         kind: "parent",
-        blurb: `${parent.displayName} want you on a senior professional contract. The pathway you trained for is open.`,
+        club: parent,
+        blurb: built.offer.message,
+        contractYears: built.offer.contractYears,
         performanceHint,
-      })
-    );
-  }
-
-  // Rival interest: uncommon, more likely when rating is solid
-  const rivalChance = rating >= 70 ? 0.16 : rating >= 64 ? 0.1 : 0.05;
-  if (parent && Math.random() < rivalChance) {
-    const rivalNames = rivalsForClub(parent.name).filter((n) => n !== parent.name);
-    const rivalClub = pickRandom(rivalNames.map(findSeniorClub).filter(Boolean));
-    if (rivalClub && !offers.some((o) => o.club.name === rivalClub.name)) {
-      offers.push(
-        buildDeal(rivalClub, {
-          kind: "rival",
-          blurb: `${rivalClub.displayName} have been watching the other side of town. A senior contract is on the table. Crossing that line will not go unnoticed.`,
-          performanceHint: performanceHint + 2,
-        })
-      );
+        offer: built.offer,
+        wage: built.offer.wage,
+        expectedRole: built.offer.expectedRole,
+      });
+    } else {
+      rejectionLog.push({ clubId: parent.clubId, reasons: built.reasons });
     }
   }
 
-  const needed = Math.max(counterOfferCount(rating), parentOffers ? 0 : 1);
+  const rivalChance = rating >= 70 ? 0.16 : rating >= 64 ? 0.1 : 0.05;
+  if (parent && rng.chance(rivalChance)) {
+    const rivalNames = rivalsForClub(parent.name).filter((n) => n !== parent.name);
+    const rivalClub = rng.pick(rivalNames.map(findSeniorClub).filter(Boolean));
+    if (rivalClub && !offers.some((o) => o.club.name === rivalClub.name)) {
+      const built = buildValidatedOffer({
+        player,
+        club: rivalClub,
+        dealType: "first_pro",
+        performanceScore: performanceHint + 2,
+        rng,
+      });
+      if (built.ok) {
+        offers.push({
+          kind: "rival",
+          club: rivalClub,
+          blurb: `${rivalClub.displayName} have been watching. A senior contract is on the table. Crossing that line will not go unnoticed.`,
+          contractYears: built.offer.contractYears,
+          performanceHint: performanceHint + 2,
+          offer: built.offer,
+          wage: built.offer.wage,
+          expectedRole: built.offer.expectedRole,
+        });
+      } else {
+        rejectionLog.push({ clubId: rivalClub.clubId, reasons: built.reasons });
+      }
+    }
+  }
+
+  const needed = Math.max(counterOfferCount(rating, rng), offers.length ? 0 : 1);
   const exclude = new Set(offers.map((o) => o.club.name));
   if (parent) exclude.add(parent.name);
 
-  const sameNation = clubs.filter((c) => c.nation === parent?.nation && !exclude.has(c.name));
+  // Sporting-eligible counters only — prefer same league/nation.
   const sameLeague = clubs.filter((c) => c.league === parent?.league && !exclude.has(c.name));
+  const sameNation = clubs.filter((c) => c.nation === parent?.nation && !exclude.has(c.name));
   const pool = [...sameLeague, ...sameNation, ...clubs.filter((c) => !exclude.has(c.name))];
 
   let added = 0;
-  const used = new Set(exclude);
-  while (added < needed && pool.length) {
-    // Prefer closer clubs early in the list
-    const idx = Math.min(pool.length - 1, Math.floor(Math.random() * Math.min(12, pool.length)));
-    const club = pool.splice(idx, 1)[0];
-    if (!club || used.has(club.name)) continue;
-    used.add(club.name);
-    offers.push(
-      buildDeal(club, {
-        kind: "counter",
-        blurb: `${club.displayName} see a first-team project in you. They are ready to beat your academy side to the signature.`,
-        performanceHint,
-      })
-    );
+  for (const club of pool) {
+    if (added >= needed) break;
+    if (exclude.has(club.name)) continue;
+    const fit = evaluateSportingFit(player, club, {
+      seasonIndex: player.seasons?.length ?? 0,
+      careerId,
+      relaxedDevelopment: true,
+    });
+    if (!fit.eligible) {
+      rejectionLog.push({ clubId: club.clubId, reasons: ["sporting-ineligible"] });
+      continue;
+    }
+    const built = buildValidatedOffer({
+      player,
+      club,
+      fit,
+      dealType: "first_pro",
+      performanceScore: performanceHint,
+      rng,
+    });
+    if (!built.ok) {
+      rejectionLog.push({ clubId: club.clubId, reasons: built.reasons });
+      continue;
+    }
+    exclude.add(club.name);
+    offers.push({
+      kind: "counter",
+      club,
+      blurb: built.offer.message,
+      contractYears: built.offer.contractYears,
+      performanceHint,
+      offer: built.offer,
+      wage: built.offer.wage,
+      expectedRole: built.offer.expectedRole,
+    });
     added += 1;
   }
 
-  // Absolute fallback so the player is never stuck
-  if (!offers.length) {
-    const fallback = pickRandom(clubs) || parent;
-    if (fallback) {
-      offers.push(
-        buildDeal(fallback, {
-          kind: "counter",
-          blurb: `${fallback.displayName} offer a professional contract when others hesitate.`,
-          performanceHint: Math.max(55, performanceHint - 4),
-        })
-      );
-    }
-  }
-
-  const verdict = parentOffers
+  // Usable continuation without manufacturing an elite offer.
+  const verdict = offers.some((o) => o.kind === "parent")
     ? {
         headline: "The call from upstairs",
         lead: `${parent.displayName} are prepared to put a senior professional contract in front of you.`,
       }
-    : {
-        headline: "No first-team deal yet",
-        lead: parent
-          ? `${parent.displayName} thank you for the academy year, but they will not open a senior deal today. Other doors may still open.`
-          : "The academy chapter ends without a home senior deal. Other clubs are circling.",
-      };
+    : offers.length
+      ? {
+          headline: "No first-team deal from the academy side",
+          lead: parent
+            ? `${parent.displayName} will not open a senior deal today. Other doors that fit your level may still open.`
+            : "The academy chapter ends without a home senior deal. Suitable clubs are circling.",
+        }
+      : {
+          headline: "No professional offer yet",
+          lead: parent
+            ? `${parent.displayName} are not ready to offer terms that fit. You can continue training, seek another pathway, or wait for a suitable club.`
+            : "No suitable professional contract is available today. Your career can continue via training and later free-agent interest.",
+        };
 
-  return { parentOffers, parent, offers, verdict, rating };
+  return {
+    parentOffers: offers.some((o) => o.kind === "parent"),
+    parent,
+    offers,
+    verdict,
+    rating,
+    rejectionLog,
+    emptyOffers: offers.length === 0,
+  };
 }
 
 /** Move the player onto a senior club with a first pro contract. */
 export function signFirstProfessionalContract(player, deal) {
+  const offer = deal?.offer;
+  if (offer) {
+    const result = acceptPipelineOffer(player, { ...offer, isParentOffer: deal.kind === "parent" });
+    if (result.ok) return player.club.displayName ?? player.club.name;
+  }
+
   const club = deal?.club;
   if (!club) return null;
 
-  player.club = {
-    name: club.name,
-    displayName: club.displayName ?? club.name,
-    league: club.league,
-    leagueDisplay: club.leagueDisplay ?? club.league,
-    tier: club.tier,
-    badge: club.badge,
-    financialTier: club.financialTier,
-    isAcademy: false,
-    parentClub: null,
-  };
+  // Fallback path still uses validated terms when possible.
+  const built = buildValidatedOffer({
+    player,
+    club,
+    dealType: "first_pro",
+    performanceScore: deal.performanceHint ?? 72,
+    forceParent: deal.kind === "parent",
+  });
+  if (built.ok) {
+    acceptPipelineOffer(player, { ...built.offer, isParentOffer: deal.kind === "parent" });
+    return player.club.displayName ?? player.club.name;
+  }
 
-  const hint = deal.performanceHint ?? 72;
-  const currentSeason = player.seasons.length;
-  player.contractStartSeason = currentSeason;
-  player.contractYears =
-    deal.contractYears || calculateContractLength(player.age, player.rating, player.potential, hint);
-  player.contractEndSeason = currentSeason + player.contractYears;
-  player.pendingOffers = [];
-  player.suppressParentContractOffer = true;
+  // Last resort: sign with wage inside club bands without inventing a fee.
+  applyOfferToPlayer(
+    player,
+    {
+      ...club,
+      club: club.name,
+      clubDisplay: club.displayName ?? club.name,
+      wage: deal.wage || 1500,
+      transferFee: 0,
+      contractYears:
+        deal.contractYears ||
+        calculateContractLength(player.age, player.rating, player.potential, deal.performanceHint ?? 72),
+      expectedRole: deal.expectedRole || "prospect",
+      isFreeAgent: true,
+      dealType: "first_pro",
+    },
+    `tx:first-pro-fallback:${club.clubId}`
+  );
   return player.club.displayName ?? player.club.name;
 }
