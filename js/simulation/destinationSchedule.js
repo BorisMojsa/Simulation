@@ -52,6 +52,7 @@ export function dateFixturesForLeague(fixtures, leagueId, seasonStartYear) {
     const date = addDaysSafe(start, Math.round(t * span));
     return {
       ...fx,
+      index: i,
       date,
       competitionType: "league",
       sortKey: `${date}:DL:${leagueId}:${i}`,
@@ -268,6 +269,7 @@ export function reconcileAfterClubChange({
 
   // Initialise already-played destination matches (world only).
   let pastSimulated = 0;
+  const destinationPastMatches = [];
   const w = world || getWorldState();
   if (initialisePastDestination && past.length && rng) {
     for (const fx of past) {
@@ -279,6 +281,9 @@ export function reconcileAfterClubChange({
         fixtureId: `dest-past:${destLeagueId}:${fx.sortKey}`,
         date: fx.date,
       });
+      match.matchday = Math.floor(fx.index / Math.max(1, Math.floor(schedule.clubs.length / 2))) + 1;
+      match.round = `Matchday ${match.matchday}`;
+      destinationPastMatches.push(match);
       applyMatchFormUpdate(w, match);
       pastSimulated += 1;
     }
@@ -321,7 +326,7 @@ export function reconcileAfterClubChange({
     kind: "league",
     date: fx.date,
     sortKey: fx.sortKey || `${fx.date}:DL:${i}`,
-    index: 100000 + i,
+    index: fx.index ?? i,
     home: fx.home,
     away: fx.away,
     destinationLeagueId: destLeagueId,
@@ -372,6 +377,9 @@ export function reconcileAfterClubChange({
 
   return {
     ordered: newOrdered,
+    destinationLeague: destLeague,
+    destinationClubs: schedule.clubs,
+    destinationPastMatches,
     destinationMeta: {
       registration,
       previousClubId,

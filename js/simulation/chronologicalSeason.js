@@ -97,6 +97,27 @@ function buildTable(records) {
     .map((row, idx) => ({ ...row, position: idx + 1 }));
 }
 
+function createLeagueRecords(clubs, world) {
+  return new Map(clubs.map((c) => {
+    const eff = effectiveTeamStrength(c, { worldState: world });
+    return [c.name, {
+      name: c.name, displayName: c.displayName, badge: c.badge, clubId: c.clubId,
+      played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, points: 0,
+      strength: eff.overall, overall: eff.overall, attack: eff.attack,
+      midfield: eff.midfield, defence: eff.defence, goalkeeper: eff.goalkeeper,
+      strengthTier: eff.tierLabel,
+    }];
+  }));
+}
+
+// The playing league owns standings. Employment stays with the parent on a loan.
+function destinationLeagueContext(recon, world) {
+  if (!recon.destinationLeague) return null; // same-league move keeps its table
+  const records = createLeagueRecords(recon.destinationClubs, world);
+  for (const match of recon.destinationPastMatches || []) updateLeagueRecords(records, match);
+  return { league: recon.destinationLeague, clubs: recon.destinationClubs, records };
+}
+
 /**
  * Pre-season continental entry proxy when current-season standing is unknown.
  * Prefers previous season finish; otherwise uses club quality bands.
@@ -186,7 +207,7 @@ export function simulateChronologicalSeason({
   }
 
   // ---- League fixtures ----
-  const clubs = ensurePlayerInClubs(league, player).map((c) =>
+  let clubs = ensurePlayerInClubs(league, player).map((c) =>
     attachClubIdentity({
       ...c,
       tier: league.tier,
@@ -203,30 +224,7 @@ export function simulateChronologicalSeason({
   }
   const datedLeague = dateLeagueFixtures(rng.shuffle(fixtures), seasonStartYear);
 
-  const records = new Map();
-  clubs.forEach((c) => {
-    const eff = effectiveTeamStrength(c, { worldState: world });
-    records.set(c.name, {
-      name: c.name,
-      displayName: c.displayName,
-      badge: c.badge,
-      clubId: c.clubId,
-      played: 0,
-      wins: 0,
-      draws: 0,
-      losses: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      points: 0,
-      strength: eff.overall,
-      overall: eff.overall,
-      attack: eff.attack,
-      midfield: eff.midfield,
-      defence: eff.defence,
-      goalkeeper: eff.goalkeeper,
-      strengthTier: eff.tierLabel,
-    });
-  });
+  let records = createLeagueRecords(clubs, world);
 
   // ---- Pre-plan cup / europe / intl as dated "round" events ----
   const cupRoundDates = dateCupRounds(
@@ -390,6 +388,12 @@ export function simulateChronologicalSeason({
           );
         }
         if (recon.ordered) ordered = recon.ordered;
+        const destination = destinationLeagueContext(recon, world);
+        if (destination) {
+          if (world) world.standings.set(league.leagueId || league.name, buildTable(records));
+          ({ league, clubs, records } = destination);
+          leagueAllMatches.push(...(recon.destinationPastMatches || []));
+        }
         player.destinationScheduleMeta = recon.destinationMeta;
       }
       if (pauseResult?.pause) {
@@ -669,13 +673,13 @@ export function simulateChronologicalSeason({
 
   return {
     status: "complete",
+    league,
     table,
     playerRecord:
       table.find(
         (r) =>
           r.name === player.club?.name ||
-          (player.playingClubId && r.clubId === player.playingClubId) ||
-          (player.employmentClubId && r.clubId === player.employmentClubId)
+          (player.playingClubId && r.clubId === player.playingClubId)
       ) || null,
     playerMatches: leaguePlayerMatches,
     allMatches: leagueAllMatches,
@@ -892,8 +896,8 @@ export function resumeChronologicalSeason({
   const world = getWorldState();
 
   let ordered = checkpoint.ordered;
-  const clubs = checkpoint.clubs;
-  const records = new Map(checkpoint.records || []);
+  let clubs = checkpoint.clubs;
+  let records = new Map(checkpoint.records || []);
   let cupState = checkpoint.cupState;
   let cupResult = checkpoint.cupResult;
   let europePlan = checkpoint.europePlan;
@@ -934,6 +938,12 @@ export function resumeChronologicalSeason({
       );
     }
     if (recon.ordered) ordered = recon.ordered;
+    const destination = destinationLeagueContext(recon, world);
+    if (destination) {
+      if (world) world.standings.set(checkpoint.leagueId, buildTable(records));
+      ({ league, clubs, records } = destination);
+      leagueAllMatches.push(...(recon.destinationPastMatches || []));
+    }
     destinationMeta = recon.destinationMeta;
     player.destinationScheduleMeta = destinationMeta;
   }
@@ -1162,6 +1172,7 @@ export function resumeChronologicalSeason({
 
   return {
     status: "complete",
+    league,
     table,
     playerRecord:
       table.find(

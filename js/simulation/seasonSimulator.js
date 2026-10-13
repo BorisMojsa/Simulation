@@ -25,6 +25,29 @@ export function legacyPerformanceScoreAdapter({ reliableSignal, avgMatchRating, 
   return clamp(62 + signal * 28 + ratingPart + appsPart, 20, 98);
 }
 
+/** Preserve the club represented in each part of a transfer/loan season. */
+export function buildLeagueMatchSegments(matches, leagueLookup) {
+  const byId = new Map([...leagueLookup.values()].map((l) => [l.leagueId, l]));
+  const segments = [];
+  for (const match of matches || []) {
+    const club = match.playerSide === "away" ? match.away : match.home;
+    const league = byId.get(match.competitionId);
+    const clubId = club?.clubId || club?.name;
+    const leagueId = match.competitionId;
+    let segment = segments[segments.length - 1];
+    if (!segment || segment.clubId !== clubId || segment.leagueId !== leagueId) {
+      segment = {
+        clubId, club: club?.displayName || club?.name || "Club",
+        leagueId, league: league?.displayName || league?.name || leagueId,
+        matches: [],
+      };
+      segments.push(segment);
+    }
+    segment.matches.push(match);
+  }
+  return segments;
+}
+
 /** How much an assist counts vs a goal for “match impact” by position. */
 function assistWeightForPosition(position) {
   const map = {
@@ -154,7 +177,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
 
   // Age advances only when the season completes (not at a January pause).
   const age = player.age + 1;
-  const league = leagueLookup.get(player.club.league) || pickRandom(leagues);
+  let league = leagueLookup.get(player.club.league) || pickRandom(leagues);
 
   const ledger = createEmptyLedger(seasonId);
   const storedCheckpoint = opts.checkpoint || player.seasonCheckpoint || null;
@@ -190,6 +213,8 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       league,
     };
   }
+
+  league = chrono.league || league;
 
   for (const rec of chrono.ledgerRecords || []) {
     recordMatchObservation(ledger, { ...rec, seasonId });
@@ -419,6 +444,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     trophies,
     divisionMove: null,
     leagueMatches: chrono.playerMatches,
+    leagueMatchSegments: buildLeagueMatchSegments(chrono.playerMatches, leagueLookup),
     chronology: chrono.chronology || null,
   };
 

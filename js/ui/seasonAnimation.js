@@ -252,11 +252,18 @@ async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) 
   // 1) League fixtures
   setSkipBarVisible(true);
   animationCtl.skipPhase = false;
-  await playMatchList(season.leagueMatches || [], {
-    competitionLabel: league.displayName ?? league.name,
-    phaseLabel: `League · Season ${season.seasonNumber}`,
-    showMatchCount: true,
-  });
+  const leagueSegments = season.leagueMatchSegments?.length
+    ? season.leagueMatchSegments
+    : [{ club: season.clubDisplay || season.club, league: league.displayName ?? league.name,
+         matches: season.leagueMatches || [] }];
+  for (const segment of leagueSegments) {
+    if (animationCtl.skipPhase || animationCtl.skipAll) break;
+    await playMatchList(segment.matches, {
+      competitionLabel: `${segment.club} · ${segment.league}`,
+      phaseLabel: `League · Season ${season.seasonNumber}`,
+      showMatchCount: true,
+    });
+  }
   setSkipBarVisible(false);
   hideSection("match-viewer-section");
 
