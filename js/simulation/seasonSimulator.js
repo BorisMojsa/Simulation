@@ -12,7 +12,8 @@ import {
   findSisterLeagues,
   qualificationForPosition,
 } from "./leaguePhase.js";
-import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js";
+import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=77";
+import { findLeagueById } from "./destinationSchedule.js?v=77";
 import { simulateIndividualAwards } from "./individualAwards.js";
 import { clubNameForDisplay, clamp, pickRandom, randFloat } from "../utils/helpers.js";
 import { applySeasonDevelopment, attachClubIdentity, ensureWorldState, getWorldState } from "./worldState.js";
@@ -143,7 +144,10 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   const profile = POSITION_PROFILES[player.position] || POSITION_PROFILES.DEFAULT;
   const seasonIndex = player.seasons.length;
   const seasonId = `season-${seasonIndex + 1}`;
-  const resuming = Boolean(opts.checkpoint || player.seasonCheckpoint?.status === "awaiting_decision");
+  const storedStatus = opts.checkpoint?.status || player.seasonCheckpoint?.status;
+  const resuming = Boolean(
+    opts.checkpoint || storedStatus === "awaiting_decision" || storedStatus === "awaiting_scenario"
+  );
   if (!resuming && player.development?.lastProcessedSeasonId === seasonId) {
     throw new Error(`simulateSeason: season ${seasonId} already applied`);
   }
@@ -173,18 +177,27 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     checkpoint: storedCheckpoint,
   };
   const chrono =
-    storedCheckpoint?.status === "awaiting_decision"
+    storedCheckpoint?.status === "awaiting_decision" ||
+    storedCheckpoint?.status === "awaiting_scenario"
       ? resumeChronologicalSeason({ ...chronoOpts, checkpoint: storedCheckpoint })
       : simulateChronologicalSeason(chronoOpts);
 
-  if (chrono.status === "awaiting_decision") {
+  if (chrono.status === "awaiting_decision" || chrono.status === "awaiting_scenario") {
     // Do not finalize development, history, or age. Caller must resume after the user chooses.
+    const ck = chrono.checkpoint || {};
     return {
-      awaitingDecision: true,
+      awaitingDecision: chrono.status === "awaiting_decision",
+      awaitingScenario: chrono.status === "awaiting_scenario",
       checkpoint: chrono.checkpoint,
-      decision: chrono.decision,
-      offers: chrono.offers,
+      decision: chrono.decision || null,
+      offers: chrono.offers || [],
+      pendingSeniorScenario: chrono.pendingSeniorScenario || chrono.checkpoint?.pendingSeniorScenario || null,
       partialPlayerMatchStats: chrono.partialPlayerMatchStats,
+      // Partial fixtures for the live simulation dashboard (segmented delivery).
+      partialLeagueAllMatches: ck.leagueAllMatches || [],
+      partialLeaguePlayerMatches: ck.leaguePlayerMatches || [],
+      partialTableRecords: ck.records || null,
+      chronology: chrono.chronology || null,
       seasonIndex,
       seasonId,
       league,
@@ -194,18 +207,25 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   for (const rec of chrono.ledgerRecords || []) {
     recordMatchObservation(ledger, { ...rec, seasonId });
   }
-  const sisters = findSisterLeagues(league, leagues);
-  const { promoteSlots, relegateSlots } = divisionMoveSlots(league, sisters);
+
+  // Active playing league (borrower after a cross-league loan/transfer), not employment.
+  const playingLeague =
+    chrono.activeLeague ||
+    findLeagueById(player.club?.leagueId) ||
+    leagueLookup.get(player.club.league) ||
+    league;
+  const sisters = findSisterLeagues(playingLeague, leagues);
+  const { promoteSlots, relegateSlots } = divisionMoveSlots(playingLeague, sisters);
 
   chrono.table.forEach((row) => {
-    row.qualification = qualificationForPosition(row.position, league, sisters);
+    row.qualification = qualificationForPosition(row.position, playingLeague, sisters);
     if (sisters.higher && row.position <= promoteSlots) row.divisionMove = "promoted";
     if (sisters.lower && row.position > chrono.table.length - relegateSlots) row.divisionMove = "relegated";
   });
 
   const playerRow = chrono.playerRecord;
   if (playerRow) {
-    playerRow.qualification = qualificationForPosition(playerRow.position, league, sisters);
+    playerRow.qualification = qualificationForPosition(playerRow.position, playingLeague, sisters);
     playerRow.divisionMove = chrono.table.find((r) => r.name === playerRow.name)?.divisionMove || null;
   }
 
@@ -324,7 +344,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
 
   const individualAwards = simulateIndividualAwards(
     performanceScore,
-    { goals, assists, cleanSheets, matches, league: player.club.league },
+    { goals, assists, cleanSheets, matches, league: playingLeague.name },
     player,
     leagueLookup
   );
@@ -333,14 +353,14 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     player.careerHonors.leagueTitles += 1;
     trophies.push({
       kind: "league",
-      label: `${league.displayName ?? league.name} Champions`,
-      competition: league.displayName ?? league.name,
-      simKey: league.name,
+      label: `${playingLeague.displayName ?? playingLeague.name} Champions`,
+      competition: playingLeague.displayName ?? playingLeague.name,
+      simKey: playingLeague.name,
     });
   }
   if (domesticCupResult?.won) {
     player.careerHonors.domesticCups += 1;
-    const cupName = domesticCupResult.name || `${league.nation} Cup`;
+    const cupName = domesticCupResult.name || `${playingLeague.nation} Cup`;
     trophies.push({
       kind: "cup",
       label: `${cupName} Winners`,
@@ -376,13 +396,42 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       ? standing.qualification || null
       : null;
 
+  const leagueMatchSegments =
+    chrono.leagueMatchSegments ||
+    (() => {
+      const segs = [];
+      for (const m of chrono.playerMatches || []) {
+        const key = m.leagueContextId || m.competitionId || playingLeague.leagueId;
+        let seg = segs.find((s) => s.key === key && s.segment === (m.historySegment || "destination"));
+        if (!seg) {
+          const isOrigin = m.historySegment === "origin";
+          const labelBase = m.leagueContextName || playingLeague.displayName || playingLeague.name;
+          seg = {
+            key,
+            segment: m.historySegment || "destination",
+            leagueId: key,
+            leagueDisplay: labelBase,
+            label: isOrigin ? `${labelBase} · before move` : labelBase,
+            matches: [],
+          };
+          segs.push(seg);
+        }
+        seg.matches.push(m);
+      }
+      return segs;
+    })();
+
   const season = {
     seasonNumber: seasonIndex + 1,
     age,
     club: player.club.name,
     clubDisplay: clubNameForDisplay(player.club),
-    league: player.club.league,
-    leagueDisplay: player.club.leagueDisplay ?? player.club.league,
+    clubId: player.club.clubId,
+    employmentClubId: player.employmentClubId || null,
+    playingClubId: player.playingClubId || player.club?.clubId || null,
+    league: playingLeague.name,
+    leagueDisplay: playingLeague.displayName ?? playingLeague.name,
+    leagueId: playingLeague.leagueId,
     badge: player.club.badge,
     matches: agg.combined.appearances,
     starts: agg.combined.starts,
@@ -419,15 +468,23 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     trophies,
     divisionMove: null,
     leagueMatches: chrono.playerMatches,
+    leagueAllMatches: chrono.allMatches || [],
+    leagueMatchSegments,
     chronology: chrono.chronology || null,
   };
 
   player.seasons.push(season);
   player.latestStanding = standing
-    ? { league: league.name, leagueDisplay: league.displayName ?? league.name, table: chrono.table, playerRow }
+    ? {
+        league: playingLeague.name,
+        leagueDisplay: playingLeague.displayName ?? playingLeague.name,
+        leagueId: playingLeague.leagueId,
+        table: chrono.table,
+        playerRow,
+      }
     : null;
 
-  const divisionMove = applyDivisionMovement(player, playerRow, league, leagues);
+  const divisionMove = applyDivisionMovement(player, playerRow, playingLeague, leagues);
   if (divisionMove) {
     season.divisionMove = divisionMove;
     if (standing) standing.divisionMove = divisionMove.type;
@@ -460,8 +517,10 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
 
   return {
     season,
-    league,
+    league: playingLeague,
     standings: { table: chrono.table, playerRecord: playerRow },
+    leagueAllMatches: chrono.allMatches || [],
+    leaguePlayerMatches: chrono.playerMatches || [],
     europeanCampaign,
     internationalSeason,
     domesticCupResult,

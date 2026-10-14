@@ -1,31 +1,32 @@
 # Competition configuration notes
 
-## UEFA club competitions (simplified)
+## UEFA / continental club competitions
 
-Association slots are in `qualification.js` (`UEFA_ASSOCIATION_SLOTS`).
+Association slots: `qualification.js` (`UEFA_ASSOCIATION_SLOTS`, `AFC_ASSOCIATION_SLOTS`, `CAF_ASSOCIATION_SLOTS`).
 
-- Big-5: up to 4 CL + EL + UECL places from the top flight table.
-- Mid associations (PT, NL, BE, TR): 2 CL + EL + UECL.
-- Smaller UEFA associations in the DB (including **Serbia**, **Croatia**, **Czech Republic**): 1 CL (champions) + EL + UECL.
+Format definitions (rule versions): `formats.js`.
 
-Eligibility uses stable `leagueId` values, not fragile display-name string equality.
+Simulation engine: `js/simulation/continentalTournament.js` (public API via `europeanCompetition.js`).
 
-**Bootstrap:** the first seasons use the just-simulated domestic table for continental entry (no prior-season ledger yet). Documented intentional simplification.
+- UEFA CL/EL/UECL: league phase (36) then knockout playoffs / R16 path.
+- Libertadores / Sudamericana: group phase.
+- Concacaf Champions Cup: knockout with Round One + byes (no groups).
+- AFC Champions League Elite / CAF Champions League: regional league or groups.
 
-Tournaments are **knockout-only** fields (typically 16 / 8), not the full real-world league-phase UCL format.
+**Bootstrap:** prior-season standing when present on the same league; otherwise club-quality position bands. Entry never reuses another club/league’s table after a transfer.
 
 ## Domestic cups
 
-Configured in `domesticCups.js`. Multi-division fields use `divisionLevel`. Byes are explicit and do not update form/ratings.
+Configured in `domesticCups.js` (includes Saudi Arabia, Japan, South Korea, Egypt, Morocco).
 
-## Copa América
+## National tournaments
 
-Eligible pool = CONMEBOL core + configured CONCACAF invites only. Field size 12 / groups of 3 / top-2 → 8 knockout teams. **No repair insertions** from other confederations.
+Calendar + field sizes: `internationalCalendar.js`. Best-third advancement in `nationalTeam.js`.
 
-## National call-ups
+## League formats
 
-Nation must be eligible for the tournament field before call-up. Call-up uses player OVR vs national positional quality and club **sporting** overall (not financial tier).
+Declared rules vs generic DRR: `leagueFormats.js`.
 
 ## Persistence
 
-World state is **session-scoped** for a career (`createWorldState`). `serializeWorldState` / `deserializeWorldState` support round-trips; there is no refresh/localStorage persistence yet.
+World state holds `editions`, `matches`, `ties`, `cupResults`, `qualification`. Session-scoped; serialize/deserialize supported.

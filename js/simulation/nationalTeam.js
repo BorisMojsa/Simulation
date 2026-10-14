@@ -136,15 +136,20 @@ function eligiblePool(tournament) {
  * Build a valid field. Call-up does NOT force qualification.
  * ensurePlayerNation only applies when the nation is already eligible for the pool.
  */
-function largestValidFieldSize(poolSize, configuredSize, groupSize) {
+function largestValidFieldSize(poolSize, configuredSize, groupSize, bestThirds = 0) {
   const g = Math.max(2, groupSize || 4);
   let size = Math.min(configuredSize, poolSize);
   size -= size % g;
-  // Prefer sizes where top-2-per-group yields a power-of-two knockout.
+  // Prefer sizes where top-2 + best-thirds yields a power-of-two knockout.
   while (size >= g) {
     const groups = size / g;
-    const ko = groups * 2;
-    if (Number.isInteger(groups) && ko >= 2 && (ko & (ko - 1)) === 0) return size;
+    if (!Number.isInteger(groups)) {
+      size -= g;
+      continue;
+    }
+    const thirds = Math.min(bestThirds || 0, groups);
+    const ko = groups * 2 + thirds;
+    if (ko >= 2 && (ko & (ko - 1)) === 0) return size;
     size -= g;
   }
   // Otherwise any multiple of group size that fits the pool.
@@ -161,7 +166,8 @@ function buildField(tournament, playerNation, { forceIncludeEligibleNation = fal
   }
 
   const groupSize = tournament.groupSize || 4;
-  let usable = largestValidFieldSize(pool.length, tournament.fieldSize, groupSize);
+  const bestThirds = tournament.bestThirds || 0;
+  let usable = largestValidFieldSize(pool.length, tournament.fieldSize, groupSize, bestThirds);
   if (usable < groupSize) {
     throw new Error(
       `${tournament.name}: invalid field/group config (pool=${pool.length}, field=${tournament.fieldSize}, group=${groupSize})`
@@ -195,7 +201,7 @@ function buildField(tournament, playerNation, { forceIncludeEligibleNation = fal
 
   if (field.length < usable) {
     // Last resort: shrink to what we can fill (still eligible-only)
-    usable = largestValidFieldSize(field.length, field.length, groupSize);
+    usable = largestValidFieldSize(field.length, field.length, groupSize, bestThirds);
     field = field.slice(0, usable);
     tournament._resolvedFieldSize = usable;
   }
@@ -312,6 +318,7 @@ function simulateGroup(teams, { playerNation, player, playerInSquad }) {
     matches,
     playerMatches,
     qualifiers: table.slice(0, qualifiersNeeded).map((t) => t.name),
+    third: table[2] || null,
   };
 }
 
@@ -475,13 +482,24 @@ function simulateOneTournament(tournament, player, { calledUp, forceIncludeIfEli
   }
 
   let knockoutTeams = groups.flatMap((g) => g.qualifiers);
-  // Must be power of 2 from real qualifiers only
-  let koSize = 1;
-  while (koSize * 2 <= knockoutTeams.length) koSize *= 2;
-  if (koSize < 2) {
-    throw new Error(`${tournament.name}: not enough group qualifiers for knockout`);
+  const bestThirds = tournament.bestThirds || 0;
+  let bestThirdTable = [];
+  if (bestThirds > 0) {
+    bestThirdTable = groups
+      .map((g) => g.third)
+      .filter(Boolean)
+      .sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf)
+      .slice(0, bestThirds);
+    knockoutTeams = [...knockoutTeams, ...bestThirdTable.map((t) => t.name)];
   }
-  knockoutTeams = knockoutTeams.slice(0, koSize);
+
+  // Advancement rules must fill a power-of-two; do not silently drop qualifiers.
+  const koSize = knockoutTeams.length;
+  if (koSize < 2 || (koSize & (koSize - 1)) !== 0) {
+    throw new Error(
+      `${tournament.name}: knockout field ${koSize} is not a power of two after groups/best-thirds (field=${field.length}, bestThirds=${bestThirds})`
+    );
+  }
 
   const ko = simulateKnockout(knockoutTeams, {
     playerNation,
@@ -491,14 +509,44 @@ function simulateOneTournament(tournament, player, { calledUp, forceIncludeIfEli
   });
   allPlayerMatches.push(...ko.playerMatches);
 
+  // Optional third-place match (World Cup)
+  let thirdPlaceMatch = null;
+  if (tournament.thirdPlaceMatch && ko.allRounds?.length >= 2) {
+    const sf = ko.allRounds.find((r) => r.round === "Semi-finals");
+    if (sf?.matches?.length === 2) {
+      const losers = sf.matches.map((m) => (m.winnerSide === "home" ? m.away : m.home));
+      if (losers[0] && losers[1]) {
+        const rng = getSimRng();
+        const world = getWorldState();
+        thirdPlaceMatch = resolveKnockout(
+          simulateMatch(losers[0], losers[1], {
+            competition: "international",
+            venue: "neutral",
+            worldState: world,
+            rng,
+            competitionId: tournament.name,
+          }),
+          { rng }
+        );
+        thirdPlaceMatch.round = "Third-place match";
+        thirdPlaceMatch.cupName = tournament.name;
+        applyMatchFormUpdate(world, thirdPlaceMatch);
+        ko.allRounds.push({ round: "Third-place match", matches: [thirdPlaceMatch] });
+      }
+    }
+  }
+
   return {
     id: tournament.id,
     name: tournament.name,
     shortName: tournament.shortName,
     confederation: tournament.confederation,
     year: tournament.year,
+    editionYear: tournament.editionYear || tournament.year,
     calledUp: playerActuallyIn,
     groups,
+    bestThirdTable,
+    thirdPlaceMatch,
     ...ko,
     playerMatches: allPlayerMatches,
     playerNationInTournament: field.includes(playerNation),

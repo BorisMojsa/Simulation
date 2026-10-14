@@ -141,8 +141,18 @@ export function processPlayerMatchDay({
     }
 
     const ps = match.playerStats || {};
+    // Surface participation metadata on the match for the live dashboard cards.
+    match.playerStats = {
+      ...ps,
+      started: Boolean(participation.started),
+      selected: Boolean(participation.selected),
+      available: Boolean(participation.available),
+      nonParticipationReason: participation.nonParticipationReason || null,
+      position: player.position,
+    };
     const conceded = playerSide === "home" ? match.awayGoals : match.homeGoals;
-    const cleanSheet = (ps.minutes || 0) >= 60 && conceded === 0 && player.position === "GK";
+    const cleanSheet =
+      (match.playerStats.minutes || 0) >= 60 && conceded === 0 && player.position === "GK";
     ledgerRecord = {
       matchId: fixtureId || match.fixtureId || `${competitionId}:${date}`,
       date,
@@ -158,18 +168,18 @@ export function processPlayerMatchDay({
       position: player.position,
       selected: Boolean(participation.selected),
       started: Boolean(participation.started),
-      minutes: ps.minutes || 0,
+      minutes: match.playerStats.minutes || 0,
       availableMinutes: matchDuration,
       available: Boolean(participation.available),
       nonParticipationReason: participation.nonParticipationReason || null,
       goals: ps.goals || 0,
       assists: ps.assists || 0,
-      cleanSheetEligible: (ps.minutes || 0) >= 60,
+      cleanSheetEligible: (match.playerStats.minutes || 0) >= 60,
       cleanSheet,
-      yellowCards: ps.yellow || 0,
-      redCards: ps.red || 0,
-      rating: ps.rating,
-      matchRating: ps.rating,
+      yellowCards: match.playerStats.yellow || 0,
+      redCards: match.playerStats.red || 0,
+      rating: match.playerStats.rating,
+      matchRating: match.playerStats.rating,
       expectedRating: match.expectedRating ?? null,
       residualScale: 0.6,
       baseOverallBefore: player.baseOverallRaw,

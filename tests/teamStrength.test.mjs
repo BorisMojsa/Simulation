@@ -63,7 +63,8 @@ function club(name, nation) {
 }
 
 test("all 490 clubs resolve to profiles", () => {
-  assert.equal(CLUB_PROFILES.length, 490);
+  // Base ClubElo pack (490) + AFC/CAF ClubElo supplement (82)
+  assert.equal(CLUB_PROFILES.length, 572);
   const missing = assertAllLeaguesCovered(LEAGUES);
   assert.equal(missing.length, 0, JSON.stringify(missing.slice(0, 5)));
 });
@@ -92,8 +93,8 @@ test("provenance labels exist", () => {
   const verified = CLUB_PROFILES.filter((p) => p.sourceStatus === "verified_rating");
   const primary = CLUB_PROFILES.filter((p) => p.strengthDerivationStatus === "normalized_from_published_rating");
   const calibrated = CLUB_PROFILES.filter((p) => p.strengthDerivationStatus === "calibrated_from_published_rating");
-  assert.equal(verified.length, 490);
-  assert.equal(primary.length, 485);
+  assert.equal(verified.length, 572);
+  assert.equal(primary.length, 567);
   assert.equal(calibrated.length, 5);
   for (const p of CLUB_PROFILES) {
     assert.ok(p.sourceStatus);

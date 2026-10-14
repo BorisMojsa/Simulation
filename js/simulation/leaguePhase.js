@@ -3,6 +3,11 @@ import {
   isUefaQualifyingLeague,
   uefaSlotsForLeague,
   leagueIdFromName,
+  AFC_TOP_FLIGHT_LEAGUE_IDS,
+  CAF_TOP_FLIGHT_LEAGUE_IDS,
+  AFC_ASSOCIATION_SLOTS,
+  CAF_ASSOCIATION_SLOTS,
+  associationIdForNation,
 } from "../data/competitions/qualification.js";
 import { attachClubIdentity, exchangeLeagueMembership, getWorldState } from "./worldState.js";
 
@@ -83,6 +88,16 @@ export function qualificationForPosition(position, leagueOrTotalTeams, sisters =
       cursor += 1;
       if (position === cursor) return "Conference League";
     }
+  }
+
+  const leagueId = league ? league.leagueId || leagueIdFromName(league.name) : null;
+  if (league && leagueId && AFC_TOP_FLIGHT_LEAGUE_IDS.has(leagueId)) {
+    const slots = AFC_ASSOCIATION_SLOTS[associationIdForNation(league.nation)] || { elite: 2 };
+    if (position > 1 && position <= slots.elite) return "AFC Champions League Elite";
+  }
+  if (league && leagueId && CAF_TOP_FLIGHT_LEAGUE_IDS.has(leagueId)) {
+    const slots = CAF_ASSOCIATION_SLOTS[associationIdForNation(league.nation)] || { cl: 2 };
+    if (position > 1 && position <= slots.cl) return "CAF Champions League";
   }
 
   if (promoteSlots > 0 && position <= promoteSlots) {

@@ -8,13 +8,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { CLUB_PROFILES } from "../js/data/strength/clubProfiles.generated.js";
+import { AFC_CAF_CLUB_PROFILES } from "../js/data/strength/afcCafClubSupplement.js";
 import { NATION_PROFILES } from "../js/data/strength/nationProfiles.js";
 import {
   clubEloToTeamQuality,
   optaLikeToTeamQuality,
   fifaPointsToTeamQuality,
 } from "../js/data/strength/scale.js";
-import { resolveClub } from "../js/data/identity/resolver.js";
+import { CLUB_PROFILES as MERGED_CLUB_PROFILES, resolveClub } from "../js/data/identity/resolver.js";
 import { effectiveTeamStrength } from "../js/simulation/teamStrength.js";
 import { expectedGoals } from "../js/simulation/matchEngine.js";
 import {
@@ -84,6 +85,9 @@ test("every club has exactly one selected baseline; no league-centre priors", ()
     assert.ok(!p.provenance?.estimateMethod);
     assert.ok(!["configured_league_center_prior", "single_league_anchor_below", "league_verified_anchor_below_min"].includes(p.evidenceRef));
   }
+  // Runtime merge includes AFC/CAF ClubElo supplement
+  assert.equal(AFC_CAF_CLUB_PROFILES.length, 82);
+  assert.equal(MERGED_CLUB_PROFILES.length, 572);
 });
 
 test("research-pack gap IDs remain covered exactly once", () => {
@@ -300,6 +304,7 @@ test("coverage reports match profiles and calibration hashes", () => {
   assert.equal(cov.clubTotal, CLUB_PROFILES.length);
   assert.equal(cov.strengthDerivationStatus.normalized_from_published_rating, 485);
   assert.equal(cov.strengthDerivationStatus.calibrated_from_published_rating, 5);
+  assert.equal(MERGED_CLUB_PROFILES.length, CLUB_PROFILES.length + AFC_CAF_CLUB_PROFILES.length);
   assert.equal(cov.provisional_estimate, 0);
   const cal = JSON.parse(fs.readFileSync(path.join(ROOT, "reports/strength-calibration-report.json"), "utf8"));
   const calCfg = JSON.parse(

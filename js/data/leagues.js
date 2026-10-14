@@ -6,6 +6,7 @@ import { normalizeName } from "./identity/normalize.js";
 import { resolveClub } from "./identity/resolver.js";
 import { leagueIdFromName } from "./competitions/qualification.js";
 import { tierLabelFromQuality } from "./strength/scale.js";
+import { AFC_CAF_LEAGUE_DEFINITIONS } from "./strength/afcCafClubSupplement.js?v=1";
 
 function financialTierForClub(clubName, displayName, leagueFinancialPower) {
   const keys = [clubName, displayName].filter(Boolean);
@@ -33,7 +34,9 @@ const DIVISION_LEVEL_BY_LEAGUE = {
   "France - Ligue 2": 2,
 };
 
-export const LEAGUES = LEAGUE_DEFINITIONS.map((league) => {
+const ALL_LEAGUE_DEFINITIONS = [...LEAGUE_DEFINITIONS, ...AFC_CAF_LEAGUE_DEFINITIONS];
+
+export const LEAGUES = ALL_LEAGUE_DEFINITIONS.map((league) => {
   const { clubs, badgeFolder, ...leagueMeta } = league;
   const leagueName = leagueMeta.name;
   const leagueDisplayName = leagueMeta.displayName ?? leagueName;

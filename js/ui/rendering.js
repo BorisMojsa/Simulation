@@ -53,11 +53,11 @@ export function renderPlayerOverview(player, overviewEl, statsKeys) {
       .map((c) => c.competition);
     const unique = [...new Set(wins)];
     if (unique.length && unique.every((n) => /Champions League|Europa League|Conference League/i.test(n))) {
-      return `${honors.europeanTitles} European titles`;
+      return `${honors.europeanTitles} continental titles`;
     }
     if (unique.length === 1) return `${honors.europeanTitles} ${unique[0]}`;
     if (honors.europeanTitles) return `${honors.europeanTitles} continental titles`;
-    return `${honors.europeanTitles} European titles`;
+    return `${honors.europeanTitles} continental titles`;
   })();
   const honorLine = honors
     ? `<span>Honors: ${honors.leagueTitles} league titles | ${honors.domesticCups} cups | ${continentalLabel} | ${honors.internationalTitles || 0} international titles | ${honors.individualAwards} awards</span>`
@@ -122,6 +122,39 @@ export function renderPlayerOverview(player, overviewEl, statsKeys) {
         .join("")}
     </div>
   `;
+}
+
+/**
+ * Career moments history: date, choice, result, realized effect badges.
+ * Failed 30% rolls never appear here.
+ */
+export function renderCareerMoments(player, containerEl) {
+  if (!containerEl) return;
+  const history = player?.seniorCareer?.history || [];
+  if (!history.length) {
+    containerEl.innerHTML = `<p class="empty-state">No senior career moments yet. Optional scenes can appear during competitions you enter.</p>`;
+    return;
+  }
+  const newestFirst = [...history].reverse();
+  containerEl.innerHTML = newestFirst
+    .map((h) => {
+      const date = h.date ? String(h.date).slice(0, 10) : "—";
+      const comp = h.competitionLabel || h.competitionId || "Competition";
+      const badges = (h.badges || [])
+        .map((b) => `<span class="senior-effect-badge">${escapeHtml(b)}</span>`)
+        .join("");
+      return `
+        <article class="career-moment-card">
+          <div class="career-moment-meta">${escapeHtml(date)} · ${escapeHtml(comp)} · ${escapeHtml(
+            h.title || h.scenarioId || "Moment"
+          )}</div>
+          <p class="career-moment-choice">${escapeHtml(h.choiceLabel || h.choiceId || "")}</p>
+          <p class="career-moment-result">${escapeHtml(h.outcomeText || "")}</p>
+          ${badges ? `<div class="senior-effect-badges">${badges}</div>` : ""}
+        </article>
+      `;
+    })
+    .join("");
 }
 
 export function appendSeasonCard(season, seasonLogEl, player) {
@@ -298,6 +331,487 @@ export function renderSeasonLog(player, seasonLogEl) {
   player.seasons.forEach((season) => appendSeasonCard(season, seasonLogEl, player));
 }
 
+/**
+ * Persistent competitions / results area from career desk + season history.
+ */
+export function renderCompetitions(player, boardEl) {
+  if (!boardEl) return;
+  boardEl.innerHTML = "";
+  if (!player?.seasons?.length) {
+    const note = document.createElement("p");
+    note.className = "empty-state";
+    note.textContent = "Competition results appear after you simulate a season.";
+    boardEl.appendChild(note);
+    return;
+  }
+
+  const seasonOptions = player.seasons
+    .map((s, i) => `<option value="${i}">Season ${i + 1} (${s.year || s.seasonLabel || ""})</option>`)
+    .join("");
+
+  const shell = document.createElement("div");
+  shell.className = "competitions-shell";
+  shell.innerHTML = `
+    <div class="competitions-controls">
+      <label>Season
+        <select id="comp-season-select">${seasonOptions}</select>
+      </label>
+      <label>Competition
+        <select id="comp-name-select"></select>
+      </label>
+    </div>
+    <nav class="competitions-tabs" aria-label="Competition views">
+      <button type="button" class="comp-tab is-active" data-view="overview">Overview</button>
+      <button type="button" class="comp-tab" data-view="phase">Groups / League phase</button>
+      <button type="button" class="comp-tab" data-view="knockout">Knockout draw</button>
+      <button type="button" class="comp-tab" data-view="fixtures">Fixtures</button>
+    </nav>
+    <div id="comp-view" class="competitions-view"></div>
+  `;
+  boardEl.appendChild(shell);
+
+  const seasonSelect = shell.querySelector("#comp-season-select");
+  const nameSelect = shell.querySelector("#comp-name-select");
+  const viewEl = shell.querySelector("#comp-view");
+  let activeView = "overview";
+
+  function competitionsForSeason(season) {
+    const list = [];
+    if (season.europeanCampaign) {
+      const c = season.europeanCampaign;
+      list.push({
+        key: "continental",
+        label: c.qualified === false || c.showcase
+          ? `${c.competition} (not entered / showcase)`
+          : c.competition,
+        data: c,
+        status:
+          c.qualified === false || c.showcase
+            ? "not-entered"
+            : c.won
+              ? "champion"
+              : c.result || "completed",
+      });
+    }
+    if (season.domesticCup) {
+      list.push({
+        key: "cup",
+        label: season.domesticCup.name || "Domestic cup",
+        data: season.domesticCup,
+        status: season.domesticCup.won ? "champion" : season.domesticCup.result || "completed",
+      });
+    }
+    if (season.international?.tournaments?.length) {
+      season.international.tournaments.forEach((t, ti) => {
+        list.push({
+          key: `intl-${ti}`,
+          label: t.name,
+          data: t,
+          status: !t.calledUp
+            ? t.playerNationInTournament
+              ? "not-selected"
+              : "nation-not-entered"
+            : t.won
+              ? "champion"
+              : t.result || "completed",
+        });
+      });
+    }
+    return list;
+  }
+
+  function refreshNames() {
+    const season = player.seasons[Number(seasonSelect.value)] || player.seasons[0];
+    const comps = competitionsForSeason(season);
+    nameSelect.innerHTML = comps.length
+      ? comps.map((c, i) => `<option value="${i}">${escapeHtml(c.label)}</option>`).join("")
+      : `<option value="">No competitions</option>`;
+    return comps;
+  }
+
+  function renderView() {
+    const season = player.seasons[Number(seasonSelect.value)] || player.seasons[0];
+    const comps = competitionsForSeason(season);
+    const comp = comps[Number(nameSelect.value)] || comps[0];
+    if (!comp) {
+      viewEl.innerHTML = `<p class="empty-state">No competition data for this season.</p>`;
+      return;
+    }
+    const d = comp.data;
+    const statusNote = `<p class="comp-status" data-status="${comp.status}">Status: ${escapeHtml(
+      String(comp.status)
+    )}${d.winner ? ` · Champion: ${escapeHtml(d.winner)}` : ""}</p>`;
+
+    if (activeView === "overview") {
+      viewEl.innerHTML = `
+        ${statusNote}
+        <p><strong>${escapeHtml(comp.label)}</strong> — ${escapeHtml(d.result || "Completed")}</p>
+        <p>Opening phase: ${escapeHtml(
+          d.leaguePhase?.openingLabel || d.groups?.openingLabel || "Knockout"
+        )}</p>
+        <p>Player path rounds: ${(d.rounds || []).length}. Bracket rounds: ${(d.allRounds || []).length}.</p>
+      `;
+      return;
+    }
+
+    if (activeView === "phase") {
+      if (d.leaguePhase?.table?.length) {
+        const rows = d.leaguePhase.table
+          .map(
+            (r) =>
+              `<tr class="${r.name === player.club?.name ? "is-player" : ""}"><td>${r.position}</td><td>${escapeHtml(
+                r.displayName || r.name
+              )}</td><td>${r.played}</td><td>${r.wins}</td><td>${r.draws}</td><td>${r.losses}</td><td>${
+                r.goalsFor
+              }-${r.goalsAgainst}</td><td>${r.goalDiff}</td><td>${r.points}</td><td>${escapeHtml(
+                r.band || ""
+              )}</td></tr>`
+          )
+          .join("");
+        viewEl.innerHTML = `${statusNote}<div class="comp-table-wrap"><table class="comp-table"><thead><tr>
+          <th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>F-A</th><th>GD</th><th>Pts</th><th>Band</th>
+        </tr></thead><tbody>${rows}</tbody></table></div>`;
+        return;
+      }
+      if (d.groups?.groups?.length || d.groups?.length) {
+        const groups = d.groups.groups || d.groups;
+        viewEl.innerHTML =
+          statusNote +
+          groups
+            .map((g) => {
+              const rows = (g.table || [])
+                .map(
+                  (r, idx) =>
+                    `<tr class="${
+                      r.name === player.club?.name || r.name === player.nationality ? "is-player" : ""
+                    }"><td>${r.position || idx + 1}</td><td>${escapeHtml(
+                      r.displayName || r.name
+                    )}</td><td>${r.points}</td><td>${r.gd ?? r.goalDiff ?? ""}</td></tr>`
+                )
+                .join("");
+              return `<div class="comp-group"><h4>${escapeHtml(
+                g.name
+              )}</h4><table class="comp-table"><thead><tr><th>#</th><th>Team</th><th>Pts</th><th>GD</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+            })
+            .join("");
+        return;
+      }
+      viewEl.innerHTML = `${statusNote}<p class="empty-state">No group / league phase for this competition.</p>`;
+      return;
+    }
+
+    if (activeView === "knockout") {
+      const rounds = d.allRounds || [];
+      if (!rounds.length) {
+        viewEl.innerHTML = `${statusNote}<p class="empty-state">No knockout bracket stored.</p>`;
+        return;
+      }
+      viewEl.innerHTML =
+        statusNote +
+        rounds
+          .map((r) => {
+            const lines = (r.matches || [])
+              .map((m) => {
+                if (m.isBye) {
+                  return `<div class="bracket-match-line">${escapeHtml(
+                    (m.home?.isBye ? m.away : m.home)?.displayName || "—"
+                  )} <span class="bracket-score">bye</span></div>`;
+                }
+                return `<div class="bracket-match-line"><span>${escapeHtml(
+                  m.home?.displayName || m.home?.name || "—"
+                )}</span><span class="bracket-score">${escapeHtml(
+                  m.scoreline || `${m.homeGoals ?? "—"}-${m.awayGoals ?? "—"}`
+                )}</span><span>${escapeHtml(m.away?.displayName || m.away?.name || "—")}</span></div>`;
+              })
+              .join("");
+            return `<div class="bracket-round-block"><div class="round-name">${escapeHtml(
+              r.round
+            )}</div>${lines}</div>`;
+          })
+          .join("");
+      return;
+    }
+
+    // fixtures
+    const fixtures = [
+      ...(d.leaguePhase?.matches || []),
+      ...((d.groups?.groups || d.groups || []).flatMap((g) => g.matches || []) || []),
+      ...(d.groups?.matches || []),
+      ...(d.allRounds || []).flatMap((r) => r.matches || []),
+      ...(d.playerMatches || []),
+    ];
+    const seen = new Set();
+    const unique = fixtures.filter((m) => {
+      const id = m.matchId || m.fixtureId || `${m.round}:${m.home?.name}:${m.away?.name}:${m.scoreline}`;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    if (!unique.length) {
+      viewEl.innerHTML = `${statusNote}<p class="empty-state">No fixtures stored.</p>`;
+      return;
+    }
+    viewEl.innerHTML =
+      statusNote +
+      `<div class="comp-fixtures">${unique
+        .map(
+          (m) =>
+            `<div class="comp-fixture"><span>${escapeHtml(m.round || "")}</span><span>${escapeHtml(
+              m.home?.displayName || m.home?.name || "—"
+            )} ${escapeHtml(m.scoreline || `${m.homeGoals ?? ""}-${m.awayGoals ?? ""}`)} ${escapeHtml(
+              m.away?.displayName || m.away?.name || "—"
+            )}</span></div>`
+        )
+        .join("")}</div>`;
+  }
+
+  refreshNames();
+  seasonSelect.addEventListener("change", () => {
+    refreshNames();
+    renderView();
+  });
+  nameSelect.addEventListener("change", renderView);
+  shell.querySelectorAll(".comp-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      shell.querySelectorAll(".comp-tab").forEach((b) => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      activeView = btn.dataset.view;
+      renderView();
+    });
+  });
+  renderView();
+}
+
+/**
+ * Shared full league table for career desk and live simulation dashboard.
+ * Columns: Pos · Team · P · W · D · L · GF · GA · GD · Pts
+ *
+ * @param {HTMLElement} container
+ * @param {object} opts
+ * @param {object[]} opts.table
+ * @param {string|null} [opts.playerClubId]
+ * @param {string|null} [opts.playerClubName]
+ * @param {Map|object|null} [opts.animateFrom] — previous position by clubId/name
+ * @param {boolean} [opts.live] — label provisional/live zone copy
+ * @param {boolean} [opts.showLegend]
+ * @param {string} [opts.variant] — "board" | "live"
+ */
+export function renderLeagueTable(container, opts = {}) {
+  if (!container) return null;
+  const {
+    table = [],
+    playerClubId = null,
+    playerClubName = null,
+    animateFrom = null,
+    live = false,
+    showLegend = false,
+    variant = "board",
+  } = opts;
+
+  const scrollTop = container.scrollTop;
+  const prevFocusKey = document.activeElement?.getAttribute?.("data-club-key") || null;
+
+  let wrap = container.querySelector(".league-table-wrap");
+  if (!wrap) {
+    container.innerHTML = "";
+    wrap = document.createElement("div");
+    wrap.className = `league-table-wrap league-table-${variant}`;
+    container.appendChild(wrap);
+  }
+
+  const preferReduced =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
+  const headerHtml = `
+    <div class="league-table-header" role="row">
+      <span>Pos</span>
+      <span>Team</span>
+      <span>P</span>
+      <span>W</span>
+      <span>D</span>
+      <span>L</span>
+      <span>GF</span>
+      <span>GA</span>
+      <span>GD</span>
+      <span>Pts</span>
+    </div>
+  `;
+
+  let rowsEl = wrap.querySelector(".league-table-rows");
+  if (!rowsEl) {
+    wrap.innerHTML = `${headerHtml}<div class="league-table-rows"></div>`;
+    if (showLegend) {
+      const legend = document.createElement("div");
+      legend.className = "league-table-legend";
+      legend.innerHTML = live
+        ? `<span class="zone-chip zone-title">Title</span>
+           <span class="zone-chip zone-euro">Continental</span>
+           <span class="zone-chip zone-promo">Promotion</span>
+           <span class="zone-chip zone-rel">Relegation</span>
+           <span class="zone-note">Zones provisional until the edition finishes.</span>`
+        : `<span class="zone-chip zone-title">Title</span>
+           <span class="zone-chip zone-euro">Continental</span>
+           <span class="zone-chip zone-promo">Promotion</span>
+           <span class="zone-chip zone-rel">Relegation</span>`;
+      wrap.appendChild(legend);
+    }
+    rowsEl = wrap.querySelector(".league-table-rows");
+  }
+
+  const existing = new Map();
+  rowsEl.querySelectorAll(".league-table-row[data-club-key]").forEach((el) => {
+    existing.set(el.getAttribute("data-club-key"), el);
+  });
+
+  const prevPositions =
+    animateFrom instanceof Map
+      ? animateFrom
+      : animateFrom && typeof animateFrom === "object"
+        ? new Map(Object.entries(animateFrom))
+        : null;
+
+  const orderedKeys = [];
+  (table || []).forEach((team) => {
+    const key = String(team.clubId || team.name);
+    orderedKeys.push(key);
+    let row = existing.get(key);
+    const isNew = !row;
+    if (!row) {
+      row = document.createElement("div");
+      row.className = "league-table-row";
+      row.setAttribute("data-club-key", key);
+      row.setAttribute("tabindex", "-1");
+      rowsEl.appendChild(row);
+    }
+
+    const isPlayer =
+      (playerClubId && team.clubId === playerClubId) ||
+      (playerClubName && team.name === playerClubName);
+    row.classList.toggle("player-team", Boolean(isPlayer));
+    row.classList.toggle("player-row", Boolean(isPlayer));
+
+    const zone = zoneClassForRow(team);
+    row.classList.remove("zone-title", "zone-euro", "zone-promo", "zone-rel", "champions", "european");
+    if (zone) row.classList.add(zone);
+    if (team.position === 1) row.classList.add("champions");
+
+    const prevPos = prevPositions?.get(key);
+    let move = "";
+    if (prevPos != null && prevPos !== team.position) {
+      move =
+        prevPos > team.position
+          ? `<span class="pos-move pos-up" aria-label="Moved up">▲</span>`
+          : `<span class="pos-move pos-down" aria-label="Moved down">▼</span>`;
+    }
+
+    const badge = standingsBadgeHtml(team);
+    const gd = team.goalDiff != null ? team.goalDiff : (team.goalsFor || 0) - (team.goalsAgainst || 0);
+    row.innerHTML = `
+      <div class="position">${team.position}${move}</div>
+      <div class="team-info">
+        ${badge}
+        <div>
+          <div class="team-name">${escapeHtml(team.displayName || team.name)}</div>
+          ${
+            team.qualification
+              ? `<div class="qualifier">${escapeHtml(team.qualification)}${
+                  live ? " · provisional" : ""
+                }</div>`
+              : ""
+          }
+          ${
+            team.divisionMove
+              ? `<div class="qualifier">${escapeHtml(String(team.divisionMove))}</div>`
+              : ""
+          }
+        </div>
+      </div>
+      <div class="stats-cell">${team.played ?? team.matches ?? 0}</div>
+      <div class="stats-cell">${team.wins ?? 0}</div>
+      <div class="stats-cell">${team.draws ?? 0}</div>
+      <div class="stats-cell">${team.losses ?? 0}</div>
+      <div class="stats-cell">${team.goalsFor ?? 0}</div>
+      <div class="stats-cell">${team.goalsAgainst ?? 0}</div>
+      <div class="stats-cell">${formatSigned(gd)}</div>
+      <div class="stats-cell stats-pts">${team.points ?? 0}</div>
+    `;
+
+    if (isNew && !preferReduced) {
+      row.classList.add("animate-in");
+    }
+  });
+
+  // Reorder DOM to match standings; animate vertical moves when possible.
+  const height = rowsEl.firstElementChild?.offsetHeight || 36;
+  const gap = 4;
+  const oldIndex = new Map();
+  [...rowsEl.children].forEach((el, i) => oldIndex.set(el.getAttribute("data-club-key"), i));
+
+  orderedKeys.forEach((key) => {
+    const el = existing.get(key) || rowsEl.querySelector(`[data-club-key="${CSS.escape(key)}"]`);
+    if (el) rowsEl.appendChild(el);
+  });
+
+  // Remove stale rows
+  [...rowsEl.children].forEach((el) => {
+    const key = el.getAttribute("data-club-key");
+    if (!orderedKeys.includes(key)) el.remove();
+  });
+
+  if (!preferReduced && prevPositions) {
+    [...rowsEl.children].forEach((el, newIdx) => {
+      const key = el.getAttribute("data-club-key");
+      const oldIdx = oldIndex.get(key);
+      if (oldIdx == null || oldIdx === newIdx) return;
+      const delta = (oldIdx - newIdx) * (height + gap);
+      el.style.transition = "none";
+      el.style.transform = `translateY(${delta}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = "transform 400ms ease";
+        el.style.transform = "translateY(0)";
+        const clear = () => {
+          el.style.transition = "";
+          el.style.transform = "";
+          el.removeEventListener("transitionend", clear);
+        };
+        el.addEventListener("transitionend", clear);
+      });
+    });
+  }
+
+  container.scrollTop = scrollTop;
+  if (prevFocusKey) {
+    const focusEl = rowsEl.querySelector(`[data-club-key="${CSS.escape(prevFocusKey)}"]`);
+    focusEl?.focus({ preventScroll: true });
+  }
+
+  return {
+    positions: new Map((table || []).map((t) => [String(t.clubId || t.name), t.position])),
+  };
+}
+
+function zoneClassForRow(team) {
+  const q = String(team.qualification || "").toLowerCase();
+  const move = String(team.divisionMove || "").toLowerCase();
+  if (team.position === 1 || /league champions|title/.test(q)) return "zone-title";
+  if (/champions league|europa|conference|libertadores|sudamericana|afc|caf|concacaf/.test(q)) {
+    return "zone-euro";
+  }
+  if (move === "promoted" || /promot/.test(q)) return "zone-promo";
+  if (move === "relegated" || /relegat/.test(q)) return "zone-rel";
+  return null;
+}
+
+function standingsBadgeHtml(team) {
+  const name = escapeHtml(team.displayName || team.name || "?");
+  const initials = escapeHtml((team.displayName || team.name || "?").slice(0, 2));
+  if (!team.badge) {
+    return `<div class="team-badge standings-badge match-badge-fallback" aria-hidden="true">${initials}</div>`;
+  }
+  return `<img src="${escapeHtml(team.badge)}" alt="${name} badge" class="team-badge standings-badge" loading="lazy" onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('div'),{className:'team-badge standings-badge match-badge-fallback',textContent:'${initials}'}))" />`;
+}
+
 export function renderStandings(player, standingsBoard) {
   standingsBoard.innerHTML = "";
   if (!player || !player.seasons.length || !player.latestStanding) {
@@ -314,84 +828,27 @@ export function renderStandings(player, standingsBoard) {
   caption.textContent = `${leagueDisplay ?? league} - Season ${player.seasons.length}`;
   standingsBoard.appendChild(caption);
 
-  const tableEl = document.createElement("table");
-  tableEl.innerHTML = `
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Team</th>
-        <th>Pts</th>
-        <th>W</th>
-        <th>D</th>
-        <th>L</th>
-        <th>GD</th>
-      </tr>
-    </thead>
-  `;
+  const host = document.createElement("div");
+  host.className = "standings-table-host";
+  standingsBoard.appendChild(host);
 
-  const tbody = document.createElement("tbody");
-  (table || []).forEach((row) => {
-    const tr = document.createElement("tr");
-    if (playerRow && row.name === playerRow.name) {
-      tr.classList.add("player-row");
-    }
-
-    const teamCell = document.createElement("td");
-    teamCell.textContent = row.position;
-    tr.appendChild(teamCell);
-
-    const nameCell = document.createElement("td");
-    const teamWrapper = document.createElement("div");
-    teamWrapper.className = "standings-team";
-
-    if (row.badge) {
-      const img = document.createElement("img");
-      img.src = row.badge;
-      img.alt = `${row.displayName ?? row.name} badge`;
-      img.loading = "lazy";
-      img.className = "standings-badge";
-      teamWrapper.appendChild(img);
-    }
-
-    const textHolder = document.createElement("div");
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = row.displayName ?? row.name;
-    textHolder.appendChild(nameSpan);
-    if (row.qualification) {
-      const qualifier = document.createElement("span");
-      qualifier.className = "standing-qualifier";
-      qualifier.textContent = row.qualification;
-      textHolder.appendChild(qualifier);
-    }
-    teamWrapper.appendChild(textHolder);
-    nameCell.appendChild(teamWrapper);
-    tr.appendChild(nameCell);
-
-    const pointsCell = document.createElement("td");
-    pointsCell.textContent = row.points;
-    tr.appendChild(pointsCell);
-
-    const winsCell = document.createElement("td");
-    winsCell.textContent = row.wins;
-    tr.appendChild(winsCell);
-
-    const drawsCell = document.createElement("td");
-    drawsCell.textContent = row.draws;
-    tr.appendChild(drawsCell);
-
-    const lossesCell = document.createElement("td");
-    lossesCell.textContent = row.losses;
-    tr.appendChild(lossesCell);
-
-    const gdCell = document.createElement("td");
-    gdCell.textContent = formatSigned(row.goalDiff);
-    tr.appendChild(gdCell);
-
-    tbody.appendChild(tr);
+  renderLeagueTable(host, {
+    table: table || [],
+    playerClubId: player.playingClubId || player.club?.clubId || playerRow?.clubId || null,
+    playerClubName: playerRow?.name || player.club?.name || null,
+    showLegend: true,
+    variant: "board",
   });
+}
 
-  tableEl.appendChild(tbody);
-  standingsBoard.appendChild(tableEl);
+/** Map the generic "Stay at club" control onto a concrete squad-decision choice. */
+export function stayChoiceIdForDecision(decision) {
+  const ids = new Set((decision?.choices || []).map((c) => c.id));
+  if (ids.has("see-out")) return "see-out";
+  if (ids.has("stay-compete")) return "stay-compete";
+  if (ids.has("remain")) return "remain";
+  if (ids.has("acknowledge")) return "acknowledge";
+  return null;
 }
 
 export function renderTransferOffers({
@@ -612,7 +1069,20 @@ export function renderTransferOffers({
             ? ` (${seasonsRemaining} season${seasonsRemaining !== 1 ? "s" : ""} remaining)`
             : ""
         }`;
-        stayBtn.addEventListener("click", () => finishOfferWindow(false));
+        stayBtn.addEventListener("click", () => {
+          // Mid-season "Stay" must clear pendingDecision and resume the checkpoint.
+          // Calling finishOfferWindow alone left the season paused forever.
+          const decision = player.pendingDecision;
+          const stayId = stayChoiceIdForDecision(decision);
+          if (decision && stayId && typeof onDecision === "function") {
+            onDecision(decision, stayId);
+            return;
+          }
+          if (decision) {
+            player.pendingDecision = null;
+          }
+          finishOfferWindow(false);
+        });
       } else if (hasRenewalOffer) {
         const renewalOffer = player.pendingOffers.find((offer) => offer.isRenewal && offer.club === player.club.name);
         stayBtn.textContent = `Accept Renewal from ${clubNameForDisplay(player.club)}`;

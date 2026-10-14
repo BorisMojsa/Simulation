@@ -23,6 +23,8 @@ import { roundTripCareerSnapshot } from "../js/simulation/careerSnapshot.js";
 import { getWorldState } from "../js/simulation/worldState.js";
 import { allSeniorClubs } from "../js/simulation/seniorClubs.js";
 import { roundAbilityForDisplay } from "../js/ui/abilityFormatting.js";
+import { stayChoiceIdForDecision } from "../js/ui/rendering.js";
+import { applySeniorScenarioPolicy } from "../js/simulation/seniorCareerScenarios.js";
 
 function test(name, fn) {
   try {
@@ -155,10 +157,25 @@ test("winter pause → loan accept/refuse → resume → return → purchase opt
   p.careerId = "browser-winter-loan";
 
   const ui = makeUiSession(p);
-  const paused = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+  let paused = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: true,
     autoDecisionPolicy: null,
   });
+  // Optional senior scenes pause before the winter squad window; auto-resolve them
+  // so this test still covers the mid-season decision/loan lifecycle.
+  let sceneGuards = 0;
+  while (paused.awaitingScenario && sceneGuards < 12) {
+    sceneGuards += 1;
+    const pending = paused.pendingSeniorScenario || p.pendingSeniorScenario;
+    if (pending && !pending.unschedulable) {
+      applySeniorScenarioPolicy(p, pending, "balanced");
+    }
+    paused = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+      checkpoint: paused.checkpoint,
+      pauseForDecisions: true,
+      autoDecisionPolicy: null,
+    });
+  }
 
   if (paused.awaitingDecision) {
     assert.equal(p.seasons.length, 0);
@@ -362,6 +379,193 @@ test("accept-transfer and accept-loan policies are deterministic", () => {
   } else {
     const stay = applyDecisionPolicy(p, { decision: null, offers: [] }, "stay");
     assert.equal(stay.applied, "stay");
+  }
+});
+
+test("Stay-at-club mid-season control clears decision and resumes season", () => {
+  resetClubFinanceLedgers();
+  reseedCareerRng(77);
+  setWorldState(createWorldState({ startYear: 2026 }));
+  const league = LEAGUE_BY_ID.get("league:poland-ekstraklasa") || LEAGUES.find((l) => /ekstraklasa/i.test(l.name));
+  assert.ok(league, "need Ekstraklasa for stay-button repro");
+  const club = league.clubs[0];
+  const p = createPlayerIdentity({
+    name: "Stay Button",
+    nationality: "Ivory Coast",
+    position: "RB",
+    age: 17,
+  });
+  p.startYear = 2026;
+  p.rating = 60;
+  p.potential = 72;
+  p.attributes = {
+    Speed: 62,
+    Passing: 57,
+    Shooting: 54,
+    Defending: 71,
+    Physicality: 53,
+    Dribbling: 54,
+  };
+  p.playerModelVersion = 2;
+  p.state = { form: 0, morale: 0, readiness: 1, fatigue: 0, adaptationPenalty: 0, roleFit: 1 };
+  p.health = { activeInjury: null, injuryHistory: [], durableDamage: {}, recoverableDamage: {} };
+  p.development = { latentBudget: 78, modelVersion: 1, migration: {} };
+  p.club = {
+    ...club,
+    league: league.name,
+    leagueDisplay: league.displayName,
+    leagueId: league.leagueId,
+    nation: league.nation,
+    isAcademy: false,
+    parentClub: null,
+  };
+  p.employmentClubId = club.clubId;
+  p.playingClubId = club.clubId;
+  p.contractStartSeason = 0;
+  p.contractYears = 2;
+  p.contractEndSeason = 2; // rem === 1 at seasonIndex 1 after academy year, or 1 at season 0? seasons.length=0 → rem=2
+  p.weeklyWage = 2500;
+  p.careerId = "stay-button-repro";
+  p.renewalPlanned = false;
+  // Force rem===1 so non-renewal decision appears at winter window
+  p.contractEndSeason = 1;
+
+  let paused = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: true,
+    autoDecisionPolicy: null,
+  });
+  let staySceneGuards = 0;
+  while (paused.awaitingScenario && staySceneGuards < 12) {
+    staySceneGuards += 1;
+    const pending = paused.pendingSeniorScenario || p.pendingSeniorScenario;
+    if (pending && !pending.unschedulable) applySeniorScenarioPolicy(p, pending, "balanced");
+    paused = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+      checkpoint: paused.checkpoint,
+      pauseForDecisions: true,
+      autoDecisionPolicy: null,
+    });
+  }
+
+  if (!paused.awaitingDecision) {
+    // Seed a synthetic mid-season pause matching the broken UI state.
+    p.seasonCheckpoint = {
+      status: "awaiting_decision",
+      ordered: [],
+      lastDate: "2027-01-05",
+      seasonIndex: 0,
+    };
+    p.pendingDecision = {
+      decisionId: "non-renewal:test",
+      kind: "non-renewal",
+      headline: "Contract situation",
+      lead: "The club does not plan to offer a renewal.",
+      choices: [
+        { id: "seek-move", label: "Seek a new club" },
+        { id: "see-out", label: "See out the contract" },
+      ],
+      cooldownKind: "non-renewal",
+    };
+  } else {
+    p.seasonCheckpoint = paused.checkpoint;
+    p.pendingDecision = paused.decision || p.pendingDecision;
+  }
+
+  assert.equal(p.seasonCheckpoint?.status, "awaiting_decision");
+  assert.ok(p.pendingDecision, "expected a pending squad decision");
+
+  // BUG REPRO PATH: old Stay button called finishOfferWindow(false) without clearing decision.
+  // Fixed path: map Stay → see-out / stay-compete via stayChoiceIdForDecision + resolve.
+  const stayId = stayChoiceIdForDecision(p.pendingDecision);
+  assert.ok(stayId, "Stay must map onto a decision choice");
+  const ageAtPause = p.age;
+  const seasonsAtPause = p.seasons.length;
+  resolveSquadDecision(p, p.pendingDecision, stayId);
+  assert.equal(p.pendingDecision, null);
+
+  // finishOfferWindow-equivalent safety: resume when checkpoint awaits and nothing pending
+  assert.equal(p.seasonCheckpoint?.status, "awaiting_decision");
+  const done = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: false,
+    checkpoint: p.seasonCheckpoint,
+    autoDecisionPolicy: null,
+  });
+  assert.notEqual(done.awaitingDecision, true);
+  assert.ok(done.season);
+  assert.equal(p.seasons.length, seasonsAtPause + 1);
+  assert.equal(p.age, ageAtPause + 1);
+  // Live dashboard contract: full league store on completed seasons
+  assert.ok(Array.isArray(done.leagueAllMatches));
+  assert.ok(done.leagueAllMatches.length >= (done.season.leagueMatches || []).length);
+});
+
+test("pause segment exposes partial league fixtures for the dashboard", () => {
+  resetClubFinanceLedgers();
+  setWorldState(createWorldState({ startYear: 2026 }));
+  reseedCareerRng(4242);
+  const league = LEAGUE_BY_ID.get("league:england-premier-league") || LEAGUES[0];
+  const club = league.clubs[2];
+  const p = createPlayerIdentity({
+    name: "Segment UI",
+    nationality: "England",
+    position: "ST",
+    age: 20,
+  });
+  p.startYear = 2026;
+  p.rating = 68;
+  p.potential = 84;
+  p.attributes = {
+    Speed: 68,
+    Passing: 64,
+    Shooting: 70,
+    Defending: 48,
+    Physicality: 66,
+    Dribbling: 67,
+  };
+  p.playerModelVersion = 2;
+  p.state = { form: 0, morale: 0, readiness: 1, fatigue: 0, adaptationPenalty: 0, roleFit: 1 };
+  p.health = { activeInjury: null, injuryHistory: [], durableDamage: {}, recoverableDamage: {} };
+  p.development = { latentBudget: 88, modelVersion: 1, migration: {} };
+  p.club = {
+    ...club,
+    league: league.name,
+    leagueDisplay: league.displayName,
+    leagueId: league.leagueId,
+    nation: league.nation,
+    isAcademy: false,
+    parentClub: null,
+  };
+  p.employmentClubId = club.clubId;
+  p.playingClubId = club.clubId;
+  p.contractStartSeason = 0;
+  p.contractYears = 3;
+  p.contractEndSeason = 3;
+  p.weeklyWage = 5000;
+  p.careerId = "browser-dash-segment";
+
+  let paused = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: true,
+    autoDecisionPolicy: null,
+  });
+  let guards = 0;
+  while (paused.awaitingScenario && guards < 12) {
+    guards += 1;
+    const pending = paused.pendingSeniorScenario || p.pendingSeniorScenario;
+    if (pending && !pending.unschedulable) applySeniorScenarioPolicy(p, pending, "balanced");
+    paused = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+      checkpoint: paused.checkpoint,
+      pauseForDecisions: true,
+      autoDecisionPolicy: null,
+    });
+  }
+  if (paused.awaitingDecision) {
+    assert.ok(Array.isArray(paused.partialLeagueAllMatches));
+    assert.ok(paused.partialLeagueAllMatches.length > 0);
+    assert.ok(Array.isArray(paused.partialLeaguePlayerMatches));
+    const ids = paused.partialLeagueAllMatches.map((m) => m.matchId || m.fixtureId).filter(Boolean);
+    assert.equal(new Set(ids).size, ids.length);
+  } else {
+    assert.ok(Array.isArray(paused.leagueAllMatches));
+    assert.ok(paused.leagueAllMatches.length > 0);
   }
 });
 

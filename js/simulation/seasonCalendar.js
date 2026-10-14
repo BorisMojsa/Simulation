@@ -86,18 +86,23 @@ export function dateContinentalMatches(matches, seasonStartYear) {
   });
 }
 
-export function dateInternationalWindows(matches, calendarYear) {
-  // Rough international windows; simulation policy dates.
-  const windows = [
-    simDate(calendarYear, 9, 5),
-    simDate(calendarYear, 10, 10),
-    simDate(calendarYear, 11, 14),
-    simDate(calendarYear + 1, 3, 22),
-    simDate(calendarYear + 1, 6, 12),
-  ];
-  return (matches || []).map((m, i) => {
-    const date = windows[Math.min(i, windows.length - 1)];
-    return { ...m, date, competitionType: "international", sortKey: `${date}:I:${i}` };
+/**
+ * Date international appearances.
+ * Tournament finals windows sit in the edition summer (calendarYear for WC/EURO hosted that year).
+ * Each match gets a distinct viable date — never collapse many fixtures onto one anchor day.
+ */
+export function dateInternationalWindows(matches, calendarYear, { editionYear = null } = {}) {
+  const list = matches || [];
+  if (!list.length) return [];
+  const y = Number(editionYear || calendarYear);
+  // Summer tournament block for the edition year, plus earlier international windows.
+  const start = simDate(y, 6, 12);
+  const end = simDate(y, 7, 18);
+  const span = Math.max(list.length, daysBetween(start, end));
+  return list.map((m, i) => {
+    const t = list.length <= 1 ? 0 : i / (list.length - 1);
+    const date = addDays(start, Math.round(t * Math.min(span, daysBetween(start, end))));
+    return { ...m, date, competitionType: "international", sortKey: `${date}:I:${String(i).padStart(3, "0")}` };
   });
 }
 

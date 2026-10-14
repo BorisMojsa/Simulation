@@ -1,5 +1,4 @@
 import {
-  CLUB_PROFILES,
   CLUB_STRENGTH_SNAPSHOT_DATE,
   CLUB_STRENGTH_BASELINE_SNAPSHOT_ID,
   CLUB_STRENGTH_TRANSFORM_VERSION,
@@ -12,7 +11,7 @@ import {
   NATION_STRENGTH_CONTENT_HASH,
   NATION_STRENGTH_NORMALIZATION_VERSION,
 } from "../data/strength/nationProfiles.js?v=59";
-import { resolveClub } from "../data/identity/resolver.js";
+import { CLUB_PROFILES, resolveClub } from "../data/identity/resolver.js";
 import { LEAGUES } from "../data/leagues.js";
 import { createRng, hashSeed, reseedCareerRng, setSimRng, getSimRng } from "./rng.js";
 import { clamp } from "../utils/helpers.js";
@@ -178,6 +177,9 @@ export function createWorldState({ seed = null, startYear = 2026 } = {}) {
     standings: new Map(),
     cupResults: new Map(),
     qualification: new Map(),
+    editions: new Map(),
+    matches: new Map(),
+    ties: new Map(),
     fixtureLedger: [],
     notes: {
       persistence: "session-only; serializeWorldState/deserializeWorldState provided for round-trips",
@@ -243,6 +245,9 @@ export function serializeWorldState(world = activeWorld) {
     standings: [...world.standings.entries()],
     cupResults: [...world.cupResults.entries()],
     qualification: [...world.qualification.entries()],
+    editions: [...(world.editions || new Map()).entries()],
+    matches: [...(world.matches || new Map()).entries()],
+    ties: [...(world.ties || new Map()).entries()],
     fixtureLedger: world.fixtureLedger,
     clubFinance,
     notes: world.notes,
@@ -282,6 +287,9 @@ export function deserializeWorldState(data) {
     standings: new Map(data.standings || []),
     cupResults: new Map(data.cupResults || []),
     qualification: new Map(data.qualification || []),
+    editions: new Map(data.editions || []),
+    matches: new Map(data.matches || []),
+    ties: new Map(data.ties || []),
     fixtureLedger: data.fixtureLedger || [],
     notes: data.notes,
   };

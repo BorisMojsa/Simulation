@@ -1,8 +1,13 @@
 /**
  * Academy opening moments. Each choice lists concrete results where
- * narrative text is paired with the exact overall delta applied.
- * Outcomes can go either way — ambition can pay off or backfire.
+ * narrative text is paired with a narrative score (delta). Realized
+ * development is applied through the academy opening model — not as a
+ * raw OVR += delta. Outcomes are weighted; unweighted entries get defaults.
  */
+import {
+  ACADEMY_OPENING,
+  OUTCOME_WEIGHT_BY_DISPOSITION,
+} from "../config/academyOpeningConfig.js?v=76";
 
 export function scenarioGroupForPosition(position) {
   if (position === "GK") return "GK";
@@ -12,29 +17,221 @@ export function scenarioGroupForPosition(position) {
   return "MID";
 }
 
+function slugPart(text, fallback = "x") {
+  const s = String(text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48);
+  return s || fallback;
+}
+
+export function inferChoiceDisposition(label) {
+  const t = String(label || "").toLowerCase();
+  if (
+    /\b(showboat|ignore|aggressively|every lost|hunt a second|dive in|gamble|force it|refuse|skip recovery|train through|smash volume|brush it off|isolate|sulk|blame the)\b/.test(
+      t
+    )
+  ) {
+    return "reckless";
+  }
+  if (
+    /\b(hold the line|safety|manage the game|organise|organize|call a defender|clear into|recycle|patient|ask (the )?coach|ask for specific feedback|request feedback|recover|rest|listen|help (a )?teammate|stay with the group|plan a split|respond in training)\b/.test(
+      t
+    )
+  ) {
+    return "thoughtful";
+  }
+  if (
+    /\b(fly and punch|go for goal|press high|ask for the ball|take the shot|step out|drive at|try the)\b/.test(
+      t
+    )
+  ) {
+    return "ambitious";
+  }
+  return "balanced";
+}
+
+function defaultWeightFor(delta, disposition) {
+  const table = OUTCOME_WEIGHT_BY_DISPOSITION[disposition] || OUTCOME_WEIGHT_BY_DISPOSITION.balanced;
+  const w = table[String(delta)];
+  if (Number.isFinite(w) && w > 0) return w;
+  return ACADEMY_OPENING.defaultUnweightedWeight;
+}
+
+function inferEffect(delta, text) {
+  const t = String(text || "").toLowerCase();
+  if (delta === 0) return "none";
+  // Mild narrative setbacks are usually confidence/learning — not durable −OVR.
+  if (delta === -1) return "confidence";
+  if (
+    delta === -2 &&
+    /\b(confidence|morale|dressing room|trust|quiet for the wrong|doubt lingers|mood)\b/.test(t)
+  ) {
+    return "confidence";
+  }
+  return "ability";
+}
+
+/**
+ * Attach stable IDs, dispositions, and positive weights. Idempotent.
+ */
+export function normalizeOpeningScenario(scenario, group = "MID", index = 0) {
+  if (!scenario || typeof scenario !== "object") {
+    throw new Error("normalizeOpeningScenario: scenario required");
+  }
+  const id = scenario.id || `${group.toLowerCase()}-${index}-${slugPart(scenario.setup)}`;
+  const choices = (scenario.choices || []).map((choice, ci) => {
+    const disposition = choice.disposition || inferChoiceDisposition(choice.label);
+    const choiceId = choice.id || `${id}:c${ci}-${slugPart(choice.label, `c${ci}`)}`;
+    const results = choice.results || [];
+    if (!results.length) {
+      throw new Error(`normalizeOpeningScenario: empty results for ${choiceId}`);
+    }
+    const normalizedResults = results.map((r, ri) => {
+      const delta = Number(r.delta);
+      if (!Number.isFinite(delta)) {
+        throw new Error(`normalizeOpeningScenario: invalid delta on ${choiceId}#${ri}`);
+      }
+      let weight = r.weight;
+      if (weight == null) weight = defaultWeightFor(delta, disposition);
+      weight = Number(weight);
+      if (!Number.isFinite(weight) || weight <= 0) {
+        throw new Error(`normalizeOpeningScenario: invalid weight on ${choiceId}#${ri}`);
+      }
+      return {
+        ...r,
+        id: r.id || `${choiceId}:o${ri}-d${delta}`,
+        delta,
+        weight,
+        effect: r.effect || inferEffect(delta, r.text),
+        disruption: Boolean(r.disruption),
+      };
+    });
+    return {
+      ...choice,
+      id: choiceId,
+      disposition,
+      results: normalizedResults,
+    };
+  });
+  return { ...scenario, id, group, choices };
+}
+
+let _normalizedBank = null;
+let _byId = null;
+
+function buildNormalizedBank() {
+  const bank = { ...OPENING_SCENARIOS, LIFE: LIFE_SCENARIOS };
+  const byId = new Map();
+  const out = {};
+  for (const [group, list] of Object.entries(bank)) {
+    out[group] = (list || []).map((sc, i) => {
+      const n = normalizeOpeningScenario(sc, group, i);
+      byId.set(n.id, n);
+      return n;
+    });
+  }
+  _normalizedBank = out;
+  _byId = byId;
+  return out;
+}
+
+export function getOpeningScenarioBank() {
+  return _normalizedBank || buildNormalizedBank();
+}
+
+export function getScenarioById(id) {
+  if (!_byId) buildNormalizedBank();
+  return _byId.get(id) || null;
+}
+
 export function allOpeningScenarios() {
-  return Object.values(OPENING_SCENARIOS).flat();
+  const bank = getOpeningScenarioBank();
+  return Object.values(bank).flat();
 }
 
-export function pickScenariosForPosition(position, count = 5) {
+/**
+ * Pick distinct scenarios for an opening: mostly positional, plus academy-life beats.
+ * @param {string} position
+ * @param {number} count
+ * @param {{shuffle?:Function, pick?:Function, random?:Function}|null} rng
+ */
+export function pickScenariosForPosition(position, count = 5, rng = null) {
+  const bank = getOpeningScenarioBank();
   const key = scenarioGroupForPosition(position);
-  const pool = OPENING_SCENARIOS[key] ?? OPENING_SCENARIOS.MID;
-  if (!pool?.length) return [];
-  const copy = [...pool];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
+  const positional = [...(bank[key] ?? bank.MID)];
+  const life = [...(bank.LIFE || [])];
+  const lifeN = Math.min(
+    ACADEMY_OPENING.lifeMomentCount,
+    Math.max(0, count - 1),
+    life.length
+  );
+  const posN = Math.min(count - lifeN, positional.length);
+
+  const shuffle = (arr) => {
+    const copy = [...arr];
+    if (rng?.shuffle) return rng.shuffle(copy);
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor((rng?.random?.() ?? Math.random()) * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const picked = [...shuffle(positional).slice(0, posN), ...shuffle(life).slice(0, lifeN)];
+  const ids = new Set();
+  const unique = [];
+  for (const sc of shuffle(picked)) {
+    if (ids.has(sc.id)) continue;
+    ids.add(sc.id);
+    unique.push(sc);
+    if (unique.length >= count) break;
   }
-  return copy.slice(0, Math.min(count, copy.length));
+  // Fill from positional if life/position overlap left gaps
+  for (const sc of shuffle(positional)) {
+    if (unique.length >= count) break;
+    if (ids.has(sc.id)) continue;
+    ids.add(sc.id);
+    unique.push(sc);
+  }
+  return unique.slice(0, count);
 }
 
-/** Pick one result for a choice. Text always matches the delta applied. */
-export function pickChoiceResult(choice) {
-  const results = choice?.results;
-  if (!results?.length) {
-    return { delta: 0, text: "The moment passes." };
+/**
+ * Weighted outcome sample. Compatibility: missing weights use disposition defaults
+ * via normalizeOpeningScenario / defaultWeightFor.
+ */
+export function pickWeightedChoiceResult(choice, rng = null) {
+  const raw = choice?.results;
+  if (!raw?.length) {
+    return { id: "empty", delta: 0, weight: 1, text: "The moment passes.", effect: "none" };
   }
-  return results[Math.floor(Math.random() * results.length)];
+  const disposition = choice.disposition || inferChoiceDisposition(choice.label);
+  const results = raw.map((r, ri) => {
+    let weight = r.weight;
+    if (weight == null) weight = defaultWeightFor(Number(r.delta) || 0, disposition);
+    weight = Number(weight);
+    if (!Number.isFinite(weight) || weight <= 0) {
+      throw new Error(`pickWeightedChoiceResult: invalid weight at ${choice.id || choice.label}#${ri}`);
+    }
+    return { ...r, weight, delta: Number(r.delta) || 0 };
+  });
+  const total = results.reduce((s, r) => s + r.weight, 0);
+  if (!(total > 0)) {
+    throw new Error("pickWeightedChoiceResult: empty weight sum");
+  }
+  let roll = (rng?.random?.() ?? Math.random()) * total;
+  for (const r of results) {
+    roll -= r.weight;
+    if (roll <= 0) return r;
+  }
+  return results[results.length - 1];
+}
+
+/** @deprecated Prefer pickWeightedChoiceResult with a career-scoped RNG. */
+export function pickChoiceResult(choice, rng = null) {
+  return pickWeightedChoiceResult(choice, rng);
 }
 
 export const OPENING_SCENARIOS = {
@@ -7221,3 +7418,634 @@ export const OPENING_SCENARIOS = {
     }
   ]
 };
+
+/**
+ * Shared academy-life moments mixed into every position's opening.
+ * Choices are intentionally asymmetric: asking for feedback ≠ ignoring advice.
+ */
+export const LIFE_SCENARIOS = [
+  {
+    id: "life-coach-feedback",
+    setup:
+      "After a messy midweek session the coach stays behind. You can ask for blunt feedback, wait for them to come to you, or brush it off and head to the bus.",
+    choices: [
+      {
+        id: "life-coach-feedback:ask",
+        label: "Ask for specific feedback",
+        disposition: "thoughtful",
+        results: [
+          {
+            delta: 2,
+            weight: 3.2,
+            effect: "ability",
+            text: "They walk you through two habits you can fix this week. The detail sticks.",
+          },
+          {
+            delta: 1,
+            weight: 2.8,
+            effect: "ability",
+            text: "A short checklist lands. Nothing glamorous — useful.",
+          },
+          {
+            delta: 0,
+            weight: 1.4,
+            effect: "none",
+            text: "They are tired and keep it brief. You still showed you care.",
+          },
+          {
+            delta: -1,
+            weight: 0.6,
+            effect: "confidence",
+            text: "The honesty stings more than you expected. Confidence dips overnight.",
+          },
+        ],
+      },
+      {
+        id: "life-coach-feedback:wait",
+        label: "Wait for them to come to you",
+        disposition: "balanced",
+        results: [
+          {
+            delta: 1,
+            weight: 2.0,
+            effect: "ability",
+            text: "They catch you at the door with one clean pointer.",
+          },
+          {
+            delta: 0,
+            weight: 2.5,
+            effect: "none",
+            text: "The moment passes. No damage, no breakthrough.",
+          },
+          {
+            delta: -1,
+            weight: 1.5,
+            effect: "confidence",
+            text: "Silence reads as indifference. You leave unsure where you stand.",
+          },
+        ],
+      },
+      {
+        id: "life-coach-feedback:brush",
+        label: "Brush it off and leave",
+        disposition: "reckless",
+        results: [
+          {
+            delta: 0,
+            weight: 1.0,
+            effect: "none",
+            text: "You avoid an awkward chat. Nothing changes on the grass.",
+          },
+          {
+            delta: -1,
+            weight: 2.2,
+            effect: "confidence",
+            text: "Staff notice you ducking the conversation.",
+          },
+          {
+            delta: -2,
+            weight: 2.0,
+            effect: "ability",
+            disruption: true,
+            text: "The same mistake repeats on Saturday. Ignoring advice costs you.",
+          },
+          {
+            delta: -3,
+            weight: 1.0,
+            effect: "ability",
+            disruption: true,
+            text: "They stop offering detail. Training quality slips for a stretch.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "life-extra-training",
+    setup:
+      "Double session day. Your legs are heavy. Extra finishing after hours could help — or dig a hole before the weekend.",
+    choices: [
+      {
+        id: "life-extra-training:recover",
+        label: "Recover properly and prep for the weekend",
+        disposition: "thoughtful",
+        results: [
+          {
+            delta: 2,
+            weight: 2.4,
+            effect: "ability",
+            text: "Fresh legs. You train sharper tomorrow and the coach clocks it.",
+          },
+          {
+            delta: 1,
+            weight: 3.0,
+            effect: "ability",
+            text: "Sleep and food do their quiet work. You feel available again.",
+          },
+          {
+            delta: 0,
+            weight: 1.6,
+            effect: "none",
+            text: "No heroics. You simply arrive ready.",
+          },
+          {
+            delta: -1,
+            weight: 0.5,
+            effect: "confidence",
+            text: "A teammate stays late and gets praised. You wonder if you underdid it.",
+          },
+        ],
+      },
+      {
+        id: "life-extra-training:light",
+        label: "Do a short, focused extras block",
+        disposition: "balanced",
+        results: [
+          {
+            delta: 2,
+            weight: 2.0,
+            effect: "ability",
+            text: "Twenty clean reps. Quality over volume.",
+          },
+          {
+            delta: 1,
+            weight: 2.6,
+            effect: "ability",
+            text: "A small technical win without frying your legs.",
+          },
+          {
+            delta: 0,
+            weight: 1.8,
+            effect: "none",
+            text: "Neutral session. You leave neither better nor broken.",
+          },
+          {
+            delta: -1,
+            weight: 1.0,
+            effect: "confidence",
+            text: "Concentration fades early. You cut it short.",
+          },
+        ],
+      },
+      {
+        id: "life-extra-training:smash",
+        label: "Stay late and smash volume while exhausted",
+        disposition: "reckless",
+        results: [
+          {
+            delta: 2,
+            weight: 0.8,
+            effect: "ability",
+            text: "Somehow the extra work clicks and you look sharp Friday.",
+          },
+          {
+            delta: 0,
+            weight: 1.2,
+            effect: "none",
+            text: "You grind without learning much.",
+          },
+          {
+            delta: -2,
+            weight: 2.4,
+            effect: "ability",
+            disruption: true,
+            text: "Heavy legs on matchday. The weekend session is a write-off.",
+          },
+          {
+            delta: -3,
+            weight: 1.8,
+            effect: "ability",
+            disruption: true,
+            text: "A soft-tissue scare ends the week early. Overtraining bites.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "life-homesickness",
+    setup:
+      "Sunday night, phone home. Homesickness hits hard before a big evaluation week.",
+    choices: [
+      {
+        id: "life-homesickness:group",
+        label: "Stay with the group and talk it through",
+        disposition: "thoughtful",
+        results: [
+          {
+            delta: 2,
+            weight: 2.2,
+            effect: "ability",
+            text: "Teammates keep you present. Monday's session is clean.",
+          },
+          {
+            delta: 1,
+            weight: 3.0,
+            effect: "confidence",
+            text: "You feel less alone. Confidence steadies.",
+          },
+          {
+            delta: 0,
+            weight: 1.6,
+            effect: "none",
+            text: "The ache remains, but you sleep enough to train.",
+          },
+        ],
+      },
+      {
+        id: "life-homesickness:call",
+        label: "Call home, then set a short routine",
+        disposition: "balanced",
+        results: [
+          {
+            delta: 1,
+            weight: 2.8,
+            effect: "ability",
+            text: "A plan for the week settles your head.",
+          },
+          {
+            delta: 0,
+            weight: 2.0,
+            effect: "none",
+            text: "Bittersweet call. You cope.",
+          },
+          {
+            delta: -1,
+            weight: 1.2,
+            effect: "confidence",
+            text: "The call leaves you distracted in the first drill.",
+          },
+        ],
+      },
+      {
+        id: "life-homesickness:isolate",
+        label: "Isolate and skip the evening recovery",
+        disposition: "reckless",
+        results: [
+          {
+            delta: 0,
+            weight: 1.0,
+            effect: "none",
+            text: "You get through the night. Barely.",
+          },
+          {
+            delta: -1,
+            weight: 2.0,
+            effect: "confidence",
+            text: "Mood tanks. You train closed-off.",
+          },
+          {
+            delta: -2,
+            weight: 2.2,
+            effect: "ability",
+            disruption: true,
+            text: "Missed recovery shows up as sloppy timing all week.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "life-school-balance",
+    setup:
+      "Exams collide with a youth cup midweek. School wants hours; the academy wants freshness.",
+    choices: [
+      {
+        id: "life-school-balance:plan",
+        label: "Plan a split schedule with staff",
+        disposition: "thoughtful",
+        results: [
+          {
+            delta: 2,
+            weight: 2.5,
+            effect: "ability",
+            text: "Staff protect your load. You arrive organized for both.",
+          },
+          {
+            delta: 1,
+            weight: 2.8,
+            effect: "ability",
+            text: "A sensible compromise. Energy holds.",
+          },
+          {
+            delta: 0,
+            weight: 1.4,
+            effect: "none",
+            text: "Neither side is thrilled, but you cope.",
+          },
+        ],
+      },
+      {
+        id: "life-school-balance:cram",
+        label: "Cram school late and hope training survives",
+        disposition: "ambitious",
+        results: [
+          {
+            delta: 1,
+            weight: 1.4,
+            effect: "ability",
+            text: "You scrape both — tired, but present.",
+          },
+          {
+            delta: 0,
+            weight: 1.8,
+            effect: "none",
+            text: "Average week. No praise, no crisis.",
+          },
+          {
+            delta: -1,
+            weight: 2.0,
+            effect: "confidence",
+            text: "Brain fog in possession. You feel behind.",
+          },
+          {
+            delta: -2,
+            weight: 1.4,
+            effect: "ability",
+            disruption: true,
+            text: "A late night shows in your decision speed.",
+          },
+        ],
+      },
+      {
+        id: "life-school-balance:skip",
+        label: "Skip class prep and live at the facility",
+        disposition: "reckless",
+        results: [
+          {
+            delta: 1,
+            weight: 1.0,
+            effect: "ability",
+            text: "Extra pitch time helps — until the academy hears about school.",
+          },
+          {
+            delta: -1,
+            weight: 2.0,
+            effect: "confidence",
+            text: "Welfare staff pull you in. Stress rises.",
+          },
+          {
+            delta: -2,
+            weight: 2.2,
+            effect: "ability",
+            disruption: true,
+            text: "Restricted training while you catch up on work.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "life-selection-disappointment",
+    setup:
+      "Team sheet is up. You are on the bench for a fixture you expected to start.",
+    choices: [
+      {
+        id: "life-selection-disappointment:respond",
+        label: "Respond in training and ask what to improve",
+        disposition: "thoughtful",
+        results: [
+          {
+            delta: 2,
+            weight: 2.6,
+            effect: "ability",
+            text: "Your reaction earns minutes later in the week.",
+          },
+          {
+            delta: 1,
+            weight: 3.0,
+            effect: "ability",
+            text: "Staff mark the professionalism. You stay in the plan.",
+          },
+          {
+            delta: 0,
+            weight: 1.2,
+            effect: "none",
+            text: "Quiet reset. The shirt will come again.",
+          },
+        ],
+      },
+      {
+        id: "life-selection-disappointment:support",
+        label: "Support the starter and stay ready",
+        disposition: "balanced",
+        results: [
+          {
+            delta: 1,
+            weight: 2.4,
+            effect: "ability",
+            text: "You change the game from the bench with a clean cameo.",
+          },
+          {
+            delta: 0,
+            weight: 2.2,
+            effect: "none",
+            text: "No cameo. No drama. You keep trust.",
+          },
+          {
+            delta: -1,
+            weight: 1.0,
+            effect: "confidence",
+            text: "Frustration simmers, but you hide it well enough.",
+          },
+        ],
+      },
+      {
+        id: "life-selection-disappointment:sulk",
+        label: "Show the frustration in the next drill",
+        disposition: "reckless",
+        results: [
+          {
+            delta: 0,
+            weight: 1.0,
+            effect: "none",
+            text: "You cool off before it becomes a story.",
+          },
+          {
+            delta: -1,
+            weight: 2.0,
+            effect: "confidence",
+            text: "Body language drops. Teammates give you space.",
+          },
+          {
+            delta: -2,
+            weight: 2.2,
+            effect: "ability",
+            text: "A sloppy challenge earns a private word — and fewer reps.",
+          },
+          {
+            delta: -3,
+            weight: 1.2,
+            effect: "ability",
+            disruption: true,
+            text: "Staff sit you for the next evaluation. Attitude tax.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "life-learn-from-mistake",
+    setup:
+      "You gave the ball away cheaply in a practice match. Video review is optional tonight.",
+    choices: [
+      {
+        id: "life-learn-from-mistake:review",
+        label: "Stay for video and rebuild the habit",
+        disposition: "thoughtful",
+        results: [
+          {
+            delta: 2,
+            weight: 2.8,
+            effect: "ability",
+            text: "You spot the trigger. The next session looks different.",
+          },
+          {
+            delta: 1,
+            weight: 2.6,
+            effect: "ability",
+            text: "One clip, one fix. Quiet progress.",
+          },
+          {
+            delta: 0,
+            weight: 1.2,
+            effect: "none",
+            text: "Nothing dramatic — you just refuse to repeat it blindly.",
+          },
+        ],
+      },
+      {
+        id: "life-learn-from-mistake:shake",
+        label: "Shake it off and move on",
+        disposition: "balanced",
+        results: [
+          {
+            delta: 1,
+            weight: 1.6,
+            effect: "confidence",
+            text: "Short memory helps your next action.",
+          },
+          {
+            delta: 0,
+            weight: 2.4,
+            effect: "none",
+            text: "The error fades without a lasting scar.",
+          },
+          {
+            delta: -1,
+            weight: 1.6,
+            effect: "confidence",
+            text: "Without review, doubt lingers longer than the mistake.",
+          },
+        ],
+      },
+      {
+        id: "life-learn-from-mistake:blame",
+        label: "Blame the surface and avoid the clip",
+        disposition: "reckless",
+        results: [
+          {
+            delta: 0,
+            weight: 1.2,
+            effect: "none",
+            text: "You dodge accountability for a night.",
+          },
+          {
+            delta: -1,
+            weight: 2.2,
+            effect: "confidence",
+            text: "Teammates heard the excuse. Trust thins.",
+          },
+          {
+            delta: -2,
+            weight: 2.0,
+            effect: "ability",
+            text: "Same giveaway returns midweek. The pattern is yours.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "life-help-teammate",
+    setup:
+      "A younger academy player is drowning in a drill you already mastered. Helping costs your own reps.",
+    choices: [
+      {
+        id: "life-help-teammate:help",
+        label: "Help them through the pattern",
+        disposition: "thoughtful",
+        results: [
+          {
+            delta: 2,
+            weight: 2.0,
+            effect: "ability",
+            text: "Teaching sharpens your own cues. Coach notices leadership.",
+          },
+          {
+            delta: 1,
+            weight: 3.0,
+            effect: "ability",
+            text: "You lose a few reps, gain dressing-room capital.",
+          },
+          {
+            delta: 0,
+            weight: 1.4,
+            effect: "none",
+            text: "Kindness without fireworks. The room is steadier.",
+          },
+        ],
+      },
+      {
+        id: "life-help-teammate:focus",
+        label: "Focus on your own reps first",
+        disposition: "balanced",
+        results: [
+          {
+            delta: 1,
+            weight: 2.4,
+            effect: "ability",
+            text: "Selfish in the useful way. Your quality rises.",
+          },
+          {
+            delta: 0,
+            weight: 2.0,
+            effect: "none",
+            text: "Neutral. Everyone survives the drill.",
+          },
+          {
+            delta: -1,
+            weight: 1.0,
+            effect: "confidence",
+            text: "A staff member wanted more generosity from seniors.",
+          },
+        ],
+      },
+      {
+        id: "life-help-teammate:mock",
+        label: "Joke about their mistake to the group",
+        disposition: "reckless",
+        results: [
+          {
+            delta: 0,
+            weight: 0.8,
+            effect: "none",
+            text: "The laugh dies quickly.",
+          },
+          {
+            delta: -1,
+            weight: 2.2,
+            effect: "confidence",
+            text: "The room cools. You look smaller for it.",
+          },
+          {
+            delta: -2,
+            weight: 2.0,
+            effect: "ability",
+            text: "Standards talk follows. Your next mistake gets less patience.",
+          },
+        ],
+      },
+    ],
+  },
+];

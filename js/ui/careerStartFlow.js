@@ -1,18 +1,29 @@
 import { pickRandomBackstory } from "../data/careerBackstories.js";
 import { buildAcademyIntro } from "../data/academyOfferStories.js";
-import { pickChoiceResult, pickScenariosForPosition } from "../data/careerOpeningScenarios.js?v=60";
+import { pickScenariosForPosition } from "../data/careerOpeningScenarios.js?v=76";
 import {
   pickThreeAcademies,
   buildNarrativeAcademySeason,
-} from "../simulation/narrativeAcademySeason.js?v=60";
+} from "../simulation/narrativeAcademySeason.js?v=76";
 import {
-  applyOpeningChoiceResult,
   finalizeAcademyPlayer,
-} from "../simulation/playerDevelopment.js?v=60";
+  applySkipOpeningDevelopment,
+} from "../simulation/playerDevelopment.js?v=76";
+import {
+  ACADEMY_OPENING,
+  advanceOpeningCursor,
+  applyOpeningMoment,
+  ensureAcademyOpeningState,
+  finalizeAcademyOpening,
+  getOpeningScenarios,
+  rollOpeningChoiceResult,
+} from "../simulation/academyOpening.js?v=76";
+import { createStreamRng } from "../simulation/rng.js?v=76";
+import { stableCareerId } from "../simulation/playerDevelopmentModel.js?v=76";
 import {
   buildFirstProContractDecision,
   signFirstProfessionalContract,
-} from "../simulation/proContractOffers.js?v=60";
+} from "../simulation/proContractOffers.js?v=76";
 import { escapeHtml, formatCurrency } from "../utils/helpers.js";
 import {
   formatAbilityDisplayChange,
@@ -20,8 +31,7 @@ import {
   roundAbilityForDisplay,
 } from "./abilityFormatting.js";
 
-const ACADEMY_MOMENT_COUNT = 5;
-const ACADEMY_CLAMP = { min: 50, max: 88 };
+const ACADEMY_MOMENT_COUNT = ACADEMY_OPENING.momentCount;
 
 const FALLBACK_SCENARIO = {
   setup:
@@ -73,17 +83,21 @@ function showStep(overlayEl, id) {
   }
 }
 
-function ensureScenarioList(position, count) {
-  let list = pickScenariosForPosition(position, count);
+function ensureScenarioList(position, count, rng = null) {
+  let list = pickScenariosForPosition(position, count, rng);
   while (list.length < count) {
     list = [...list, structuredClone(FALLBACK_SCENARIO)];
   }
   return list.slice(0, count);
 }
 
-function updateLiveOverall(player) {
+function updateLiveOverall(player, { flashDelta = null } = {}) {
   const el = document.getElementById("career-scenario-ovr");
-  if (el) el.textContent = formatAbilityForDisplay(player.rating);
+  if (!el) return;
+  el.textContent = formatAbilityForDisplay(player.rating);
+  el.classList.remove("is-up", "is-down", "is-flash");
+  if (flashDelta > 0) el.classList.add("is-up", "is-flash");
+  else if (flashDelta < 0) el.classList.add("is-down", "is-flash");
 }
 
 function wait(ms) {
@@ -217,6 +231,7 @@ export function skipCareerIntroBootstrap(player, academyPool) {
   }
   finalizeAcademyPlayer(player, picks[0].academy);
   const ratingStart = player.rating;
+  applySkipOpeningDevelopment(player);
   const season = buildNarrativeAcademySeason(player, ratingStart, player.rating);
   player.seasons.push(season);
   player.careerTotals.matches += season.matches;
@@ -263,12 +278,11 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     return;
   }
 
-  const scenarios = ensureScenarioList(player.position, ACADEMY_MOMENT_COUNT);
-
   let ratingAfterAcademyPick = 0;
   let scenarioIndex = 0;
   let offerIndex = 0;
   let revealToken = 0;
+  let momentLocked = false;
 
   const outcomeEl = document.getElementById("career-scenario-outcome");
   const nextScenarioBtn = document.getElementById("career-scenario-next");
@@ -277,7 +291,11 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
   function chooseAcademy(offer) {
     finalizeAcademyPlayer(player, offer.academy);
     ratingAfterAcademyPick = player.rating;
-    scenarioIndex = 0;
+    const scenarioRng = createStreamRng(stableCareerId(player), ACADEMY_OPENING.streams.scenarios);
+    const picked = ensureScenarioList(player.position, ACADEMY_MOMENT_COUNT, scenarioRng);
+    ensureAcademyOpeningState(player, { scenarios: picked, rng: scenarioRng });
+    scenarioIndex = player.academyOpening?.cursor || 0;
+    momentLocked = false;
     updateLiveOverall(player);
     showStep(overlay, "career-step-scenario");
     bindScenarioStep();
@@ -387,12 +405,15 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
 
   function bindScenarioStep() {
     if (!outcomeEl || !nextScenarioBtn || !choicesEl) return;
+    momentLocked = false;
     outcomeEl.classList.add("hidden");
     outcomeEl.textContent = "";
     nextScenarioBtn.classList.add("hidden");
     choicesEl.innerHTML = "";
     updateLiveOverall(player);
 
+    const scenarios = getOpeningScenarios(player);
+    scenarioIndex = player.academyOpening?.cursor ?? scenarioIndex;
     const sc = scenarios[scenarioIndex];
     if (!sc) {
       showRatingRevealThenFinishSetup();
@@ -406,33 +427,50 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     if (idxEl) idxEl.textContent = `Moment ${scenarioIndex + 1} of ${ACADEMY_MOMENT_COUNT}`;
     if (setupEl) setupEl.textContent = sc.setup;
 
-    sc.choices.forEach((choice) => {
+    const orderRng = createStreamRng(
+      stableCareerId(player),
+      `${ACADEMY_OPENING.streams.scenarios}:order:${sc.id}`
+    );
+    const orderedChoices = orderRng.shuffle([...(sc.choices || [])]);
+
+    orderedChoices.forEach((choice) => {
       const btn = document.createElement("button");
       btn.className = "primary career-choice-btn";
       btn.type = "button";
       btn.textContent = choice.label;
       btn.addEventListener("click", () => {
-        const result = pickChoiceResult(choice);
-        const applied = applyOpeningChoiceResult(player, result.delta, ACADEMY_CLAMP);
-        updateLiveOverall(player);
+        if (momentLocked) return;
+        momentLocked = true;
+        choicesEl.querySelectorAll("button").forEach((b) => {
+          b.disabled = true;
+        });
 
-        outcomeEl.textContent = result.text;
+        const result = rollOpeningChoiceResult(player, choice, { momentIndex: scenarioIndex });
+        const applied = applyOpeningMoment(player, {
+          scenario: sc,
+          choice,
+          outcome: result,
+          momentIndex: scenarioIndex,
+        });
+        const boardDelta = (applied.displayedAfter ?? 0) - (applied.displayedBefore ?? 0);
+        updateLiveOverall(player, { flashDelta: boardDelta });
+
+        const chosen = document.createElement("p");
+        chosen.className = "career-choice-selected";
+        chosen.textContent = `You chose: ${choice.label}`;
+        outcomeEl.textContent = applied.feedback?.prose || result.text;
         outcomeEl.classList.remove("hidden");
         choicesEl.innerHTML = "";
+        choicesEl.appendChild(chosen);
 
         const deltaNote = document.createElement("p");
         deltaNote.className = "career-delta-note";
-        const now = formatAbilityForDisplay(player.rating);
-        const badge = formatAbilityDisplayChange(
-          Number.isFinite(player.rating) ? player.rating - applied : null,
-          player.rating,
-          "unchanged"
-        );
-        if (badge === "unchanged") {
-          deltaNote.textContent = `Overall unchanged. Still ${now}.`;
-        } else {
-          deltaNote.textContent = `Overall ${badge}. Now ${now}.`;
-        }
+        if (boardDelta > 0) deltaNote.classList.add("is-up");
+        else if (boardDelta < 0) deltaNote.classList.add("is-down");
+        else if ((applied.realizedRaw || 0) > 0.03) deltaNote.classList.add("is-progress");
+        deltaNote.textContent =
+          applied.feedback?.changeNote ||
+          `Overall ${formatAbilityDisplayChange(applied.rawBefore, applied.rawAfter, "unchanged")}. Now ${formatAbilityForDisplay(player.rating)}.`;
         choicesEl.appendChild(deltaNote);
         nextScenarioBtn.classList.remove("hidden");
       });
@@ -441,6 +479,8 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
   }
 
   async function showRatingRevealThenFinishSetup() {
+    finalizeAcademyOpening(player);
+    updateLiveOverall(player);
     const rv = document.getElementById("career-rating-value");
     const lead = document.getElementById("career-rating-lead");
     const after = document.getElementById("career-rating-after");
@@ -468,7 +508,9 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
   }
 
   nextScenarioBtn.onclick = () => {
-    scenarioIndex += 1;
+    advanceOpeningCursor(player);
+    scenarioIndex = player.academyOpening?.cursor ?? scenarioIndex + 1;
+    const scenarios = getOpeningScenarios(player);
     if (scenarioIndex < scenarios.length) {
       bindScenarioStep();
     } else {

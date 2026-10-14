@@ -116,8 +116,11 @@ export function tournamentsForYear(year) {
       name: "FIFA World Cup",
       shortName: "World Cup",
       confederation: "FIFA",
-      fieldSize: 16,
+      fieldSize: 48,
       groupSize: 4,
+      bestThirds: 8,
+      thirdPlaceMatch: true,
+      editionYear: y,
     });
   }
 
@@ -127,16 +130,19 @@ export function tournamentsForYear(year) {
       name: "UEFA European Championship",
       shortName: "EURO",
       confederation: "UEFA",
-      fieldSize: 16,
+      fieldSize: 24,
       groupSize: 4,
+      bestThirds: 4,
+      editionYear: y,
     });
     list.push({
       id: "copa-america",
       name: "Copa América",
       shortName: "Copa América",
       confederation: "CONMEBOL",
-      fieldSize: 12,
-      groupSize: 3,
+      fieldSize: 16,
+      groupSize: 4,
+      editionYear: y,
     });
   }
 

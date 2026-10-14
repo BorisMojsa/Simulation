@@ -18,6 +18,13 @@ import {
 import { getOrUpdateForecast } from "./playerPotential.js";
 import { ensurePlayerModel } from "./playerModelMigration.js";
 import { createStreamRng, reseedCareerRng, hashSeed } from "./rng.js";
+import {
+  applyOpeningMoment,
+  ensureAcademyOpeningState,
+  applySkipOpeningDevelopment,
+} from "./academyOpening.js?v=76";
+
+export { applySkipOpeningDevelopment };
 
 const basePlayerFields = () => ({
   seasons: [],
@@ -150,40 +157,40 @@ export function applyOpeningChoiceDelta(player, minDelta, maxDelta, clampRange =
   return applyOpeningChoiceResult(player, d, clampRange);
 }
 
-/** Apply a concrete result delta from a linked narrative outcome via attributes. */
+/**
+ * Apply a narrative opening outcome score via the shared academy-opening budget.
+ * `delta` is a narrative score (±1…±4), not a raw OVR award.
+ * Returns displayed (raw cache) change after attribute application.
+ */
 export function applyOpeningChoiceResult(player, delta, clampRange = { min: 50, max: 88 }) {
   ensurePlayerModel(player);
-  const profile = POSITION_PROFILES[player.position] || POSITION_PROFILES.DEFAULT;
-  const prevDisplayed = player.rating;
-  const appliedMap = player.development?.appliedEventIds;
-  const choiceIndex = Array.isArray(appliedMap)
-    ? appliedMap.length
-    : Object.keys(appliedMap || {}).length;
-  const rng = createStreamRng(stableCareerId(player), `academy:${choiceIndex}`);
-  // ~5–8 narrative beats share roughly one academy-year learning budget.
-  applyAcademyGrowth(player, delta, {
-    rng,
-    focusBias: profile.growthBias,
-    elapsedYearsShare: 0.14,
+  const ratingBefore = player.rating;
+  ensureAcademyOpeningState(player);
+  const choiceIndex = player.academyOpening?.rolls?.length || 0;
+  applyOpeningMoment(player, {
+    scenario: { id: `legacy-choice-${choiceIndex}` },
+    choice: { id: `legacy-c-${choiceIndex}`, label: "Opening moment" },
+    outcome: {
+      id: `legacy-o-${choiceIndex}-d${delta}`,
+      delta,
+      text: "The moment lands.",
+      effect: "ability",
+    },
+    momentIndex: choiceIndex,
   });
-  // Soft clamp displayed base for academy narrative band
-  if (player.rating < clampRange.min || player.rating > clampRange.max) {
-    if (player.rating < clampRange.min) {
-      applyAcademyGrowth(player, clampRange.min - player.rating, {
-        rng,
-        focusBias: profile.growthBias,
-        elapsedYearsShare: 0.08,
-      });
-    }
+  // Respect caller clamp band for legacy tests without forcing a +1 floor.
+  if (player.rating < clampRange.min) {
+    const profile = POSITION_PROFILES[player.position] || POSITION_PROFILES.DEFAULT;
+    const rng = createStreamRng(stableCareerId(player), `academy-clamp:${choiceIndex}`);
+    applyAcademyGrowth(player, clampRange.min - player.rating, {
+      rng,
+      focusBias: profile.growthBias,
+      elapsedYearsShare: 1,
+      alreadyAppliedLearningGain: player.academyOpening?.positiveLearningApplied || 0,
+    });
+    getOrUpdateForecast(player, { sampleCount: 32 });
   }
-  getOrUpdateForecast(player, { sampleCount: 32 });
-  // Displayed Δ from rounded base cache (fractional attr gains may accumulate across choices).
-  const appliedDisplayed = player.rating - prevDisplayed;
-  if (!player.development.appliedEventIds || Array.isArray(player.development.appliedEventIds)) {
-    player.development.appliedEventIds = {};
-  }
-  player.development.appliedEventIds[`academy-choice-${choiceIndex}`] = true;
-  return appliedDisplayed;
+  return player.rating - ratingBefore;
 }
 
 export function createPlayer({ name, nationality, position }, academyPool) {

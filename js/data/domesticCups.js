@@ -152,6 +152,41 @@ export const DOMESTIC_CUPS = {
     includeSecondDivision: false,
     rounds: ["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "Final"],
   },
+  "Saudi Arabia": {
+    name: "King's Cup",
+    shortName: "King's Cup",
+    startSize: 32,
+    includeSecondDivision: false,
+    rounds: ["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "Final"],
+  },
+  Japan: {
+    name: "Emperor's Cup",
+    shortName: "Emperor's Cup",
+    startSize: 32,
+    includeSecondDivision: false,
+    rounds: ["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "Final"],
+  },
+  "South Korea": {
+    name: "Korean FA Cup",
+    shortName: "FA Cup",
+    startSize: 32,
+    includeSecondDivision: false,
+    rounds: ["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "Final"],
+  },
+  Egypt: {
+    name: "Egypt Cup",
+    shortName: "Egypt Cup",
+    startSize: 32,
+    includeSecondDivision: false,
+    rounds: ["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "Final"],
+  },
+  Morocco: {
+    name: "Throne Cup",
+    shortName: "Coupe du Trône",
+    startSize: 32,
+    includeSecondDivision: false,
+    rounds: ["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "Final"],
+  },
 };
 
 export function cupConfigForNation(nation) {

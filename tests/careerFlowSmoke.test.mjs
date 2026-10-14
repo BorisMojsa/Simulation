@@ -164,7 +164,7 @@ test("pickChoiceResult links text to delta", () => {
   }
 });
 
-test("Top corner screamer and all choices can go either way", () => {
+test("Top corner screamer stays two-way; fair choices need not be identical ± mirrors", () => {
   const screamer = allOpeningScenarios()
     .flatMap((s) => s.choices)
     .find((c) => /top corner screamer/i.test(c.label));
@@ -179,11 +179,13 @@ test("Top corner screamer and all choices can go either way", () => {
     if (d < 0) sawNeg = true;
   }
   assert.ok(sawPos && sawNeg);
+  // Thoughtful academy-life choices may be upside-leaning; reckless ones downside-leaning.
+  // Require every choice to expose at least one non-catastrophic path and weighted results.
   for (const s of allOpeningScenarios()) {
     for (const c of s.choices) {
       const deltas = c.results.map((r) => r.delta);
-      assert.ok(deltas.some((d) => d > 0), `missing plus: ${c.label}`);
-      assert.ok(deltas.some((d) => d < 0), `missing minus: ${c.label}`);
+      assert.ok(deltas.some((d) => d >= 0), `missing non-negative path: ${c.label}`);
+      assert.ok(c.results.every((r) => Number(r.weight) > 0), `weights required: ${c.label}`);
       assert.equal(c.gainOnly, undefined);
     }
   }

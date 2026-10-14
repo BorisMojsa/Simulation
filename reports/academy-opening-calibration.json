@@ -1,0 +1,369 @@
+{
+  "generatedAt": "2026-10-13T23:44:50.266Z",
+  "gitRevision": "5b5aa2c56dd97c54611f52ba73fb939f76da20b9",
+  "configHash": "cdb3e398c9f84724",
+  "totalOpenings": 2000,
+  "perCell": 100,
+  "policiesDefinedUpFront": [
+    "balanced",
+    "thoughtful",
+    "reckless",
+    "random"
+  ],
+  "targets": {
+    "ordinaryBalancedDisplayed": "≈60–70% improve / 20–30% unchanged / 5–15% decline (central 65/25/10)",
+    "thoughtfulImprove": "≈75–85%",
+    "reckless": "materially more stagnation/decline than thoughtful",
+    "typicalSuccessDisplayed": "+1 to +3 across opening",
+    "typicalPoorDisplayed": "−1 to −2"
+  },
+  "overall": {
+    "n": 2000,
+    "improvedPct": 87.1,
+    "unchangedPct": 12,
+    "declinedPct": 0.9,
+    "meanDisplayedDelta": 1.34,
+    "meanRawDelta": 1.319,
+    "meanPotDelta": 0.794,
+    "gainMagnitudes": {
+      "n": 1741,
+      "mean": 1.55,
+      "median": 2,
+      "p10": 1,
+      "p90": 2
+    },
+    "lossMagnitudes": {
+      "n": 18,
+      "mean": 1.056,
+      "median": 1,
+      "p10": 1,
+      "p90": 1
+    },
+    "meanPositiveLearning": 1.541,
+    "meanLossApplied": 0.222,
+    "capHitRate": 0
+  },
+  "byPolicy": {
+    "balanced": {
+      "n": 500,
+      "improvedPct": 93.2,
+      "unchangedPct": 6.8,
+      "declinedPct": 0,
+      "meanDisplayedDelta": 1.41,
+      "meanRawDelta": 1.356,
+      "meanPotDelta": 0.82,
+      "gainMagnitudes": {
+        "n": 466,
+        "mean": 1.513,
+        "median": 2,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 0,
+        "mean": 0,
+        "median": null,
+        "p10": null,
+        "p90": null
+      },
+      "meanPositiveLearning": 1.528,
+      "meanLossApplied": 0.172,
+      "capHitRate": 0
+    },
+    "thoughtful": {
+      "n": 500,
+      "improvedPct": 99.4,
+      "unchangedPct": 0.6,
+      "declinedPct": 0,
+      "meanDisplayedDelta": 1.87,
+      "meanRawDelta": 1.85,
+      "meanPotDelta": 1.118,
+      "gainMagnitudes": {
+        "n": 497,
+        "mean": 1.881,
+        "median": 2,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 0,
+        "mean": 0,
+        "median": null,
+        "p10": null,
+        "p90": null
+      },
+      "meanPositiveLearning": 1.876,
+      "meanLossApplied": 0.026,
+      "capHitRate": 0
+    },
+    "reckless": {
+      "n": 500,
+      "improvedPct": 64.6,
+      "unchangedPct": 32,
+      "declinedPct": 3.4,
+      "meanDisplayedDelta": 0.742,
+      "meanRawDelta": 0.727,
+      "meanPotDelta": 0.388,
+      "gainMagnitudes": {
+        "n": 323,
+        "mean": 1.204,
+        "median": 1,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 17,
+        "mean": 1.059,
+        "median": 1,
+        "p10": 1,
+        "p90": 1
+      },
+      "meanPositiveLearning": 1.225,
+      "meanLossApplied": 0.498,
+      "capHitRate": 0
+    },
+    "random": {
+      "n": 500,
+      "improvedPct": 91,
+      "unchangedPct": 8.8,
+      "declinedPct": 0.2,
+      "meanDisplayedDelta": 1.338,
+      "meanRawDelta": 1.341,
+      "meanPotDelta": 0.85,
+      "gainMagnitudes": {
+        "n": 455,
+        "mean": 1.473,
+        "median": 1,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 1,
+        "mean": 1,
+        "median": 1,
+        "p10": 1,
+        "p90": 1
+      },
+      "meanPositiveLearning": 1.535,
+      "meanLossApplied": 0.194,
+      "capHitRate": 0
+    }
+  },
+  "byGroupBalanced": {
+    "GK": {
+      "n": 100,
+      "improvedPct": 97,
+      "unchangedPct": 3,
+      "declinedPct": 0,
+      "meanDisplayedDelta": 1.51,
+      "meanRawDelta": 1.457,
+      "meanPotDelta": 1.03,
+      "gainMagnitudes": {
+        "n": 97,
+        "mean": 1.557,
+        "median": 2,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 0,
+        "mean": 0,
+        "median": null,
+        "p10": null,
+        "p90": null
+      },
+      "meanPositiveLearning": 1.583,
+      "meanLossApplied": 0.126,
+      "capHitRate": 0
+    },
+    "DEF": {
+      "n": 100,
+      "improvedPct": 93,
+      "unchangedPct": 7,
+      "declinedPct": 0,
+      "meanDisplayedDelta": 1.37,
+      "meanRawDelta": 1.314,
+      "meanPotDelta": 0.41,
+      "gainMagnitudes": {
+        "n": 93,
+        "mean": 1.473,
+        "median": 1,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 0,
+        "mean": 0,
+        "median": null,
+        "p10": null,
+        "p90": null
+      },
+      "meanPositiveLearning": 1.484,
+      "meanLossApplied": 0.17,
+      "capHitRate": 0
+    },
+    "MID": {
+      "n": 100,
+      "improvedPct": 91,
+      "unchangedPct": 9,
+      "declinedPct": 0,
+      "meanDisplayedDelta": 1.33,
+      "meanRawDelta": 1.292,
+      "meanPotDelta": 0.82,
+      "gainMagnitudes": {
+        "n": 91,
+        "mean": 1.462,
+        "median": 1,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 0,
+        "mean": 0,
+        "median": null,
+        "p10": null,
+        "p90": null
+      },
+      "meanPositiveLearning": 1.483,
+      "meanLossApplied": 0.191,
+      "capHitRate": 0
+    },
+    "WING": {
+      "n": 100,
+      "improvedPct": 97,
+      "unchangedPct": 3,
+      "declinedPct": 0,
+      "meanDisplayedDelta": 1.51,
+      "meanRawDelta": 1.437,
+      "meanPotDelta": 0.78,
+      "gainMagnitudes": {
+        "n": 97,
+        "mean": 1.557,
+        "median": 2,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 0,
+        "mean": 0,
+        "median": null,
+        "p10": null,
+        "p90": null
+      },
+      "meanPositiveLearning": 1.584,
+      "meanLossApplied": 0.147,
+      "capHitRate": 0
+    },
+    "ST": {
+      "n": 100,
+      "improvedPct": 88,
+      "unchangedPct": 12,
+      "declinedPct": 0,
+      "meanDisplayedDelta": 1.33,
+      "meanRawDelta": 1.28,
+      "meanPotDelta": 1.06,
+      "gainMagnitudes": {
+        "n": 88,
+        "mean": 1.511,
+        "median": 2,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 0,
+        "mean": 0,
+        "median": null,
+        "p10": null,
+        "p90": null
+      },
+      "meanPositiveLearning": 1.504,
+      "meanLossApplied": 0.224,
+      "capHitRate": 0
+    }
+  },
+  "cohorts": {
+    "ordinaryHealthyBalanced": {
+      "n": 426,
+      "improvedPct": 93.4,
+      "unchangedPct": 6.6,
+      "declinedPct": 0,
+      "meanDisplayedDelta": 1.415,
+      "meanRawDelta": 1.361,
+      "meanPotDelta": 0.371,
+      "gainMagnitudes": {
+        "n": 398,
+        "mean": 1.515,
+        "median": 2,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 0,
+        "mean": 0,
+        "median": null,
+        "p10": null,
+        "p90": null
+      },
+      "meanPositiveLearning": 1.532,
+      "meanLossApplied": 0.17,
+      "capHitRate": 0
+    },
+    "nearCeilingBalanced": {
+      "n": 200,
+      "improvedPct": 85,
+      "unchangedPct": 14.5,
+      "declinedPct": 0.5,
+      "meanDisplayedDelta": 1.295,
+      "meanRawDelta": 1.273,
+      "meanPotDelta": 0.695,
+      "gainMagnitudes": {
+        "n": 170,
+        "mean": 1.529,
+        "median": 2,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 1,
+        "mean": 1,
+        "median": 1,
+        "p10": 1,
+        "p90": 1
+      },
+      "meanPositiveLearning": 1.497,
+      "meanLossApplied": 0.224,
+      "capHitRate": 0
+    },
+    "highStartBalanced": {
+      "n": 68,
+      "improvedPct": 92.6,
+      "unchangedPct": 7.4,
+      "declinedPct": 0,
+      "meanDisplayedDelta": 1.397,
+      "meanRawDelta": 1.345,
+      "meanPotDelta": 3.294,
+      "gainMagnitudes": {
+        "n": 63,
+        "mean": 1.508,
+        "median": 2,
+        "p10": 1,
+        "p90": 2
+      },
+      "lossMagnitudes": {
+        "n": 0,
+        "mean": 0,
+        "median": null,
+        "p10": null,
+        "p90": null
+      },
+      "meanPositiveLearning": 1.528,
+      "meanLossApplied": 0.183,
+      "capHitRate": 0
+    }
+  },
+  "notes": [
+    "Displayed deltas use rounded base OVR endpoints; raw uses baseOverallRaw.",
+    "Near-ceiling cohort may legitimately show more unchanged outcomes.",
+    "Skip/bootstrap path applies baseline only and is not included here."
+  ]
+}

@@ -49,6 +49,11 @@ export const ASSOCIATION_IDS = {
   Ecuador: "assoc:ecuador",
   Mexico: "assoc:mexico",
   "United States": "assoc:united-states",
+  "Saudi Arabia": "assoc:saudi-arabia",
+  Japan: "assoc:japan",
+  "South Korea": "assoc:south-korea",
+  Egypt: "assoc:egypt",
+  Morocco: "assoc:morocco",
 };
 
 /** league.name → stable leagueId (must match clubProfiles). */
@@ -98,6 +103,28 @@ export const UEFA_TOP_FLIGHT_LEAGUE_IDS = new Set([
   "league:serbia-superliga",
 ]);
 
+export const AFC_TOP_FLIGHT_LEAGUE_IDS = new Set([
+  "league:saudi-arabia-saudi-pro-league",
+  "league:japan-j1-league",
+  "league:south-korea-k-league-1",
+]);
+
+export const CAF_TOP_FLIGHT_LEAGUE_IDS = new Set([
+  "league:egypt-egyptian-premier-league",
+  "league:morocco-botola-pro",
+]);
+
+export const AFC_ASSOCIATION_SLOTS = {
+  "assoc:saudi-arabia": { elite: 3 },
+  "assoc:japan": { elite: 3 },
+  "assoc:south-korea": { elite: 3 },
+};
+
+export const CAF_ASSOCIATION_SLOTS = {
+  "assoc:egypt": { cl: 2 },
+  "assoc:morocco": { cl: 2 },
+};
+
 export function associationIdForNation(nation) {
   return ASSOCIATION_IDS[nation] || `assoc:${normalizeName(nation).replace(/\s+/g, "-")}`;
 }
@@ -114,16 +141,30 @@ export function uefaSlotsForLeague(league) {
   return UEFA_ASSOCIATION_SLOTS[assoc] || { cl: 1, el: 1, uecl: 1 };
 }
 
+/**
+ * Resolve continental entry from prior-season standing.
+ * UEFA: prefer explicit qualification label; fall back to association slot by position
+ * so pre-season proxies that omit the label still grant entry.
+ * Entry is always scoped to the current playing league/association — never a prior club's table.
+ */
 export function continentalCompetitionForStanding(standing, league) {
   if (!standing || !league) return null;
   const nation = league.nation;
-  const pos = standing.position;
+  const pos = Number(standing.position) || 0;
   const q = standing.qualification;
+  const leagueId = league.leagueId || leagueIdFromName(league.name);
 
   if (isUefaQualifyingLeague(league)) {
     if (q === "League Champions" || q === "Champions League") return "Champions League";
     if (q === "Europa League") return "Europa League";
     if (q === "Conference League") return "Conference League";
+    // Position fallback (same bands as qualificationForPosition)
+    const slots = uefaSlotsForLeague(league) || { cl: 1, el: 1, uecl: 1 };
+    if (pos >= 1 && pos <= slots.cl) return "Champions League";
+    if (pos > slots.cl && pos <= slots.cl + slots.el) return "Europa League";
+    if (pos > slots.cl + slots.el && pos <= slots.cl + slots.el + slots.uecl) {
+      return "Conference League";
+    }
     return null;
   }
 
@@ -135,6 +176,24 @@ export function continentalCompetitionForStanding(standing, league) {
 
   if (["Mexico", "United States"].includes(nation)) {
     if (q === "League Champions" || pos <= 4) return "CONCACAF Champions Cup";
+    return null;
+  }
+
+  if (AFC_TOP_FLIGHT_LEAGUE_IDS.has(leagueId) || ["Saudi Arabia", "Japan", "South Korea"].includes(nation)) {
+    const assoc = associationIdForNation(nation);
+    const slots = AFC_ASSOCIATION_SLOTS[assoc] || { elite: 2 };
+    if (q === "League Champions" || (pos >= 1 && pos <= slots.elite)) {
+      return "AFC Champions League Elite";
+    }
+    return null;
+  }
+
+  if (CAF_TOP_FLIGHT_LEAGUE_IDS.has(leagueId) || ["Egypt", "Morocco"].includes(nation)) {
+    const assoc = associationIdForNation(nation);
+    const slots = CAF_ASSOCIATION_SLOTS[assoc] || { cl: 2 };
+    if (q === "League Champions" || (pos >= 1 && pos <= slots.cl)) {
+      return "CAF Champions League";
+    }
     return null;
   }
 

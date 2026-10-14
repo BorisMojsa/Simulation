@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=29" />
+  <link rel="stylesheet" href="style.css?v=31" />
 </head>
 <body>
   <div class="app">
@@ -96,6 +96,14 @@
               <h3>League standings</h3>
               <div id="standings-board" class="standings-board"></div>
             </section>
+
+            <section class="panel-sub" aria-live="polite">
+              <h3>Competitions</h3>
+              <p class="section-lead" style="margin-bottom:0.75rem">
+                Inspect league phases, groups, and knockout draws from completed seasons.
+              </p>
+              <div id="competitions-board" class="competitions-board"></div>
+            </section>
           </div>
 
           <div class="column column-secondary">
@@ -112,6 +120,11 @@
             <section class="panel-sub">
               <h3>Season history</h3>
               <div id="season-log" class="seasons"></div>
+            </section>
+
+            <section class="panel-sub">
+              <h3>Career moments</h3>
+              <div id="career-moments-log" class="career-moments"></div>
             </section>
           </div>
         </div>
@@ -268,18 +281,93 @@
     </div>
   </div>
 
+  <div id="senior-scenario-overlay" class="animation-overlay hidden" aria-hidden="true" role="dialog" aria-labelledby="senior-scenario-title">
+    <div class="animation-container career-start-wrap senior-scenario-wrap">
+      <div class="career-step">
+        <div class="animation-header career-scenario-header">
+          <p class="section-kicker">Career moment</p>
+          <div class="career-scenario-title-row">
+            <h2 id="senior-scenario-title">Career moment</h2>
+            <p class="career-live-ovr" aria-live="polite">
+              Overall <span id="senior-scenario-ovr">—</span>
+            </p>
+          </div>
+          <div id="senior-scenario-context" class="career-scenario-badge"></div>
+        </div>
+        <p id="senior-scenario-setup" class="career-prose career-scenario-setup"></p>
+        <div id="senior-scenario-choices" class="career-scenario-choices"></div>
+        <p id="senior-scenario-outcome" class="career-prose career-scenario-outcome hidden"></p>
+        <div id="senior-scenario-badges" class="senior-effect-badges hidden" aria-live="polite"></div>
+        <button type="button" id="senior-scenario-next" class="primary hidden">Continue</button>
+      </div>
+    </div>
+  </div>
+
   <div id="season-animation-overlay" class="animation-overlay hidden">
-    <div class="animation-container">
-      <div id="match-skip-bar" class="match-skip-bar hidden">
-        <button type="button" id="match-skip-btn" class="secondary">Skip match</button>
-        <button type="button" id="match-skip-phase-btn" class="secondary">Skip phase</button>
+    <div class="animation-container animation-container-wide">
+      <div id="simulation-dashboard" class="animation-section simulation-dashboard hidden">
+        <header class="sim-dash-header">
+          <div class="sim-dash-meta">
+            <p class="sim-dash-kicker" id="sim-dash-season">Season</p>
+            <h2 id="sim-dash-title">League simulation</h2>
+            <div class="sim-dash-submeta">
+              <span id="sim-dash-date"></span>
+              <span id="sim-dash-club"></span>
+              <span id="sim-dash-competition"></span>
+              <span id="sim-dash-matchday"></span>
+            </div>
+          </div>
+          <div class="sim-dash-controls" id="sim-dash-controls">
+            <button type="button" id="sim-pause-btn" class="secondary">Pause</button>
+            <button type="button" id="sim-speed-btn" class="secondary" data-speed="1">1×</button>
+            <button type="button" id="sim-skip-match-btn" class="secondary">Skip match</button>
+            <button type="button" id="sim-skip-phase-btn" class="secondary">Skip remaining</button>
+          </div>
+          <div id="sim-awaiting-banner" class="sim-awaiting-banner hidden" role="status">
+            <strong>Awaiting your choice</strong>
+            <span id="sim-awaiting-text">Resolve the squad discussion to continue the season.</span>
+          </div>
+        </header>
+
+        <!-- Live league play stays on League only; other comps run as their own phases afterward. -->
+        <nav class="sim-comp-menu hidden" id="sim-comp-menu" aria-label="Season history views" hidden>
+          <button type="button" class="sim-comp-tab active" data-view="league">League</button>
+          <button type="button" class="sim-comp-tab" data-view="recap">All results</button>
+        </nav>
+
+        <div class="sim-dash-body" id="sim-dash-body">
+          <div class="sim-match-area" id="sim-match-area">
+            <div id="match-card-rail" class="match-card-rail" tabindex="0" aria-label="Match results"></div>
+            <div id="sim-recap-grid" class="sim-recap-grid hidden"></div>
+            <details id="match-details-drawer" class="match-details-drawer hidden">
+              <summary>Match details</summary>
+              <div id="match-events-feed" class="match-events-feed"></div>
+            </details>
+          </div>
+          <aside class="sim-standings-panel" id="live-standings-panel" aria-label="League table">
+            <div class="sim-standings-heading">
+              <h3 id="live-standings-title">League table</h3>
+              <p id="live-standings-note" class="season-info"></p>
+            </div>
+            <div id="league-table-host" class="league-table-host"></div>
+          </aside>
+        </div>
       </div>
 
+      <!-- Match viewer for cup / continental / international phases -->
       <div id="match-viewer-section" class="animation-section match-viewer-section hidden">
         <div class="animation-header match-viewer-header">
-          <h2 id="match-phase-label">Matchday</h2>
-          <div class="season-info" id="match-progress-label"></div>
-          <div class="season-info" id="match-round-label"></div>
+          <div class="match-viewer-heading-row">
+            <div>
+              <h2 id="match-phase-label">Matchday</h2>
+              <div class="season-info" id="match-progress-label"></div>
+              <div class="season-info" id="match-round-label"></div>
+            </div>
+            <div id="match-skip-bar" class="match-skip-bar match-skip-bar-inline hidden">
+              <button type="button" id="match-skip-btn" class="secondary">Skip match</button>
+              <button type="button" id="match-skip-phase-btn" class="secondary">Skip phase</button>
+            </div>
+          </div>
         </div>
         <div class="match-scoreboard">
           <div class="match-side match-home">
@@ -300,7 +388,6 @@
           </div>
         </div>
         <div id="match-player-note" class="match-player-note hidden"></div>
-        <div id="match-events-feed" class="match-events-feed"></div>
       </div>
 
       <div id="league-animation" class="animation-section hidden">
@@ -310,15 +397,6 @@
         </div>
         <div id="league-trophy-banner" class="league-trophy-banner hidden"></div>
         <div class="league-table-animation">
-          <div class="table-header">
-            <span>Pos</span>
-            <span>Team</span>
-            <span>Pts</span>
-            <span>W</span>
-            <span>D</span>
-            <span>L</span>
-            <span>GD</span>
-          </div>
           <div id="league-table-rows" class="table-rows"></div>
         </div>
       </div>
@@ -453,7 +531,7 @@
     })();
   </script>
   <script type="module">
-    import("./main.js?v=63").catch(function (err) {
+    import("./main.js?v=80").catch(function (err) {
       console.error(err);
       var el = document.getElementById("app-boot-error");
       if (el) {

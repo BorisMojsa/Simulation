@@ -1,10 +1,17 @@
 import { normalizeName } from "./normalize.js";
 import {
-  CLUB_PROFILES,
-  CLUB_ALIAS_INDEX,
+  CLUB_PROFILES as BASE_CLUB_PROFILES,
+  CLUB_ALIAS_INDEX as BASE_CLUB_ALIAS_INDEX,
   CLUB_STRENGTH_SNAPSHOT_DATE,
 } from "../strength/clubProfiles.generated.js?v=59";
+import {
+  AFC_CAF_CLUB_PROFILES,
+  AFC_CAF_CLUB_ALIAS_INDEX,
+} from "../strength/afcCafClubSupplement.js?v=1";
 import { getNationProfile } from "../strength/nationProfiles.js?v=59";
+
+export const CLUB_PROFILES = [...BASE_CLUB_PROFILES, ...AFC_CAF_CLUB_PROFILES];
+export const CLUB_ALIAS_INDEX = { ...BASE_CLUB_ALIAS_INDEX, ...AFC_CAF_CLUB_ALIAS_INDEX };
 
 const byId = new Map(CLUB_PROFILES.map((p) => [p.clubId, p]));
 
@@ -118,4 +125,4 @@ export function clubStrengthMeta() {
   };
 }
 
-export { CLUB_PROFILES, CLUB_ALIAS_INDEX, CLUB_STRENGTH_SNAPSHOT_DATE };
+export { CLUB_STRENGTH_SNAPSHOT_DATE };

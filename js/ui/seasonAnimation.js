@@ -6,6 +6,15 @@ import {
   formatAbilityForDisplay,
   rawAbilityEndpoints,
 } from "./abilityFormatting.js";
+import {
+  runSimulationDashboard,
+  hideSimulationDashboard,
+  configureCompetitionTabs,
+  getDashboardRevealState,
+  setAwaitingChoice,
+  setCompetitionMenuVisible,
+} from "./simulationDashboard.js";
+import { renderLeagueTable } from "./rendering.js";
 
 let animationCtl = {
   skipMatch: false,
@@ -139,6 +148,19 @@ export function showSeasonAnimation(seasonData, player, statsKeys, onContinue) {
   animateSeasonSequence(seasonData, player, statsKeys, onContinue);
 }
 
+/**
+ * Segmented live delivery: open the dashboard with committed fixtures so far.
+ * Used for mid-season pauses and completed seasons.
+ */
+export async function openSimulationDashboardSegment(opts) {
+  const overlay = document.getElementById("season-animation-overlay");
+  overlay?.classList.remove("hidden");
+  wireSkipControls();
+  return runSimulationDashboard(opts);
+}
+
+export { hideSimulationDashboard, getDashboardRevealState, setAwaitingChoice };
+
 function wireSkipControls() {
   const skipMatchBtn = document.getElementById("match-skip-btn");
   const skipPhaseBtn = document.getElementById("match-skip-phase-btn");
@@ -166,7 +188,13 @@ function wireSkipControls() {
 }
 
 function clearAnimationContent() {
+  hideSimulationDashboard();
+  const rail = document.getElementById("match-card-rail");
+  if (rail) rail.innerHTML = "";
+  const host = document.getElementById("league-table-host");
+  if (host) host.innerHTML = "";
   const sections = [
+    "simulation-dashboard",
     "match-viewer-section",
     "league-animation",
     "cup-animation",
@@ -249,25 +277,42 @@ async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) 
     return;
   }
 
-  // 1) League fixtures
-  setSkipBarVisible(true);
-  animationCtl.skipPhase = false;
-  await playMatchList(season.leagueMatches || [], {
-    competitionLabel: league.displayName ?? league.name,
-    phaseLabel: `League · Season ${season.seasonNumber}`,
-    showMatchCount: true,
+  // 1) Live league dashboard — full fixture store + player cards + live table
+  configureCompetitionTabs({
+    hasCup: Boolean(domesticCupResult?.playerMatches?.length || domesticCupResult?.name),
+    hasContinental: Boolean(europeanCampaign && europeanCampaign.qualified !== false),
+    hasNational: Boolean(internationalSeason || season.internationalSeason),
   });
-  setSkipBarVisible(false);
-  hideSection("match-viewer-section");
-
-  showLeagueTable(season, league, standings, player);
+  const allMatches = seasonData.leagueAllMatches || season.leagueAllMatches || [];
+  const playerLeagueMatches =
+    seasonData.leaguePlayerMatches ||
+    season.leagueMatches ||
+    (Array.isArray(season.leagueMatchSegments)
+      ? season.leagueMatchSegments.flatMap((s) => s.matches || [])
+      : []);
+  await runSimulationDashboard({
+    player,
+    league,
+    seasonNumber: season.seasonNumber,
+    allMatches,
+    playerMatches: playerLeagueMatches,
+    seedClubs: league.clubs,
+    revealedFixtureIds: seasonData.revealedFixtureIds || player.simRevealCursor || null,
+    reset: !seasonData.continueDashboard,
+  });
+  setCompetitionMenuVisible(false);
+  // Keep dashboard visible with final table; brief continue before other comps
+  showPhaseContinue(true);
   await waitForContinue();
-  hideSection("league-animation");
   showPhaseContinue(false);
+  hideSimulationDashboard();
+  resetSkipFlags();
+  clearTimers();
 
-  // 2) Domestic cup
+  // 2) Domestic cup — dedicated match viewer + sticky skip bar (not dashboard tabs)
   setSkipBarVisible(true);
   animationCtl.skipPhase = false;
+  animationCtl.skipAll = false;
   const cupName = domesticCupResult?.name || "Domestic Cup";
   await playMatchList(domesticCupResult?.playerMatches || [], {
     competitionLabel: cupName,
@@ -285,6 +330,7 @@ async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) 
   // 3) Continental / Europe
   setSkipBarVisible(true);
   animationCtl.skipPhase = false;
+  animationCtl.skipAll = false;
   if (europeanCampaign?.showcase) {
     setSkipBarVisible(false);
     showEuropeShowcase(europeanCampaign);
@@ -368,9 +414,14 @@ function setSkipBarVisible(visible) {
   if (!bar) return;
   bar.classList.toggle("hidden", !visible);
   if (visible) {
+    // Always re-bind — dashboard uses different button IDs; cup/continental need these.
+    wireSkipControls();
     animationCtl.awaitingNextMatch = false;
     animationCtl.resolveNextMatch = null;
+    animationCtl.skipMatch = false;
     setSkipMatchButtonMode("skip");
+    const phaseBtn = document.getElementById("match-skip-phase-btn");
+    if (phaseBtn) phaseBtn.textContent = "Skip phase";
   }
 }
 
@@ -699,11 +750,54 @@ function showEuropePath(europeanCampaign, player) {
     rounds.appendChild(el);
   }
 
+  if (europeanCampaign.leaguePhase?.table?.length) {
+    const lp = europeanCampaign.leaguePhase;
+    const el = document.createElement("div");
+    el.className = "european-round animate-in";
+    const rows = lp.table
+      .map(
+        (r) => `<tr class="${r.name === player.club?.name ? "is-player" : ""}"><td>${r.position}</td><td>${
+          r.displayName || r.name
+        }</td><td>${r.played}</td><td>${r.wins}</td><td>${r.draws}</td><td>${r.losses}</td><td>${
+          r.goalDiff
+        }</td><td>${r.points}</td><td>${r.band || ""}</td></tr>`
+      )
+      .join("");
+    el.innerHTML = `
+      <div class="round-name">${lp.openingLabel || "League phase"}</div>
+      <div class="comp-table-wrap"><table class="comp-table"><thead><tr>
+        <th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th><th>Band</th>
+      </tr></thead><tbody>${rows}</tbody></table></div>`;
+    rounds.appendChild(el);
+  }
+
+  if (europeanCampaign.groups?.groups?.length) {
+    const el = document.createElement("div");
+    el.className = "european-round animate-in";
+    el.innerHTML = `<div class="round-name">${
+      europeanCampaign.groups.openingLabel || "Group stage"
+    }</div>${europeanCampaign.groups.groups
+      .map((g) => {
+        const rows = (g.table || [])
+          .map(
+            (r) =>
+              `<tr class="${r.name === player.club?.name ? "is-player" : ""}"><td>${r.position}</td><td>${
+                r.displayName || r.name
+              }</td><td>${r.points}</td><td>${r.goalDiff}</td></tr>`
+          )
+          .join("");
+        return `<div class="comp-group"><h4>${g.name}</h4><table class="comp-table"><thead><tr><th>#</th><th>Club</th><th>Pts</th><th>GD</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      })
+      .join("")}`;
+    rounds.appendChild(el);
+  }
+
   appendFullBracketCard(rounds, {
-    title: `${europeanCampaign.competition} — full bracket`,
+    title: `${europeanCampaign.competition} — knockout draw`,
     allRounds: europeanCampaign.allRounds,
     highlightName: player.club?.name,
     competitionName: europeanCampaign.competition,
+    feederGraph: europeanCampaign.feederGraph,
   });
 }
 
@@ -742,7 +836,8 @@ function showEuropeShowcase(europeanCampaign) {
       <div id="${detailId}" class="bracket-detail hidden">${buildKnockoutBracketHtml(
         comp.allRounds,
         null,
-        comp.competition
+        comp.competition,
+        comp.feederGraph
       )}</div>
     `;
     rounds.appendChild(el);
@@ -876,7 +971,7 @@ function showInternationalCompetitions(intl, player) {
   });
 }
 
-function appendFullBracketCard(container, { title, allRounds, highlightName, competitionName }) {
+function appendFullBracketCard(container, { title, allRounds, highlightName, competitionName, feederGraph }) {
   if (!container || !allRounds?.length) return;
   const el = document.createElement("div");
   el.className = "cup-round animate-in";
@@ -890,7 +985,8 @@ function appendFullBracketCard(container, { title, allRounds, highlightName, com
     <div id="${detailId}" class="bracket-detail hidden">${buildKnockoutBracketHtml(
       allRounds,
       highlightName,
-      compName
+      compName,
+      feederGraph
     )}</div>
   `;
   container.appendChild(el);
@@ -931,47 +1027,60 @@ function shortRoundLabel(round) {
   return r.slice(0, 4).toUpperCase();
 }
 
-function vbTeamSide(team, highlightName, { goals = null, won = false, compact = false } = {}) {
+function vbTeamSide(team, highlightName, { goals = null, won = false } = {}) {
   if (!team || team.isBye) {
     return `<div class="vb-side vb-bye"><span class="vb-name">Bye</span></div>`;
   }
   const hi = highlightName && team.name === highlightName ? " is-player" : "";
   const win = won ? " is-winner" : "";
   const badge = badgeHtml(team, "vb-badge");
-  if (compact) {
-    return `<div class="vb-side vb-compact${hi}${win}" title="${team.displayName || team.name}">${badge}</div>`;
-  }
-  const scoreBit = goals != null && goals !== "" ? `<span class="vb-goals">${goals}</span>` : "";
+  // Always show name + score when available (inward rounds must not be badge-only).
+  const scoreBit =
+    goals != null && goals !== ""
+      ? `<span class="vb-goals">${goals}</span>`
+      : goals === 0
+        ? `<span class="vb-goals">0</span>`
+        : "";
   return `<div class="vb-side${hi}${win}">${badge}<span class="vb-name">${
     team.displayName || team.name
   }</span>${scoreBit}</div>`;
 }
 
-function vbMatchCard(match, highlightName, { compact = false, roundLabel = "" } = {}) {
+function vbMatchCard(match, highlightName, { roundLabel = "" } = {}) {
   if (!match) return `<div class="vb-match empty"></div>`;
   if (match.isBye || match.scoreline === "bye") {
     const club = match.home?.isBye ? match.away : match.home;
     return `<div class="vb-match vb-match-bye">
-      ${vbTeamSide(club, highlightName, { won: true, compact })}
+      ${vbTeamSide(club, highlightName, { won: true })}
       <div class="vb-connector"><span class="vb-round-tag">${roundLabel || "BYE"}</span></div>
     </div>`;
   }
+  const homeGoals = match.homeGoals ?? match.matchHomeGoals;
+  const awayGoals = match.awayGoals ?? match.matchAwayGoals;
   const homeWon = match.winnerSide === "home";
   const awayWon = match.winnerSide === "away";
   const involves =
     highlightName && (match.home?.name === highlightName || match.away?.name === highlightName);
-  return `<div class="vb-match${involves ? " involves-player" : ""}">
+  const agg =
+    match.isAggregate || match.legs
+      ? `<div class="vb-aggregate">${match.scoreline || `${homeGoals}-${awayGoals}`}</div>`
+      : "";
+  const pens =
+    match.decidedBy === "penalties" && match.penaltyHome != null
+      ? `<div class="vb-pens">${match.penaltyHome}-${match.penaltyAway} pens</div>`
+      : "";
+  return `<div class="vb-match${involves ? " involves-player" : ""}" data-tie-id="${
+    match.tieId || ""
+  }" data-feeds-into="${match.feedsInto || ""}">
     ${vbTeamSide(match.home, highlightName, {
-      goals: match.homeGoals,
+      goals: homeGoals,
       won: homeWon,
-      compact,
     })}
     ${vbTeamSide(match.away, highlightName, {
-      goals: match.awayGoals,
+      goals: awayGoals,
       won: awayWon,
-      compact,
     })}
-    <div class="vb-connector"><span class="vb-round-tag">${roundLabel}</span></div>
+    <div class="vb-connector"><span class="vb-round-tag">${roundLabel}</span>${agg}${pens}</div>
   </div>`;
 }
 
@@ -1012,11 +1121,15 @@ function buildEarlierRoundsListHtml(rounds, highlightName) {
   `;
 }
 
-function buildKnockoutBracketHtml(allRounds, highlightName, competitionName = "") {
+function buildKnockoutBracketHtml(allRounds, highlightName, competitionName = "", feederGraph = null) {
   if (!allRounds?.length) return '<div class="empty-state">No bracket data</div>';
 
-  const rounds = allRounds.filter((r) => r.matches?.length);
+  const rounds = allRounds.filter((r) => r.matches?.length && r.round !== "Third-place match");
+  const thirdPlace = allRounds.find((r) => r.round === "Third-place match");
   if (!rounds.length) return '<div class="empty-state">No bracket data</div>';
+
+  // Prefer stored feeder graph halves; fall back to array split.
+  const useFeeder = Array.isArray(feederGraph) && feederGraph.length > 0;
 
   // Visual tree works best from ≤16 teams (8 matches). Earlier rounds listed above.
   let treeRounds = rounds;
@@ -1039,18 +1152,31 @@ function buildKnockoutBracketHtml(allRounds, highlightName, competitionName = ""
   const leftCols = [];
   const rightCols = [];
 
-  feederRounds.forEach((round, ri) => {
+  feederRounds.forEach((round) => {
     const matches = round.matches || [];
-    const mid = Math.ceil(matches.length / 2);
-    const left = matches.slice(0, mid);
-    const right = matches.slice(mid);
+    let left;
+    let right;
+    if (useFeeder && matches.every((m) => m.tieId)) {
+      // Stable split by tie index parity from stored path order
+      left = matches.filter((_, i) => i % 2 === 0);
+      right = matches.filter((_, i) => i % 2 === 1);
+      // Prefer contiguous halves when even count (standard bracket geometry)
+      if (matches.length % 2 === 0) {
+        const mid = matches.length / 2;
+        left = matches.slice(0, mid);
+        right = matches.slice(mid);
+      }
+    } else {
+      const mid = Math.ceil(matches.length / 2);
+      left = matches.slice(0, mid);
+      right = matches.slice(mid);
+    }
     const label = shortRoundLabel(round.round);
-    const compact = ri > 0; // outer round shows names; inward rounds more compact
     leftCols.push(`
       <div class="vb-col" data-round="${label}">
         <div class="vb-col-label">${label}</div>
         <div class="vb-col-matches">
-          ${left.map((m) => vbMatchCard(m, highlightName, { compact, roundLabel: label })).join("")}
+          ${left.map((m) => vbMatchCard(m, highlightName, { roundLabel: label })).join("")}
         </div>
       </div>
     `);
@@ -1058,13 +1184,12 @@ function buildKnockoutBracketHtml(allRounds, highlightName, competitionName = ""
       <div class="vb-col" data-round="${label}">
         <div class="vb-col-label">${label}</div>
         <div class="vb-col-matches">
-          ${right.map((m) => vbMatchCard(m, highlightName, { compact, roundLabel: label })).join("")}
+          ${right.map((m) => vbMatchCard(m, highlightName, { roundLabel: label })).join("")}
         </div>
       </div>
     `);
   });
 
-  // If only a final (no feeders), still show center
   const finalHome = finalMatch?.home;
   const finalAway = finalMatch?.away;
   const winnerName =
@@ -1073,12 +1198,17 @@ function buildKnockoutBracketHtml(allRounds, highlightName, competitionName = ""
       : finalMatch?.winnerSide === "away"
         ? finalAway?.displayName
         : "";
+  const finalHomeGoals = finalMatch?.homeGoals ?? finalMatch?.matchHomeGoals;
+  const finalAwayGoals = finalMatch?.awayGoals ?? finalMatch?.matchAwayGoals;
+  const finalScore =
+    finalMatch?.scoreline ??
+    (finalHomeGoals != null && finalAwayGoals != null ? `${finalHomeGoals}-${finalAwayGoals}` : "—");
 
   const center = `
     <div class="vb-final">
       <div class="vb-final-label">Final</div>
       <div class="vb-finalist">${vbTeamSide(finalHome, highlightName, {
-        goals: finalMatch?.homeGoals,
+        goals: finalHomeGoals,
         won: finalMatch?.winnerSide === "home",
       })}</div>
       <div class="vb-trophy" aria-hidden="true">
@@ -1090,17 +1220,24 @@ function buildKnockoutBracketHtml(allRounds, highlightName, competitionName = ""
             ? trophyImageHtml(asset, { className: "vb-trophy-img", alt: asset.trophyName })
             : `<div class="vb-trophy-cup"></div>`;
         })()}
-        <div class="vb-final-score">${finalMatch?.scoreline || "—"}</div>
+        <div class="vb-final-score">${finalScore}</div>
       </div>
       <div class="vb-finalist">${vbTeamSide(finalAway, highlightName, {
-        goals: finalMatch?.awayGoals,
+        goals: finalAwayGoals,
         won: finalMatch?.winnerSide === "away",
       })}</div>
       ${winnerName ? `<div class="vb-champion">Winner: <strong>${winnerName}</strong></div>` : ""}
     </div>
   `;
 
-  // Right side columns should read outer→edge, so reverse order visually via CSS row-reverse
+  const thirdHtml = thirdPlace?.matches?.[0]
+    ? `<div class="vb-third-place"><div class="vb-col-label">Third place</div>${vbMatchCard(
+        thirdPlace.matches[0],
+        highlightName,
+        { roundLabel: "3rd" }
+      )}</div>`
+    : "";
+
   return `
     ${earlierHtml}
     <div class="vb-scroll">
@@ -1109,6 +1246,7 @@ function buildKnockoutBracketHtml(allRounds, highlightName, competitionName = ""
         ${center}
         <div class="vb-half vb-right">${rightCols.join("")}</div>
       </div>
+      ${thirdHtml}
     </div>
   `;
 }
@@ -1167,7 +1305,14 @@ function buildIntlDetailHtml(tournament, player) {
 
   if (tournament.allRounds?.length) {
     parts.push(`<div class="vb-ko-title">Knockout bracket</div>`);
-    parts.push(buildKnockoutBracketHtml(tournament.allRounds, player.nationality, tournament.name));
+    parts.push(
+      buildKnockoutBracketHtml(
+        tournament.allRounds,
+        player.nationality,
+        tournament.name,
+        tournament.feederGraph
+      )
+    );
   }
 
   return parts.join("") || '<div class="empty-state">No bracket data</div>';
@@ -1266,12 +1411,19 @@ function showLeagueTable(season, league, standings, player) {
   }
 
   if (seasonInfo) {
-    seasonInfo.textContent = `${league.displayName ?? league.name} — final table · Season ${season.seasonNumber}`;
+    const leagueLabel = season.leagueDisplay || league.displayName || league.name;
+    seasonInfo.textContent = `${leagueLabel} — final table · Season ${season.seasonNumber}`;
   }
-  if (tableRows) tableRows.innerHTML = "";
+
+  const highlightId = season.playingClubId || player.playingClubId || player.club?.clubId;
+  const highlightName =
+    standings.playerRecord?.name || season.club || player.club?.name;
 
   if (trophyBanner) {
-    const playerChamp = season?.standing?.position === 1 || standings.table?.[0]?.name === player.club?.name;
+    const playerChamp =
+      season?.standing?.position === 1 ||
+      standings.table?.[0]?.clubId === highlightId ||
+      standings.table?.[0]?.name === highlightName;
     if (playerChamp) {
       const asset = resolveTrophyAsset({
         kind: "league",
@@ -1299,46 +1451,18 @@ function showLeagueTable(season, league, standings, player) {
     }
   }
 
-  standings.table.forEach((team, index) => {
-    const row = document.createElement("div");
-    row.className = "table-row";
-
-    if (team.name === player.club.name) row.classList.add("player-team");
-    else if (team.position === 1) row.classList.add("champions");
-    else if (
-      team.qualification &&
-      ["Champions League", "Europa League", "Conference League", "League Champions"].includes(
-        team.qualification
-      )
-    ) {
-      row.classList.add("european");
-    }
-
-    row.innerHTML = `
-      <div class="position">${team.position}</div>
-      <div class="team-info">
-        ${badgeHtml(team, "team-badge")}
-        <div>
-          <div class="team-name">${team.displayName || team.name}</div>
-          ${team.qualification ? `<div class="qualifier">${team.qualification}</div>` : ""}
-          ${team.divisionMove ? `<div class="qualifier">${team.divisionMove}</div>` : ""}
-        </div>
-      </div>
-      <div class="stats-cell">${team.points}</div>
-      <div class="stats-cell">${team.wins}</div>
-      <div class="stats-cell">${team.draws}</div>
-      <div class="stats-cell">${team.losses}</div>
-      <div class="stats-cell">${formatSigned(team.goalDiff)}</div>
-    `;
-
-    tableRows.appendChild(row);
-    setTimeout(() => row.classList.add("animate-in"), Math.min(index, 12) * 40 + 80);
-  });
-
-  setTimeout(() => {
-    const playerRow = tableRows?.querySelector(".player-team");
-    playerRow?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, 200);
+  // Prefer shared full-column renderer when host is available
+  const host = tableRows || document.getElementById("league-table-host");
+  if (host) {
+    host.innerHTML = "";
+    renderLeagueTable(host, {
+      table: standings.table,
+      playerClubId: highlightId,
+      playerClubName: highlightName,
+      showLegend: true,
+      variant: "board",
+    });
+  }
 
   leagueSection.classList.remove("hidden");
   leagueSection.classList.add("active");

@@ -1,26 +1,34 @@
 import { STATS_KEYS } from "./js/config/playerConfig.js";
 import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js?v=61";
 import { WORLD_CUP_NATIONS, flagUrl } from "./js/data/worldCupNations.js";
-import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=61";
+import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=77";
 import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=61";
 import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=62";
 import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=62";
 import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=63";
-import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=62";
+import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=77";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=62";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=62";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=77";
 import { createWorldState, setWorldState } from "./js/simulation/worldState.js?v=61";
-import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=1";
+import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=77";
 import {
   appendSeasonCard,
   renderPlayerOverview,
   renderSeasonLog,
   renderStandings,
+  renderCompetitions,
   renderTransferOffers,
-} from "./js/ui/rendering.js?v=64";
-import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=63";
-import { showSeasonAnimation } from "./js/ui/seasonAnimation.js?v=63";
+  renderCareerMoments,
+} from "./js/ui/rendering.js?v=79";
+import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=77";
+import {
+  showSeasonAnimation,
+  openSimulationDashboardSegment,
+  hideSimulationDashboard,
+  getDashboardRevealState,
+} from "./js/ui/seasonAnimation.js?v=80";
 import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=63";
+import { showSeniorScenarioOverlay } from "./js/ui/seniorScenarioOverlay.js?v=78";
 import {
   customSelectsAreValid,
   getCustomSelectValue,
@@ -99,10 +107,12 @@ const setupSection = document.getElementById("setup-section");
 const careerSection = document.getElementById("career-section");
 const overviewEl = document.getElementById("player-overview");
 const seasonLogEl = document.getElementById("season-log");
+const careerMomentsEl = document.getElementById("career-moments-log");
 const transferContainer = document.getElementById("transfer-offers");
 const simulateBtn = document.getElementById("simulate-btn");
 const retireBtn = document.getElementById("retire-btn");
 const standingsBoard = document.getElementById("standings-board");
+const competitionsBoard = document.getElementById("competitions-board");
 
 function startCareerFromSetup() {
   const bootErr = document.getElementById("app-boot-error");
@@ -263,14 +273,73 @@ retireBtn?.addEventListener("click", () => {
 function refreshOverview() {
   const keys = player ? getDisplayAttributeKeys(player.position) : STATS_KEYS;
   renderPlayerOverview(player, overviewEl, keys);
+  renderCareerMoments(player, careerMomentsEl);
 }
 
 function refreshSeasonLog() {
   renderSeasonLog(player, seasonLogEl);
 }
 
+async function presentSeniorScenarioThenResume(pending) {
+  if (!pending || pending.unschedulable) {
+    resumeSeasonAfterDecision({ pauseForDecisions: true });
+    return;
+  }
+  simulateBtn.disabled = true;
+  await showSeniorScenarioOverlay(player, pending);
+  ensureTransferSave(player);
+  refreshOverview();
+  resumeSeasonAfterDecision({ pauseForDecisions: true });
+}
+
+function persistRevealCursor() {
+  const state = getDashboardRevealState();
+  player.simRevealCursor = state.revealedIds || [];
+  ensureTransferSave(player);
+}
+
+async function presentDashboardSegment(seasonData, { continueDashboard = false } = {}) {
+  const allMatches = seasonData.leagueAllMatches || seasonData.partialLeagueAllMatches || [];
+  const playerMatches =
+    seasonData.leaguePlayerMatches || seasonData.partialLeaguePlayerMatches || [];
+  const league = seasonData.league;
+  const seasonNumber =
+    seasonData.season?.seasonNumber ||
+    (seasonData.seasonIndex != null ? seasonData.seasonIndex + 1 : player.seasons.length + 1);
+  const result = await openSimulationDashboardSegment({
+    player,
+    league,
+    seasonNumber,
+    allMatches,
+    playerMatches,
+    seedClubs: seasonData.checkpoint?.clubs || league?.clubs || [],
+    revealedFixtureIds: player.simRevealCursor || null,
+    awaitingDecision: Boolean(seasonData.awaitingDecision),
+    awaitingScenario: Boolean(seasonData.awaitingScenario),
+    decisionText: seasonData.awaitingScenario
+      ? "A senior career moment needs your response before the season continues."
+      : "Mid-season checkpoint. Resolve the squad discussion or offers, then continue from this date.",
+    reset: !continueDashboard && !player.simRevealCursor?.length,
+    continueDashboard,
+  });
+  player.simRevealCursor = result.revealedIds;
+  ensureTransferSave(player);
+  return result;
+}
+
+function leaveDashboardForDecisions() {
+  persistRevealCursor();
+  hideSimulationDashboard();
+  const overlay = document.getElementById("season-animation-overlay");
+  overlay?.classList.add("hidden");
+}
+
 function refreshStandings() {
   renderStandings(player, standingsBoard);
+}
+
+function refreshCompetitions() {
+  renderCompetitions(player, competitionsBoard);
 }
 
 function handleSquadDecision(decision, choiceId) {
@@ -309,19 +378,30 @@ function refreshAll() {
   refreshOverview();
   refreshSeasonLog();
   refreshStandings();
+  refreshCompetitions();
   refreshTransferOffers();
 }
 
-function simulateSeasonWithAnimation() {
+async function simulateSeasonWithAnimation() {
   simulateBtn.disabled = true;
 
   let seasonData;
   try {
-    // Interactive careers pause at the winter window when a decision/offer exists.
+    // Interactive careers pause for senior scenes and the winter squad window.
     seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, { pauseForDecisions: true });
 
     if (!seasonData) {
       simulateBtn.disabled = !!player?.isRetired;
+      return;
+    }
+
+    if (seasonData.awaitingScenario) {
+      player.seasonCheckpoint = seasonData.checkpoint;
+      player.pendingSeniorScenario = seasonData.pendingSeniorScenario || null;
+      ensureTransferSave(player);
+      await presentDashboardSegment(seasonData, { continueDashboard: Boolean(player.simRevealCursor?.length) });
+      leaveDashboardForDecisions();
+      presentSeniorScenarioThenResume(player.pendingSeniorScenario);
       return;
     }
 
@@ -330,17 +410,21 @@ function simulateSeasonWithAnimation() {
       player.pendingDecision = seasonData.decision || null;
       player.pendingOffers = seasonData.offers || [];
       ensureTransferSave(player);
+      await presentDashboardSegment(seasonData, { continueDashboard: Boolean(player.simRevealCursor?.length) });
+      leaveDashboardForDecisions();
       refreshOverview();
       refreshTransferOffers();
       const note = document.createElement("p");
       note.className = "empty-state";
       note.textContent =
-        "Mid-season checkpoint. Resolve the squad discussion or offers, then the season continues from January — not from a finished year.";
+        "Mid-season checkpoint — standings and results are saved through this date. Resolve the squad discussion or offers, then the season continues from January — not from a finished year.";
       transferContainer.prepend(note);
       simulateBtn.disabled = true;
       return;
     }
 
+    // Fresh season start cursor when beginning a completed run without prior segment
+    if (!player.simRevealCursor) player.simRevealCursor = [];
     finalizeCompletedSeasonUi(seasonData);
   } catch (err) {
     console.error("Season simulation failed:", err);
@@ -351,23 +435,38 @@ function simulateSeasonWithAnimation() {
   }
 }
 
-function resumeSeasonAfterDecision() {
+async function resumeSeasonAfterDecision(opts = {}) {
   if (!player?.seasonCheckpoint) return;
   simulateBtn.disabled = true;
+  const pauseForDecisions = opts.pauseForDecisions !== undefined ? opts.pauseForDecisions : true;
   try {
     const seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
-      pauseForDecisions: false,
+      pauseForDecisions,
       checkpoint: player.seasonCheckpoint,
       autoDecisionPolicy: null,
     });
+    if (seasonData?.awaitingScenario) {
+      player.seasonCheckpoint = seasonData.checkpoint;
+      player.pendingSeniorScenario = seasonData.pendingSeniorScenario || null;
+      await presentDashboardSegment(seasonData, { continueDashboard: true });
+      leaveDashboardForDecisions();
+      presentSeniorScenarioThenResume(player.pendingSeniorScenario);
+      return;
+    }
     if (seasonData?.awaitingDecision) {
       player.seasonCheckpoint = seasonData.checkpoint;
       player.pendingDecision = seasonData.decision || null;
       player.pendingOffers = seasonData.offers || [];
+      await presentDashboardSegment(seasonData, { continueDashboard: true });
+      leaveDashboardForDecisions();
       refreshTransferOffers();
+      refreshOverview();
       return;
     }
     player.seasonCheckpoint = null;
+    player.pendingSeniorScenario = null;
+    seasonData.continueDashboard = true;
+    seasonData.revealedFixtureIds = player.simRevealCursor || [];
     finalizeCompletedSeasonUi(seasonData);
   } catch (err) {
     console.error("Season resume failed:", err);
@@ -386,6 +485,7 @@ function finalizeCompletedSeasonUi(seasonData) {
     refreshOverview();
     appendSeasonCard(seasonData.season, seasonLogEl, player);
     refreshStandings();
+    refreshCompetitions();
     refreshTransferOffers();
     simulateBtn.disabled = true;
     return;
@@ -419,6 +519,8 @@ function finalizeCompletedSeasonUi(seasonData) {
 
   ensureTransferSave(player);
 
+  seasonData.revealedFixtureIds = player.simRevealCursor || seasonData.revealedFixtureIds || [];
+  seasonData.continueDashboard = Boolean(seasonData.continueDashboard || player.simRevealCursor?.length);
   showSeasonAnimation(
     seasonData,
     player,
@@ -430,10 +532,13 @@ function finalizeCompletedSeasonUi(seasonData) {
 function finishSeasonAnimation() {
   const overlay = document.getElementById("season-animation-overlay");
   overlay.classList.add("hidden");
+  hideSimulationDashboard();
+  player.simRevealCursor = null;
 
   refreshOverview();
   appendSeasonCard(player.seasons[player.seasons.length - 1], seasonLogEl, player);
   refreshStandings();
+  refreshCompetitions();
   refreshTransferOffers();
 
   simulateBtn.disabled =
@@ -490,6 +595,7 @@ function promoteToParentClub() {
   const seniorName = promoteAcademyGraduateToFirstTeam(player, 75);
   refreshOverview();
   refreshStandings();
+  refreshCompetitions();
   return seniorName;
 }
 
@@ -543,6 +649,11 @@ function maybeResumeAfterWindowChoice() {
 
 function finishOfferWindow(accepted, offer) {
   player.pendingOffers = [];
+  // Closing the window without accepting is an explicit stay/decline — never leave a
+  // mid-season decision hanging or Simulate Next Season stays dead.
+  if (!accepted && player.pendingDecision) {
+    player.pendingDecision = null;
+  }
   transferContainer.innerHTML = "";
   if (!accepted) dealBookingGuard = false;
 
@@ -578,6 +689,7 @@ function finishOfferWindow(accepted, offer) {
 
   refreshOverview();
   refreshStandings();
+  refreshCompetitions();
   if (
     player.seasonCheckpoint?.status === "awaiting_decision" &&
     !(player.pendingOffers?.length > 0) &&

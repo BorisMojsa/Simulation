@@ -75,8 +75,8 @@ function weakPlayer(overrides = {}) {
 
 test("every club has exactly one finance profile; no elite fallback for missing", () => {
   const report = financeCoverageReport();
-  assert.equal(report.clubCount, 490);
-  assert.equal(report.leagueCount, 26);
+  assert.equal(report.clubCount, 572);
+  assert.equal(report.leagueCount, 31);
   for (const [leagueId, row] of Object.entries(report.byLeague)) {
     assert.equal(row.missing.length, 0, `${leagueId} missing profiles`);
     assert.equal(row.hasBaseline, true, `${leagueId} baseline`);

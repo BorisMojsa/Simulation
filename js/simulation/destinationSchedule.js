@@ -53,9 +53,11 @@ export function dateFixturesForLeague(fixtures, leagueId, seasonStartYear) {
     return {
       ...fx,
       date,
+      index: i,
       competitionType: "league",
       sortKey: `${date}:DL:${leagueId}:${i}`,
       destinationLeagueId: leagueId,
+      fixtureId: `${leagueId}:${date}:DL:${i}`,
     };
   });
 }
@@ -266,20 +268,29 @@ export function reconcileAfterClubChange({
     };
   }
 
-  // Initialise already-played destination matches (world only).
+  // Initialise already-played destination matches (world + standings seed only).
+  // Do not attribute appearances or stats to the player.
   let pastSimulated = 0;
+  const pastMatches = [];
   const w = world || getWorldState();
-  if (initialisePastDestination && past.length && rng) {
+  const pastRng =
+    rng || createStreamRng(`dest-past:${destLeagueId}:${destSeasonYear}`, "seed-standings");
+  if (initialisePastDestination && past.length && pastRng) {
     for (const fx of past) {
       const match = simulateMatch(fx.home, fx.away, {
         competition: "league",
         worldState: w,
-        rng,
+        rng: pastRng,
         competitionId: destLeagueId,
-        fixtureId: `dest-past:${destLeagueId}:${fx.sortKey}`,
+        fixtureId: fx.fixtureId || `dest-past:${destLeagueId}:${fx.sortKey}`,
         date: fx.date,
       });
+      match.matchday = Math.floor(fx.index / Math.max(1, Math.floor(schedule.clubs.length / 2))) + 1;
+      match.round = `Matchday ${match.matchday}`;
+      match.destinationLeagueId = destLeagueId;
+      match.historySegment = "destination-past";
       applyMatchFormUpdate(w, match);
+      pastMatches.push(match);
       pastSimulated += 1;
     }
   }
@@ -317,15 +328,16 @@ export function reconcileAfterClubChange({
     return true;
   });
 
-  const destEvents = future.map((fx, i) => ({
+  const destEvents = future.map((fx) => ({
     kind: "league",
     date: fx.date,
-    sortKey: fx.sortKey || `${fx.date}:DL:${i}`,
-    index: 100000 + i,
+    sortKey: fx.sortKey || `${fx.date}:DL:${fx.index}`,
+    index: fx.index,
     home: fx.home,
     away: fx.away,
     destinationLeagueId: destLeagueId,
     destinationClubId: destClubId,
+    fixtureId: fx.fixtureId || `${destLeagueId}:${fx.sortKey}`,
   }));
 
   // Future-start: insert a registration gate before first playing fixture
@@ -372,6 +384,8 @@ export function reconcileAfterClubChange({
 
   return {
     ordered: newOrdered,
+    destinationClubs: schedule.clubs,
+    pastMatches,
     destinationMeta: {
       registration,
       previousClubId,
@@ -383,6 +397,7 @@ export function reconcileAfterClubChange({
       futureFixtures: future.length,
       pastSimulated,
       scheduleSeasonStartYear: schedule.seasonStartYear,
+      sameLeague: false,
       ruleVersion: REGISTRATION_RULE_VERSION,
     },
     pastSimulated,

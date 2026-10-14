@@ -22,7 +22,8 @@ import { exportClubFinanceState, importClubFinanceState } from "./clubFinance.js
 import {
   reconcileAfterClubChange,
   playerEligibleForClubMatch,
-} from "./destinationSchedule.js";
+  findLeagueById,
+} from "./destinationSchedule.js?v=77";
 import { applyDecisionPolicy } from "./decisionPolicies.js";
 import { processPlayerMatchDay } from "./playerMatchDay.js";
 import { resolveKnockout } from "./matchEngine.js";
@@ -32,14 +33,28 @@ import { stableCareerId } from "./playerDevelopmentModel.js";
 import {
   simulateEuropeanCampaign,
   simulateEuropeanFinalsShowcase,
-} from "./europeanCompetition.js";
+} from "./europeanCompetition.js?v=77";
+import { reconcileCampaignWithPlayerMatches } from "./continentalTournament.js?v=77";
 import { simulateInternationalSeason } from "./nationalTeam.js";
 import {
   prepareDomesticCupBracket,
   simulateDomesticCupRound,
   finalizeDomesticCup,
 } from "./domesticCup.js";
-import { leagueMatchCount } from "./leaguePhase.js";
+import {
+  leagueMatchCount,
+  findSisterLeagues,
+  qualificationForPosition,
+} from "./leaguePhase.js";
+import { LEAGUES } from "../data/leagues.js";
+import {
+  planSeniorScenarioEvents,
+  buildPendingSeniorScenario,
+  applySeniorScenarioPolicy,
+  ensureSeniorCareerState,
+} from "./seniorCareerScenarios.js";
+import { ensureLeagueMatchId } from "./leagueTable.js";
+import { commitLeagueMatchResult } from "./leagueEditionAdapter.js";
 
 function ensurePlayerInClubs(league, player) {
   const clubs = [...(league.clubs || [])].map(attachClubIdentity);
@@ -57,6 +72,138 @@ function ensurePlayerInClubs(league, player) {
     })
   );
   return clubs;
+}
+
+function initLeagueRecords(clubs, world) {
+  const records = new Map();
+  for (const c of clubs) {
+    const eff = effectiveTeamStrength(c, { worldState: world });
+    records.set(c.name, {
+      name: c.name,
+      displayName: c.displayName,
+      badge: c.badge,
+      clubId: c.clubId,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      points: 0,
+      strength: eff.overall,
+      overall: eff.overall,
+      attack: eff.attack,
+      midfield: eff.midfield,
+      defence: eff.defence,
+      goalkeeper: eff.goalkeeper,
+      strengthTier: eff.tierLabel,
+    });
+  }
+  return records;
+}
+
+function ensureRecordClub(records, club, world) {
+  if (!club?.name || records.has(club.name)) return;
+  const eff = effectiveTeamStrength(club, { worldState: world });
+  records.set(club.name, {
+    name: club.name,
+    displayName: club.displayName,
+    badge: club.badge,
+    clubId: club.clubId,
+    played: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    points: 0,
+    strength: eff.overall,
+    overall: eff.overall,
+    attack: eff.attack,
+    midfield: eff.midfield,
+    defence: eff.defence,
+    goalkeeper: eff.goalkeeper,
+    strengthTier: eff.tierLabel,
+  });
+}
+
+/**
+ * After a cross-league move, replace the active league table context with the
+ * destination competition, seeding standings from already-played dest matches.
+ */
+function applyDestinationLeagueContext(recon, world) {
+  const destLeague = findLeagueById(recon.destinationMeta?.destLeagueId);
+  if (!destLeague || recon.destinationMeta?.sameLeague) {
+    return null;
+  }
+  const clubs = (recon.destinationClubs || destLeague.clubs || []).map((c) =>
+    attachClubIdentity({
+      ...c,
+      tier: destLeague.tier,
+      league: destLeague.name,
+      leagueId: destLeague.leagueId,
+      nation: destLeague.nation,
+    })
+  );
+  const records = initLeagueRecords(clubs, world);
+  for (const match of recon.pastMatches || []) {
+    ensureRecordClub(records, match.home, world);
+    ensureRecordClub(records, match.away, world);
+    updateLeagueRecords(records, match);
+  }
+  return { activeLeague: destLeague, clubs, records };
+}
+
+function tagLeagueMatch(match, { activeLeague, player, historySegment, seasonStartYear, world }) {
+  match.leagueContextId = activeLeague?.leagueId || match.competitionId;
+  match.leagueContextName = activeLeague?.displayName || activeLeague?.name;
+  match.historySegment = historySegment;
+  match.playerClubId = player.playingClubId || player.club?.clubId || null;
+  match.playerClubName = player.club?.name || null;
+  ensureLeagueMatchId(match);
+  try {
+    commitLeagueMatchResult(match, activeLeague, seasonStartYear, world);
+  } catch {
+    // Competition store is optional for domestic; table still uses match arrays.
+  }
+  return match;
+}
+
+function findPlayingClubRow(table, player) {
+  if (!table?.length || !player) return null;
+  // Playing registration only — never fall back to employment/parent club.
+  const playingId = player.playingClubId || player.club?.clubId;
+  if (!playingId) return null;
+  return table.find((r) => r.clubId === playingId) || null;
+}
+
+function buildLeagueMatchSegments(playerMatches) {
+  const segments = [];
+  for (const match of playerMatches || []) {
+    const key = match.leagueContextId || match.competitionId || "league";
+    const labelBase = match.leagueContextName || match.competition || "League";
+    let seg = segments.find((s) => s.key === key && s.segment === match.historySegment);
+    if (!seg) {
+      const isOrigin = match.historySegment === "origin";
+      seg = {
+        key,
+        segment: match.historySegment || "destination",
+        leagueId: key,
+        leagueDisplay: labelBase,
+        label: isOrigin ? `${labelBase} · before move` : `${labelBase}`,
+        matches: [],
+      };
+      segments.push(seg);
+    }
+    seg.matches.push(match);
+  }
+  return segments;
+}
+
+function leagueMatchday(ev, clubCount) {
+  const perDay = Math.max(1, Math.floor(Math.max(2, clubCount) / 2));
+  const idx = Number.isFinite(ev?.index) ? ev.index : 0;
+  return Math.floor(idx / perDay) + 1;
 }
 
 function updateLeagueRecords(records, match) {
@@ -103,11 +250,28 @@ function buildTable(records) {
  */
 export function preSeasonContinentalStanding(player, league) {
   const prev = player.latestStanding?.playerRow;
-  if (prev?.position) {
+  const prevLeagueId =
+    player.latestStanding?.leagueId ||
+    player.latestStanding?.league?.leagueId ||
+    player.latestStanding?.playerRow?.leagueId;
+  const currentLeagueId = league?.leagueId || league?.name;
+  // Do not reuse a finish from a different association/league (e.g. after transfer).
+  const sameLeague =
+    !prevLeagueId ||
+    !currentLeagueId ||
+    prevLeagueId === currentLeagueId ||
+    prevLeagueId === league?.name;
+
+  if (prev?.position && sameLeague) {
+    const sisters = findSisterLeagues(league, LEAGUES);
+    const qualification =
+      prev.qualification ||
+      qualificationForPosition(prev.position, league, sisters) ||
+      "";
     return {
       position: prev.position,
       points: prev.points || 0,
-      qualification: null,
+      qualification,
       divisionMove: null,
       record: { wins: prev.wins || 0, draws: prev.draws || 0, losses: prev.losses || 0 },
       matches: prev.matches || 0,
@@ -125,10 +289,12 @@ export function preSeasonContinentalStanding(player, league) {
   else if (overall >= 72) position = 5;
   else if (overall >= 68) position = 7;
   else return null;
+  const sisters = findSisterLeagues(league, LEAGUES);
+  const qualification = qualificationForPosition(position, league, sisters) || "";
   return {
     position,
     points: 0,
-    qualification: null,
+    qualification,
     divisionMove: null,
     record: { wins: 0, draws: 0, losses: 0 },
     matches: 0,
@@ -174,19 +340,20 @@ export function simulateChronologicalSeason({
   const seasonStartYear = (player.startYear || 2026) + seasonIndex;
   const calendarYear = seasonStartYear;
 
-  if (checkpoint?.status === "awaiting_decision") {
+  if (checkpoint?.status === "awaiting_decision" || checkpoint?.status === "awaiting_scenario") {
     return resumeChronologicalSeason({
       player,
       league,
       seasonIndex,
       checkpoint,
-      pauseForDecisions: false,
+      pauseForDecisions,
       autoDecisionPolicy,
     });
   }
 
   // ---- League fixtures ----
-  const clubs = ensurePlayerInClubs(league, player).map((c) =>
+  let activeLeague = league;
+  let clubs = ensurePlayerInClubs(league, player).map((c) =>
     attachClubIdentity({
       ...c,
       tier: league.tier,
@@ -202,31 +369,8 @@ export function simulateChronologicalSeason({
     }
   }
   const datedLeague = dateLeagueFixtures(rng.shuffle(fixtures), seasonStartYear);
-
-  const records = new Map();
-  clubs.forEach((c) => {
-    const eff = effectiveTeamStrength(c, { worldState: world });
-    records.set(c.name, {
-      name: c.name,
-      displayName: c.displayName,
-      badge: c.badge,
-      clubId: c.clubId,
-      played: 0,
-      wins: 0,
-      draws: 0,
-      losses: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      points: 0,
-      strength: eff.overall,
-      overall: eff.overall,
-      attack: eff.attack,
-      midfield: eff.midfield,
-      defence: eff.defence,
-      goalkeeper: eff.goalkeeper,
-      strengthTier: eff.tierLabel,
-    });
-  });
+  let records = initLeagueRecords(clubs, world);
+  let historySegment = "origin";
 
   // ---- Pre-plan cup / europe / intl as dated "round" events ----
   const cupRoundDates = dateCupRounds(
@@ -272,6 +416,12 @@ export function simulateChronologicalSeason({
     calendarYear,
     avgMatchRating: 6.8,
   });
+  const intlEditionYear =
+    intlProbe.primary?.editionYear ||
+    intlProbe.primary?.year ||
+    intlProbe.tournaments?.[0]?.editionYear ||
+    intlProbe.tournaments?.[0]?.year ||
+    calendarYear;
   const intlSlots = dateInternationalWindows(
     (intlProbe.playerMatches || []).map((m, i) => ({
       index: i,
@@ -279,15 +429,17 @@ export function simulateChronologicalSeason({
       home: m.home,
       away: m.away,
     })),
-    calendarYear
+    calendarYear,
+    { editionYear: intlEditionYear }
   );
   // If called up but tournament is summer-only with few matches, still place them.
   if (intlProbe.calledUp && !intlSlots.length) {
+    const fallback = simDate(intlEditionYear, 6, 15);
     intlSlots.push({
       index: 0,
-      date: simDate(calendarYear + 1, 6, 15),
+      date: fallback,
       competitionType: "international",
-      sortKey: `${simDate(calendarYear + 1, 6, 15)}:I:0`,
+      sortKey: `${fallback}:I:0`,
       prior: null,
       synthetic: true,
     });
@@ -336,6 +488,24 @@ export function simulateChronologicalSeason({
     window: "squad-review",
     reviewOnly: true,
   });
+
+  // Optional senior career scenes: one independent 30% roll per entered competition edition.
+  if (!player.club?.isAcademy) {
+    ensureSeniorCareerState(player);
+    const planned = planSeniorScenarioEvents(player, {
+      league,
+      seasonStartYear,
+      europePlan,
+      intlProbe,
+      cupRoundDates,
+      datedLeague,
+      europePlayerSlots,
+      intlSlots,
+    });
+    for (const sev of planned.events) {
+      events.push(sev);
+    }
+  }
 
   let ordered = sortChronological(events);
 
@@ -391,6 +561,13 @@ export function simulateChronologicalSeason({
         }
         if (recon.ordered) ordered = recon.ordered;
         player.destinationScheduleMeta = recon.destinationMeta;
+        const switched = applyDestinationLeagueContext(recon, world);
+        if (switched) {
+          activeLeague = switched.activeLeague;
+          clubs = switched.clubs;
+          records = switched.records;
+          historySegment = "destination";
+        }
       }
       if (pauseResult?.pause) {
         const ck = buildSeasonCheckpoint({
@@ -437,6 +614,62 @@ export function simulateChronologicalSeason({
       }
       continue;
     }
+    if (ev.kind === "senior_scenario") {
+      const sceneResult = handleSeniorScenarioEvent({
+        player,
+        event: ev,
+        pauseForDecisions,
+        autoDecisionPolicy,
+        playerMatchStats,
+        intlProbe,
+      });
+      processedEventIds.push(eventId);
+      lastDate = ev.date;
+      if (sceneResult?.pause) {
+        const ck = buildSeasonCheckpoint({
+          seasonIndex,
+          leagueId: league.leagueId || league.name,
+          eventIndex,
+          ordered,
+          clubs,
+          records,
+          cupState,
+          cupResult,
+          europePlan,
+          intlProbe,
+          europeResimMatches,
+          intlResimMatches,
+          leaguePlayerMatches,
+          leagueAllMatches,
+          ledgerRecords,
+          playerMatchStats,
+          lastDate,
+          processedEventIds,
+          cupRoundDates,
+          europePlayerSlots,
+          intlSlots,
+          seasonStartYear,
+          calendarYear,
+          rngState: rng.seed(),
+          decision: null,
+          offers: [],
+          playingClubIdAtPause: player.playingClubId || player.club?.clubId,
+          employmentClubIdAtPause: player.employmentClubId || player.club?.clubId,
+          pendingSeniorScenario: sceneResult.pending,
+          status: "awaiting_scenario",
+        });
+        player.seasonCheckpoint = ck;
+        player.pendingSeniorScenario = sceneResult.pending;
+        return {
+          status: "awaiting_scenario",
+          checkpoint: ck,
+          pendingSeniorScenario: sceneResult.pending,
+          partialPlayerMatchStats: { ...playerMatchStats },
+          chronology: { events: ordered.length, lastDate, pausedAt: ev.date },
+        };
+      }
+      continue;
+    }
     if (ev.kind === "registration_effective") {
       if (player.pendingRegistration?.effectiveDate === ev.date) {
         player.pendingRegistration = null;
@@ -445,7 +678,50 @@ export function simulateChronologicalSeason({
       continue;
     }
     if (ev.kind === "dest_cup_round") {
-      // Lightweight destination cup: skip detailed bracket; no forced appearances.
+      // Destination-association cup after loan/transfer registration.
+      if (player.playingClubId || ev.destinationLeagueId) {
+        const destLeague = findLeagueById(ev.destinationLeagueId) || activeLeague;
+        if (destLeague && (!cupState || !cupState._destBound)) {
+          cupState = prepareDomesticCupBracket(destLeague, player);
+          cupState._destBound = true;
+          cupResult = null;
+        }
+        if (cupState && !cupState.finished && !cupResult) {
+          simulateDomesticCupRound(cupState, {
+            player,
+            date: ev.date,
+            matchProcessor: ({ home, away, playerSide, date, label }) =>
+              processPlayerMatchDay({
+                home,
+                away,
+                player,
+                playerSide,
+                date,
+                lastDate,
+                competition: "cup",
+                competitionType: "domesticCup",
+                competitionId: cupState.config.name,
+                fixtureId: `destcup:${cupState.config.name}:${ev.roundIndex}:${label}`,
+                teamType: "club",
+                competitionPriority: 0.85,
+                rng,
+                selRng,
+                injuryRng,
+                worldState: world,
+                resolveKnockout,
+              }),
+          });
+          const proc = cupState.lastProcessorResult;
+          if (proc?.ledgerRecord) {
+            ledgerRecords.push(proc.ledgerRecord);
+            accumulatePlayerStats(playerMatchStats, proc.match, proc.participation);
+          }
+          cupState.lastProcessorResult = null;
+          if (cupState.finished || cupState.eliminatedRound) {
+            cupResult = finalizeDomesticCup(cupState);
+          }
+        }
+      }
       lastDate = ev.date;
       continue;
     }
@@ -453,6 +729,7 @@ export function simulateChronologicalSeason({
       const fx = ev;
       const playingName = player.club?.name;
       const playingId = player.playingClubId || player.club?.clubId;
+      const competitionId = ev.destinationLeagueId || activeLeague.leagueId || league.leagueId;
       const homeIsPlayer =
         fx.home.name === playingName || (playingId && fx.home.clubId === playingId);
       const awayIsPlayer =
@@ -461,20 +738,25 @@ export function simulateChronologicalSeason({
       if (playerIn && !playerEligibleForClubMatch(player, fx.date)) {
         playerIn = null;
       }
+      const matchday = leagueMatchday(ev, clubs.length);
+      const fixtureId = ev.fixtureId || `${competitionId}:md:${ev.index}`;
 
       if (!playerIn) {
         const match = simulateMatch(fx.home, fx.away, {
           competition: "league",
           worldState: world,
           rng,
-          competitionId: league.leagueId,
-          fixtureId: `${league.leagueId}:md:${ev.index}`,
+          competitionId,
+          fixtureId,
           date: fx.date,
         });
-        match.matchday = Math.floor(ev.index / Math.max(1, Math.floor(clubs.length / 2))) + 1;
+        match.matchday = matchday;
         match.round = `Matchday ${match.matchday}`;
+        tagLeagueMatch(match, { activeLeague, player, historySegment, seasonStartYear, world });
         applyMatchFormUpdate(world, match);
         leagueAllMatches.push(match);
+        ensureRecordClub(records, match.home, world);
+        ensureRecordClub(records, match.away, world);
         updateLeagueRecords(records, match);
         continue;
       }
@@ -488,8 +770,8 @@ export function simulateChronologicalSeason({
         lastDate,
         competition: "league",
         competitionType: "league",
-        competitionId: league.leagueId,
-        fixtureId: `${league.leagueId}:md:${ev.index}`,
+        competitionId,
+        fixtureId,
         teamType: "club",
         competitionPriority: 1,
         rng,
@@ -497,10 +779,13 @@ export function simulateChronologicalSeason({
         injuryRng,
         worldState: world,
       });
-      match.matchday = Math.floor(ev.index / Math.max(1, Math.floor(clubs.length / 2))) + 1;
+      match.matchday = matchday;
       match.round = `Matchday ${match.matchday}`;
+      tagLeagueMatch(match, { activeLeague, player, historySegment, seasonStartYear, world });
       leagueAllMatches.push(match);
       leaguePlayerMatches.push(match);
+      ensureRecordClub(records, match.home, world);
+      ensureRecordClub(records, match.away, world);
       updateLeagueRecords(records, match);
       if (ledgerRecord) {
         ledgerRecords.push(ledgerRecord);
@@ -509,7 +794,7 @@ export function simulateChronologicalSeason({
       lastDate = fx.date;
     } else if (ev.kind === "cup_round") {
       if (cupResult) continue;
-      if (!cupState) cupState = prepareDomesticCupBracket(league, player);
+      if (!cupState) cupState = prepareDomesticCupBracket(activeLeague, player);
 
       const playerStillIn =
         !cupState.eliminatedRound &&
@@ -652,36 +937,42 @@ export function simulateChronologicalSeason({
   }
 
   if (!cupResult) {
-    if (!cupState) cupState = prepareDomesticCupBracket(league, player);
+    if (!cupState) cupState = prepareDomesticCupBracket(activeLeague, player);
     cupResult = finalizeDomesticCup(cupState);
   }
 
   if (europeResimMatches.length) {
-    europePlan = { ...europePlan, playerMatches: europeResimMatches };
+    europePlan = reconcileCampaignWithPlayerMatches(
+      { ...europePlan, playerMatches: europeResimMatches },
+      europeResimMatches
+    );
   }
   if (intlResimMatches.length) {
+    const reconciled = reconcileCampaignWithPlayerMatches(
+      { allRounds: intlProbe.allRounds, playerMatches: intlResimMatches },
+      intlResimMatches
+    );
     intlProbe.playerMatches = intlResimMatches;
+    if (reconciled?.allRounds) intlProbe.allRounds = reconciled.allRounds;
   }
 
   const table = buildTable(records);
-  if (world) world.standings.set(league.leagueId || league.name, table);
+  if (world) world.standings.set(activeLeague.leagueId || activeLeague.name, table);
   player.seasonCheckpoint = null;
+  const playerRecord = findPlayingClubRow(table, player);
+  const leagueMatchSegments = buildLeagueMatchSegments(leaguePlayerMatches);
 
   return {
     status: "complete",
     table,
-    playerRecord:
-      table.find(
-        (r) =>
-          r.name === player.club?.name ||
-          (player.playingClubId && r.clubId === player.playingClubId) ||
-          (player.employmentClubId && r.clubId === player.employmentClubId)
-      ) || null,
+    activeLeague,
+    playerRecord,
     playerMatches: leaguePlayerMatches,
     allMatches: leagueAllMatches,
+    leagueMatchSegments,
     playerMatchStats,
     ledgerRecords,
-    expectedMatches: leagueMatchCount(league),
+    expectedMatches: leagueMatchCount(activeLeague),
     domesticCupResult: cupResult,
     europeanCampaign: europePlan,
     internationalSeason: intlProbe,
@@ -691,6 +982,9 @@ export function simulateChronologicalSeason({
       cupRounds: cupRoundDates.length,
       europeSlots: europePlayerSlots.length,
       intlSlots: intlSlots.length,
+      activeLeagueId: activeLeague.leagueId,
+      playingClubId: player.playingClubId || player.club?.clubId,
+      employmentClubId: player.employmentClubId || null,
     },
   };
 }
@@ -832,7 +1126,7 @@ function applyAutoDecisionPolicy(player, decision, offers, policy, ctx = {}) {
 
 function buildSeasonCheckpoint(parts) {
   return {
-    status: "awaiting_decision",
+    status: parts.status || "awaiting_decision",
     version: 1,
     seasonIndex: parts.seasonIndex,
     leagueId: parts.leagueId,
@@ -862,9 +1156,58 @@ function buildSeasonCheckpoint(parts) {
     ordered: parts.ordered,
     decision: parts.decision,
     offers: parts.offers,
+    pendingSeniorScenario: parts.pendingSeniorScenario || null,
     playingClubIdAtPause: parts.playingClubIdAtPause,
     employmentClubIdAtPause: parts.employmentClubIdAtPause,
   };
+}
+
+function handleSeniorScenarioEvent({
+  player,
+  event,
+  pauseForDecisions,
+  autoDecisionPolicy,
+  playerMatchStats,
+  intlProbe,
+}) {
+  if (player.club?.isAcademy) return { pause: false };
+  const pending = buildPendingSeniorScenario(player, event, {
+    playerMatchStats,
+    intlCalledUp: Boolean(intlProbe?.calledUp),
+    nationalCallUp: event.competitionType === "international",
+    fixtureCongestion: true,
+    travelCongestion: event.competitionType === "continental" || event.competitionType === "international",
+    onLeave: event.competitionType === "league",
+    rivalMatchup: event.competitionType === "league" || event.competitionType === "cup",
+    forceAfterLoss: (playerMatchStats?.played || 0) >= 1,
+    forceStandout: (playerMatchStats?.goals || 0) + (playerMatchStats?.assists || 0) >= 2,
+    forceBenched: (playerMatchStats?.starts || 0) === 0 && (playerMatchStats?.played || 0) > 0,
+    leadershipContext: (player.age || 0) >= 22,
+    returningFromInjury: Boolean(player.health?.activeInjury),
+  });
+
+  if (!pending || pending.unschedulable) {
+    ensureSeniorCareerState(player).lastSkipReason = pending?.reason || "unschedulable";
+    return { pause: false, skipped: true, reason: pending?.reason };
+  }
+
+  if (autoDecisionPolicy) {
+    const policy =
+      typeof autoDecisionPolicy === "object" && autoDecisionPolicy.seniorPolicy
+        ? autoDecisionPolicy.seniorPolicy
+        : "balanced";
+    applySeniorScenarioPolicy(player, pending, policy);
+    return { pause: false, autoApplied: true };
+  }
+
+  if (pauseForDecisions) {
+    player.pendingSeniorScenario = pending;
+    return { pause: true, pending };
+  }
+
+  // Non-interactive seasons without an explicit policy still resolve neutrally.
+  applySeniorScenarioPolicy(player, pending, "balanced");
+  return { pause: false, autoApplied: true };
 }
 
 /**
@@ -890,10 +1233,21 @@ export function resumeChronologicalSeason({
   const selRng = createStreamRng(careerId, `selection:chrono:${seasonIndex}:resume`);
   const injuryRng = createStreamRng(careerId, `injury:chrono:${seasonIndex}:resume`);
   const world = getWorldState();
+  const seasonStartYear = checkpoint.seasonStartYear ?? (player.startYear || 2026) + seasonIndex;
 
   let ordered = checkpoint.ordered;
-  const clubs = checkpoint.clubs;
-  const records = new Map(checkpoint.records || []);
+  let activeLeague = findLeagueById(checkpoint.leagueId) || league;
+  let clubs = checkpoint.clubs || [];
+  let records = new Map(checkpoint.records || []);
+  let historySegment = "origin";
+  for (const m of checkpoint.leaguePlayerMatches || []) {
+    if (!m.historySegment) {
+      m.historySegment = "origin";
+      m.leagueContextId = m.leagueContextId || checkpoint.leagueId;
+      m.leagueContextName =
+        m.leagueContextName || activeLeague?.displayName || activeLeague?.name;
+    }
+  }
   let cupState = checkpoint.cupState;
   let cupResult = checkpoint.cupResult;
   let europePlan = checkpoint.europePlan;
@@ -936,11 +1290,167 @@ export function resumeChronologicalSeason({
     if (recon.ordered) ordered = recon.ordered;
     destinationMeta = recon.destinationMeta;
     player.destinationScheduleMeta = destinationMeta;
+    const switched = applyDestinationLeagueContext(recon, world);
+    if (switched) {
+      activeLeague = switched.activeLeague;
+      clubs = switched.clubs;
+      records = switched.records;
+      historySegment = "destination";
+    }
   }
 
   for (let eventIndex = startAt; eventIndex < ordered.length; eventIndex++) {
     const ev = ordered[eventIndex];
-    if (ev.kind === "window_decision") continue; // already processed
+    const eventId = `${ev.kind}:${ev.sortKey || ev.date}:${eventIndex}`;
+    // Skip only the event we already paused on; later window_decision / scenes must still run.
+    if ((checkpoint.processedEventIds || []).includes(eventId)) continue;
+
+    if (ev.kind === "window_decision") {
+      const clubBefore = player.playingClubId || player.club?.clubId;
+      const leagueBefore = player.club?.leagueId || league.leagueId;
+      const pauseResult = handleWindowDecision({
+        player,
+        seasonIndex: checkpoint.seasonIndex,
+        playerMatchStats,
+        pauseForDecisions,
+        autoDecisionPolicy,
+        window: ev.window,
+        date: ev.date,
+        seasonStartYear: checkpoint.seasonStartYear,
+        league: activeLeague || league,
+        leagueAllMatches,
+      });
+      lastDate = ev.date;
+      const clubAfter = player.playingClubId || player.club?.clubId;
+      if (clubAfter && clubBefore && clubAfter !== clubBefore) {
+        const recon = reconcileAfterClubChange({
+          player,
+          previousClubId: clubBefore,
+          previousLeagueId: leagueBefore,
+          departureDate: ev.date,
+          ordered,
+          eventIndex,
+          originSeasonStartYear: checkpoint.seasonStartYear,
+          world,
+          rng,
+          initialisePastDestination: true,
+        });
+        if (recon.error === "missing-destination-schedule") {
+          throw new Error(
+            `Cross-league move to ${player.club?.leagueId} has no remaining destination fixtures after ${ev.date}`
+          );
+        }
+        if (recon.ordered) ordered = recon.ordered;
+        player.destinationScheduleMeta = recon.destinationMeta;
+        const switched = applyDestinationLeagueContext(recon, world);
+        if (switched) {
+          activeLeague = switched.activeLeague;
+          clubs = switched.clubs;
+          records = switched.records;
+          historySegment = "destination";
+        }
+      }
+      if (pauseResult?.pause) {
+        const ck = buildSeasonCheckpoint({
+          seasonIndex: checkpoint.seasonIndex,
+          leagueId: activeLeague.leagueId || league.leagueId || league.name,
+          eventIndex,
+          ordered,
+          clubs,
+          records,
+          cupState,
+          cupResult,
+          europePlan,
+          intlProbe,
+          europeResimMatches,
+          intlResimMatches,
+          leaguePlayerMatches,
+          leagueAllMatches,
+          ledgerRecords,
+          playerMatchStats,
+          lastDate,
+          processedEventIds: [...(checkpoint.processedEventIds || []), eventId],
+          cupRoundDates,
+          europePlayerSlots,
+          intlSlots,
+          seasonStartYear: checkpoint.seasonStartYear,
+          calendarYear,
+          rngState: rng.seed(),
+          decision: pauseResult.decision,
+          offers: pauseResult.offers,
+          playingClubIdAtPause: player.playingClubId || player.club?.clubId,
+          employmentClubIdAtPause: player.employmentClubId || player.club?.clubId,
+          status: "awaiting_decision",
+        });
+        player.seasonCheckpoint = ck;
+        player.pendingDecision = pauseResult.decision;
+        player.pendingOffers = pauseResult.offers || [];
+        return {
+          status: "awaiting_decision",
+          checkpoint: ck,
+          decision: pauseResult.decision,
+          offers: pauseResult.offers,
+          partialPlayerMatchStats: { ...playerMatchStats },
+          chronology: { events: ordered.length, lastDate, pausedAt: ev.date },
+        };
+      }
+      continue;
+    }
+    if (ev.kind === "senior_scenario") {
+      const sceneResult = handleSeniorScenarioEvent({
+        player,
+        event: ev,
+        pauseForDecisions,
+        autoDecisionPolicy,
+        playerMatchStats,
+        intlProbe,
+      });
+      lastDate = ev.date;
+      if (sceneResult?.pause) {
+        const ck = buildSeasonCheckpoint({
+          seasonIndex: checkpoint.seasonIndex,
+          leagueId: activeLeague.leagueId || league.leagueId || league.name,
+          eventIndex,
+          ordered,
+          clubs,
+          records,
+          cupState,
+          cupResult,
+          europePlan,
+          intlProbe,
+          europeResimMatches,
+          intlResimMatches,
+          leaguePlayerMatches,
+          leagueAllMatches,
+          ledgerRecords,
+          playerMatchStats,
+          lastDate,
+          processedEventIds: [...(checkpoint.processedEventIds || []), eventId],
+          cupRoundDates,
+          europePlayerSlots,
+          intlSlots,
+          seasonStartYear: checkpoint.seasonStartYear,
+          calendarYear,
+          rngState: rng.seed(),
+          decision: null,
+          offers: [],
+          playingClubIdAtPause: player.playingClubId || player.club?.clubId,
+          employmentClubIdAtPause: player.employmentClubId || player.club?.clubId,
+          pendingSeniorScenario: sceneResult.pending,
+          status: "awaiting_scenario",
+        });
+        player.seasonCheckpoint = ck;
+        player.pendingSeniorScenario = sceneResult.pending;
+        return {
+          status: "awaiting_scenario",
+          checkpoint: ck,
+          pendingSeniorScenario: sceneResult.pending,
+          partialPlayerMatchStats: { ...playerMatchStats },
+          chronology: { events: ordered.length, lastDate, pausedAt: ev.date },
+        };
+      }
+      continue;
+    }
     if (ev.kind === "registration_effective") {
       if (player.pendingRegistration?.effectiveDate === ev.date) {
         player.pendingRegistration = null;
@@ -949,6 +1459,49 @@ export function resumeChronologicalSeason({
       continue;
     }
     if (ev.kind === "dest_cup_round") {
+      if (player.playingClubId || ev.destinationLeagueId) {
+        const destLeague = findLeagueById(ev.destinationLeagueId) || activeLeague;
+        if (destLeague && (!cupState || !cupState._destBound)) {
+          cupState = prepareDomesticCupBracket(destLeague, player);
+          cupState._destBound = true;
+          cupResult = null;
+        }
+        if (cupState && !cupState.finished && !cupResult) {
+          simulateDomesticCupRound(cupState, {
+            player,
+            date: ev.date,
+            matchProcessor: ({ home, away, playerSide, date, label }) =>
+              processPlayerMatchDay({
+                home,
+                away,
+                player,
+                playerSide,
+                date,
+                lastDate,
+                competition: "cup",
+                competitionType: "domesticCup",
+                competitionId: cupState.config.name,
+                fixtureId: `destcup:${cupState.config.name}:${ev.roundIndex}:${label}`,
+                teamType: "club",
+                competitionPriority: 0.85,
+                rng,
+                selRng,
+                injuryRng,
+                worldState: world,
+                resolveKnockout,
+              }),
+          });
+          const proc = cupState.lastProcessorResult;
+          if (proc?.ledgerRecord) {
+            ledgerRecords.push(proc.ledgerRecord);
+            accumulatePlayerStats(playerMatchStats, proc.match, proc.participation);
+          }
+          cupState.lastProcessorResult = null;
+          if (cupState.finished || cupState.eliminatedRound) {
+            cupResult = finalizeDomesticCup(cupState);
+          }
+        }
+      }
       lastDate = ev.date;
       continue;
     }
@@ -957,6 +1510,7 @@ export function resumeChronologicalSeason({
       const fx = ev;
       const playingName = player.club?.name;
       const playingId = player.playingClubId || player.club?.clubId;
+      const competitionId = ev.destinationLeagueId || activeLeague.leagueId || league.leagueId;
       const homeIsPlayer =
         fx.home.name === playingName || (playingId && fx.home.clubId === playingId);
       const awayIsPlayer =
@@ -965,20 +1519,25 @@ export function resumeChronologicalSeason({
       if (playerIn && !playerEligibleForClubMatch(player, fx.date)) {
         playerIn = null;
       }
+      const matchday = leagueMatchday(ev, clubs.length);
+      const fixtureId = ev.fixtureId || `${competitionId}:md:${ev.index}`;
 
       if (!playerIn) {
         const match = simulateMatch(fx.home, fx.away, {
           competition: "league",
           worldState: world,
           rng,
-          competitionId: league.leagueId,
-          fixtureId: `${league.leagueId}:md:${ev.index}`,
+          competitionId,
+          fixtureId,
           date: fx.date,
         });
-        match.matchday = Math.floor(ev.index / Math.max(1, Math.floor(clubs.length / 2))) + 1;
+        match.matchday = matchday;
         match.round = `Matchday ${match.matchday}`;
+        tagLeagueMatch(match, { activeLeague, player, historySegment, seasonStartYear, world });
         applyMatchFormUpdate(world, match);
         leagueAllMatches.push(match);
+        ensureRecordClub(records, match.home, world);
+        ensureRecordClub(records, match.away, world);
         updateLeagueRecords(records, match);
         continue;
       }
@@ -992,8 +1551,8 @@ export function resumeChronologicalSeason({
         lastDate,
         competition: "league",
         competitionType: "league",
-        competitionId: league.leagueId,
-        fixtureId: `${league.leagueId}:md:${ev.index}`,
+        competitionId,
+        fixtureId,
         teamType: "club",
         competitionPriority: 1,
         rng,
@@ -1001,10 +1560,13 @@ export function resumeChronologicalSeason({
         injuryRng,
         worldState: world,
       });
-      match.matchday = Math.floor(ev.index / Math.max(1, Math.floor(clubs.length / 2))) + 1;
+      match.matchday = matchday;
       match.round = `Matchday ${match.matchday}`;
+      tagLeagueMatch(match, { activeLeague, player, historySegment, seasonStartYear, world });
       leagueAllMatches.push(match);
       leaguePlayerMatches.push(match);
+      ensureRecordClub(records, match.home, world);
+      ensureRecordClub(records, match.away, world);
       updateLeagueRecords(records, match);
       if (ledgerRecord) {
         ledgerRecords.push(ledgerRecord);
@@ -1146,34 +1708,41 @@ export function resumeChronologicalSeason({
   }
 
   if (!cupResult) {
-    if (!cupState) cupState = prepareDomesticCupBracket(league, player);
+    if (!cupState) cupState = prepareDomesticCupBracket(activeLeague, player);
     cupResult = finalizeDomesticCup(cupState);
   }
   if (europeResimMatches.length) {
-    europePlan = { ...europePlan, playerMatches: europeResimMatches };
+    europePlan = reconcileCampaignWithPlayerMatches(
+      { ...europePlan, playerMatches: europeResimMatches },
+      europeResimMatches
+    );
   }
   if (intlResimMatches.length) {
+    const reconciled = reconcileCampaignWithPlayerMatches(
+      { allRounds: intlProbe.allRounds, playerMatches: intlResimMatches },
+      intlResimMatches
+    );
     intlProbe.playerMatches = intlResimMatches;
+    if (reconciled?.allRounds) intlProbe.allRounds = reconciled.allRounds;
   }
 
   const table = buildTable(records);
-  if (world) world.standings.set(league.leagueId || league.name, table);
+  if (world) world.standings.set(activeLeague.leagueId || activeLeague.name, table);
   player.seasonCheckpoint = null;
+  const playerRecord = findPlayingClubRow(table, player);
+  const leagueMatchSegments = buildLeagueMatchSegments(leaguePlayerMatches);
 
   return {
     status: "complete",
     table,
-    playerRecord:
-      table.find(
-        (r) =>
-          r.name === player.club?.name ||
-          (player.playingClubId && r.clubId === player.playingClubId)
-      ) || null,
+    activeLeague,
+    playerRecord,
     playerMatches: leaguePlayerMatches,
     allMatches: leagueAllMatches,
+    leagueMatchSegments,
     playerMatchStats,
     ledgerRecords,
-    expectedMatches: leagueMatchCount(league),
+    expectedMatches: leagueMatchCount(activeLeague),
     domesticCupResult: cupResult,
     europeanCampaign: europePlan,
     internationalSeason: intlProbe,
@@ -1184,6 +1753,9 @@ export function resumeChronologicalSeason({
       europeSlots: europePlayerSlots.length,
       intlSlots: intlSlots.length,
       resumedFrom: checkpoint.eventIndex,
+      activeLeagueId: activeLeague.leagueId,
+      playingClubId: player.playingClubId || player.club?.clubId,
+      employmentClubId: player.employmentClubId || null,
     },
   };
 }

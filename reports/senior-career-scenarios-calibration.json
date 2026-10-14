@@ -1,0 +1,97 @@
+{
+  "generatedAt": "2026-10-14T00:24:33.338Z",
+  "git": "5b5aa2c56dd97c54611f52ba73fb939f76da20b9",
+  "config": {
+    "triggerProbability": 0.3,
+    "repeatCooldownSeasons": 2,
+    "bankSize": 24
+  },
+  "triggerTrials": {
+    "league": {
+      "trials": 10000,
+      "competitionType": "league",
+      "probability": 0.3,
+      "drawn": 2977,
+      "rate": 0.2977
+    },
+    "cup": {
+      "trials": 10000,
+      "competitionType": "cup",
+      "probability": 0.3,
+      "drawn": 3027,
+      "rate": 0.3027
+    },
+    "continental": {
+      "trials": 10000,
+      "competitionType": "continental",
+      "probability": 0.3,
+      "drawn": 2993,
+      "rate": 0.2993
+    },
+    "international": {
+      "trials": 10000,
+      "competitionType": "international",
+      "probability": 0.3,
+      "drawn": 2922,
+      "rate": 0.2922
+    }
+  },
+  "schedule": {
+    "seasons": 800,
+    "drawnEditions": 656,
+    "eligibleEditions": 2067,
+    "shownScenes": 656,
+    "unschedulable": 0,
+    "rollMiss": 1411,
+    "scenarioCounts": {
+      "social-media-mistake": 35,
+      "airport-fan": 49,
+      "press-breakthrough": 62,
+      "sponsor-shoot": 36,
+      "press-after-defeat": 38,
+      "travel-fatigue": 50,
+      "partner-important-date": 11,
+      "extra-session-or-rest": 53,
+      "veteran-mentor": 34,
+      "international-first-trip": 35,
+      "selection-disappointment": 37,
+      "charity-invitation": 25,
+      "transfer-rumour": 38,
+      "family-birthday": 41,
+      "derby-provocation": 51,
+      "help-young-teammate": 26,
+      "family-needs-support": 28,
+      "partner-long-distance": 7
+    },
+    "byCompetitionType": {
+      "league": {
+        "editions": 800,
+        "drawn": 236,
+        "shown": 236,
+        "unschedulable": 0,
+        "miss": 564
+      },
+      "cup": {
+        "editions": 800,
+        "drawn": 261,
+        "shown": 261,
+        "unschedulable": 0,
+        "miss": 539
+      },
+      "continental": {
+        "editions": 267,
+        "drawn": 92,
+        "shown": 92,
+        "unschedulable": 0,
+        "miss": 175
+      },
+      "international": {
+        "editions": 200,
+        "drawn": 67,
+        "shown": 67,
+        "unschedulable": 0,
+        "miss": 133
+      }
+    }
+  }
+}
