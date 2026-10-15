@@ -255,7 +255,7 @@ test("save migration is idempotent and preserves contract", () => {
   const r1 = migrateTransferSave(p);
   assert.equal(r1.migrated, true);
   assert.equal(p.weeklyWage, 3000);
-  assert.equal(p.transferSaveVersion, 1);
+  assert.equal(p.transferSaveVersion, 2);
   const end = p.contractEndSeason;
   const r2 = migrateTransferSave(p);
   assert.equal(r2.migrated, false);

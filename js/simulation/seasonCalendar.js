@@ -40,7 +40,70 @@ export function daysBetween(a, b) {
 }
 
 /**
+ * Build a conflict-free double round-robin (circle method).
+ * Returns fixtures grouped into rounds; each club appears once per round.
+ */
+export function buildRoundRobinRounds(clubs) {
+  const list = [...(clubs || [])];
+  if (list.length < 2) return [];
+  const n = list.length;
+  const working = [...list];
+  if (n % 2 === 1) working.push(null); // bye
+  const m = working.length;
+  const roundsPerHalf = m - 1;
+  const halfSize = m / 2;
+  const firstHalf = [];
+
+  for (let round = 0; round < roundsPerHalf; round++) {
+    const pairs = [];
+    for (let i = 0; i < halfSize; i++) {
+      const home = working[i];
+      const away = working[m - 1 - i];
+      if (home && away) pairs.push({ home, away, round: round + 1 });
+    }
+    firstHalf.push(pairs);
+    // Rotate all but first
+    const fixed = working[0];
+    const rest = working.slice(1);
+    rest.unshift(rest.pop());
+    working.splice(0, working.length, fixed, ...rest);
+  }
+
+  const secondHalf = firstHalf.map((pairs, ri) =>
+    pairs.map((p) => ({
+      home: p.away,
+      away: p.home,
+      round: roundsPerHalf + ri + 1,
+    }))
+  );
+  return [...firstHalf, ...secondHalf];
+}
+
+/**
+ * Flatten round-robin rounds into an ordered fixture list with stable IDs.
+ */
+export function flattenRoundRobinFixtures(clubs, opts = {}) {
+  const rounds = buildRoundRobinRounds(clubs);
+  const fixtures = [];
+  const prefix = opts.idPrefix || "lg";
+  rounds.forEach((pairs, ri) => {
+    pairs.forEach((p, mi) => {
+      fixtures.push({
+        ...p,
+        matchday: ri + 1,
+        fixtureId:
+          p.fixtureId ||
+          `${prefix}:md${ri + 1}:${p.home.clubId || p.home.name}:${p.away.clubId || p.away.name}`,
+      });
+    });
+  });
+  return fixtures;
+}
+
+/**
  * Assign chronological dates to league fixtures across Aug–May.
+ * When fixtures carry `matchday`/`round`, all matches on the same matchday share a date
+ * so no club is double-booked.
  */
 export function dateLeagueFixtures(fixtures, seasonStartYear) {
   const n = fixtures.length;
@@ -48,6 +111,29 @@ export function dateLeagueFixtures(fixtures, seasonStartYear) {
   const start = simDate(seasonStartYear, 8, 12);
   const end = simDate(seasonStartYear + 1, 5, 18);
   const span = Math.max(1, daysBetween(start, end));
+
+  const matchdays = [...new Set(fixtures.map((fx) => fx.matchday || fx.round || null))];
+  const hasMatchdays = matchdays.every((md) => md != null);
+  if (hasMatchdays) {
+    const sortedMds = [...new Set(matchdays)].sort((a, b) => a - b);
+    const dateByMd = new Map();
+    sortedMds.forEach((md, i) => {
+      const t = sortedMds.length === 1 ? 0 : i / (sortedMds.length - 1);
+      dateByMd.set(md, addDays(start, Math.round(t * span)));
+    });
+    return fixtures.map((fx, i) => {
+      const md = fx.matchday || fx.round;
+      const date = dateByMd.get(md);
+      return {
+        ...fx,
+        date,
+        competitionType: "league",
+        sortKey: `${date}:L:${md}:${i}`,
+      };
+    });
+  }
+
+  // Legacy path: spread individually (may conflict — prefer round-robin input).
   return fixtures.map((fx, i) => {
     const t = n === 1 ? 0 : i / (n - 1);
     const date = addDays(start, Math.round(t * span));

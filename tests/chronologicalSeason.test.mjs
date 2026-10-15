@@ -66,7 +66,9 @@ test("ensureAbilityBudgets: bare number normalizes; object record preserved", ()
   p.development.abilityBudgetsByPosition = { CM: 82 };
   const rec = ensureAbilityBudgets(p);
   assert.equal(typeof rec, "object");
-  assert.equal(rec.budget, 82);
+  // v3: role budgets are inert and normalised to the shared rating-scale max.
+  assert.equal(rec.budget, 99);
+  assert.equal(rec.inert, true);
   assert.ok(Number.isFinite(rec.startOverallRaw));
   assert.equal(rec.used, 0);
   // Shape mismatch must not throw when developSeason charges used
@@ -93,7 +95,8 @@ test("ensureAbilityBudgets: bare number normalizes; object record preserved", ()
     ST: { budget: 90, startOverallRaw: q.baseOverallRaw, used: 1.5, primary: true },
   };
   const rec2 = ensureAbilityBudgets(q);
-  assert.equal(rec2.budget, 90);
+  assert.equal(rec2.budget, 99);
+  assert.equal(rec2.inert, true);
   assert.equal(rec2.used, 1.5);
   assert.equal(rec2.startOverallRaw, q.baseOverallRaw);
 });

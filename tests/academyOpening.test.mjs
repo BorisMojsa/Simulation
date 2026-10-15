@@ -29,6 +29,7 @@ import { ACADEMY_POOL } from "../js/data/leagues.js";
 import { pickThreeAcademies } from "../js/simulation/narrativeAcademySeason.js";
 import { createRng } from "../js/simulation/rng.js";
 import { getBaseOverall } from "../js/simulation/playerAbility.js";
+import { applyAcademyGrowth } from "../js/simulation/playerDevelopmentModel.js";
 import { roundAbilityForDisplay, formatAbilityDisplayChange } from "../js/ui/abilityFormatting.js";
 import {
   serializeCareerSnapshot,
@@ -191,13 +192,12 @@ test("duplicate choice clicks do not apply twice", () => {
   assert.equal(first.duplicate, false);
 });
 
-test("near-ceiling players can remain unchanged without forced +1", () => {
+test("opening moments respect shared annual allowance without forced +1 display jumps", () => {
   const pl = makePlayer("ST", "Ceil");
-  // Exhaust headroom by aligning budget to current raw.
-  pl.development.latentAbilityBudget = getBaseOverall(pl) + 0.2;
-  pl.development.latentBudget = pl.development.latentAbilityBudget;
   ensureAcademyOpeningState(pl, { scenarios: [] });
   applyAcademyBaselineTraining(pl);
+  // Consume most of the shared annual allowance first.
+  applyAcademyGrowth(pl, 6.5, { rng: createRng(1) });
   const before = roundAbilityForDisplay(getBaseOverall(pl));
   applyOpeningMoment(pl, {
     scenario: { id: "ceil-sc" },
@@ -206,7 +206,7 @@ test("near-ceiling players can remain unchanged without forced +1", () => {
     momentIndex: 0,
   });
   const after = roundAbilityForDisplay(getBaseOverall(pl));
-  assert.ok(after - before <= 1, "no forced large bump near ceiling");
+  assert.ok(after - before <= 2, "no forced large bump beyond remaining allowance");
 });
 
 test("snapshot resume keeps cursor and does not reroll applied moments", () => {

@@ -8,12 +8,16 @@ import { effectiveTeamStrength } from "./teamStrength.js";
 import { getSimRng, createStreamRng } from "./rng.js";
 import {
   dateLeagueFixtures,
+  flattenRoundRobinFixtures,
   dateCupRounds,
   dateContinentalMatches,
   dateInternationalWindows,
   sortChronological,
   simDate,
-} from "./seasonCalendar.js";
+  daysBetween,
+} from "./seasonCalendar.js?v=81";
+import { rivalsForClub } from "../data/clubRivals.js";
+import { createRng } from "./rng.js";
 import { squadReviewCheckpointDate } from "../data/registrationWindows.js";
 import { evaluateSquadDecision, resolveSquadDecision } from "./squadDecisions.js";
 import { generateLoanOffers } from "./loanMarket.js";
@@ -23,7 +27,7 @@ import {
   reconcileAfterClubChange,
   playerEligibleForClubMatch,
   findLeagueById,
-} from "./destinationSchedule.js?v=77";
+} from "./destinationSchedule.js?v=81";
 import { applyDecisionPolicy } from "./decisionPolicies.js";
 import { processPlayerMatchDay } from "./playerMatchDay.js";
 import { resolveKnockout } from "./matchEngine.js";
@@ -33,8 +37,8 @@ import { stableCareerId } from "./playerDevelopmentModel.js";
 import {
   simulateEuropeanCampaign,
   simulateEuropeanFinalsShowcase,
-} from "./europeanCompetition.js?v=77";
-import { reconcileCampaignWithPlayerMatches } from "./continentalTournament.js?v=77";
+} from "./europeanCompetition.js?v=81";
+import { reconcileCampaignWithPlayerMatches } from "./continentalTournament.js?v=81";
 import { simulateInternationalSeason } from "./nationalTeam.js";
 import {
   prepareDomesticCupBracket,
@@ -362,13 +366,10 @@ export function simulateChronologicalSeason({
       nation: league.nation,
     })
   );
-  const fixtures = [];
-  for (let i = 0; i < clubs.length; i++) {
-    for (let j = 0; j < clubs.length; j++) {
-      if (i !== j) fixtures.push({ home: clubs[i], away: clubs[j] });
-    }
-  }
-  const datedLeague = dateLeagueFixtures(rng.shuffle(fixtures), seasonStartYear);
+  const fixtures = flattenRoundRobinFixtures(clubs, {
+    idPrefix: `lg:${league.leagueId || league.name}:${seasonStartYear}`,
+  });
+  const datedLeague = dateLeagueFixtures(fixtures, seasonStartYear);
   let records = initLeagueRecords(clubs, world);
   let historySegment = "origin";
 
@@ -595,6 +596,8 @@ export function simulateChronologicalSeason({
           seasonStartYear,
           calendarYear,
           rngState: rng.seed(),
+          selRngState: selRng.seed(),
+          injuryRngState: injuryRng.seed(),
           decision: pauseResult.decision,
           offers: pauseResult.offers,
           playingClubIdAtPause: player.playingClubId || player.club?.clubId,
@@ -622,6 +625,9 @@ export function simulateChronologicalSeason({
         autoDecisionPolicy,
         playerMatchStats,
         intlProbe,
+        leaguePlayerMatches,
+        ordered,
+        eventIndex,
       });
       processedEventIds.push(eventId);
       lastDate = ev.date;
@@ -651,6 +657,8 @@ export function simulateChronologicalSeason({
           seasonStartYear,
           calendarYear,
           rngState: rng.seed(),
+          selRngState: selRng.seed(),
+          injuryRngState: injuryRng.seed(),
           decision: null,
           offers: [],
           playingClubIdAtPause: player.playingClubId || player.club?.clubId,
@@ -1127,7 +1135,7 @@ function applyAutoDecisionPolicy(player, decision, offers, policy, ctx = {}) {
 function buildSeasonCheckpoint(parts) {
   return {
     status: parts.status || "awaiting_decision",
-    version: 1,
+    version: 2,
     seasonIndex: parts.seasonIndex,
     leagueId: parts.leagueId,
     eventIndex: parts.eventIndex,
@@ -1135,7 +1143,12 @@ function buildSeasonCheckpoint(parts) {
     calendarYear: parts.calendarYear,
     lastDate: parts.lastDate,
     rngState: parts.rngState,
+    selRngState: parts.selRngState,
+    injuryRngState: parts.injuryRngState,
+    // Snapshot of finance at pause — ordinary resume must NOT re-import over
+    // post-decision bookings. Full career restore uses careerSnapshot instead.
     finance: exportClubFinanceState(),
+    financeAuthority: "checkpoint-pause",
     processedEventIds: parts.processedEventIds,
     // Serializable accumulators
     records: [...parts.records.entries()],
@@ -1162,6 +1175,20 @@ function buildSeasonCheckpoint(parts) {
   };
 }
 
+function recentClubResults(playerMatchStats, leaguePlayerMatches = []) {
+  const results = [];
+  for (const m of leaguePlayerMatches || []) {
+    if (!m?.playerStats?.minutes) continue;
+    const side = m.playerSide;
+    const gf = side === "home" ? m.homeGoals : m.awayGoals;
+    const ga = side === "home" ? m.awayGoals : m.homeGoals;
+    if (gf > ga) results.push("W");
+    else if (gf < ga) results.push("L");
+    else results.push("D");
+  }
+  return results.slice(-5);
+}
+
 function handleSeniorScenarioEvent({
   player,
   event,
@@ -1169,21 +1196,68 @@ function handleSeniorScenarioEvent({
   autoDecisionPolicy,
   playerMatchStats,
   intlProbe,
+  leaguePlayerMatches = [],
+  ordered = [],
+  eventIndex = 0,
 }) {
   if (player.club?.isAcademy) return { pause: false };
+
+  // Truthful runtime context — never invent defeat/derby/leave/congestion.
+  const recentResults = recentClubResults(playerMatchStats, leaguePlayerMatches);
+  const afterLoss = recentResults.length > 0 && recentResults[recentResults.length - 1] === "L";
+  const oppName =
+    event.opponent?.name ||
+    event.away?.name ||
+    event.home?.name ||
+    event.fixture?.away?.name ||
+    event.fixture?.home?.name;
+  const myName = player.club?.name;
+  const rivals = rivalsForClub(myName);
+  const rivalMatchup = Boolean(oppName && rivals.includes(oppName));
+
+  // Congestion: overlapping fixtures within 3 days around the event date.
+  let fixtureCongestion = false;
+  let travelCongestion = false;
+  if (event.date && ordered.length) {
+    const nearby = ordered.filter((ev) => {
+      if (!ev?.date || ev.kind === "senior_scenario" || ev.kind === "winter_window") return false;
+      return Math.abs(daysBetween(event.date, ev.date)) <= 3;
+    });
+    fixtureCongestion = nearby.length >= 3;
+    const nations = new Set(
+      nearby
+        .map((ev) => ev.competitionType)
+        .filter((t) => t === "continental" || t === "international")
+    );
+    travelCongestion = nations.size > 0 && nearby.length >= 2;
+  }
+
+  const onLeave = Boolean(player.seniorCareer?.life?.onLeave || player.onLeave);
+  const standout =
+    (playerMatchStats?.goals || 0) + (playerMatchStats?.assists || 0) >= 3 ||
+    (playerMatchStats?.minutes || 0) >= 450;
+  const benched =
+    (playerMatchStats?.starts || 0) === 0 && (playerMatchStats?.played || 0) > 0;
+
   const pending = buildPendingSeniorScenario(player, event, {
     playerMatchStats,
+    recentResults,
     intlCalledUp: Boolean(intlProbe?.calledUp),
-    nationalCallUp: event.competitionType === "international",
-    fixtureCongestion: true,
-    travelCongestion: event.competitionType === "continental" || event.competitionType === "international",
-    onLeave: event.competitionType === "league",
-    rivalMatchup: event.competitionType === "league" || event.competitionType === "cup",
-    forceAfterLoss: (playerMatchStats?.played || 0) >= 1,
-    forceStandout: (playerMatchStats?.goals || 0) + (playerMatchStats?.assists || 0) >= 2,
-    forceBenched: (playerMatchStats?.starts || 0) === 0 && (playerMatchStats?.played || 0) > 0,
-    leadershipContext: (player.age || 0) >= 22,
-    returningFromInjury: Boolean(player.health?.activeInjury),
+    nationalCallUp: event.competitionType === "international" && Boolean(intlProbe?.calledUp),
+    fixtureCongestion,
+    travelCongestion,
+    onLeave,
+    rivalMatchup,
+    // force* only when the underlying fact is true (not invented).
+    forceAfterLoss: afterLoss,
+    forceStandout: standout,
+    forceBenched: benched,
+    leadershipContext: (player.age || 0) >= 22 && (playerMatchStats?.starts || 0) >= 5,
+    returningFromInjury: Boolean(
+      player.health?.status === "returning" ||
+        player.health?.status === "rehab" ||
+        (player.health?.activeInjury && player.health?.recovering)
+    ),
   });
 
   if (!pending || pending.unschedulable) {
@@ -1225,13 +1299,24 @@ export function resumeChronologicalSeason({
   if (!checkpoint?.ordered) {
     throw new Error("resumeChronologicalSeason: missing checkpoint.ordered");
   }
-  if (checkpoint.finance) importClubFinanceState(checkpoint.finance);
+  // Do not import checkpoint.finance on ordinary resume — accepted deals after the
+  // pause must remain booked. Full restore goes through deserializeCareerSnapshot.
+  if (checkpoint.restoreFinance && checkpoint.finance) {
+    importClubFinanceState(checkpoint.finance);
+  }
 
   const rng = getSimRng();
   if (checkpoint.rngState != null) rng.setSeed(checkpoint.rngState);
   const careerId = stableCareerId(player);
-  const selRng = createStreamRng(careerId, `selection:chrono:${seasonIndex}:resume`);
-  const injuryRng = createStreamRng(careerId, `injury:chrono:${seasonIndex}:resume`);
+  // Restore stream states so pause/resume cannot change selection/injury outcomes.
+  const selRng =
+    checkpoint.selRngState != null
+      ? createRng(checkpoint.selRngState)
+      : createStreamRng(careerId, `selection:chrono:${seasonIndex}`);
+  const injuryRng =
+    checkpoint.injuryRngState != null
+      ? createRng(checkpoint.injuryRngState)
+      : createStreamRng(careerId, `injury:chrono:${seasonIndex}`);
   const world = getWorldState();
   const seasonStartYear = checkpoint.seasonStartYear ?? (player.startYear || 2026) + seasonIndex;
 
@@ -1376,6 +1461,8 @@ export function resumeChronologicalSeason({
           seasonStartYear: checkpoint.seasonStartYear,
           calendarYear,
           rngState: rng.seed(),
+          selRngState: selRng.seed(),
+          injuryRngState: injuryRng.seed(),
           decision: pauseResult.decision,
           offers: pauseResult.offers,
           playingClubIdAtPause: player.playingClubId || player.club?.clubId,
@@ -1404,6 +1491,9 @@ export function resumeChronologicalSeason({
         autoDecisionPolicy,
         playerMatchStats,
         intlProbe,
+        leaguePlayerMatches,
+        ordered,
+        eventIndex,
       });
       lastDate = ev.date;
       if (sceneResult?.pause) {
@@ -1432,6 +1522,8 @@ export function resumeChronologicalSeason({
           seasonStartYear: checkpoint.seasonStartYear,
           calendarYear,
           rngState: rng.seed(),
+          selRngState: selRng.seed(),
+          injuryRngState: injuryRng.seed(),
           decision: null,
           offers: [],
           playingClubIdAtPause: player.playingClubId || player.club?.clubId,

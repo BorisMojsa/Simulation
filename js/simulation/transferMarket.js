@@ -28,16 +28,13 @@ export function calculateRenewalInterest(player, performanceScore) {
 
 export function generateRenewalOffer(player, performanceScore, leagueLookup = LEAGUE_LOOKUP) {
   if (!player.club || player.club.isAcademy) return null;
-  const club = findSeniorClub(player.club.name) || player.club;
-  const built = buildValidatedOffer({
-    player,
-    club,
-    dealType: "renewal",
+  // Route through the shared pipeline so renewal review + employer club are authoritative.
+  const result = generatePipelineOffers(player, {
     performanceScore,
-    forceParent: true,
+    forceGenerate: true,
     rng: createStreamRng(player.careerId || player.name, `renewal:${player.seasons?.length ?? 0}`),
   });
-  return built.ok ? built.offer : null;
+  return (result.offers || []).find((o) => o.isRenewal) || null;
 }
 
 /**

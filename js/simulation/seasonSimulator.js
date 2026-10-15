@@ -12,11 +12,25 @@ import {
   findSisterLeagues,
   qualificationForPosition,
 } from "./leaguePhase.js";
-import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=77";
-import { findLeagueById } from "./destinationSchedule.js?v=77";
-import { simulateIndividualAwards } from "./individualAwards.js";
+import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=81";
+import { findLeagueById } from "./destinationSchedule.js?v=81";
+import { evaluateSeasonAwards } from "./individualAwards.js?v=85";
+import {
+  buildSeasonEvidence,
+  evidenceToDevelopmentContext,
+  attachRecognitionToEvidence,
+} from "./seasonEvidence.js?v=85";
 import { clubNameForDisplay, clamp, pickRandom, randFloat } from "../utils/helpers.js";
 import { applySeasonDevelopment, attachClubIdentity, ensureWorldState, getWorldState } from "./worldState.js";
+import {
+  ensureContractAuthority,
+  assertPlayableRegistration,
+  applyContractExpiryAtBoundary,
+  advanceFreeAgentPeriod,
+  isFreeAgent,
+  selectNextCareerAction,
+} from "./contractLifecycle.js";
+import { endLoan } from "./loanMarket.js";
 
 /** Legacy 0–100 adapter for awards/transfers — not used for durable development. */
 export function legacyPerformanceScoreAdapter({ reliableSignal, avgMatchRating, appearances }) {
@@ -138,6 +152,30 @@ function computeAvgMatchRatingFromOutput({
 export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   ensureWorldState(player);
   ensurePlayerModel(player);
+  ensureContractAuthority(player);
+
+  // Settle expired loans at the season boundary before attaching fixtures.
+  if (
+    player.activeLoan?.status === "active" &&
+    player.activeLoan.endSeason != null &&
+    (player.seasons?.length ?? 0) >= player.activeLoan.endSeason
+  ) {
+    endLoan(player, isFreeAgent(player) || !assertPlayableRegistration(player).ok ? "expiry" : "return");
+  }
+
+  // Free agent / expired: no club football — train/wait and open a market review.
+  const playable = assertPlayableRegistration(player);
+  if (!playable.ok && playable.mode === "free-agent" && !opts.checkpoint) {
+    const wait = advanceFreeAgentPeriod(player, { seasons: 1 });
+    return {
+      season: player.seasons[player.seasons.length - 1],
+      freeAgent: true,
+      performanceScore: 55,
+      nextAction: selectNextCareerAction(player),
+      wait,
+    };
+  }
+
   if (player.club && !player.club.isAcademy) {
     player.club = attachClubIdentity(player.club);
   }
@@ -158,6 +196,17 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
 
   // Age advances only when the season completes (not at a January pause).
   const age = player.age + 1;
+  if (!player.club?.league) {
+    // Should have been caught by free-agent path; refuse random-league fallback.
+    const wait = advanceFreeAgentPeriod(player, { seasons: 1 });
+    return {
+      season: player.seasons[player.seasons.length - 1],
+      freeAgent: true,
+      performanceScore: 55,
+      nextAction: selectNextCareerAction(player),
+      wait,
+    };
+  }
   const league = leagueLookup.get(player.club.league) || pickRandom(leagues);
 
   const ledger = createEmptyLedger(seasonId);
@@ -311,43 +360,10 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     appearances: agg.combined.appearances,
   });
 
-  // Age advances once per simulated year after the campaign.
-  player.age = age;
+  // Freeze pre-development ability/context, then trophies → awards → development once.
+  const seasonStartAge = age - 1;
+  const preDevOverall = player.baseOverallRaw;
 
-  const envProxy = clamp(0.85 + ((player.club?.overall || 70) - 70) / 80, 0.55, 1.35);
-  const devRng = createStreamRng(stableCareerId(player), `development:${seasonId}`);
-  const already = player.development?.academyGrowthApplied || 0;
-  const developmentResult = developSeason(player, {
-    elapsedYears: 1,
-    usefulMinutes,
-    healthyTrainingFraction: player.health?.activeInjury ? 0.35 : 0.9,
-    reliableSignal: agg.reliableSignal,
-    P_long: usefulMinutes >= 900 ? agg.seasonP : null,
-    reliability: agg.reliability,
-    environmentMultiplier: envProxy,
-    rng: devRng,
-    seasonId,
-    alreadyAppliedLearningGain: already,
-    longFormReliable: usefulMinutes >= 900,
-  });
-
-  getOrUpdateForecast(player, { sampleCount: 48 });
-  refreshAbilityCaches(player);
-
-  const newRating = player.rating;
-  const ratingChange = newRating - previousRating;
-
-  player.careerTotals.matches += agg.combined.appearances;
-  player.careerTotals.goals += goals;
-  player.careerTotals.assists += assists;
-  player.careerTotals.cleanSheets += cleanSheets;
-
-  const individualAwards = simulateIndividualAwards(
-    performanceScore,
-    { goals, assists, cleanSheets, matches, league: playingLeague.name },
-    player,
-    leagueLookup
-  );
   const trophies = [];
   if (standing && standing.position === 1) {
     player.careerHonors.leagueTitles += 1;
@@ -388,7 +404,76 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       simKey: intlName,
     });
   }
+
+  const evidence = buildSeasonEvidence(player, {
+    aggregate: agg,
+    ledger,
+    league: playingLeague,
+    standing,
+    table: chrono.table,
+    trophies,
+    seasonId,
+    seasonStartAge,
+    goals,
+    assists,
+    cleanSheets,
+    leagueGoals: agg.byCompetitionType?.league?.goals ?? goals,
+    leagueCleanSheets: cleanSheets,
+    seasonDays: 300,
+  });
+
+  const awardRng = createStreamRng(stableCareerId(player), `awards:${seasonId}`);
+  const awardResult = evaluateSeasonAwards({
+    player,
+    evidence,
+    standing,
+    league: playingLeague,
+    leagueLookup,
+    table: chrono.table,
+    trophies,
+    rng: awardRng,
+    seasonId,
+    seasonStartAge,
+  });
+  const individualAwards = awardResult.awardNames || [];
+  const awardRecords = awardResult.records || [];
+  attachRecognitionToEvidence(evidence, awardRecords);
+
+  // Age advances once per simulated year after the campaign, before development curves.
+  player.age = age;
+
+  const envProxy = clamp(
+    (evidence.environmentProxy || 1) * (0.9 + 0.1 * (evidence.challengeRelativeToAbility || 1)),
+    0.55,
+    1.4,
+  );
+  const devCtx = evidenceToDevelopmentContext(evidence, { environmentMultiplier: envProxy });
+  const devRng = createStreamRng(stableCareerId(player), `development:${seasonId}`);
+  const already = player.development?.academyGrowthApplied || 0;
+  const developmentResult = developSeason(player, {
+    elapsedYears: 1,
+    ...devCtx,
+    rng: devRng,
+    seasonId,
+    alreadyAppliedLearningGain: already,
+  });
+
+  // Clear academy charge once consumed by the shared annual allowance.
+  if (player.development) player.development.academyGrowthApplied = 0;
+
+  getOrUpdateForecast(player, { sampleCount: 48 });
+  refreshAbilityCaches(player);
+
+  const newRating = player.rating;
+  const ratingChange = newRating - previousRating;
+
+  player.careerTotals.matches += agg.combined.appearances;
+  player.careerTotals.goals += goals;
+  player.careerTotals.assists += assists;
+  player.careerTotals.cleanSheets += cleanSheets;
+
   if (individualAwards.length) player.careerHonors.individualAwards += individualAwards.length;
+  void preDevOverall;
 
   const honors = trophies.length
     ? trophies[0].label
@@ -450,11 +535,21 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     potentialForecastBefore: previousForecast,
     potentialForecastAfter: player.potentialForecast ? { ...player.potentialForecast } : null,
     developmentExplanations: developmentResult?.explanations || [],
-    breakthrough: Boolean(developmentResult?.breakthroughTriggered),
+    developmentBreakdown: developmentResult?.breakdown || null,
+    breakthrough: Boolean(developmentResult?.breakthrough?.occurred),
+    seasonEvidence: {
+      seasonP: evidence.seasonP,
+      reliability: evidence.reliability,
+      minutes: evidence.minutes,
+      healthyTrainingFraction: evidence.healthyTrainingFraction,
+      competitionStrength: evidence.competitionStrength,
+    },
     ledgerSummary: {
       club: agg.club,
       international: agg.international,
       reliableSignal: agg.reliableSignal,
+      reliability: agg.reliability,
+      seasonP: agg.seasonP,
       nonParticipation: agg.nonParticipation,
     },
     playerModelVersion: player.playerModelVersion,
@@ -465,6 +560,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     internationalSeason,
     domesticCupResult,
     individualAwards,
+    awardRecords,
     trophies,
     divisionMove: null,
     leagueMatches: chrono.playerMatches,
@@ -484,7 +580,14 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       }
     : null;
 
-  const divisionMove = applyDivisionMovement(player, playerRow, playingLeague, leagues);
+  // History written under the clubs actually represented; then enforce expiry once.
+  player.seasonCheckpoint = null;
+  const expiry = applyContractExpiryAtBoundary(player);
+  season.contractExpiry = expiry;
+
+  const divisionMove = player.club
+    ? applyDivisionMovement(player, playerRow, playingLeague, leagues)
+    : null;
   if (divisionMove) {
     season.divisionMove = divisionMove;
     if (standing) standing.divisionMove = divisionMove.type;

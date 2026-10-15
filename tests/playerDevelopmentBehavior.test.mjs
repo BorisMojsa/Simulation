@@ -69,39 +69,41 @@ test("healthy 18yo improves with variation", () => {
   assert.ok(deltas.some((d) => d < mean) && deltas.some((d) => d > mean));
 });
 
-test("near ceiling grows slower than high headroom", () => {
-  const slow = mkPlayer({ careerId: "ceil-slow", age: 19 });
-  slow.development.latentAbilityBudget = slow.baseOverallRaw + 0.4;
-  const fast = mkPlayer({ careerId: "ceil-fast", age: 19, budget: 92 });
-  const dSlow = (() => {
-    const b = slow.baseOverallRaw;
-    developSeason(slow, {
-      elapsedYears: 1,
-      usefulMinutes: 2400,
-      healthyTrainingFraction: 1,
-      reliableSignal: 0.3,
-      environmentMultiplier: 1.1,
-      rng: createRng(1),
-      seasonId: "s1",
-      alreadyAppliedLearningGain: 0,
-    });
-    return slow.baseOverallRaw - b;
+test("high current ability grows slower than mid ability under matched inputs", () => {
+  const eliteAttrs = {
+    Speed: 94,
+    Passing: 90,
+    Shooting: 92,
+    Defending: 78,
+    Physicality: 88,
+    Dribbling: 95,
+  };
+  const mid = mkPlayer({ careerId: "diff-mid", age: 22, target: 72 });
+  const elite = mkPlayer({
+    careerId: "diff-elite",
+    age: 22,
+    attributes: eliteAttrs,
+  });
+  const ctx = {
+    elapsedYears: 1,
+    usefulMinutes: 2400,
+    healthyTrainingFraction: 1,
+    reliability: 0.8,
+    P_long: 0.4,
+    environmentMultiplier: 1.1,
+    alreadyAppliedLearningGain: 0,
+  };
+  const dMid = (() => {
+    const b = mid.baseOverallRaw;
+    developSeason(mid, { ...ctx, rng: createRng(1), seasonId: "s-mid" });
+    return mid.baseOverallRaw - b;
   })();
-  const dFast = (() => {
-    const b = fast.baseOverallRaw;
-    developSeason(fast, {
-      elapsedYears: 1,
-      usefulMinutes: 2400,
-      healthyTrainingFraction: 1,
-      reliableSignal: 0.3,
-      environmentMultiplier: 1.1,
-      rng: createRng(1),
-      seasonId: "s1",
-      alreadyAppliedLearningGain: 0,
-    });
-    return fast.baseOverallRaw - b;
+  const dElite = (() => {
+    const b = elite.baseOverallRaw;
+    developSeason(elite, { ...ctx, rng: createRng(1), seasonId: "s-elite" });
+    return elite.baseOverallRaw - b;
   })();
-  assert.ok(dFast > dSlow, `fast ${dFast} vs slow ${dSlow}`);
+  assert.ok(dMid > dElite, `mid ${dMid} should exceed elite ${dElite}`);
 });
 
 test("elite age-20 allowed when attributes support it", () => {

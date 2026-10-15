@@ -4,7 +4,7 @@
 import { createStreamRng } from "./rng.js";
 import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js";
 import { findEligibleClubs, pickWeighted } from "./recruitmentModel.js";
-import { buildValidatedOffer, applyOfferToPlayer } from "./dealPipeline.js";
+import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js";
 import {
   getOrInitClubSeasonFinance,
   validateDealAffordability,
@@ -15,6 +15,63 @@ import {
 import { roundFee } from "./playerValuation.js";
 import { CONTRACT_RULES } from "../config/recruitmentConfig.js";
 import { resolveMoveRegistration } from "./destinationSchedule.js";
+import {
+  ensureContractAuthority,
+  releaseToFreeAgency,
+  isContractActive,
+  completedSeasons,
+} from "./contractLifecycle.js";
+
+function settleLoanSlotsAndWages(player, loan, sk, mode = "return") {
+  if (!loan || loan.settledFinance) return { ok: true, duplicate: true };
+  const borrowerLedger = getOrInitClubSeasonFinance(loan.borrowingClubId, sk);
+  const parentLedger = getOrInitClubSeasonFinance(loan.parentClubId, sk);
+  const agreed = Number.isFinite(loan.agreedGrossWeekly) ? loan.agreedGrossWeekly : 0;
+  const borrowerShare = loan.borrowerWageShare ?? 0.5;
+  const borrowerAnnual = weeklyToAnnual(Math.round(agreed * borrowerShare));
+
+  // Release borrower remaining wage commitment for this loan.
+  if (borrowerAnnual > 0) {
+    releaseWageCommitment(borrowerLedger, borrowerAnnual, 1);
+    borrowerLedger.loanFeeAndWageCommitments = Math.max(
+      0,
+      (borrowerLedger.loanFeeAndWageCommitments || 0) - borrowerAnnual
+    );
+  }
+
+  // On return/recall: parent re-commits the share released at loan start.
+  // On purchase/expiry: parent does not re-commit (player leaves or becomes free).
+  if (mode === "return" && agreed > 0 && borrowerShare > 0) {
+    const restore = Math.round(weeklyToAnnual(agreed) * borrowerShare);
+    parentLedger.remainingWageHeadroom = Math.max(
+      0,
+      (parentLedger.remainingWageHeadroom || 0) - restore
+    );
+    parentLedger.committedAnnualPayroll = (parentLedger.committedAnnualPayroll || 0) + restore;
+  }
+
+  if (loan.international) {
+    parentLedger.registrationSlots.internationalLoansOut = Math.max(
+      0,
+      (parentLedger.registrationSlots.internationalLoansOut || 0) - 1
+    );
+    borrowerLedger.registrationSlots.internationalLoansIn = Math.max(
+      0,
+      (borrowerLedger.registrationSlots.internationalLoansIn || 0) - 1
+    );
+  }
+
+  const pairKey = `${loan.parentClubId}::${loan.borrowingClubId}`;
+  if (parentLedger.registrationSlots.sameClubPairLoans?.[pairKey] != null) {
+    parentLedger.registrationSlots.sameClubPairLoans[pairKey] = Math.max(
+      0,
+      parentLedger.registrationSlots.sameClubPairLoans[pairKey] - 1
+    );
+  }
+
+  loan.settledFinance = true;
+  return { ok: true };
+}
 
 function seasonKey(player) {
   return String((player.startYear || 2026) + (player.seasons?.length ?? 0));
@@ -190,17 +247,34 @@ export function generateLoanOffers(player, opts = {}) {
 
 /**
  * Start a loan: update playing registration; keep parent employment.
+ * Idempotent: duplicate acceptance is a full no-op before any mutation.
  */
 export function startLoan(player, offer) {
+  ensureContractAuthority(player);
   if (!offer?.isLoan || !offer.loanTerms) return { ok: false, reason: "not-a-loan" };
   const terms = offer.loanTerms;
+
+  // Reject a second active loan unless the first has been settled.
+  if (player.activeLoan?.status === "active") {
+    if (player.activeLoan.loanId === terms.loanId) {
+      return { ok: false, reason: "duplicate-loan", duplicate: true, loan: player.activeLoan };
+    }
+    return { ok: false, reason: "already-on-loan" };
+  }
+
+  const txBorrower = `tx:loan-b:${terms.loanId}`;
+  const txParent = `tx:loan-p:${terms.loanId}`;
+  if (
+    player.completedDealIds?.includes(txBorrower) ||
+    player.consumedTransitionIds?.includes(`loan-start:${terms.loanId}`)
+  ) {
+    return { ok: false, reason: "duplicate-loan", duplicate: true };
+  }
+
   const shares = normalizeWageShares(terms.borrowerWageShare, terms.parentWageShare);
   if (!shares) return { ok: false, reason: "invalid-wage-shares" };
-  if (shares.borrowerWageShare + shares.parentWageShare !== 1) {
-    // floating tolerance
-    if (Math.abs(shares.borrowerWageShare + shares.parentWageShare - 1) > 1e-6) {
-      return { ok: false, reason: "wage-shares-not-100" };
-    }
+  if (Math.abs(shares.borrowerWageShare + shares.parentWageShare - 1) > 1e-6) {
+    return { ok: false, reason: "wage-shares-not-100" };
   }
 
   if (player.contractEndSeason != null && terms.endSeason > player.contractEndSeason) {
@@ -210,6 +284,11 @@ export function startLoan(player, offer) {
   const sk = seasonKey(player);
   const borrowerLedger = getOrInitClubSeasonFinance(terms.borrowingClubId, sk);
   const parentLedger = getOrInitClubSeasonFinance(terms.parentClubId, sk);
+
+  // Snapshot parent BEFORE any mutation so retries cannot replace it with borrower.
+  const parentClub = player.parentClubSnapshot
+    ? { ...player.parentClubSnapshot }
+    : { ...player.club };
 
   const borrowerDeal = {
     transferFee: 0,
@@ -223,10 +302,12 @@ export function startLoan(player, offer) {
   const v = validateDealAffordability(borrowerLedger, borrowerDeal);
   if (!v.ok) return { ok: false, reason: "borrower-unaffordable", reasons: v.reasons };
 
-  const txBorrower = `tx:loan-b:${terms.loanId}`;
-  const txParent = `tx:loan-p:${terms.loanId}`;
+  // Book first; if finance says duplicate, treat as full no-op (no slot/wage side effects).
   const bookedB = bookDealTransaction(borrowerLedger, borrowerDeal, txBorrower);
   if (!bookedB.ok) return { ok: false, reason: bookedB.reason, reasons: bookedB.reasons };
+  if (bookedB.duplicate) {
+    return { ok: false, reason: "duplicate-loan", duplicate: true };
+  }
 
   // Parent: release portion transferred to borrower.
   const fullAnnual = weeklyToAnnual(offer.wage);
@@ -245,8 +326,9 @@ export function startLoan(player, offer) {
   parentLedger.registrationSlots.sameClubPairLoans[pairKey] =
     (parentLedger.registrationSlots.sameClubPairLoans[pairKey] || 0) + 1;
 
-  const parentClub = { ...player.club };
   const borrower = findSeniorClubById(terms.borrowingClubId);
+  if (!borrower) return { ok: false, reason: "borrower-not-found" };
+
   const previousWeeklyWage = Number.isFinite(player.weeklyWage) ? player.weeklyWage : offer.wage;
   player.employmentClubId = terms.parentClubId;
   player.parentClubSnapshot = parentClub;
@@ -259,8 +341,8 @@ export function startLoan(player, offer) {
     previousWeeklyWage,
     expectedRole: offer.expectedRole,
     transactionIds: [txBorrower, txParent],
+    settledFinance: false,
   };
-  // Playing club for match selection
   player.club = {
     name: borrower.name,
     displayName: borrower.displayName,
@@ -287,6 +369,10 @@ export function startLoan(player, offer) {
   player.weeklyWage = offer.wage;
   player.pendingOffers = [];
   player.pendingDecision = null;
+  if (!player.completedDealIds) player.completedDealIds = [];
+  if (!player.completedDealIds.includes(txBorrower)) player.completedDealIds.push(txBorrower);
+  if (!player.consumedTransitionIds) player.consumedTransitionIds = [];
+  player.consumedTransitionIds.push(`loan-start:${terms.loanId}`);
 
   const departureDate = offer.effectiveDate || offer.reviewDate || offer.loanTerms?.startDate;
   if (departureDate && borrower?.leagueId) {
@@ -314,54 +400,97 @@ export function startLoan(player, offer) {
  * End loan: exactly one transition — return, expiry, or purchase.
  */
 export function endLoan(player, resolution = "return", opts = {}) {
+  ensureContractAuthority(player);
   const loan = player.activeLoan;
-  if (!loan || loan.status !== "active") return { ok: false, reason: "no-active-loan" };
+  if (!loan || loan.status !== "active") {
+    if (loan && loan.status !== "active") {
+      return { ok: true, duplicate: true, reason: "already-settled", resolution: loan.status };
+    }
+    return { ok: false, reason: "no-active-loan" };
+  }
 
   const parent = player.parentClubSnapshot;
-  if (!parent) return { ok: false, reason: "missing-parent-snapshot" };
+  if (!parent && resolution !== "purchase") {
+    return { ok: false, reason: "missing-parent-snapshot" };
+  }
+
+  const sk = seasonKey(player);
+  const settleId = `loan-end:${loan.loanId}:${resolution}`;
+  if (player.consumedTransitionIds?.includes(settleId)) {
+    return { ok: true, duplicate: true, reason: "already-settled" };
+  }
 
   if (resolution === "purchase" && loan.purchaseOption) {
     const buyer = findSeniorClubById(loan.borrowingClubId);
+    if (!buyer) return { ok: false, reason: "buyer-not-found" };
     const offer = {
       ...buyer,
       club: buyer.name,
       clubDisplay: buyer.displayName,
+      clubId: buyer.clubId,
       dealType: "permanent",
       transferFee: loan.purchaseOption.fee,
       wage: loan.purchaseOption.wage || loan.agreedGrossWeekly,
       contractYears: Math.min(
         CONTRACT_RULES.adultMaxYears,
-        Math.max(1, (player.contractEndSeason ?? 1) - (player.seasons?.length ?? 0) + 2)
+        Math.max(1, (player.contractEndSeason ?? 1) - completedSeasons(player) + 2)
       ),
       expectedRole: loan.expectedRole || "rotation",
       isLoan: false,
       isFreeAgent: false,
       loanTerms: null,
       offerId: `purchase:${loan.loanId}`,
+      status: "pending",
+      careerId: player.careerId || player.name,
     };
-    // Close loan registration first
-    player.activeLoan = { ...loan, status: "purchased" };
+
+    // Pre-validate affordability with no mutations — failed purchase leaves loan intact.
+    const buyerLedger = getOrInitClubSeasonFinance(loan.borrowingClubId, sk);
+    const precheck = validateDealAffordability(buyerLedger, {
+      transferFee: offer.transferFee,
+      wage: offer.wage,
+      contractYears: offer.contractYears,
+      isLoan: false,
+      isRenewal: false,
+      expectedRole: offer.expectedRole,
+    });
+    if (!precheck.ok) {
+      return { ok: false, reason: "purchase-unaffordable", reasons: precheck.reasons };
+    }
+
+    const accept =
+      typeof opts.acceptPipelineOffer === "function" ? opts.acceptPipelineOffer : acceptPipelineOffer;
+
+    settleLoanSlotsAndWages(player, loan, sk, "purchase");
+    player.activeLoan = { ...loan, status: "purchased", settledFinance: true };
     player.parentClubSnapshot = null;
-    const { acceptPipelineOffer } = opts;
-    // Inline permanent apply
-    applyOfferToPlayer(player, offer, `tx:purchase:${loan.loanId}`);
-    player.employmentClubId = loan.borrowingClubId;
-    player.playingClubId = loan.borrowingClubId;
-    return { ok: true, resolution: "purchase", offer };
+
+    const result = accept(player, offer);
+    if (!result.ok) {
+      // Extremely rare after precheck; restore registration without inventing finance undo.
+      player.activeLoan = { ...loan, status: "active", settledFinance: false };
+      player.parentClubSnapshot = parent ? { ...parent } : null;
+      return { ok: false, reason: result.reason || "purchase-failed", reasons: result.reasons };
+    }
+
+    if (!player.consumedTransitionIds) player.consumedTransitionIds = [];
+    player.consumedTransitionIds.push(settleId);
+    return { ok: true, resolution: "purchase", offer, transactionId: result.transactionId };
   }
 
-  const contractExpired =
-    player.contractEndSeason != null && (player.seasons?.length ?? 0) >= player.contractEndSeason;
+  const contractExpired = !isContractActive(player) || resolution === "expiry";
 
-  if (contractExpired || resolution === "expiry") {
-    player.activeLoan = { ...loan, status: "expired" };
-    player.club = null;
-    player.employmentClubId = null;
-    player.playingClubId = null;
+  if (contractExpired) {
+    settleLoanSlotsAndWages(player, loan, sk, "expiry");
+    player.activeLoan = { ...loan, status: "expired", settledFinance: true };
     player.parentClubSnapshot = null;
-    player.weeklyWage = 0;
+    releaseToFreeAgency(player, "loan-and-contract-expired");
+    if (!player.consumedTransitionIds) player.consumedTransitionIds = [];
+    player.consumedTransitionIds.push(settleId);
     return { ok: true, resolution: "expiry" };
   }
+
+  settleLoanSlotsAndWages(player, loan, sk, "return");
 
   // Return to parent
   player.club = { ...parent, isLoanSpell: false };
@@ -369,9 +498,12 @@ export function endLoan(player, resolution = "return", opts = {}) {
   player.playingClubId = loan.parentClubId;
   if (Number.isFinite(loan.previousWeeklyWage)) {
     player.weeklyWage = loan.previousWeeklyWage;
+    player.wage = loan.previousWeeklyWage;
   }
-  player.activeLoan = { ...loan, status: "returned" };
+  player.activeLoan = { ...loan, status: "returned", settledFinance: true };
   player.parentClubSnapshot = null;
+  if (!player.consumedTransitionIds) player.consumedTransitionIds = [];
+  player.consumedTransitionIds.push(settleId);
   return { ok: true, resolution: "return" };
 }
 

@@ -603,9 +603,20 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
   }
 
   function acceptProDeal(deal) {
-    const signedName = signFirstProfessionalContract(player, deal);
+    const result = signFirstProfessionalContract(player, deal);
     const titleEl = document.getElementById("career-year-end-title");
     const bodyEl = document.getElementById("career-year-end-body");
+    if (!result?.ok) {
+      if (titleEl) titleEl.textContent = "Contract not available";
+      if (bodyEl) {
+        bodyEl.textContent =
+          "That professional contract could not be completed under the club's wage and recruitment limits. " +
+          "You remain at the academy and can continue training or wait for another offer.";
+      }
+      showStep(overlay, "career-step-year-end");
+      return;
+    }
+    const signedName = result.clubName;
     if (titleEl) {
       titleEl.textContent =
         deal.kind === "rival" ? "A crossing of lines" : "Professional contract signed";

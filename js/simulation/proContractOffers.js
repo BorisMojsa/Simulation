@@ -1,10 +1,9 @@
 import { rivalsForClub } from "../data/clubRivals.js";
 import { allSeniorClubs, findSeniorClub } from "./seniorClubs.js";
-import { buildValidatedOffer, applyOfferToPlayer, acceptPipelineOffer } from "./dealPipeline.js";
+import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js";
 import { evaluateSportingFit } from "./recruitmentModel.js";
 import { createStreamRng } from "./rng.js";
 import { safePlayerOverall } from "./playerOverallSafe.js";
-import { calculateContractLength } from "./playerValuation.js";
 
 export { allSeniorClubs, findSeniorClub } from "./seniorClubs.js";
 
@@ -176,13 +175,20 @@ export function signFirstProfessionalContract(player, deal) {
   const offer = deal?.offer;
   if (offer) {
     const result = acceptPipelineOffer(player, { ...offer, isParentOffer: deal.kind === "parent" });
-    if (result.ok) return player.club.displayName ?? player.club.name;
+    if (result.ok) {
+      return {
+        ok: true,
+        clubName: player.club.displayName ?? player.club.name,
+        transactionId: result.transactionId,
+      };
+    }
+    return { ok: false, reason: result.reason || "accept-failed", reasons: result.reasons };
   }
 
   const club = deal?.club;
-  if (!club) return null;
+  if (!club) return { ok: false, reason: "missing-club" };
 
-  // Fallback path still uses validated terms when possible.
+  // Validated terms only — no unsigned financial bypass.
   const built = buildValidatedOffer({
     player,
     club,
@@ -191,27 +197,23 @@ export function signFirstProfessionalContract(player, deal) {
     forceParent: deal.kind === "parent",
   });
   if (built.ok) {
-    acceptPipelineOffer(player, { ...built.offer, isParentOffer: deal.kind === "parent" });
-    return player.club.displayName ?? player.club.name;
+    const result = acceptPipelineOffer(player, {
+      ...built.offer,
+      isParentOffer: deal.kind === "parent",
+    });
+    if (result.ok) {
+      return {
+        ok: true,
+        clubName: player.club.displayName ?? player.club.name,
+        transactionId: result.transactionId,
+      };
+    }
+    return { ok: false, reason: result.reason || "accept-failed", reasons: result.reasons };
   }
 
-  // Last resort: sign with wage inside club bands without inventing a fee.
-  applyOfferToPlayer(
-    player,
-    {
-      ...club,
-      club: club.name,
-      clubDisplay: club.displayName ?? club.name,
-      wage: deal.wage || 1500,
-      transferFee: 0,
-      contractYears:
-        deal.contractYears ||
-        calculateContractLength(player.age, player.rating, player.potential, deal.performanceHint ?? 72),
-      expectedRole: deal.expectedRole || "prospect",
-      isFreeAgent: true,
-      dealType: "first_pro",
-    },
-    `tx:first-pro-fallback:${club.clubId}`
-  );
-  return player.club.displayName ?? player.club.name;
+  return {
+    ok: false,
+    reason: "validation-failed",
+    reasons: built.reasons || ["unaffordable-or-ineligible"],
+  };
 }

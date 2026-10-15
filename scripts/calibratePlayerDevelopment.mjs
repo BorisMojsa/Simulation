@@ -1,11 +1,12 @@
 /**
- * Seeded calibration for player-development-v2.
+ * Seeded calibration for player-development-v3.
  *
  * Usage:
  *   node scripts/calibratePlayerDevelopment.mjs
  *   node scripts/calibratePlayerDevelopment.mjs --light   # smaller cohorts
  *
- * Writes reports/player-development-calibration.json and .md
+ * Writes reports/player-development-v3-calibration.json and .md
+ * (also mirrors to player-development-calibration.* for continuity).
  */
 import { writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -106,24 +107,28 @@ function runTrajectory(seed, opts = {}) {
   let comeback = false;
   let postPeakLow = null;
 
-  for (let y = 0; y < opts.years || 20; y++) {
+  const years = opts.years ?? 20;
+  let lastBreakthrough = false;
+  for (let y = 0; y < years; y++) {
     if (player.age >= 40) break;
     const before = player.baseOverallRaw;
     const minutes = opts.minutes ?? rng.float(800, 3000);
     const signal = opts.signal ?? rng.float(-0.5, 0.6);
-    developSeason(player, {
+    const reliability = clamp01(minutes / (minutes + 900));
+    const result = developSeason(player, {
       elapsedYears: 1,
       usefulMinutes: minutes,
       healthyTrainingFraction: opts.training ?? rng.float(0.5, 1),
-      reliableSignal: signal,
-      P_long: minutes >= 900 ? signal : null,
-      reliability: minutes / (minutes + 900),
+      reliableSignal: signal * reliability,
+      P_long: minutes >= 900 ? signal : 0,
+      reliability,
       environmentMultiplier: opts.env ?? rng.float(0.7, 1.25),
+      recognition: opts.recognition,
       rng: rng.fork(`y${y}`),
       seasonId: `t-${seed}-${y}`,
       alreadyAppliedLearningGain: 0,
-      longFormReliable: minutes >= 900,
     });
+    lastBreakthrough = Boolean(result?.breakthrough?.occurred);
     player.age += 1;
     const after = player.baseOverallRaw;
     const delta = after - before;
@@ -153,7 +158,7 @@ function runTrajectory(seed, opts = {}) {
       age: player.age,
       base: after,
       delta,
-      breakthrough: false,
+      breakthrough: lastBreakthrough,
     });
   }
   let forecastCoverage = null;
@@ -185,6 +190,133 @@ function runTrajectory(seed, opts = {}) {
     maxStagnantStreak: maxStagnant,
     comeback,
     forecastCoverage,
+    breakthroughCount: history.filter((h) => h.breakthrough).length,
+  };
+}
+
+function clamp01(x) {
+  return Math.max(0, Math.min(1, x));
+}
+
+/** Matched poor / neutral / good seasons for young mid-ability players. */
+function runPerformanceCohorts(n, seedBase) {
+  const bands = { poor: [], neutral: [], good: [], exceptional: [] };
+  for (let i = 0; i < n; i++) {
+    for (const [label, pLong, recognition] of [
+      ["poor", -0.75, null],
+      ["neutral", 0, null],
+      ["good", 0.7, null],
+      [
+        "exceptional",
+        0.92,
+        {
+          awards: [
+            { awardId: "player-of-the-season", status: "won" },
+            { awardId: "team-of-the-season", status: "won" },
+          ],
+          trophies: [{ kind: "league", participationWeight: 0.85 }],
+        },
+      ],
+    ]) {
+      const seed = hashSeed(`${seedBase}:perf:${label}:${i}`);
+      const rng = createRng(seed);
+      const attrs = generateStartingAttributes("ST", 72, 99, rng);
+      const player = {
+        name: `Perf${label}${i}`,
+        nationality: "Calib",
+        position: "ST",
+        age: 19,
+        careerId: `perf-${label}-${i}`,
+        attributes: attrs,
+        rating: 72,
+      };
+      initializePlayerDevelopment(player, { rng, careerId: player.careerId });
+      const before = player.baseOverallRaw;
+      const result = developSeason(player, {
+        elapsedYears: 1,
+        usefulMinutes: 2800,
+        healthyTrainingFraction: 1,
+        reliability: 0.85,
+        P_long: pLong,
+        environmentMultiplier: 1.25,
+        recognition,
+        forceBreakthrough: label === "exceptional",
+        rng: rng.fork("season"),
+        seasonId: `perf-${label}-${i}`,
+        alreadyAppliedLearningGain: 0,
+      });
+      bands[label].push({
+        delta: player.baseOverallRaw - before,
+        breakthrough: Boolean(result?.breakthrough?.occurred),
+      });
+    }
+  }
+  const pack = (arr) => ({
+    delta: summarize(arr.map((x) => x.delta)),
+    breakthroughRate: arr.filter((x) => x.breakthrough).length / arr.length,
+    plus6Rate: arr.filter((x) => x.delta >= 6).length / arr.length,
+    plus7Rate: arr.filter((x) => x.delta >= 6.85).length / arr.length,
+  });
+  return {
+    poor: pack(bands.poor),
+    neutral: pack(bands.neutral),
+    good: pack(bands.good),
+    exceptional: pack(bands.exceptional),
+  };
+}
+
+/** Possibility check: supported multi-season path from low start toward 99. */
+function runLowStartPath(startOvr, seedBase) {
+  const rng = createRng(hashSeed(`${seedBase}:lowstart:${startOvr}`));
+  const attrs = generateStartingAttributes("CM", startOvr, 99, rng);
+  const player = {
+    name: `Low${startOvr}`,
+    nationality: "Calib",
+    position: "CM",
+    age: 17,
+    careerId: `low-${startOvr}`,
+    attributes: attrs,
+    rating: startOvr,
+  };
+  initializePlayerDevelopment(player, { rng, careerId: player.careerId });
+  const history = [];
+  for (let y = 0; y < 22 && player.age < 38; y++) {
+    const before = player.baseOverallRaw;
+    developSeason(player, {
+      elapsedYears: 1,
+      usefulMinutes: 3200,
+      healthyTrainingFraction: 1,
+      reliability: 0.95,
+      P_long: 0.95,
+      environmentMultiplier: 1.35,
+      recognition: {
+        awards: [
+          { awardId: "team-of-the-season", status: "won" },
+          { awardId: "player-of-the-season", status: "won" },
+          ...(y % 2 === 0 ? [{ awardId: "golden-boot", status: "won" }] : []),
+        ],
+        trophies: [
+          { kind: "league", participationWeight: 0.95 },
+          { kind: "continental", participationWeight: 0.7 },
+        ],
+      },
+      forceBreakthrough: player.baseOverallRaw < 96,
+      rng: rng.fork(`y${y}`),
+      seasonId: `low-${startOvr}-${y}`,
+      alreadyAppliedLearningGain: 0,
+    });
+    player.age += 1;
+    history.push({ age: player.age, base: player.baseOverallRaw, delta: player.baseOverallRaw - before });
+    if (player.baseOverallRaw >= 98.5) break;
+  }
+  const peak = Math.max(...history.map((h) => h.base));
+  return {
+    startOvr,
+    peak,
+    displayed99: peak >= 98.5,
+    ageAt99: history.find((h) => h.base >= 98.5)?.age ?? null,
+    final: player.baseOverallRaw,
+    seasons: history.length,
   };
 }
 
@@ -258,22 +390,19 @@ function runControlledArsenalRw(n, seedBase) {
       rating: 70,
     };
     initializePlayerDevelopment(player, { rng, careerId: player.careerId });
-    player.development.latentAbilityBudget = Math.min(82, player.development.latentAbilityBudget);
-    player.development.abilityBudgetsByPosition = { RW: player.development.latentAbilityBudget };
     const at = { 22: null, 25: null };
     for (let y = 0; y < 12; y++) {
       developSeason(player, {
         elapsedYears: 1,
         usefulMinutes: 2200,
         healthyTrainingFraction: 0.95,
-        reliableSignal: 0.35,
+        reliableSignal: 0.35 * 0.7,
         P_long: 0.35,
         reliability: 0.7,
         environmentMultiplier: 1.15,
         rng: rng.fork(`y${y}`),
         seasonId: `ctrl-${i}-${y}`,
         alreadyAppliedLearningGain: 0,
-        longFormReliable: true,
       });
       player.age += 1;
       if (player.age === 22) at[22] = player.baseOverallRaw;
@@ -345,21 +474,23 @@ function main() {
   const started = Date.now();
   const revision = gitRevision();
   const cfgHash = configHash();
-  const calibSeed = hashSeed("player-development-v2-calibration-A");
-  const holdSeed = hashSeed("player-development-v2-holdout-B");
+  const calibSeed = hashSeed("player-development-v3-calibration-A");
+  const holdSeed = hashSeed("player-development-v3-holdout-B");
 
   const traj = [];
   for (let i = 0; i < LIGHT_TRAJ; i++) {
-    traj.push(runTrajectory(hashSeed(`${calibSeed}:traj:${i}`)));
+    traj.push(runTrajectory(hashSeed(`${calibSeed}:traj:${i}`), { years: 22 }));
   }
   const hold = [];
   for (let i = 0; i < HOLD_TRAJ; i++) {
-    hold.push(runTrajectory(hashSeed(`${holdSeed}:traj:${i}`)));
+    hold.push(runTrajectory(hashSeed(`${holdSeed}:traj:${i}`), { years: 22 }));
   }
 
   const controlled = runControlledArsenalRw(CONTROLLED_N, calibSeed);
   const careers = runIntegratedCareers(LIGHT_CAREERS, calibSeed);
   const exceptional = runExceptionalFixture(calibSeed);
+  const perfCohorts = runPerformanceCohorts(light ? 80 : 400, calibSeed);
+  const lowStartPaths = [50, 60, 70].map((ovr) => runLowStartPath(ovr, calibSeed));
 
   const peaks = traj.map((t) => t.peak);
   const deltasYoung = traj.flatMap((t) =>
@@ -420,13 +551,15 @@ function main() {
     },
     controlledScenario: {
       description:
-        "Age 17, ~70 base, budget≤82, RW, US — must not routinely reach 90 by 22 / 99 by 25",
+        "Age 17, ~70 base RW, ordinary sustained signal — mixed policy reference (no latent budget cap)",
       hit90by22: ctrlHit90,
       hit99by25: ctrlHit99,
       n: CONTROLLED_N,
       meanAt22: summarize(controlled.map((c) => c.at22).filter(Boolean)),
       meanAt25: summarize(controlled.map((c) => c.at25).filter(Boolean)),
     },
+    performanceCohorts: perfCohorts,
+    lowStartPaths,
     exceptionalFixture: exceptional,
     integratedCareers: {
       completed: careerOk.length,
@@ -443,9 +576,12 @@ function main() {
   };
 
   mkdirSync("reports", { recursive: true });
+  const jsonPath = "reports/player-development-v3-calibration.json";
+  const mdPath = "reports/player-development-v3-calibration.md";
+  writeFileSync(jsonPath, JSON.stringify(report, null, 2));
   writeFileSync("reports/player-development-calibration.json", JSON.stringify(report, null, 2));
 
-  const md = `# Player development calibration
+  const md = `# Player development v3 calibration
 
 Model: **${report.modelVersion}** · revision \`${revision}\` · configHash \`${cfgHash}\` · light=${light} · runtime ${report.runtimeMs}ms
 
@@ -455,14 +591,27 @@ Model: **${report.modelVersion}** · revision \`${revision}\` · configHash \`${
 | --- | --- |
 | Peak mean / median | ${report.ordinaryTrajectories.peak.mean} / ${report.ordinaryTrajectories.peak.median} |
 | Peak age mean / median | ${report.ordinaryTrajectories.peakAge.mean} / ${report.ordinaryTrajectories.peakAge.median} |
-| Young Δ mean | ${report.ordinaryTrajectories.youngDeltas.mean} |
+| Young Δ mean / p90 | ${report.ordinaryTrajectories.youngDeltas.mean} / ${report.ordinaryTrajectories.youngDeltas.p90} |
 | Attain 90 / 95 | ${(attain90 * 100).toFixed(2)}% / ${(attain95 * 100).toFixed(2)}% |
 | Ever 99 rate | ${(ever99Rate * 100).toFixed(3)}% |
 | 99 by 22 rate | ${(at99by22 * 100).toFixed(3)}% |
 | Early decline / stagnation≥3 / comeback | ${(earlyDeclineRate * 100).toFixed(2)}% / ${(stagnant3Rate * 100).toFixed(2)}% / ${(comebackRate * 100).toFixed(2)}% |
 | Forecast coverage | ${(forecastOk * 100).toFixed(1)}% |
 
-## Controlled Arsenal RW (n=${CONTROLLED_N})
+## Performance cohorts (matched age/ability)
+
+| Cohort | Median Δ | Mean Δ | +6 rate | Breakthrough rate |
+| --- | ---: | ---: | ---: | ---: |
+| Poor | ${perfCohorts.poor.delta.median} | ${perfCohorts.poor.delta.mean} | ${(perfCohorts.poor.plus6Rate * 100).toFixed(1)}% | ${(perfCohorts.poor.breakthroughRate * 100).toFixed(1)}% |
+| Neutral | ${perfCohorts.neutral.delta.median} | ${perfCohorts.neutral.delta.mean} | ${(perfCohorts.neutral.plus6Rate * 100).toFixed(1)}% | ${(perfCohorts.neutral.breakthroughRate * 100).toFixed(1)}% |
+| Good | ${perfCohorts.good.delta.median} | ${perfCohorts.good.delta.mean} | ${(perfCohorts.good.plus6Rate * 100).toFixed(1)}% | ${(perfCohorts.good.breakthroughRate * 100).toFixed(1)}% |
+| Exceptional | ${perfCohorts.exceptional.delta.median} | ${perfCohorts.exceptional.delta.mean} | ${(perfCohorts.exceptional.plus6Rate * 100).toFixed(1)}% | ${(perfCohorts.exceptional.breakthroughRate * 100).toFixed(1)}% |
+
+## Low-start supported paths
+
+${lowStartPaths.map((p) => `- Start ${p.startOvr} → peak ${p.peak.toFixed(2)} · displayed99=${p.displayed99} · ageAt99=${p.ageAt99}`).join("\n")}
+
+## Controlled RW (n=${CONTROLLED_N})
 
 | Metric | Count |
 | --- | --- |
@@ -484,9 +633,10 @@ Completed: ${careerOk.length} · Errors: ${careerErr.length} · Ever99: ${report
 Ever99: ${report.holdout.ever99Rate} · Attain90: ${report.holdout.attain90Rate} · Early decline: ${report.holdout.earlyDeclineRate} · Comeback: ${report.holdout.comebackRate}
 `;
 
+  writeFileSync(mdPath, md);
   writeFileSync("reports/player-development-calibration.md", md);
   console.log(md);
-  console.log("Wrote reports/player-development-calibration.json");
+  console.log(`Wrote ${jsonPath} and ${mdPath}`);
 }
 
 main();

@@ -517,7 +517,7 @@ function applyEffects(player, outcome, { date, scope = "club" } = {}) {
     }
   }
 
-  // Rare, capped ceiling nudge for young players with exceptional mentoring.
+  // v3: rare mentoring spark is narrative-only (no latent ceiling bump).
   if (
     outcome?.rareCeilingEligible &&
     delta >= SENIOR_CAREER_SCENARIOS.rareCeilingBump.minNarrative &&
@@ -527,10 +527,8 @@ function applyEffects(player, outcome, { date, scope = "club" } = {}) {
       SENIOR_CAREER_SCENARIOS.rareCeilingBump.maxLifetime - (state.rareCeilingBumpApplied || 0);
     const bump = Math.min(SENIOR_CAREER_SCENARIOS.rareCeilingBump.maxPerEvent, room);
     if (bump > 0 && player.development) {
-      player.development.latentAbilityBudget =
-        (player.development.latentAbilityBudget || 0) + bump;
       state.rareCeilingBumpApplied = (state.rareCeilingBumpApplied || 0) + bump;
-      realized.push({ kind: "latentBudget", amount: bump });
+      realized.push({ kind: "mentoringSpark", amount: bump });
       badges.push("Mentoring spark");
     }
   }

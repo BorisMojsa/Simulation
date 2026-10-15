@@ -235,9 +235,10 @@ test("createPlayerIdentity + finalize + narrative season + first pro deal choice
   assert.ok(decision.verdict.headline);
   // Suitable clubs only — empty is allowed, but ordinary England academy grads usually get ≥1.
   if (decision.offers.length >= 1) {
-    const seniorName = signFirstProfessionalContract(pl, decision.offers[0]);
+    const signed = signFirstProfessionalContract(pl, decision.offers[0]);
+    assert.equal(signed.ok, true);
     assert.equal(pl.club.isAcademy, false);
-    assert.ok(seniorName || pl.club?.name);
+    assert.ok(signed.clubName || pl.club?.name);
     assert.ok(pl.contractYears >= 1);
     assert.ok(pl.contractEndSeason >= pl.seasons.length);
     assert.ok(Number.isFinite(pl.weeklyWage) || Number.isFinite(pl.wage));

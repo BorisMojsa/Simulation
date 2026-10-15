@@ -104,10 +104,10 @@ test("academy first contract → parent promotion → renewal path", () => {
   const ui = makeUiSession(p);
   if (decision.offers[0]) {
     const signed = signFirstProfessionalContract(p, decision.offers[0]);
-    assert.ok(signed);
+    assert.equal(signed.ok, true);
     assert.equal(p.weeklyWage, decision.offers[0].wage);
     assert.equal(p.club.isAcademy, false);
-    ui.log.push({ firstPro: signed, wage: p.weeklyWage });
+    ui.log.push({ firstPro: signed.clubName, wage: p.weeklyWage });
   } else {
     assert.equal(decision.emptyOffers, true);
     // Empty offers must not deadlock — simulateBtn would re-enable

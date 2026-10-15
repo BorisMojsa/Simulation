@@ -5,10 +5,15 @@
 import { FINANCE_PROFILE_VERSION } from "../data/clubFinanceProfiles.js";
 import { getOrInitClubSeasonFinance, weeklyToAnnual } from "./clubFinance.js";
 import { RECRUITMENT_CONFIG_VERSION } from "../config/recruitmentConfig.js";
+import {
+  ensureContractAuthority,
+  applyContractExpiryAtBoundary,
+  CONTRACT_LIFECYCLE_VERSION,
+} from "./contractLifecycle.js";
 
-const DEAL_PIPELINE_VERSION = "deal-pipeline-v1";
+const DEAL_PIPELINE_VERSION = "deal-pipeline-v2";
 
-export const TRANSFER_SAVE_VERSION = 1;
+export const TRANSFER_SAVE_VERSION = 2;
 
 /**
  * Migrate player transfer/loan/contract fields in place (idempotent).
@@ -16,6 +21,7 @@ export const TRANSFER_SAVE_VERSION = 1;
 export function migrateTransferSave(player, opts = {}) {
   if (!player || typeof player !== "object") return { migrated: false, reason: "no-player" };
   if (player.transferSaveVersion >= TRANSFER_SAVE_VERSION) {
+    ensureContractAuthority(player);
     return { migrated: false, reason: "already-current", player };
   }
 
@@ -68,12 +74,25 @@ export function migrateTransferSave(player, opts = {}) {
   if (!player.decisionCooldowns) player.decisionCooldowns = {};
   if (!player.scoutingEvidence) player.scoutingEvidence = {};
 
+  ensureContractAuthority(player);
+
+  // Expired legacy careers: release without granting extra years.
+  if (
+    player.contractEndSeason != null &&
+    seasonIndex >= player.contractEndSeason &&
+    player.club &&
+    !player.club.isAcademy
+  ) {
+    applyContractExpiryAtBoundary(player);
+  }
+
   player.transferSaveVersion = TRANSFER_SAVE_VERSION;
   player.transferMigration = {
     version: TRANSFER_SAVE_VERSION,
     financeProfileVersion: FINANCE_PROFILE_VERSION,
     dealPipelineVersion: DEAL_PIPELINE_VERSION,
     recruitmentConfigVersion: RECRUITMENT_CONFIG_VERSION,
+    contractLifecycleVersion: CONTRACT_LIFECYCLE_VERSION,
     migratedAtSeason: seasonIndex,
     ...opts.meta,
   };
@@ -84,6 +103,7 @@ export function migrateTransferSave(player, opts = {}) {
 export function ensureTransferSave(player, opts = {}) {
   if (!player) return player;
   migrateTransferSave(player, opts);
+  ensureContractAuthority(player);
   return player;
 }
 

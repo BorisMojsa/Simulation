@@ -1,9 +1,8 @@
 /**
- * player-development-v2 — centralised tuning.
+ * player-development-v3 — centralised tuning.
  *
- * Every number that shapes player ability, development, state, injuries,
- * potential forecasting and migration lives here. Simulation modules import
- * from this file and contain no magic constants of their own.
+ * Performance-driven progression without individual career ceilings.
+ * Latent budget bands remain only as an inert migration archive reference.
  *
  * Conceptually adapted from Open Football (Apache-2.0, rev 8ddc808);
  * see THIRD_PARTY_NOTICES.md.
@@ -15,8 +14,10 @@
  *  - Ages are whole/fractional years; days are calendar days.
  */
 
-export const PLAYER_MODEL_VERSION = 2;
-export const DEVELOPMENT_MODEL_VERSION = "player-development-v2";
+export const PLAYER_MODEL_VERSION = 3;
+export const DEVELOPMENT_MODEL_VERSION = "player-development-v3";
+/** Previous model string retained for migration detection. */
+export const PREVIOUS_DEVELOPMENT_MODEL_VERSION = "player-development-v2";
 
 function deepFreeze(obj) {
   if (obj && typeof obj === "object" && !Object.isFrozen(obj)) {
@@ -166,13 +167,12 @@ export const ATTRIBUTE_SHAPE = Object.freeze({
 });
 
 /* ------------------------------------------------------------------ */
-/* Latent ability budget                                               */
+/* Rating scale & inert legacy budget archive                          */
 /* ------------------------------------------------------------------ */
 
 /**
- * Ordinary academy graduate latent base-ability budget prior (game population).
- * `mass` is a probability fraction (sums to 1); budget drawn uniformly in [min, max].
- * Spec from player-development implementation prompt.
+ * Legacy latent-budget prior — INERT in v3. Kept for migration archives and
+ * historical calibration reports. Active development must not sample or enforce it.
  */
 export const LATENT_BUDGET_BANDS = deepFreeze([
   { id: "ordinary", mass: 0.4, min: 70, max: 78 },
@@ -183,11 +183,12 @@ export const LATENT_BUDGET_BANDS = deepFreeze([
   { id: "generational", mass: 0.0005, min: 98.5, max: 99 },
 ]);
 
-/** Absolute ceiling for any budget / potential cache. */
+/** Shared rating-scale maximum (not an individual career ceiling). */
 export const BUDGET_HARD_MAX = 99;
 export const POTENTIAL_HARD_MAX = 99;
+export const RATING_SCALE_MAX = 99;
 
-/** Extra budget over current overall, by age, when initialising a player whose overall exceeds the sampled budget. */
+/** @deprecated v2 only — inert in v3. */
 export const BUDGET_LIFT_BY_AGE = deepFreeze([
   { maxAge: 19, lift: 2.5 },
   { maxAge: 23, lift: 1.5 },
@@ -195,11 +196,9 @@ export const BUDGET_LIFT_BY_AGE = deepFreeze([
   { maxAge: 99, lift: 0.1 },
 ]);
 
-/** Per-attribute ceilings relative to the budget. */
+/** @deprecated v2 only — inert in v3. */
 export const CEILING_CONFIG = Object.freeze({
-  /** Individual ceilings are slightly looser than the budget; the budget caps the weighted total. */
   slack: 1.12,
-  /** Random per-attribute share range before normalisation. */
   shareMin: 0.6,
   shareMax: 1.4,
   extraMax: 1.0,
@@ -213,28 +212,64 @@ export const CEILING_CONFIG = Object.freeze({
  * Annual learning (attr points/year) by effective development age — prompt defaults.
  * Linearly interpolate between knots; use nearest endpoint outside the range.
  */
+/**
+ * Base annual learning (attr points/year). Positional maturation shifts the
+ * effective age before these knots are read — see POSITION_MATURATION.
+ * Tuned so healthy young good seasons land roughly +3–5 raw OVR before caps.
+ */
 export const LEARNING_CURVE_KNOTS = deepFreeze([
-  { age: 16, physical: 3.2, technical: 2.7, mental: 2.0, goalkeeping: 2.2 },
-  { age: 19, physical: 2.5, technical: 2.6, mental: 2.0, goalkeeping: 2.3 },
-  { age: 22, physical: 1.2, technical: 1.8, mental: 1.5, goalkeeping: 1.7 },
-  { age: 25, physical: 0.3, technical: 0.9, mental: 1.0, goalkeeping: 1.1 },
-  { age: 28, physical: 0, technical: 0.3, mental: 0.6, goalkeeping: 0.6 },
-  { age: 31, physical: 0, technical: 0.1, mental: 0.3, goalkeeping: 0.3 },
-  { age: 34, physical: 0, technical: 0, mental: 0.1, goalkeeping: 0.1 },
-  { age: 37, physical: 0, technical: 0, mental: 0, goalkeeping: 0 },
+  { age: 16, physical: 3.2, technical: 2.8, mental: 2.1, goalkeeping: 2.4 },
+  { age: 19, physical: 2.7, technical: 2.8, mental: 2.2, goalkeeping: 2.6 },
+  { age: 22, physical: 1.7, technical: 2.1, mental: 1.9, goalkeeping: 2.2 },
+  { age: 25, physical: 0.85, technical: 1.45, mental: 1.5, goalkeeping: 1.8 },
+  { age: 28, physical: 0.35, technical: 0.95, mental: 1.15, goalkeeping: 1.45 },
+  { age: 31, physical: 0.1, technical: 0.5, mental: 0.8, goalkeeping: 1.0 },
+  { age: 34, physical: 0, technical: 0.22, mental: 0.4, goalkeeping: 0.55 },
+  { age: 37, physical: 0, technical: 0.08, mental: 0.16, goalkeeping: 0.22 },
 ]);
 
-/** Annual ageing losses by effective development age — prompt defaults. */
+/** Annual ageing losses by effective development age. */
 export const AGEING_LOSS_KNOTS = deepFreeze([
   { age: 16, physical: 0, technical: 0, mental: 0, goalkeeping: 0 },
   { age: 22, physical: 0, technical: 0, mental: 0, goalkeeping: 0 },
-  { age: 25, physical: 0.1, technical: 0, mental: 0, goalkeeping: 0 },
-  { age: 28, physical: 0.45, technical: 0.05, mental: 0, goalkeeping: 0 },
-  { age: 31, physical: 1.0, technical: 0.2, mental: 0, goalkeeping: 0.12 },
-  { age: 34, physical: 1.8, technical: 0.5, mental: 0.06, goalkeeping: 0.35 },
-  { age: 37, physical: 2.8, technical: 0.9, mental: 0.2, goalkeeping: 0.75 },
-  { age: 40, physical: 3.8, technical: 1.4, mental: 0.45, goalkeeping: 1.3 },
+  { age: 25, physical: 0.05, technical: 0, mental: 0, goalkeeping: 0 },
+  { age: 28, physical: 0.25, technical: 0.02, mental: 0, goalkeeping: 0 },
+  { age: 31, physical: 0.65, technical: 0.1, mental: 0, goalkeeping: 0.05 },
+  { age: 34, physical: 1.35, technical: 0.3, mental: 0.04, goalkeeping: 0.18 },
+  { age: 37, physical: 2.2, technical: 0.65, mental: 0.14, goalkeeping: 0.45 },
+  { age: 40, physical: 3.2, technical: 1.0, mental: 0.35, goalkeeping: 0.85 },
 ]);
+
+/**
+ * Positional maturation: years added to chronological age for learning/loss curves.
+ * Negative shift = later peak / longer development (GK, CB). Positive = earlier physical taper (wingers).
+ */
+export const POSITION_MATURATION = deepFreeze({
+  // roleGroup -> { learningAgeShift, lossAgeShift, physicalLossExtra }
+  winger: { learningAgeShift: 1.2, lossAgeShift: 1.5, physicalLossExtra: 0.15 },
+  striker: { learningAgeShift: 0.4, lossAgeShift: 0.6, physicalLossExtra: 0.05 },
+  fullback: { learningAgeShift: 0.3, lossAgeShift: 0.5, physicalLossExtra: 0.08 },
+  midfielder: { learningAgeShift: -0.2, lossAgeShift: -0.3, physicalLossExtra: 0 },
+  centreBack: { learningAgeShift: -1.2, lossAgeShift: -1.4, physicalLossExtra: -0.05 },
+  defensiveMid: { learningAgeShift: -0.8, lossAgeShift: -1.0, physicalLossExtra: -0.03 },
+  goalkeeper: { learningAgeShift: -2.0, lossAgeShift: -2.5, physicalLossExtra: -0.1 },
+  default: { learningAgeShift: 0, lossAgeShift: 0, physicalLossExtra: 0 },
+});
+
+export const POSITION_ROLE_GROUP = deepFreeze({
+  GK: "goalkeeper",
+  CB: "centreBack",
+  RB: "fullback",
+  LB: "fullback",
+  CDM: "defensiveMid",
+  CM: "midfielder",
+  CAM: "midfielder",
+  RM: "midfielder",
+  LM: "midfielder",
+  RW: "winger",
+  LW: "winger",
+  ST: "striker",
+});
 
 /**
  * Piecewise-linear interpolation.
@@ -373,39 +408,84 @@ export const INJURY_HAZARDS = deepFreeze({
 /* ------------------------------------------------------------------ */
 
 export const DEVELOPMENT_CAPS = deepFreeze({
-  /** Max annual learning gain in overall points (per elapsed year). */
-  annualLearningCap: 3,
-  annualLearningCapBreakthrough: 6,
-  breakthroughLearningCap: 6,
+  /**
+   * Shared annual new-learning allowance (overall points / development year).
+   * Covers academy, scenarios, season learning, recognition, and other paths.
+   * Not a lifetime ceiling.
+   */
+  annualLearningCap: 7,
+  annualLearningCapBreakthrough: 7,
+  breakthroughLearningCap: 7,
   breakthroughAttrPoints: 3,
   annualShockLimit: 0.6,
   deconditioningDaysBeforeLoss: 60,
   deconditioningPhysicalPerYear: 1.0,
   maxDeclineProtection: 0.25,
   regressionStrength: 2.5,
-  /** Annual random shock (attribute points, sd) and its absolute clamp. */
-  shockSd: 0.6,
-  shockMaxAbs: 1.8,
-  /** Multiplicative noise on learning (sd of normal, clamped). */
-  learningNoiseSd: 0.3,
-  learningNoiseMin: 0.3,
-  learningNoiseMax: 1.9,
-  /** Growth tapers to 0 over this many points of headroom to the attribute ceiling / the budget. */
+  shockSd: 0.55,
+  shockMaxAbs: 1.6,
+  learningNoiseSd: 0.22,
+  learningNoiseMin: 0.45,
+  learningNoiseMax: 1.65,
+  /**
+   * Soft difficulty as current ability approaches the shared rating-scale max.
+   * Never a hard individual wall; floor keeps elite progress finite but nonzero.
+   */
+  abilityDifficulty: {
+    softStart: 90,
+    softEnd: 99,
+    floorAtSoftEnd: 0.4,
+    /** Extra challenge demand above this OVR when environment is weak. */
+    challengeSoftStart: 92,
+  },
+  /** @deprecated v2 inert fields retained for older readers. */
   headroomTaperPoints: 6,
   budgetTaperPoints: 6,
-  /** Regression of outliers: attribute above role-expected shape + tolerance. */
-  regression: { tolerance: 12, ratePerYear: 0.08, overCeilingRate: 0.5 },
-  /** Loss from too little healthy training. */
+  regression: { tolerance: 14, ratePerYear: 0.06, overCeilingRate: 0 },
   deconditioning: { healthyFloor: 0.6, maxPerYear: 1.5, physicalOnly: true, daysBeforeLoss: 60 },
-  /** Recoverable damage is restored when healthy training resumes. */
   restoration: { minHealthyFraction: 0.7, fractionPerYear: 0.5 },
-  /** Use-it-keep-it: up to this share of ageing loss is avoided at full opportunity. */
-  useItKeepItMax: 0.15,
-  /** Performance (P_long x reliability) shifts learning by up to +-this share. */
-  performanceLearningWeight: 0.25,
-  environmentRange: { min: 0.5, max: 1.5 },
+  useItKeepItMax: 0.18,
+  /**
+   * Signed performance response: learning *= 1 + weight * P_long * reliability.
+   * Confidence (reliability) is separate from signed P_long — never clamp signed
+   * performance into [0,1] before applying. Floor of 0 so a clearly poor season
+   * can wipe new learning (net ≈ 0 or negative after ageing).
+   */
+  performanceLearningWeight: 1.45,
+  performanceMultFloor: 0,
+  performanceMultCeil: 1.9,
+  /**
+   * Extra overall-point drag when sustained poor performances are reliable.
+   * Applied after learning so bad seasons can finish flat or slightly down.
+   */
+  poorSeasonDrag: {
+    /** Trigger when P_long * reliability is below this. */
+    signalThreshold: -0.3,
+    /** Max overall points removed at signal -1. */
+    maxOverall: 1.1,
+  },
+  environmentRange: { min: 0.55, max: 1.4 },
   maxElapsedYears: 2,
   historyLength: 40,
+});
+
+/** Bounded recognition / trophy contribution inside the shared annual allowance. */
+export const RECOGNITION_CONFIG = deepFreeze({
+  /** Max overall points from combined awards + trophies in one development year. */
+  maxContribution: 1.4,
+  nomination: 0.15,
+  selection: 0.35,
+  win: 0.55,
+  /** Diminishing returns across multiple wins. */
+  multiAwardDecay: 0.65,
+  trophyParticipation: {
+    league: 0.35,
+    cup: 0.22,
+    continental: 0.4,
+    international: 0.3,
+  },
+  /** Nomination credit is replaced (not stacked) when the same award is won. */
+  replaceNominationOnWin: true,
 });
 
 /** Season minutes that earn full development opportunity, by age. */
@@ -426,20 +506,41 @@ export const OPPORTUNITY_CONFIG = Object.freeze({
   exponent: 0.8,
 });
 
-/** Breakthrough seasons: rare, gated, and allowed a higher annual cap. */
+/**
+ * Breakthrough seasons: evidence-gated boost toward exceptional +6–7 outcomes.
+ * No latent-budget headroom gate — excellence is earned from the season itself.
+ */
 export const BREAKTHROUGH = deepFreeze({
   enabled: true,
   probabilityByAgeBand: [
-    { maxAge: 21, probability: 0.05 },
-    { maxAge: 25, probability: 0.015 },
+    { maxAge: 21, probability: 0.12 },
+    { maxAge: 25, probability: 0.05 },
+    { maxAge: 28, probability: 0.02 },
   ],
-  minMinutesFraction: 0.6,
-  minHealthyTrainingFraction: 0.6,
-  minReliableSignal: 0.4,
-  minPLong: 0.2,
-  minBudgetHeadroom: 3,
-  minTrainability: 0.9,
-  learningMultiplier: 1.6,
+  minMinutesFraction: 0.55,
+  minHealthyTrainingFraction: 0.65,
+  minReliability: 0.55,
+  minPLong: 0.45,
+  /** At or below TRAIT_RANGES.trainability.min so floor-trainability players remain eligible. */
+  minTrainability: 0.7,
+  /** Extra probability from recognition/trophy evidence (additive, clamped). */
+  recognitionBonus: 0.25,
+  learningMultiplier: 1.45,
+});
+
+/** Award evaluation defaults (competition-scoped). */
+export const AWARDS_CONFIG = deepFreeze({
+  youngPlayerMaxAgeAtSeasonStart: 23,
+  rookieMinSeniorMinutes: 900,
+  /** Prior career minutes above this → not a rookie. */
+  rookiePriorSeniorMinutesThreshold: 450,
+  goldenBootMinAppearances: 10,
+  goldenGloveMinAppearances: 14,
+  teamOfSeasonFormation: ["GK", "RB", "CB", "CB", "LB", "CM", "CM", "CAM", "RW", "ST", "LW"],
+  playerOfSeasonShortlistSize: 6,
+  youngPlayerShortlistSize: 8,
+  worldPlayerMinCompetitionTier: 4,
+  worldPlayerBaseProbability: 0.02,
 });
 
 /* ------------------------------------------------------------------ */
@@ -496,24 +597,30 @@ export const FORECAST_CONFIG = deepFreeze({
   lowerQuantile: 0.1,
   medianQuantile: 0.5,
   upperQuantile: 0.9,
-  /** Scouting uncertainty about the hidden budget: sd = clamp(base - perYear*(age-16), min, base). */
-  budgetUncertainty: { base: 6, perYear: 0.45, min: 0.75 },
+  /**
+   * Outlook uncertainty (not a hidden career ceiling). Narrows slowly with age
+   * as observed performance accumulates.
+   */
+  outlookUncertainty: { base: 8, perYear: 0.35, min: 2.5 },
+  /** @deprecated alias for outlookUncertainty. */
+  budgetUncertainty: { base: 8, perYear: 0.35, min: 2.5 },
   defaultAssumptions: {
     opportunity: 0.75,
     environmentMultiplier: 1,
     healthyTrainingFraction: 0.95,
-    pLong: 0,
+    pLong: 0.15,
+    reliability: 0.7,
   },
-  trajectoryNoiseSd: 0.35,
+  trajectoryNoiseSd: 0.4,
   shockSd: 0.35,
-  /** confidence = clamp(1 - spread / confidenceSpread, 0.05, 0.99) */
-  confidenceSpread: 16,
+  confidenceSpread: 18,
+  disclaimer: "Estimated outlook; changes with performance and opportunities.",
 });
 
 export const MIGRATION_CONFIG = Object.freeze({
   defaultAge: 24,
   defaultRating: 60,
-  /** Legacy potential is honoured as budget only up to this value. */
+  /** Legacy potential hint for display only during v1→v3 migration. */
   maxLegacyPotentialBudget: 97,
 });
 

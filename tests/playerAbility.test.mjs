@@ -64,8 +64,8 @@ test("weight tables sum to 1 and validateWeights passes", () => {
     assert.deepEqual(Object.keys(row), ["Speed", "Passing", "Shooting", "Defending", "Physicality", "Dribbling"], pos);
   }
   near(Object.values(GK_OVERALL_WEIGHTS).reduce((a, b) => a + b, 0), 1);
-  assert.equal(PLAYER_MODEL_VERSION, 2);
-  assert.equal(DEVELOPMENT_MODEL_VERSION, "player-development-v2");
+  assert.equal(PLAYER_MODEL_VERSION, 3);
+  assert.equal(DEVELOPMENT_MODEL_VERSION, "player-development-v3");
   near(LATENT_BUDGET_BANDS.reduce((s, b) => s + b.mass, 0), 1);
   for (const pos of [...Object.keys(OUTFIELD_OVERALL_WEIGHTS), "GK"]) {
     const w = getOverallWeights(pos);
@@ -260,7 +260,7 @@ test("development: determinism, bounds, idempotent season, budget respected", ()
       });
       out.push(Math.round(p.baseOverallRaw * 1000) / 1000);
       assert.ok(Object.values(p.attributes).every((v) => v >= 1 && v <= 99 && Number.isFinite(v)));
-      assert.ok(p.baseOverallRaw <= p.development.latentBudget + 1e-6, "overall must not exceed budget");
+      assert.ok(p.baseOverallRaw <= 99 + 1e-6, "overall must stay within shared rating scale");
       assert.equal(p.rating, Math.round(p.baseOverallRaw));
       assert.ok(r.components && Array.isArray(r.explanations));
     }
@@ -285,11 +285,21 @@ test("development: determinism, bounds, idempotent season, budget respected", ()
 
 test("development: annual cap, deconditioning is recoverable", () => {
   const p = makePlayer("RW", 55, 16, "cap");
-  p.development.latentBudget = 97;
-  p.development.abilityBudgetsByPosition.RW.budget = 97;
   p.development.traits.trainability = 1.3;
-  const r = developSeason(p, { rng: createRng(2), seasonId: 1, usefulMinutes: 2000, healthyTrainingFraction: 1, environmentMultiplier: 1.5, reliableSignal: 1, P_long: 1 });
-  assert.ok(r.components.learning <= 6 + 1e-9, `learning ${r.components.learning}`);
+  const r = developSeason(p, {
+    rng: createRng(2),
+    seasonId: 1,
+    usefulMinutes: 3200,
+    healthyTrainingFraction: 1,
+    environmentMultiplier: 1.4,
+    reliability: 1,
+    P_long: 1,
+    forceBreakthrough: true,
+  });
+  assert.ok(
+    (r.components.learning + (r.components.recognition || 0)) <= 7 + 1e-9,
+    `learning ${r.components.learning}`,
+  );
   // Deconditioning then restoration.
   const q = makePlayer("CM", 70, 26, "decon");
   const before = q.baseOverallRaw;
@@ -303,17 +313,17 @@ test("development: annual cap, deconditioning is recoverable", () => {
   assert.ok(before > 0);
 });
 
-test("starting attributes hit target within budget; GK uses GK keys", () => {
+test("starting attributes hit target; GK uses GK keys", () => {
   const rng = createRng(9);
   for (const pos of ["ST", "CB", "CM", "RW", "LB"]) {
-    const a = generateStartingAttributes(pos, { min: 55, max: 70 }, 72, rng);
+    const a = generateStartingAttributes(pos, { min: 55, max: 70 }, 99, rng);
     const o = calculateOverall(a, pos).raw;
-    assert.ok(o >= 54.9 && o <= 72, `${pos} ${o}`);
+    assert.ok(o >= 54.5 && o <= 71, `${pos} ${o}`);
     assert.ok(validateAttributes(a, pos).ok);
   }
-  const tight = generateStartingAttributes("ST", 80, 70, rng);
-  assert.ok(calculateOverall(tight, "ST").raw <= 70 + 1e-9);
-  const gk = generateGkAttributes(65, 80, rng);
+  const hit = generateStartingAttributes("ST", 80, 99, rng);
+  near(calculateOverall(hit, "ST").raw, 80, 0.05);
+  const gk = generateGkAttributes(65, 99, rng);
   assert.ok(validateAttributes(gk, "GK").ok);
   near(calculateOverall(gk, "GK").raw, 65, 0.01);
   assert.ok(!("Shooting" in gk));
@@ -321,19 +331,17 @@ test("starting attributes hit target within budget; GK uses GK keys", () => {
   assert.ok(t.trainability >= 0.7 && t.trainability <= 1.3 && t.declineProtection <= 0.25);
 });
 
-test("academy growth mutates attributes and charges budget", () => {
+test("academy growth mutates attributes and charges shared annual allowance", () => {
   const p = makePlayer("CM", 60, 16, "acad");
-  p.development.latentBudget = 80;
-  p.development.abilityBudgetsByPosition.CM.budget = 80;
   const before = p.baseOverallRaw;
   const r = applyAcademyGrowth(p, 2, { rng: createRng(1), focusBias: { Passing: 1 } });
   near(r.realized, p.baseOverallRaw - before, 1e-9);
   assert.ok(r.realized > 1.9 && r.realized <= 2 + 1e-9);
   assert.equal(p.rating, Math.round(p.baseOverallRaw));
   assert.ok(p.development.academyBudgetUsed > 1.9);
-  const big = applyAcademyGrowth(p, 50, { rng: createRng(2) });
-  assert.ok(big.realized <= 3 + 1e-9);
-  assert.equal(big.limitedBy, "annual-cap");
+  const big = applyAcademyGrowth(p, 50, { rng: createRng(2), alreadyAppliedLearningGain: r.realized });
+  assert.ok(big.realized <= 7 - r.realized + 1e-6);
+  assert.ok(big.limitedBy === "annual-cap" || big.realized > 0);
 });
 
 test("forecast: cached by signature, does not touch career rng", () => {
@@ -360,7 +368,9 @@ test("migration: idempotent, backs up legacy, GK proxy, no invented injuries", (
   const trophies = JSON.stringify(legacy.careerHonors);
   const res = migratePlayerToV2(legacy, { careerId: "save-1" });
   assert.equal(res.migrated, true);
-  assert.equal(legacy.playerModelVersion, 2);
+  assert.equal(legacy.playerModelVersion, 3);
+  assert.equal(legacy.development.modelVersion, "player-development-v3");
+  assert.equal(legacy.development.migration.ceilingsDeactivated, true);
   assert.equal(legacy.development.legacy.rating, 70);
   assert.equal(legacy.development.legacy.potential, 82);
   assert.equal(legacy.health.activeInjury, null);

@@ -97,9 +97,14 @@ export function finalizeAcademyPlayer(player, academyEntry) {
   // Placeholders overwritten by initialize
   player.rating = startingTarget;
   initializePlayerDevelopment(player, { rng, careerId: player.careerId });
-  // Ensure budget respected
-  if (player.baseOverallRaw > player.development.latentAbilityBudget) {
-    player.development.latentAbilityBudget = player.baseOverallRaw;
+  // v3: no individual latent ceiling — keep inert aliases at scale max.
+  if (player.development) {
+    player.development.latentAbilityBudget = Math.max(
+      player.development.latentAbilityBudget || 0,
+      player.baseOverallRaw || 0,
+      99,
+    );
+    player.development.latentBudget = player.development.latentAbilityBudget;
   }
   getOrUpdateForecast(player, { sampleCount: 48 });
 }

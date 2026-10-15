@@ -6,7 +6,7 @@
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
 import { createPlayerIdentity } from "./playerDevelopment.js";
-import { simulateSeason } from "./seasonSimulator.js?v=77";
+import { simulateSeason } from "./seasonSimulator.js?v=85";
 import { createWorldState, setWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";
 import { reseedCareerRng } from "./rng.js";
@@ -83,19 +83,33 @@ export function buildLiveLoanBrowserFixture(opts = {}) {
   player.seasonCheckpoint = null;
   player.decisionCooldowns = {};
 
-  const seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+  let seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: true,
     autoDecisionPolicy: null,
   });
 
+  // Skip senior-scene pauses so the fixture reliably reaches the winter squad window.
+  let sceneGuards = 0;
+  while (seasonData?.awaitingScenario && sceneGuards < 12) {
+    sceneGuards += 1;
+    player.pendingSeniorScenario = null;
+    if (seasonData.checkpoint) seasonData.checkpoint.pendingSeniorScenario = null;
+    player.seasonCheckpoint = seasonData.checkpoint;
+    seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+      pauseForDecisions: true,
+      autoDecisionPolicy: null,
+      checkpoint: seasonData.checkpoint,
+    });
+  }
+
   if (!seasonData?.awaitingDecision) {
     return {
       ok: false,
-      reason: "no-mid-season-pause",
+      reason: seasonData?.awaitingScenario ? "stuck-on-scenario" : "no-mid-season-pause",
       player,
       decision: null,
       offers: [],
-      checkpoint: null,
+      checkpoint: seasonData?.checkpoint || null,
     };
   }
 

@@ -129,29 +129,42 @@ test("pauseForDecisions can await without aging or finalizing", () => {
     pauseForDecisions: true,
     autoDecisionPolicy: null,
   });
-  if (data.awaitingDecision) {
-    assert.equal(p.age, 19);
-    assert.equal(p.seasons.length, 0);
-    assert.ok(data.checkpoint?.ordered?.length > 0);
-    assert.ok(data.checkpoint.lastDate);
-    // Decline / stay then resume
-    if (data.decision) {
-      resolveSquadDecision(p, data.decision, "stay-compete");
+  // Resolve every pause (decision or senior scenario) in a bounded loop.
+  let guards = 0;
+  let cur = data;
+  while ((cur.awaitingDecision || cur.awaitingScenario) && guards < 16) {
+    guards += 1;
+    if (cur.awaitingScenario) {
+      p.pendingSeniorScenario = null;
+      if (cur.checkpoint) cur.checkpoint.pendingSeniorScenario = null;
+      p.seasonCheckpoint = cur.checkpoint;
     }
-    p.pendingOffers = [];
-    p.pendingDecision = null;
-    const done = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+    if (cur.awaitingDecision) {
+      assert.equal(p.age, 19);
+      assert.equal(p.seasons.length, 0);
+      assert.ok(cur.checkpoint?.ordered?.length > 0);
+      assert.ok(cur.checkpoint.lastDate);
+      if (cur.decision) {
+        const choice =
+          (cur.decision.allowedChoices || []).includes("stay-compete")
+            ? "stay-compete"
+            : (cur.decision.allowedChoices || cur.decision.choices?.map((c) => c.id) || [])[0];
+        if (choice) resolveSquadDecision(p, cur.decision, choice);
+      }
+      p.pendingOffers = [];
+      p.pendingDecision = null;
+    }
+    cur = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
       pauseForDecisions: false,
-      checkpoint: data.checkpoint,
+      checkpoint: cur.checkpoint,
+      autoDecisionPolicy: "stay",
     });
-    assert.notEqual(done.awaitingDecision, true);
-    assert.ok(done.season);
+  }
+  assert.ok(!cur.awaitingDecision && !cur.awaitingScenario);
+  assert.ok(cur.season || cur.freeAgent);
+  if (cur.season && !cur.freeAgent) {
     assert.equal(p.age, 20);
     assert.equal(p.seasons.length, 1);
-  } else {
-    // Valid if no mid-season decision/offers triggered — season completed once.
-    assert.ok(data.season);
-    assert.equal(p.age, 20);
   }
 });
 

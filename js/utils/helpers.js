@@ -4,9 +4,14 @@ export function formatCurrency(amount) {
 
 export function clubNameForDisplay(club) {
   if (!club) {
-    return "Unknown Club";
+    return "Free agent";
   }
-  return club.displayName ?? club.name ?? "Unknown Club";
+  if (typeof club === "string") {
+    // Prefer resolving IDs elsewhere; never show a raw employment ID as a club name.
+    if (club.startsWith("club:")) return "Unknown Club";
+    return club;
+  }
+  return club.displayName ?? club.name ?? "Free agent";
 }
 
 export function formatOrdinal(value) {

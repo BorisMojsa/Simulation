@@ -1,17 +1,15 @@
 /**
- * Core annual player development (player-development-v2).
+ * Core annual player development (player-development-v3).
  *
- * Conceptually adapted from Open Football (Apache-2.0, rev 8ddc808): age curves
- * per attribute family, ceilings, maturity offsets, opportunity bands and hard
- * growth caps. See THIRD_PARTY_NOTICES.md.
+ * Performance-driven growth without individual career ceilings. Shared rating
+ * scale max remains 99. See THIRD_PARTY_NOTICES.md for Open Football lineage.
  *
  * Principles
  *  - Attributes are the truth; `rating` is a cache refreshed after every change.
- *  - A hidden latent budget (peak overall in the primary role) bounds growth.
- *  - Annual order: negatives first (ageing, regression, deconditioning,
- *    negative shocks) -> restoration of tracked recoverable damage -> positives
- *    (learning + positive shocks) scaled to fit both the annual learning cap
- *    and remaining budget room.
+ *  - No latent budget or per-attribute ceiling constrains active growth.
+ *  - Confidence (reliability) is separate from signed performance (P_long).
+ *  - Annual order: negatives → restoration → learning + recognition, scaled to
+ *    one shared annual learning allowance.
  *  - Randomness only via the supplied `rng`; no Math.random.
  */
 import { clamp } from "../utils/helpers.js";
@@ -23,7 +21,6 @@ import {
   ATTRIBUTE_SHAPE,
   BREAKTHROUGH,
   BUDGET_HARD_MAX,
-  BUDGET_LIFT_BY_AGE,
   CEILING_CONFIG,
   DEVELOPMENT_CAPS,
   DEVELOPMENT_MODEL_VERSION,
@@ -34,6 +31,9 @@ import {
   OPPORTUNITY_CONFIG,
   OPPORTUNITY_MINUTE_TARGETS,
   PLAYER_MODEL_VERSION,
+  POSITION_MATURATION,
+  POSITION_ROLE_GROUP,
+  RECOGNITION_CONFIG,
   TRAIT_RANGES,
   interpolateKnots,
 } from "../config/playerDevelopmentConfig.js";
@@ -84,20 +84,69 @@ export function stableCareerId(player) {
 /* Budget and traits                                                   */
 /* ------------------------------------------------------------------ */
 
-/** Draw a latent budget (peak overall) from the banded prior. */
+/**
+ * @deprecated v3 — latent budgets are inert. Kept for migration/archive callers.
+ * Always returns the shared rating-scale maximum so legacy generators do not
+ * invent a low individual ceiling.
+ */
 export function sampleLatentBudget(rng) {
   requireRng(rng, "sampleLatentBudget");
-  const total = LATENT_BUDGET_BANDS.reduce((s, b) => s + b.mass, 0);
-  let roll = rng.random() * total;
-  let band = LATENT_BUDGET_BANDS[LATENT_BUDGET_BANDS.length - 1];
-  for (const b of LATENT_BUDGET_BANDS) {
-    roll -= b.mass;
-    if (roll < 0) {
-      band = b;
-      break;
-    }
+  // Consume two draws for RNG-stream stability with v2 callers, then ignore the band.
+  void rng.random();
+  void rng.random();
+  return BUDGET_HARD_MAX;
+}
+
+/** Soft ability difficulty in (floor, 1]: harder near 99, never a hard wall. */
+export function abilityDifficultyFactor(overallRaw) {
+  const cfg = DEVELOPMENT_CAPS.abilityDifficulty;
+  const o = Number(overallRaw) || 0;
+  if (o <= cfg.softStart) return 1;
+  if (o >= cfg.softEnd) return cfg.floorAtSoftEnd;
+  const t = (o - cfg.softStart) / (cfg.softEnd - cfg.softStart);
+  return clamp(1 - t * (1 - cfg.floorAtSoftEnd), cfg.floorAtSoftEnd, 1);
+}
+
+export function roleMaturation(position) {
+  const { position: pos } = normalizePosition(position);
+  const group = POSITION_ROLE_GROUP[pos] || "default";
+  return POSITION_MATURATION[group] || POSITION_MATURATION.default;
+}
+
+/**
+ * Bounded recognition/trophy contribution in overall points.
+ * Nominations replaced by wins for the same awardId; multi-award decay applies.
+ */
+export function computeRecognitionContribution(recognition = {}) {
+  const cfg = RECOGNITION_CONFIG;
+  if (recognition.contribution != null && Number.isFinite(recognition.contribution)) {
+    return clamp(recognition.contribution, 0, cfg.maxContribution);
   }
-  return Math.min(BUDGET_HARD_MAX, band.min + rng.random() * (band.max - band.min));
+  const awards = recognition.awards || [];
+  const byId = new Map();
+  for (const a of awards) {
+    if (!a?.awardId) continue;
+    const prev = byId.get(a.awardId);
+    const rank =
+      a.status === "won" ? 3 : a.status === "selected" ? 2 : a.status === "nominated" ? 1 : 0;
+    if (!prev || rank > prev.rank) byId.set(a.awardId, { ...a, rank });
+  }
+  const ordered = [...byId.values()].sort((a, b) => b.rank - a.rank);
+  let awardSum = 0;
+  let decay = 1;
+  for (const a of ordered) {
+    const base =
+      a.status === "won" ? cfg.win : a.status === "selected" ? cfg.selection : a.status === "nominated" ? cfg.nomination : 0;
+    awardSum += base * decay;
+    decay *= cfg.multiAwardDecay;
+  }
+  let trophySum = 0;
+  for (const t of recognition.trophies || []) {
+    const kind = t.kind || "league";
+    const weight = clamp(t.participationWeight ?? 0.5, 0, 1);
+    trophySum += (cfg.trophyParticipation[kind] ?? 0.2) * weight;
+  }
+  return clamp(awardSum + trophySum, 0, cfg.maxContribution);
 }
 
 /**
@@ -138,13 +187,16 @@ function weightedOverall(attrs, keys, weights) {
  * Generate attributes whose weighted overall equals `target` (±0.01): role-shaped
  * (high-weight attributes sit above the mean) with noise, then a shared offset is
  * solved so the weighted overall hits the target despite [1, 99] clamping.
+ * `budget` is accepted for API compatibility but never acts as a career ceiling;
+ * generation is only limited by the shared rating-scale max.
  */
 function generateAttributesForTarget(position, target, budget, rng) {
   requireRng(rng, "attribute generation");
   const keys = getDisplayAttributeKeys(position);
   const weights = getOverallWeights(position);
   const n = keys.length;
-  const goal = clamp(Math.min(target, Number.isFinite(budget) ? budget : Infinity), ATTRIBUTE_MIN + 1, ATTRIBUTE_MAX - 1);
+  const scaleMax = ATTRIBUTE_MAX;
+  const goal = clamp(Math.min(target, scaleMax), ATTRIBUTE_MIN + 1, ATTRIBUTE_MAX - 1);
   const attrs = {};
   for (const k of keys) {
     const shape = ATTRIBUTE_SHAPE.shapeScale * (weights[k] - 1 / n);
@@ -155,9 +207,7 @@ function generateAttributesForTarget(position, target, budget, rng) {
     if (Math.abs(diff) < 0.005) break;
     for (const k of keys) attrs[k] = clamp(attrs[k] + diff, ATTRIBUTE_MIN, ATTRIBUTE_MAX);
   }
-  // Never exceed the budget, even by solver tolerance.
-  const over = weightedOverall(attrs, keys, weights) - budget;
-  if (over > 0) for (const k of keys) attrs[k] = clamp(attrs[k] - over, ATTRIBUTE_MIN, ATTRIBUTE_MAX);
+  void budget;
   return attrs;
 }
 
@@ -172,43 +222,36 @@ function resolveTarget(targetBand, rng) {
  * Outfield (or role-appropriate) starting attributes.
  * @param {string} position
  * @param {number|[number,number]|{min:number,max:number}} targetBand  target weighted overall
- * @param {number} budget  latent budget; the result's overall never exceeds it
+ * @param {number} budget  unused career ceiling (API compat); generation uses scale max
  * @param {object} rng
  * @returns {object} attributes (floats in [1, 99])
  */
 export function generateStartingAttributes(position, targetBand, budget, rng) {
   requireRng(rng, "generateStartingAttributes");
-  return generateAttributesForTarget(position, resolveTarget(targetBand, rng), budget, rng);
+  return generateAttributesForTarget(position, resolveTarget(targetBand, rng), budget ?? ATTRIBUTE_MAX, rng);
 }
 
 /** Goalkeeper attributes (Reflexes, Handling, Positioning, Diving, Kicking, Physicality). */
 export function generateGkAttributes(targetBand, budget, rng) {
   requireRng(rng, "generateGkAttributes");
-  return generateAttributesForTarget("GK", resolveTarget(targetBand, rng), budget, rng);
+  return generateAttributesForTarget("GK", resolveTarget(targetBand, rng), budget ?? ATTRIBUTE_MAX, rng);
 }
 
 /**
- * Per-attribute ceilings: current + (budget - overall) distributed with random shares
- * (weighted total hits the budget before `slack`), never below the current value, <= 99.
+ * @deprecated v3 — returns inert scale-max ceilings for migration archives only.
+ * Active development ignores these values.
  */
 export function generateAttributeCeilings(position, attrs, budget, rng) {
   requireRng(rng, "generateAttributeCeilings");
   const keys = getDisplayAttributeKeys(position);
-  const weights = getOverallWeights(position);
-  const overall = weightedOverall(attrs, keys, weights);
-  const gap = Math.max(0, budget - overall);
-  const raw = {};
-  let norm = 0;
+  // Consume RNG draws for stream stability with v2 saves.
   for (const k of keys) {
-    raw[k] = CEILING_CONFIG.shareMin + (CEILING_CONFIG.shareMax - CEILING_CONFIG.shareMin) * rng.random();
-    norm += weights[k] * raw[k];
+    void (CEILING_CONFIG.shareMin + (CEILING_CONFIG.shareMax - CEILING_CONFIG.shareMin) * rng.random());
+    void (CEILING_CONFIG.extraMax * rng.random());
   }
+  void budget;
   const ceilings = {};
-  for (const k of keys) {
-    const share = raw[k] / (norm || 1);
-    const extra = CEILING_CONFIG.extraMax * rng.random();
-    ceilings[k] = clamp(attrs[k] + gap * share * CEILING_CONFIG.slack + extra, attrs[k], ATTRIBUTE_MAX);
-  }
+  for (const k of keys) ceilings[k] = ATTRIBUTE_MAX;
   return ceilings;
 }
 
@@ -216,12 +259,10 @@ export function generateAttributeCeilings(position, attrs, budget, rng) {
 /* Initialisation                                                      */
 /* ------------------------------------------------------------------ */
 
-function budgetLift(age) {
-  for (const row of BUDGET_LIFT_BY_AGE) if (age <= row.maxAge) return row.lift;
-  return 0;
-}
-
-/** Make sure the primary role has a budget record. */
+/**
+ * Compatibility stub: role budget records are inert in v3 (budget always scale max).
+ * Preserves structure so older snapshots/tests keep working.
+ */
 export function ensureAbilityBudgets(player) {
   const dev = player.development;
   if (!dev) return null;
@@ -229,59 +270,64 @@ export function ensureAbilityBudgets(player) {
   dev.abilityBudgetsByPosition ||= {};
   const existing = dev.abilityBudgetsByPosition[pos];
   const base = calculateOverall(player.attributes, player.position).raw;
-  const fallbackBudget = Number(dev.latentAbilityBudget ?? dev.latentBudget) || base;
-  // Normalize legacy bare-number role budgets into records.
   if (existing == null || typeof existing === "number") {
     dev.abilityBudgetsByPosition[pos] = {
-      budget: Number.isFinite(existing) ? existing : fallbackBudget,
+      budget: BUDGET_HARD_MAX,
       startOverallRaw: base,
-      used: 0,
+      used: Math.max(0, base - (typeof existing === "object" ? existing.startOverallRaw ?? base : base)),
       primary: true,
+      inert: true,
     };
-  } else if (!Number.isFinite(existing.budget)) {
-    existing.budget = fallbackBudget;
+  } else {
+    existing.budget = BUDGET_HARD_MAX;
     existing.startOverallRaw = existing.startOverallRaw ?? base;
     existing.used = existing.used ?? 0;
     existing.primary = true;
+    existing.inert = true;
   }
   return dev.abilityBudgetsByPosition[pos];
 }
 
 /**
- * Initialise (or re-initialise) v2 development data for a player.
+ * Initialise (or re-initialise) v3 development data for a player.
  * Sets development, state, health, versions and derives `rating` from attributes.
- * If the player has no valid attributes they are generated from `player.rating`.
+ * Latent budgets / attribute ceilings are archived as inert compatibility fields.
  *
  * @param {object} player
  * @param {{rng:object, careerId?:string, budget?:number, traits?:object}} opts
- *        `budget` / `traits` override sampling (used by migration to stay deterministic).
+ *        `budget` is archived only; `traits` override sampling (migration).
  */
 export function initializePlayerDevelopment(player, { rng, careerId = null, budget = null, traits = null } = {}) {
   requireRng(rng, "initializePlayerDevelopment");
-  const pos = normalizePosition(player.position);
   const age = Number.isFinite(player.age) ? player.age : 16;
+  void age;
 
-  let sampledBudget = Number.isFinite(budget) ? budget : sampleLatentBudget(rng);
+  // Consume legacy budget sampling draws for stream stability, then discard.
+  const archivedBudget = Number.isFinite(budget) ? budget : sampleLatentBudget(rng);
   const sampledTraits = traits || sampleTraits(rng);
 
   if (!validateAttributes(player.attributes, player.position).ok) {
     const target = Number.isFinite(player.rating) && player.rating > 0 ? player.rating : 55;
-    player.attributes = generateAttributesForTarget(player.position, target, Math.max(sampledBudget, target), rng);
+    player.attributes = generateAttributesForTarget(player.position, target, ATTRIBUTE_MAX, rng);
   }
   const overall0 = calculateOverall(player.attributes, player.position).raw;
-  const lifted = Math.min(BUDGET_HARD_MAX, overall0 + budgetLift(age));
-  const budgetLifted = sampledBudget < lifted;
-  if (budgetLifted) sampledBudget = Math.max(sampledBudget, lifted);
-  sampledBudget = Math.min(BUDGET_HARD_MAX, Math.max(sampledBudget, overall0));
+  const inertCeilings = generateAttributeCeilings(player.position, player.attributes, BUDGET_HARD_MAX, rng);
 
-  const ceilings = generateAttributeCeilings(player.position, player.attributes, sampledBudget, rng);
+  const prior = player.development || {};
   player.development = {
     modelVersion: DEVELOPMENT_MODEL_VERSION,
-    careerId: careerId ?? player.development?.careerId ?? null,
-    latentBudget: sampledBudget,
-    // Compatibility aliases used by seasonSimulator / migration / older helpers
-    latentAbilityBudget: sampledBudget,
-    budgetLiftedToCurrent: budgetLifted,
+    careerId: careerId ?? prior.careerId ?? null,
+    // Inert aliases — active growth ignores these.
+    latentBudget: BUDGET_HARD_MAX,
+    latentAbilityBudget: BUDGET_HARD_MAX,
+    budgetLiftedToCurrent: false,
+    ceilingsActive: false,
+    legacyArchive: {
+      ...(prior.legacyArchive || {}),
+      latentAbilityBudget: archivedBudget,
+      attributeCeilings: prior.ceilings || prior.attributeCeilings || null,
+      archivedAtModel: DEVELOPMENT_MODEL_VERSION,
+    },
     traits: sampledTraits,
     trainability: sampledTraits.trainability,
     professionalism: sampledTraits.professionalism,
@@ -289,25 +335,28 @@ export function initializePlayerDevelopment(player, { rng, careerId = null, budg
     resilience: sampledTraits.resilience,
     maturityOffsets: sampledTraits.maturityOffsets,
     declineProtection: sampledTraits.declineProtection,
-    ceilings,
-    attributeCeilings: ceilings,
+    ceilings: inertCeilings,
+    attributeCeilings: inertCeilings,
     abilityBudgetsByPosition: {},
-    appliedEventIds: player.development?.appliedEventIds || {},
-    academyBudgetUsed: 0,
-    academyGrowthApplied: 0,
+    appliedEventIds: prior.appliedEventIds || {},
+    academyBudgetUsed: prior.academyBudgetUsed || 0,
+    academyGrowthApplied: prior.academyGrowthApplied || 0,
+    annualLearningUsed: prior.annualLearningUsed || 0,
     annualPositiveBudgetUsed: 0,
-    seasonsDeveloped: 0,
-    history: [],
+    seasonsDeveloped: prior.seasonsDeveloped || 0,
+    history: prior.history || [],
     forecast: null,
-    priorPerformanceEvidence: null,
-    lastProcessedSeasonId: null,
+    priorPerformanceEvidence: prior.priorPerformanceEvidence || null,
+    lastProcessedSeasonId: prior.lastProcessedSeasonId || null,
+    periodLearningKey: prior.periodLearningKey || null,
   };
-  player.state = createNeutralState();
-  player.health = createEmptyHealth();
+  player.state = player.state || createNeutralState();
+  player.health = player.health || createEmptyHealth();
   player.playerModelVersion = PLAYER_MODEL_VERSION;
   player.developmentModelVersion = DEVELOPMENT_MODEL_VERSION;
   ensureAbilityBudgets(player);
   refreshAbilityCaches(player);
+  void overall0;
   return player;
 }
 
@@ -332,11 +381,12 @@ function maturityOffset(traits, family) {
 }
 
 /** Learning rate (attribute points / yr at opportunity 1, trainability 1) for one attribute. */
-function attributeLearningRate(key, age, traits) {
+function attributeLearningRate(key, age, traits, position = null) {
   const blend = ATTRIBUTE_FAMILIES[key] || { technical: 1 };
+  const mat = position ? roleMaturation(position) : POSITION_MATURATION.default;
   let rate = 0;
   for (const [fam, share] of Object.entries(blend)) {
-    const effAge = age - maturityOffset(traits, fam);
+    const effAge = age - maturityOffset(traits, fam) + mat.learningAgeShift;
     const scale = FAMILY_PARAMS[fam]?.learningScale ?? 1;
     rate += share * scale * interpolateKnots(LEARNING_CURVE_KNOTS, effAge, fam);
   }
@@ -344,14 +394,19 @@ function attributeLearningRate(key, age, traits) {
 }
 
 /** Ageing loss (attribute points / yr) for one attribute, before protection. */
-function attributeLossRate(key, age) {
+function attributeLossRate(key, age, position = null) {
   const blend = ATTRIBUTE_FAMILIES[key] || { technical: 1 };
+  const mat = position ? roleMaturation(position) : POSITION_MATURATION.default;
   let loss = 0;
   for (const [fam, share] of Object.entries(blend)) {
     const p = FAMILY_PARAMS[fam] || { lossScale: 1, lossAgeShift: 0 };
-    loss += share * p.lossScale * interpolateKnots(AGEING_LOSS_KNOTS, age + p.lossAgeShift, fam);
+    const physicalExtra = fam === "physical" ? mat.physicalLossExtra : 0;
+    loss +=
+      share *
+      (p.lossScale + physicalExtra) *
+      interpolateKnots(AGEING_LOSS_KNOTS, age + p.lossAgeShift + mat.lossAgeShift, fam);
   }
-  return loss;
+  return Math.max(0, loss);
 }
 
 /** Compatibility exports used by older calibration / tests. */
@@ -366,13 +421,13 @@ export function familyAgeingLoss(effectiveAge, family) {
 /** Expected role-weighted learning rate in overall points / yr (opportunity 1, trainability 1). Used by forecasting. */
 export function expectedLearningRate(position, age, traits) {
   const weights = getOverallWeights(position);
-  return Object.entries(weights).reduce((s, [k, w]) => s + w * attributeLearningRate(k, age, traits), 0);
+  return Object.entries(weights).reduce((s, [k, w]) => s + w * attributeLearningRate(k, age, traits, position), 0);
 }
 
 /** Expected role-weighted ageing loss in overall points / yr, before protection. */
 export function expectedAgeingLoss(position, age) {
   const weights = getOverallWeights(position);
-  return Object.entries(weights).reduce((s, [k, w]) => s + w * attributeLossRate(k, age), 0);
+  return Object.entries(weights).reduce((s, [k, w]) => s + w * attributeLossRate(k, age, position), 0);
 }
 
 function breakthroughProbability(age) {
@@ -399,11 +454,14 @@ function weightedDelta(weights, perAttr) {
  * @param {number} [context.elapsedYears=1]
  * @param {number} [context.usefulMinutes]            minutes in meaningful matches
  * @param {number} [context.healthyTrainingFraction=1] share of the period spent healthy and training [0, 1]
- * @param {number} [context.reliableSignal=0]         reliability of the performance signal [0, 1]
+ * @param {number} [context.reliability]              confidence in [0,1] (preferred)
+ * @param {number} [context.reliableSignal]           legacy; used only as |signal| fallback for confidence
  * @param {number} [context.P_long=0]                 long-run performance observation [-1, 1]
- * @param {number} [context.environmentMultiplier=1]  coaching/facilities, clamped [0.5, 1.5]
+ * @param {number} [context.environmentMultiplier=1]  coaching/facilities/challenge proxy
+ * @param {object} [context.recognition]              awards/trophies contribution input
+ * @param {boolean}[context.forceBreakthrough]        test helper — evidence still required unless set
  * @param {string|number} [context.seasonId]          makes the call idempotent per season
- * @param {number} [context.alreadyAppliedLearningGain=0] overall points of learning already applied this period (e.g. academy growth)
+ * @param {number} [context.alreadyAppliedLearningGain=0] overall points of learning already applied this period
  * @returns {object} component ledger (overall points) with explanations; `{skipped:true}` if already applied
  */
 export function developSeason(player, context = {}) {
@@ -413,6 +471,11 @@ export function developSeason(player, context = {}) {
     initializePlayerDevelopment(player, { rng: rng.fork("init"), careerId: context.careerId });
   }
   const dev = player.development;
+  // Ensure v3 flags even if an older development blob is present.
+  dev.ceilingsActive = false;
+  dev.latentAbilityBudget = BUDGET_HARD_MAX;
+  dev.latentBudget = BUDGET_HARD_MAX;
+
   const seasonKey = context.seasonId !== undefined && context.seasonId !== null ? `season:${context.seasonId}` : null;
   if (seasonKey && hasEventApplied(player, seasonKey)) {
     return { skipped: true, reason: "season-already-applied", seasonId: context.seasonId };
@@ -433,39 +496,58 @@ export function developSeason(player, context = {}) {
   };
   const age = Number.isFinite(player.age) ? player.age : 24;
   const budgetRecord = ensureAbilityBudgets(player);
-  const budget = budgetRecord.budget ?? dev.latentAbilityBudget ?? dev.latentBudget;
-  const ceilings = dev.ceilings || dev.attributeCeilings || {};
-  // Keep alias fields in sync for consumers/UI.
-  dev.latentAbilityBudget = budget;
-  dev.latentBudget = budget;
-  if (!dev.attributeCeilings) dev.attributeCeilings = ceilings;
-  if (!dev.ceilings) dev.ceilings = ceilings;
 
   const attrs = player.attributes;
   const before = { ...attrs };
   const overallBefore = calculateOverall(attrs, player.position).raw;
 
-  const opp = computeOpportunity(age, context.usefulMinutes ?? 0.5 * OPPORTUNITY_MINUTE_TARGETS.find((r) => age <= r.maxAge).minutes);
+  const opp = computeOpportunity(
+    age,
+    context.usefulMinutes ?? 0.5 * OPPORTUNITY_MINUTE_TARGETS.find((r) => age <= r.maxAge).minutes,
+  );
   const healthy = clamp(context.healthyTrainingFraction ?? 1, 0, 1);
-  const reliable = clamp(context.reliableSignal ?? 0, 0, 1);
-  const pLong = clamp(context.P_long ?? 0, -1, 1);
-  const env = clamp(context.environmentMultiplier ?? 1, caps.environmentRange.min, caps.environmentRange.max);
+
+  // Confidence vs signed performance — never clamp signed P into [0,1] as confidence.
+  const pLong = clamp(Number.isFinite(context.P_long) ? context.P_long : 0, -1, 1);
+  let reliability = context.reliability;
+  if (!Number.isFinite(reliability)) {
+    // Legacy callers sometimes passed reliableSignal = P * reliability (signed).
+    // Treat absolute value as a lower-bound confidence estimate only when explicit reliability is absent.
+    const legacy = context.reliableSignal;
+    reliability = Number.isFinite(legacy) ? clamp(Math.abs(legacy), 0, 1) : 0;
+  } else {
+    reliability = clamp(reliability, 0, 1);
+  }
+
+  let env = clamp(context.environmentMultiplier ?? 1, caps.environmentRange.min, caps.environmentRange.max);
+  // High-ability players need appropriate challenge; farming weak opposition softens env.
+  if (overallBefore >= caps.abilityDifficulty.challengeSoftStart && env < 1) {
+    const soft = clamp((overallBefore - caps.abilityDifficulty.challengeSoftStart) / 12, 0, 1);
+    env = env * (1 - 0.35 * soft) + 0.65 * soft * Math.min(env, 0.85);
+  }
+
   const alreadyApplied = Math.max(0, Number(context.alreadyAppliedLearningGain) || 0);
+  const recognitionPoints = computeRecognitionContribution(context.recognition || {});
 
   /* ---- breakthrough (always draws once to keep rng consumption stable) ---- */
   const btRoll = rng.random();
-  const headroomToBudget = budget - overallBefore;
+  const recognitionBoost =
+    recognitionPoints >= 0.7 ? BREAKTHROUGH.recognitionBonus : recognitionPoints >= 0.35 ? BREAKTHROUGH.recognitionBonus * 0.5 : 0;
   const btEligibility = {
     age: age <= BREAKTHROUGH.probabilityByAgeBand[BREAKTHROUGH.probabilityByAgeBand.length - 1].maxAge,
     minutes: opp.minutesRatio >= BREAKTHROUGH.minMinutesFraction,
     healthy: healthy >= BREAKTHROUGH.minHealthyTrainingFraction,
-    signal: reliable >= BREAKTHROUGH.minReliableSignal,
+    reliability: reliability >= BREAKTHROUGH.minReliability,
     performance: pLong >= BREAKTHROUGH.minPLong,
-    headroom: headroomToBudget >= BREAKTHROUGH.minBudgetHeadroom,
     trainability: traits.trainability >= BREAKTHROUGH.minTrainability,
   };
+  // Evidence-backed seasons must not be hard-blocked solely by a floor trainability trait.
+  if (context.forceBreakthrough || (pLong >= 0.75 && reliability >= 0.75 && recognitionPoints >= 0.7)) {
+    btEligibility.trainability = true;
+  }
   const btEligible = BREAKTHROUGH.enabled && Object.values(btEligibility).every(Boolean);
-  const btProbability = btEligible ? breakthroughProbability(age) : 0;
+  let btProbability = btEligible ? clamp(breakthroughProbability(age) + recognitionBoost, 0, 0.85) : 0;
+  if (context.forceBreakthrough && btEligible) btProbability = 1;
   const breakthrough = btEligible && btRoll < btProbability;
 
   /* ---- per-attribute random draws (fixed order) ---- */
@@ -489,13 +571,11 @@ export function developSeason(player, context = {}) {
   const decondDeficit = clamp((decond.healthyFloor - healthy) / decond.healthyFloor, 0, 1);
 
   for (const k of keys) {
-    ageing[k] = attributeLossRate(k, age) * years * protection * useItKeepIt;
+    ageing[k] = attributeLossRate(k, age, player.position) * years * protection * useItKeepIt;
 
     const expectedShape = overallBefore + ATTRIBUTE_SHAPE.shapeScale * (weights[k] - 1 / keys.length);
     const excess = before[k] - expectedShape - caps.regression.tolerance;
-    let reg = excess > 0 ? caps.regression.ratePerYear * excess * years : 0;
-    if (ceilings?.[k] !== undefined && before[k] > ceilings[k]) reg += caps.regression.overCeilingRate * (before[k] - ceilings[k]);
-    regression[k] = reg;
+    regression[k] = excess > 0 ? caps.regression.ratePerYear * excess * years : 0;
 
     const physicalShare = ATTRIBUTE_FAMILIES[k].physical || 0;
     deconditioning[k] = decondDeficit > 0 ? decond.maxPerYear * decondDeficit * physicalShare * years : 0;
@@ -517,7 +597,6 @@ export function developSeason(player, context = {}) {
     applyLoss("regression", k, regression[k]);
     const lostDecond = applyLoss("deconditioning", k, deconditioning[k]);
     if (lostDecond > 0) {
-      // Out-of-training loss is recoverable once healthy training resumes.
       player.health.recoverableDamage[k] = (player.health.recoverableDamage[k] || 0) + lostDecond;
     }
     applyLoss("shock", k, negativeShock[k]);
@@ -531,11 +610,19 @@ export function developSeason(player, context = {}) {
     if (amount > 0) restoration = applyRecoverableRestoration(player, amount);
   }
 
-  /* ---- positives: learning + positive shocks ---- */
-  // Overall after negatives and restoration; budget room is measured from here.
+  /* ---- positives: learning + positive shocks + recognition ---- */
   const overallAfterNegatives = weightedOverall(attrs, keys, weights);
-  const budgetFactor = clamp((budget - overallAfterNegatives) / caps.budgetTaperPoints, 0, 1);
-  const perfMult = 1 + caps.performanceLearningWeight * pLong * reliable;
+  const abilityDiff = abilityDifficultyFactor(overallAfterNegatives);
+  const perfSignal = pLong * reliability;
+  const perfMult = clamp(
+    1 + caps.performanceLearningWeight * perfSignal,
+    caps.performanceMultFloor,
+    caps.performanceMultCeil,
+  );
+  // Healthy training still helps in a poor season, but must not prop growth up to
+  // a "neutral" outcome — lean on performance more than a high training floor.
+  const healthyLearn =
+    perfSignal < 0 ? clamp(0.2 + 0.55 * healthy * (1 + perfSignal), 0.15, 0.75) : 0.4 + 0.6 * healthy;
   const profMult = 0.9 + 0.2 * traits.professionalism;
   const btMult = breakthrough ? BREAKTHROUGH.learningMultiplier : 1;
 
@@ -543,57 +630,94 @@ export function developSeason(player, context = {}) {
   const shockUpMap = {};
   const positive = {};
   for (const k of keys) {
-    const headroom = ceilings?.[k] !== undefined ? Math.max(0, ceilings[k] - attrs[k]) : ATTRIBUTE_MAX - attrs[k];
-    const headroomFactor = clamp(headroom / caps.headroomTaperPoints, 0, 1);
+    // Soft per-attribute approach to the shared scale max — floor keeps elite
+    // progress possible; overall abilityDiff already slows high OVR careers.
+    const attrRoom = ATTRIBUTE_MAX - attrs[k];
+    const scaleHeadroom = attrRoom <= 0 ? 0 : clamp(0.35 + attrRoom / 20, 0.35, 1);
     learning[k] =
-      attributeLearningRate(k, age, traits) *
+      attributeLearningRate(k, age, traits, player.position) *
       years *
       traits.trainability *
       env *
       opp.opportunity *
       perfMult *
+      healthyLearn *
       profMult *
       btMult *
-      headroomFactor *
-      budgetFactor *
+      abilityDiff *
+      scaleHeadroom *
       noise[k];
-    const shockUp = shock[k] > 0 ? shock[k] : 0;
+    const shockUp = shock[k] > 0 ? shock[k] * abilityDiff : 0;
     shockUpMap[k] = shockUp;
     const wanted = learning[k] + shockUp;
-    positive[k] = Math.min(wanted, Math.max(0, (ceilings?.[k] ?? ATTRIBUTE_MAX) - attrs[k]), ATTRIBUTE_MAX - attrs[k]);
+    positive[k] = Math.min(wanted, Math.max(0, attrRoom));
+  }
+
+  // Distribute recognition as a small overall-weighted attribute bump (inside annual cap).
+  const recognitionPerAttr = {};
+  if (recognitionPoints > 0) {
+    const sumW = keys.reduce((s, k) => s + weights[k], 0) || 1;
+    for (const k of keys) {
+      recognitionPerAttr[k] = (recognitionPoints * years * weights[k]) / sumW;
+      positive[k] = Math.min(positive[k] + recognitionPerAttr[k], ATTRIBUTE_MAX - attrs[k]);
+    }
   }
 
   const rawGain = weightedDelta(weights, positive);
-  const annualCap = (breakthrough ? caps.annualLearningCapBreakthrough : caps.annualLearningCap) * years;
+  const annualCap = caps.annualLearningCap * years;
   const capRoom = Math.max(0, annualCap - alreadyApplied);
-  const budgetRoom = Math.max(0, budget - overallAfterNegatives);
   let scale = 1;
   let limitedBy = "none";
-  if (rawGain > 1e-12) {
-    if (capRoom < rawGain && capRoom <= budgetRoom) {
-      scale = capRoom / rawGain;
-      limitedBy = "annual-cap";
-    } else if (budgetRoom < rawGain) {
-      scale = budgetRoom / rawGain;
-      limitedBy = "budget";
-    }
+  if (rawGain > 1e-12 && rawGain > capRoom) {
+    scale = capRoom / rawGain;
+    limitedBy = "annual-cap";
   }
   const appliedLearning = {};
   const appliedShockUp = {};
+  const appliedRecognition = {};
   for (const k of keys) {
     const inc = positive[k] * scale;
     attrs[k] = clamp(attrs[k] + inc, ATTRIBUTE_MIN, ATTRIBUTE_MAX);
-    // Split the applied gain between learning and positive shock pro rata to what was wanted.
-    const wanted = learning[k] + shockUpMap[k];
-    const learnShare = wanted > 0 ? learning[k] / wanted : 0;
-    appliedLearning[k] = inc * learnShare;
-    appliedShockUp[k] = inc - appliedLearning[k];
+    const recWanted = recognitionPerAttr[k] || 0;
+    const learnWanted = learning[k];
+    const shockWanted = shockUpMap[k];
+    const wanted = learnWanted + shockWanted + recWanted;
+    if (wanted > 0) {
+      appliedLearning[k] = inc * (learnWanted / wanted);
+      appliedShockUp[k] = inc * (shockWanted / wanted);
+      appliedRecognition[k] = inc * (recWanted / wanted);
+    } else {
+      appliedLearning[k] = 0;
+      appliedShockUp[k] = 0;
+      appliedRecognition[k] = 0;
+    }
+  }
+
+  /* ---- poor-season drag: reliable bad performances can finish flat or down ---- */
+  const appliedPoorDrag = {};
+  const dragCfg = caps.poorSeasonDrag || {};
+  const dragThreshold = Number.isFinite(dragCfg.signalThreshold) ? dragCfg.signalThreshold : -0.3;
+  const dragMax = Math.max(0, Number(dragCfg.maxOverall) || 0);
+  if (perfSignal < dragThreshold && dragMax > 0 && years > 0) {
+    // t: 0 at threshold, 1 at signal = -1
+    const t = clamp((-perfSignal + dragThreshold) / (-dragThreshold + 1), 0, 1);
+    const dragOverall = dragMax * t * years;
+    const sumW = keys.reduce((s, k) => s + weights[k], 0) || 1;
+    for (const k of keys) {
+      const amount = (dragOverall * weights[k]) / sumW;
+      const cur = attrs[k];
+      const next = Math.max(ATTRIBUTE_MIN, cur - amount);
+      appliedPoorDrag[k] = cur - next;
+      attrs[k] = next;
+    }
   }
 
   /* ---- finish ---- */
   refreshAbilityCaches(player);
   const overallAfter = calculateOverall(attrs, player.position).raw;
   budgetRecord.used = Math.max(0, overallAfter - budgetRecord.startOverallRaw);
+  const learningApplied = weightedDelta(weights, appliedLearning) + weightedDelta(weights, appliedRecognition);
+  dev.annualLearningUsed = alreadyApplied + learningApplied;
   dev.seasonsDeveloped = (dev.seasonsDeveloped || 0) + 1;
   dev.history.push({
     seasonId: context.seasonId ?? null,
@@ -608,24 +732,57 @@ export function developSeason(player, context = {}) {
   const sumApplied = (m) => weightedDelta(weights, m);
   const components = {
     learning: sumApplied(appliedLearning),
+    recognition: sumApplied(appliedRecognition),
     ageing: -sumApplied(appliedNegative.ageing),
     regression: -sumApplied(appliedNegative.regression),
     deconditioning: -sumApplied(appliedNegative.deconditioning),
+    poorSeason: -sumApplied(appliedPoorDrag),
     shock: sumApplied(appliedShockUp) - sumApplied(appliedNegative.shock),
     restoration: weightedDelta(weights, restoration.perAttribute),
   };
+  const breakdown = {
+    performance: pLong,
+    reliability,
+    opportunity: opp.opportunity,
+    environment: env,
+    abilityDifficulty: abilityDiff,
+    healthyTrainingFraction: healthy,
+    recognitionPoints,
+    age,
+    position: pos,
+    roleGroup: POSITION_ROLE_GROUP[pos] || "default",
+    breakthrough: breakthrough,
+    annualAllowanceUsed: learningApplied,
+    annualAllowance: annualCap,
+    rawOverallBefore: overallBefore,
+    rawOverallAfter: overallAfter,
+  };
+
   const explanations = [];
-  explanations.push(
-    `Opportunity ${opp.opportunity.toFixed(2)} (${Math.round(context.usefulMinutes ?? 0)} / ${opp.targetMinutes} min at age ${age}).`,
-  );
-  if (components.ageing < -0.005) explanations.push(`Ageing cost ${components.ageing.toFixed(2)} overall.`);
-  if (components.deconditioning < -0.005) {
-    explanations.push(`Too little healthy training (${Math.round(healthy * 100)}%): ${components.deconditioning.toFixed(2)} overall, recoverable.`);
+  if (pLong >= 0.45 && reliability >= 0.5) {
+    explanations.push("Strong sustained performances accelerated development.");
+  } else if (pLong <= -0.35 && reliability >= 0.45) {
+    explanations.push(
+      components.poorSeason < -0.05 || overallAfter - overallBefore <= 0.15
+        ? "Poor performances stalled development this season."
+        : "Poor performances limited what could be learned this season.",
+    );
+  } else if (opp.opportunity >= 0.75) {
+    explanations.push("Regular minutes supported steady development.");
+  } else {
+    explanations.push(
+      `Limited playing time (${Math.round(context.usefulMinutes ?? 0)} / ${opp.targetMinutes} min) slowed growth.`,
+    );
   }
-  if (components.restoration > 0.005) explanations.push(`Restored ${components.restoration.toFixed(2)} overall of recoverable loss.`);
-  if (breakthrough) explanations.push("Breakthrough season: learning boosted and annual cap raised.");
-  if (limitedBy === "annual-cap") explanations.push(`Learning capped at ${annualCap.toFixed(1)} overall per period.`);
-  if (limitedBy === "budget") explanations.push("Growth limited by latent ability budget.");
+  if (recognitionPoints >= 0.35) explanations.push("Individual recognition and achievements added a development boost.");
+  if (components.ageing < -0.05) explanations.push("Age-related physical changes offset some gains.");
+  if (components.deconditioning < -0.05) {
+    explanations.push(`Time lost to injury or missed training reduced development.`);
+  }
+  if (components.restoration > 0.05) explanations.push("Recovered form after earlier fitness setbacks.");
+  if (breakthrough) explanations.push("Breakthrough season: exceptional evidence unlocked accelerated growth.");
+  if (limitedBy === "annual-cap") explanations.push("Growth reached this year's development allowance.");
+  if (overallBefore >= 90) explanations.push("At elite level, further gains require outstanding seasons.");
 
   return {
     skipped: false,
@@ -637,10 +794,12 @@ export function developSeason(player, context = {}) {
     overallAfter,
     overallDelta: overallAfter - overallBefore,
     components,
+    breakdown,
     perAttribute: {
       before,
       after: { ...attrs },
       learning: appliedLearning,
+      recognition: appliedRecognition,
       shockUp: appliedShockUp,
       shockDown: appliedNegative.shock,
       ageing: appliedNegative.ageing,
@@ -649,8 +808,26 @@ export function developSeason(player, context = {}) {
       restoration: restoration.perAttribute,
     },
     opportunity: opp,
-    breakthrough: { occurred: breakthrough, eligible: btEligible, probability: btProbability, eligibility: btEligibility },
-    caps: { annualCap, capRoom, budgetRoom, scale, limitedBy, rawGain },
+    breakthrough: {
+      occurred: breakthrough,
+      eligible: btEligible,
+      probability: btProbability,
+      eligibility: btEligibility,
+      reason: breakthrough
+        ? "Evidence-backed breakthrough from performance, minutes, and recognition."
+        : btEligible
+          ? "Eligible but breakthrough roll missed."
+          : "Not eligible for breakthrough.",
+    },
+    caps: {
+      annualCap,
+      capRoom,
+      budgetRoom: Infinity,
+      scale,
+      limitedBy,
+      rawGain,
+      recognitionPoints,
+    },
     explanations,
   };
 }
@@ -681,13 +858,12 @@ function allocateOverallGain(keys, weights, shares, headroom, targetGain) {
 
 /**
  * Academy / training-camp growth: mutates *attributes* (never `rating` directly)
- * and charges the academy budget.
+ * and charges the shared annual learning allowance.
  *
  * @param {object} player
  * @param {number} requestedDelta  desired change in base overall points (negative = small decline)
  * @param {{rng?:object, focusBias?:Object<string,number>, elapsedYearsShare?:number, alreadyAppliedLearningGain?:number}} [opts]
- *        focusBias: attribute -> extra emphasis (e.g. 0.5 = +50% share); elapsedYearsShare scales the annual cap.
- * @returns {{requested:number, realized:number, limitedBy:string, perAttribute:object}}  realized = base overall change
+ * @returns {{requested:number, realized:number, limitedBy:string, perAttribute:object}}
  */
 export function applyAcademyGrowth(player, requestedDelta, { rng = null, focusBias = {}, elapsedYearsShare = 1, alreadyAppliedLearningGain = 0 } = {}) {
   if (!player.development) throw new Error("applyAcademyGrowth requires an initialised player (see initializePlayerDevelopment)");
@@ -711,19 +887,22 @@ export function applyAcademyGrowth(player, requestedDelta, { rng = null, focusBi
   }
 
   const budgetRecord = ensureAbilityBudgets(player);
-  const budgetRoom = Math.max(0, budgetRecord.budget - before);
-  const capRoom = Math.max(0, DEVELOPMENT_CAPS.annualLearningCap * clamp(elapsedYearsShare, 0, DEVELOPMENT_CAPS.maxElapsedYears) - Math.max(0, alreadyAppliedLearningGain));
-  const target = Math.min(requested, budgetRoom, capRoom);
-  const limitedBy = target >= requested - 1e-12 ? "none" : budgetRoom <= capRoom ? "budget" : "annual-cap";
+  const abilityRoom = Math.max(0, ATTRIBUTE_MAX - before) * abilityDifficultyFactor(before);
+  const capRoom = Math.max(
+    0,
+    DEVELOPMENT_CAPS.annualLearningCap * clamp(elapsedYearsShare, 0, DEVELOPMENT_CAPS.maxElapsedYears) -
+      Math.max(0, alreadyAppliedLearningGain),
+  );
+  const target = Math.min(requested, abilityRoom, capRoom);
+  const limitedBy = target >= requested - 1e-12 ? "none" : abilityRoom <= capRoom ? "ability-difficulty" : "annual-cap";
 
-  const ceilings = player.development.ceilings || {};
   const shares = {};
   const headroom = {};
   for (const k of keys) {
     const bias = Math.max(0, 1 + (Number(focusBias[k]) || 0));
     const jitter = rng ? 0.75 + 0.5 * rng.random() : 1;
     shares[k] = weights[k] * bias * jitter;
-    headroom[k] = Math.max(0, Math.min(ceilings[k] ?? ATTRIBUTE_MAX, ATTRIBUTE_MAX) - attrs[k]);
+    headroom[k] = Math.max(0, ATTRIBUTE_MAX - attrs[k]);
   }
   const inc = allocateOverallGain(keys, weights, shares, headroom, target);
   for (const k of keys) {
@@ -733,6 +912,7 @@ export function applyAcademyGrowth(player, requestedDelta, { rng = null, focusBi
   refreshAbilityCaches(player);
   const realized = calculateOverall(attrs, player.position).raw - before;
   player.development.academyBudgetUsed = (player.development.academyBudgetUsed || 0) + realized;
+  player.development.academyGrowthApplied = (player.development.academyGrowthApplied || 0) + Math.max(0, realized);
   budgetRecord.used = Math.max(0, calculateOverall(attrs, player.position).raw - budgetRecord.startOverallRaw);
   return { requested, realized, limitedBy, perAttribute };
 }

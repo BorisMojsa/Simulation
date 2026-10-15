@@ -13,7 +13,6 @@ import { createStreamRng } from "./rng.js?v=76";
 import { refreshAbilityCaches, getDisplayAttributeKeys, getBaseOverall } from "./playerAbility.js?v=76";
 import {
   applyAcademyGrowth,
-  ensureAbilityBudgets,
   stableCareerId,
 } from "./playerDevelopmentModel.js?v=76";
 import { ensurePlayerModel } from "./playerModelMigration.js?v=76";
@@ -420,17 +419,14 @@ export function applyOpeningMoment(player, { scenario, choice, outcome, momentIn
 }
 
 function maybeRareBudgetBump(player, state, narrativeDelta, rng) {
+  // v3: latent budgets are inert. Keep the rare roll for narrative continuity /
+  // RNG stability, but do not create an individual career ceiling.
   const cfg = ACADEMY_OPENING.rareBudgetBump;
   if (narrativeDelta < cfg.minNarrative) return;
   if ((state.rareBudgetBumpApplied || 0) >= cfg.maxTotal) return;
   if (!rng.chance(cfg.baseChance)) return;
   const bump = Math.min(cfg.maxPerEvent, cfg.maxTotal - (state.rareBudgetBumpApplied || 0));
   if (bump <= 0) return;
-  const budgets = ensureAbilityBudgets(player);
-  player.development.latentAbilityBudget =
-    (player.development.latentAbilityBudget || 0) + bump;
-  player.development.latentBudget = player.development.latentAbilityBudget;
-  if (budgets) budgets.budget = (budgets.budget || 0) + bump;
   state.rareBudgetBumpApplied = (state.rareBudgetBumpApplied || 0) + bump;
 }
 

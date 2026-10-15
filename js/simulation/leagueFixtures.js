@@ -3,7 +3,7 @@ import { leagueMatchCount } from "./leaguePhase.js";
 import { getSimRng, createStreamRng } from "./rng.js";
 import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./worldState.js";
 import { effectiveTeamStrength } from "./teamStrength.js";
-import { dateLeagueFixtures } from "./seasonCalendar.js";
+import { dateLeagueFixtures, flattenRoundRobinFixtures } from "./seasonCalendar.js?v=81";
 import { resolvePlayerParticipation } from "./playerSelection.js";
 import { advanceHealth, applyInjury, computeRiskMultiplier, sampleInjuryFromExposure } from "./playerHealth.js";
 import { advanceStateBetweenDates, updateFormFromObservation, updateFatigue } from "./playerState.js";
@@ -60,16 +60,13 @@ export function simulateLeagueSeason(league, player, performanceScore) {
     })
   );
 
-  const fixtures = [];
-  for (let i = 0; i < clubs.length; i++) {
-    for (let j = 0; j < clubs.length; j++) {
-      if (i === j) continue;
-      fixtures.push({ home: clubs[i], away: clubs[j] });
-    }
-  }
-  const ordered = rng.shuffle(fixtures);
   const seasonStartYear = (player.startYear || 2026) + (player.seasons?.length || 0);
-  const dated = dateLeagueFixtures(ordered, seasonStartYear);
+  const fixtures = flattenRoundRobinFixtures(clubs, {
+    idPrefix: `lg:${league.leagueId || league.name}:${seasonStartYear}`,
+  });
+  // Keep matchday order; do not shuffle across dates (avoids club/date double-booking).
+  void rng;
+  const dated = dateLeagueFixtures(fixtures, seasonStartYear);
 
   const records = new Map();
   clubs.forEach((c) => {

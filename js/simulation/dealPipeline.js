@@ -31,8 +31,20 @@ import { createStreamRng } from "./rng.js";
 import { safePlayerOverall } from "./playerOverallSafe.js";
 import { FINANCE_PROFILE_VERSION } from "../data/clubFinanceProfiles.js";
 import { resolveMoveRegistration } from "./destinationSchedule.js";
+import {
+  ensureContractAuthority,
+  evaluateRenewalReview,
+  employmentClubId,
+  resolveEmploymentClub,
+  isOfferExecutable,
+  markOfferStatus,
+  applyRenewalTerms,
+  consumeRelatedDecisionAfterDeal,
+  bumpContractRevision,
+  completedSeasons,
+} from "./contractLifecycle.js";
 
-export const DEAL_PIPELINE_VERSION = "deal-pipeline-v1";
+export const DEAL_PIPELINE_VERSION = "deal-pipeline-v2";
 
 function financialSeasonKey(player) {
   const idx = player.seasons?.length ?? 0;
@@ -243,34 +255,58 @@ export function generatePipelineOffers(player, opts = {}) {
   const offers = [];
   const rejectionLog = [];
 
-  // Renewal discussion in final contract year (pre-expiry) or after expiry.
+  // Renewal discussion — employer club only (not loan borrower). Shared review authority.
+  ensureContractAuthority(player);
   const rem =
     player.contractEndSeason == null ? 99 : player.contractEndSeason - seasonIndex;
-  if (!player.club?.isAcademy && player.club?.clubId && rem <= 1) {
-    const current = findSeniorClub(player.club.name) || findSeniorClubById(player.club.clubId) || player.club;
-    const renewal = buildValidatedOffer({
+  const employer = resolveEmploymentClub(player);
+  if (!player.club?.isAcademy && employer?.clubId && rem <= 1) {
+    // Probe affordability without treating failure as firm non-renewal.
+    const renewalProbe = buildValidatedOffer({
       player,
-      club: current,
+      club: employer,
       dealType: "renewal",
       performanceScore,
       rng,
       forceParent: true,
     });
-    if (renewal.ok) {
-      offers.push({
-        ...renewal.offer,
+    const review = evaluateRenewalReview(player, {
+      seasonIndex,
+      performanceScore,
+      financeOk: renewalProbe.ok,
+      financeReason: renewalProbe.reasons?.[0] || null,
+    });
+
+    if (review.outcome === "wants-renewal" && renewalProbe.ok) {
+      const offer = {
+        ...renewalProbe.offer,
         isPreExpiryRenewal: rem === 1,
+        status: "pending",
+        careerId: careerId,
+        contractRevision: player.contractRevision,
+        employerClubIdAtIssue: employer.clubId,
+        renewalReviewId: review.reviewId,
         message:
           rem === 1
-            ? `${current.displayName ?? current.name} want to talk about a new contract before yours expires.`
-            : renewal.offer.message,
+            ? `${employer.displayName ?? employer.name} want to talk about a new contract before yours expires.`
+            : renewalProbe.offer.message,
+      };
+      markOfferStatus(player, offer, "pending");
+      offers.push(offer);
+    } else if (review.outcome === "temporary-reject") {
+      rejectionLog.push({
+        clubId: employer.clubId,
+        reasons: renewalProbe.reasons || [review.reason],
+        kind: "renewal-temporary",
       });
-    } else {
-      rejectionLog.push({ clubId: current.clubId, reasons: renewal.reasons, kind: "renewal" });
-      if (rem === 1) {
-        // Signal non-renewal intent for squad-decision layer without forcing a deal.
-        player.renewalPlanned = false;
-      }
+    } else if (review.outcome === "will-not-renew") {
+      rejectionLog.push({
+        clubId: employer.clubId,
+        reasons: [review.reason || "will-not-renew"],
+        kind: "renewal",
+      });
+    } else if (!renewalProbe.ok) {
+      rejectionLog.push({ clubId: employer.clubId, reasons: renewalProbe.reasons, kind: "renewal" });
     }
   }
 
@@ -332,10 +368,11 @@ export function generatePipelineOffers(player, opts = {}) {
  * Accept an offer: revalidate, book once, apply player contract fields.
  */
 export function acceptPipelineOffer(player, offer, opts = {}) {
+  ensureContractAuthority(player);
   if (!offer?.clubId) return { ok: false, reason: "missing-offer" };
-  if (offer.acceptedTransactionId && player.completedDealIds?.includes(offer.acceptedTransactionId)) {
-    return { ok: false, reason: "duplicate-accept" };
-  }
+
+  const executable = isOfferExecutable(player, offer);
+  if (!executable.ok) return { ok: false, reason: executable.reason };
 
   const club =
     findSeniorClub(offer.club) ||
@@ -372,23 +409,31 @@ export function acceptPipelineOffer(player, offer, opts = {}) {
     offer.acceptedTransactionId ||
     `tx:${offer.offerId || offer.clubId}:${player.seasons?.length ?? 0}:${offer.wage}:${offer.transferFee}`;
 
+  if (player.completedDealIds?.includes(txId)) {
+    return { ok: false, reason: "duplicate-accept" };
+  }
+
   const booked = bookDealTransaction(ledger, deal, txId);
   if (!booked.ok) {
     return { ok: false, reason: booked.reason, reasons: booked.reasons };
   }
 
+  // Seller is the employer (parent while on loan), never the borrower.
   if (
     !offer.isRenewal &&
     !offer.isFreeAgent &&
     !offer.isLoan &&
-    offer.transferFee > 0 &&
-    player.club?.clubId
+    offer.transferFee > 0
   ) {
-    const sellerLedger = getOrInitClubSeasonFinance(player.club.clubId, seasonKey);
-    creditPlayerSale(sellerLedger, offer.transferFee);
+    const sellerId = employmentClubId(player);
+    if (sellerId && sellerId !== offer.clubId) {
+      const sellerLedger = getOrInitClubSeasonFinance(sellerId, seasonKey);
+      creditPlayerSale(sellerLedger, offer.transferFee);
+    }
   }
 
   applyOfferToPlayer(player, offer, txId);
+  consumeRelatedDecisionAfterDeal(player, offer);
 
   const departureDate = offer.effectiveDate || offer.reviewDate;
   if (departureDate && offer.leagueId && !offer.isRenewal) {
@@ -413,12 +458,27 @@ export function acceptPipelineOffer(player, offer, opts = {}) {
 }
 
 export function applyOfferToPlayer(player, offer, transactionId) {
+  ensureContractAuthority(player);
   if (!player.completedDealIds) player.completedDealIds = [];
   if (transactionId && !player.completedDealIds.includes(transactionId)) {
     player.completedDealIds.push(transactionId);
   }
 
+  if (offer.isRenewal) {
+    // Renew employment terms only — preserve borrower registration while on loan.
+    applyRenewalTerms(player, offer);
+    markOfferStatus(player, offer, "accepted", { transactionId });
+    player.pendingOffers = [];
+    player.suppressParentContractOffer = true;
+    return;
+  }
+
   if (!offer.isLoan) {
+    // Permanent move while on loan: caller should settle the loan first.
+    if (player.activeLoan?.status === "active") {
+      player.activeLoan = { ...player.activeLoan, status: "sold" };
+      player.parentClubSnapshot = null;
+    }
     player.club = {
       name: offer.club,
       displayName: offer.clubDisplay ?? offer.club,
@@ -446,12 +506,16 @@ export function applyOfferToPlayer(player, offer, transactionId) {
     player.weeklyWage = offer.wage;
     player.wage = offer.wage;
     player.expectedRole = offer.expectedRole;
-    const currentSeason = player.seasons?.length ?? 0;
+    const currentSeason = completedSeasons(player);
     player.contractStartSeason = currentSeason;
     player.contractYears = offer.contractYears;
     player.contractEndSeason = currentSeason + (offer.contractYears || 1);
+    player.contractStatus = "active";
+    player.freeAgentReason = null;
+    bumpContractRevision(player);
   }
 
+  markOfferStatus(player, offer, "accepted", { transactionId });
   player.pendingOffers = [];
   player.suppressParentContractOffer = true;
   if (!player.state) {

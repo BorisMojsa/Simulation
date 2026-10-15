@@ -11,7 +11,7 @@ import { effectiveTeamStrength } from "./teamStrength.js";
 import { simulateMatch } from "./matchEngine.js";
 import { applyMatchFormUpdate } from "./worldState.js";
 import { createStreamRng, hashSeed } from "./rng.js";
-import { sortChronological, dateCupRounds } from "./seasonCalendar.js";
+import { sortChronological, dateCupRounds } from "./seasonCalendar.js?v=81";
 import {
   calendarForLeague,
   destinationSeasonStartYear,
@@ -424,6 +424,19 @@ function dedupeLeagueEvents(events) {
  * Whether the player is eligible to appear in a club fixture on this date.
  */
 export function playerEligibleForClubMatch(player, date) {
+  if (!player?.club || player.club.isAcademy) return false;
+  if (player.contractStatus === "released" || player.contractStatus === "expired") {
+    // Still allow appearances that belong to a season already underway if contract
+    // covers the current season index (half-open: seasons.length < end).
+    const end = player.contractEndSeason;
+    const done = player.seasons?.length ?? 0;
+    if (end != null && done >= end) return false;
+  }
+  if (player.contractEndSeason != null) {
+    const done = player.seasons?.length ?? 0;
+    if (done >= player.contractEndSeason) return false;
+  }
+  if (!player.club?.clubId && !player.playingClubId) return false;
   if (player.pendingRegistration?.effectiveDate) {
     if (String(date) < player.pendingRegistration.effectiveDate) return false;
   }

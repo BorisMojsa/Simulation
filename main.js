@@ -3,14 +3,20 @@ import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js?v=61"
 import { WORLD_CUP_NATIONS, flagUrl } from "./js/data/worldCupNations.js";
 import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=77";
 import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=61";
-import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=62";
-import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=62";
-import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=63";
-import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=77";
-import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=62";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=77";
-import { createWorldState, setWorldState } from "./js/simulation/worldState.js?v=61";
-import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=77";
+import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=81";
+import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=81";
+import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=81";
+import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=81";
+import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=81";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=85";
+import { createWorldState, setWorldState } from "./js/simulation/worldState.js";
+import {
+  ensureContractAuthority,
+  selectNextCareerAction,
+  isFreeAgent,
+  declineWindowAndContinue,
+} from "./js/simulation/contractLifecycle.js?v=81";
+import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=81";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -19,16 +25,16 @@ import {
   renderCompetitions,
   renderTransferOffers,
   renderCareerMoments,
-} from "./js/ui/rendering.js?v=79";
-import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=77";
+} from "./js/ui/rendering.js?v=81";
+import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=81";
 import {
   showSeasonAnimation,
   openSimulationDashboardSegment,
   hideSimulationDashboard,
   getDashboardRevealState,
-} from "./js/ui/seasonAnimation.js?v=80";
-import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=63";
-import { showSeniorScenarioOverlay } from "./js/ui/seniorScenarioOverlay.js?v=78";
+} from "./js/ui/seasonAnimation.js?v=81";
+import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=81";
+import { showSeniorScenarioOverlay } from "./js/ui/seniorScenarioOverlay.js?v=81";
 import {
   customSelectsAreValid,
   getCustomSelectValue,
@@ -100,7 +106,8 @@ function initSetupSelects() {
 initSetupSelects();
 
 let player = null;
-let dealBookingGuard = false;
+/** Scoped to one in-flight offer/window submission — not career-wide. */
+let dealBookingGuard = null;
 
 const setupForm = document.getElementById("setup-form");
 const setupSection = document.getElementById("setup-section");
@@ -162,10 +169,10 @@ function startCareerFromSetup() {
       setupSectionEl: setupSection,
       onComplete: () => {
         ensureTransferSave(player);
+        ensureContractAuthority(player);
         careerSection.classList.remove("hidden");
         refreshAll();
-        simulateBtn.disabled =
-          (player.pendingOffers?.length > 0 || player.pendingDecision) || player.isRetired;
+        syncSimulateButton();
       },
     });
   } catch (err) {
@@ -197,7 +204,8 @@ window.__loadLiveLoanBrowserFixture = function loadLiveLoanBrowserFixture(opts =
     return result;
   }
   player = result.player;
-  dealBookingGuard = false;
+  dealBookingGuard = null;
+  ensureContractAuthority(player);
   document.getElementById("career-start-overlay")?.classList.add("hidden");
   setupSection?.classList.add("hidden");
   careerSection?.classList.remove("hidden");
@@ -207,6 +215,7 @@ window.__loadLiveLoanBrowserFixture = function loadLiveLoanBrowserFixture(opts =
   note.textContent =
     "Mid-season checkpoint. Resolve the squad discussion or offers, then the season continues from January — not from a finished year.";
   transferContainer?.prepend(note);
+  syncSimulateButton();
   simulateBtn.disabled = true;
   return {
     ok: true,
@@ -342,13 +351,30 @@ function refreshCompetitions() {
   renderCompetitions(player, competitionsBoard);
 }
 
+function syncSimulateButton() {
+  if (!simulateBtn || !player) return;
+  const next = selectNextCareerAction(player);
+  simulateBtn.disabled = !next.canSimulate || player.isRetired;
+  if (next.id === "free-agent") {
+    simulateBtn.textContent = "Train / search as free agent";
+  } else if (next.id === "resume-season") {
+    simulateBtn.textContent = "Continue season";
+  } else {
+    simulateBtn.textContent = "Simulate Next Season";
+  }
+}
+
 function handleSquadDecision(decision, choiceId) {
   const result = resolveSquadDecision(player, decision, choiceId);
+  if (!result.ok) {
+    window.alert(`That choice is not available: ${result.reason || "invalid"}.`);
+    return result;
+  }
   if (result.action === "reintegrate" && player.activeLoan?.status === "active") {
-    endLoan(player, "return");
+    endLoan(player, isFreeAgent(player) ? "expiry" : "return");
   }
   if (result.action === "stay" || result.action === "transfer-listed") {
-    dealBookingGuard = false;
+    dealBookingGuard = null;
   }
   refreshTransferOffers();
   refreshOverview();
@@ -356,9 +382,10 @@ function handleSquadDecision(decision, choiceId) {
     player.pendingOffers?.length > 0 || Boolean(player.pendingDecision);
   if (!waiting && player.seasonCheckpoint?.status === "awaiting_decision") {
     resumeSeasonAfterDecision();
-    return;
+    return result;
   }
-  simulateBtn.disabled = player.isRetired || waiting;
+  syncSimulateButton();
+  return result;
 }
 
 function refreshTransferOffers() {
@@ -541,8 +568,7 @@ function finishSeasonAnimation() {
   refreshCompetitions();
   refreshTransferOffers();
 
-  simulateBtn.disabled =
-    player.pendingOffers?.length > 0 || Boolean(player.pendingDecision) || player.isRetired;
+  syncSimulateButton();
 }
 
 function retirePlayer() {
@@ -601,18 +627,19 @@ function promoteToParentClub() {
 
 function applyTransfer(offer) {
   if (!player || !offer) return;
-  if (dealBookingGuard) {
+  const guardKey = offer.offerId || offer.loanTerms?.loanId || `${offer.clubId}:${offer.dealType}`;
+  if (dealBookingGuard && dealBookingGuard === guardKey) {
     console.warn("Blocked duplicate deal acceptance click.");
     return { ok: false, reason: "duplicate-click" };
   }
-  dealBookingGuard = true;
+  dealBookingGuard = guardKey;
   player.suppressParentContractOffer = false;
 
   const playerNationality = player.nationality;
   if (offer.isLoan) {
     const loanResult = startLoan(player, offer);
     if (!loanResult.ok) {
-      dealBookingGuard = false;
+      dealBookingGuard = null;
       window.alert(`Loan could not be completed: ${loanResult.reason || "validation failed"}.`);
       return loanResult;
     }
@@ -620,12 +647,13 @@ function applyTransfer(offer) {
     if (player.attributes) refreshAbilityCaches(player);
     finishOfferWindow(true, offer);
     maybeResumeAfterWindowChoice();
+    dealBookingGuard = null;
     return loanResult;
   }
 
   const result = acceptPipelineOffer(player, offer);
   if (!result.ok) {
-    dealBookingGuard = false;
+    dealBookingGuard = null;
     window.alert(
       `Deal could not be completed: ${(result.reasons || [result.reason]).join(", ")}.`
     );
@@ -636,6 +664,7 @@ function applyTransfer(offer) {
   if (player.attributes) refreshAbilityCaches(player);
   finishOfferWindow(true, offer);
   maybeResumeAfterWindowChoice();
+  dealBookingGuard = null;
   return result;
 }
 
@@ -648,14 +677,17 @@ function maybeResumeAfterWindowChoice() {
 }
 
 function finishOfferWindow(accepted, offer) {
-  player.pendingOffers = [];
-  // Closing the window without accepting is an explicit stay/decline — never leave a
-  // mid-season decision hanging or Simulate Next Season stays dead.
-  if (!accepted && player.pendingDecision) {
-    player.pendingDecision = null;
+  if (!accepted) {
+    declineWindowAndContinue(player, { choiceId: "decline-window" });
+  } else {
+    player.pendingOffers = [];
+    // Successful accept already consumes related decision via pipeline.
+    if (player.pendingDecision && (offer?.isRenewal || offer?.isLoan || offer?.clubId)) {
+      player.pendingDecision = null;
+    }
   }
   transferContainer.innerHTML = "";
-  if (!accepted) dealBookingGuard = false;
+  if (!accepted) dealBookingGuard = null;
 
   const note = document.createElement("p");
   note.className = "empty-state";
@@ -678,6 +710,8 @@ function finishOfferWindow(accepted, offer) {
         offer.leagueDisplay ?? offer.league
       } for ${formatCurrency(offer.transferFee ?? 0)} · ${formatCurrency(offer.wage || 0)}/wk.`;
     }
+  } else if (isFreeAgent(player) || !player.club) {
+    message = `${player.name} is a free agent. Search the market or train while waiting for interest.`;
   } else {
     message = player.club?.isAcademy
       ? `${player.name} remains in the academy for now.`
@@ -698,6 +732,5 @@ function finishOfferWindow(accepted, offer) {
     maybeResumeAfterWindowChoice();
     return;
   }
-  simulateBtn.disabled =
-    player.isRetired || player.pendingOffers?.length > 0 || Boolean(player.pendingDecision);
+  syncSimulateButton();
 }

@@ -18,9 +18,14 @@ export function resetClubFinanceLedgers() {
 }
 
 export function exportClubFinanceState() {
+  // Independent deep copy — never export live ledger object aliases.
+  const cloned = {};
+  for (const [k, v] of ledgers.entries()) {
+    cloned[k] = structuredClone(v);
+  }
   return {
     profileVersion: FINANCE_PROFILE_VERSION,
-    ledgers: Object.fromEntries(ledgers),
+    ledgers: cloned,
   };
 }
 

@@ -14,15 +14,25 @@ import {
   formatAbilityForDisplay,
   roundAbilityForDisplay,
 } from "./abilityFormatting.js";
+import {
+  describeRegistration,
+  hasInternationalStatus,
+  ensureContractAuthority,
+  markOfferStatus,
+  isContractActive,
+  isFreeAgent,
+} from "../simulation/contractLifecycle.js";
 
 export function renderPlayerOverview(player, overviewEl, statsKeys) {
   if (!player) return;
+  ensureContractAuthority(player);
   const displayKeys =
     player.position === "GK" ? getDisplayAttributeKeys("GK") : statsKeys || getDisplayAttributeKeys(player.position);
   const totals = player.careerTotals;
   const cleanSheetLine = totals.cleanSheets ? ` - ${totals.cleanSheets} clean sheets` : "";
-  const currentClubName = clubNameForDisplay(player.club);
-  const clubLeagueName = player.club?.leagueDisplay ?? player.club?.league ?? "Unknown League";
+  const reg = describeRegistration(player);
+  const currentClubName = reg.playingLabel;
+  const clubLeagueName = reg.leagueLabel;
   const clubBadge = player.club?.badge
     ? `<img class="club-badge" src="${player.club.badge}" alt="${escapeHtml(currentClubName)} badge" loading="lazy" />`
     : "";
@@ -80,20 +90,30 @@ export function renderPlayerOverview(player, overviewEl, statsKeys) {
             })()
           }</span>
           <span>${player.age} yrs - ${escapeHtml(player.position)}</span>
-          <span>${escapeHtml(player.nationality)} international</span>
+          <span>${escapeHtml(player.nationality)}${
+            hasInternationalStatus(player) ? " · international" : ""
+          }</span>
           <span>${escapeHtml(currentClubName)} - ${escapeHtml(clubLeagueName)}</span>
+          ${
+            reg.employerLabel
+              ? `<span>Employer: ${escapeHtml(reg.employerLabel)} (on loan)</span>`
+              : ""
+          }
+          <span>${escapeHtml(reg.statusLabel)} · ${escapeHtml(reg.contractLabel)}${
+            reg.wage > 0 ? ` · ${formatCurrency(reg.wage)}/wk` : ""
+          }</span>
           ${
             player.potentialForecast &&
             Number.isFinite(player.potentialForecast.lower) &&
             Number.isFinite(player.potentialForecast.upper)
-              ? `<span>Projected base peak: ${formatAbilityForDisplay(
+              ? `<span>Estimated outlook: ${formatAbilityForDisplay(
                   player.potentialForecast.lower
                 )}–${formatAbilityForDisplay(player.potentialForecast.upper)} · ${
                   typeof player.potentialForecast.confidence === "number"
                     ? `${Math.round(player.potentialForecast.confidence * 100)}%`
                     : escapeHtml(String(player.potentialForecast.confidence ?? ""))
-                } confidence</span>`
-              : `<span>Potential (forecast): ${formatAbilityForDisplay(player.potential)}</span>`
+                } (changes with performance)</span>`
+              : `<span>Outlook: ${formatAbilityForDisplay(player.potential)}</span>`
           }
           ${
             player.state
@@ -874,6 +894,12 @@ export function renderTransferOffers({
           ? "No suitable professional offer is available right now. You can continue at the academy or wait for a fitting club."
           : "Complete career setup to begin.";
       transferContainer.appendChild(notice);
+    } else if (isFreeAgent(player) || !player.club) {
+      const empty = document.createElement("p");
+      empty.className = "empty-state";
+      empty.textContent =
+        "You are a free agent. No clubs have made an offer yet — train, wait, or search again next window. You will not play club matches until you sign.";
+      transferContainer.appendChild(empty);
     } else {
       const empty = document.createElement("p");
       empty.className = "empty-state";
@@ -957,10 +983,9 @@ export function renderTransferOffers({
     const parentName =
       offer.parentClubName ||
       offer.loanTerms?.parentClubName ||
-      player.employmentClubId ||
       player.parentClubSnapshot?.displayName ||
       player.parentClubSnapshot?.name ||
-      player.club?.name;
+      null;
     const loanStart = offer.loanTerms?.startDate || offer.effectiveDate || offer.reviewDate;
     const loanEnd = offer.loanTerms?.endDate;
     const lengthLine = offer.isLoan
@@ -1014,6 +1039,7 @@ export function renderTransferOffers({
     declineBtn.className = "decline";
     declineBtn.textContent = "Decline";
     declineBtn.addEventListener("click", () => {
+      markOfferStatus(player, offer, "declined");
       player.pendingOffers.splice(index, 1);
       if (!player.pendingOffers.length) {
         finishOfferWindow(false);
@@ -1033,20 +1059,27 @@ export function renderTransferOffers({
     transferContainer.appendChild(node);
   });
 
-  if (player.club) {
-    const currentSeason = player.seasons.length;
-    const contractValid = player.contractEndSeason === null || currentSeason < player.contractEndSeason;
+  if (player.club || isFreeAgent(player)) {
+    const contractValid = isContractActive(player);
     const hasRenewalOffer = (player.pendingOffers || []).some(
-      (offer) => offer.isRenewal && offer.club === player.club.name
+      (offer) =>
+        offer.isRenewal &&
+        (offer.clubId === player.employmentClubId || offer.club === player.club?.name)
     );
 
-    if (player.club.isAcademy && player.club.parentClub && !player.suppressParentContractOffer) {
+    if (player.club?.isAcademy && player.club.parentClub && !player.suppressParentContractOffer) {
       const stayBtn = document.createElement("button");
       stayBtn.className = "secondary";
       const parentDisplay = clubNameForDisplay(player.club.parentClub);
       stayBtn.textContent = `Sign with ${parentDisplay}`;
       stayBtn.addEventListener("click", () => {
-        promoteToParentClub("manual");
+        const signed = promoteToParentClub("manual");
+        if (!signed) {
+          window.alert(
+            "Professional contract could not be completed under the club's current limits. You remain at the academy."
+          );
+          return;
+        }
         finishOfferWindow(true, {
           isParentOffer: true,
           club: player.club.name,
@@ -1063,28 +1096,30 @@ export function renderTransferOffers({
 
       if (contractValid) {
         const seasonsRemaining =
-          player.contractEndSeason !== null ? player.contractEndSeason - currentSeason : "unknown";
-        stayBtn.textContent = `Stay at ${clubNameForDisplay(player.club)}${
+          player.contractEndSeason != null
+            ? player.contractEndSeason - (player.seasons?.length ?? 0)
+            : "unknown";
+        stayBtn.textContent = `Decline offers and continue at ${clubNameForDisplay(player.club)}${
           seasonsRemaining !== "unknown"
             ? ` (${seasonsRemaining} season${seasonsRemaining !== 1 ? "s" : ""} remaining)`
             : ""
         }`;
         stayBtn.addEventListener("click", () => {
-          // Mid-season "Stay" must clear pendingDecision and resume the checkpoint.
-          // Calling finishOfferWindow alone left the season paused forever.
+          // Decline relevant window offers and resume when contract is still active.
           const decision = player.pendingDecision;
           const stayId = stayChoiceIdForDecision(decision);
           if (decision && stayId && typeof onDecision === "function") {
             onDecision(decision, stayId);
             return;
           }
-          if (decision) {
-            player.pendingDecision = null;
-          }
           finishOfferWindow(false);
         });
       } else if (hasRenewalOffer) {
-        const renewalOffer = player.pendingOffers.find((offer) => offer.isRenewal && offer.club === player.club.name);
+        const renewalOffer = player.pendingOffers.find(
+          (offer) =>
+            offer.isRenewal &&
+            (offer.clubId === player.employmentClubId || offer.club === player.club?.name)
+        );
         stayBtn.textContent = `Accept Renewal from ${clubNameForDisplay(player.club)}`;
         stayBtn.addEventListener("click", () => {
           if (renewalOffer) {
@@ -1096,6 +1131,14 @@ export function renderTransferOffers({
       }
 
       transferContainer.appendChild(stayBtn);
+    } else if (isFreeAgent(player) || !contractValid) {
+      const waitBtn = document.createElement("button");
+      waitBtn.className = "secondary";
+      waitBtn.textContent = "Continue as free agent (train / wait)";
+      waitBtn.addEventListener("click", () => {
+        finishOfferWindow(false);
+      });
+      transferContainer.appendChild(waitBtn);
     }
   }
 }

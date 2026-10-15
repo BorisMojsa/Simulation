@@ -59,7 +59,13 @@ export function assessPlayerForClub(player, club, opts = {}) {
   const rng = createStreamRng(careerId, `scout:${club.clubId || club.name}:${seasonKey}`);
 
   const trueOvr = Number(opts.trueOverall ?? safePlayerOverall(player));
-  const truePotential = Number(player.development?.latentBudget ?? player.potential ?? trueOvr + 5);
+  // v3: scouting upside uses forecast cache / age-based outlook — not a hidden budget.
+  const forecastUpside = Number(player.potentialForecast?.upper ?? player.potential);
+  const age = Number(player.age) || 24;
+  const ageOutlook = trueOvr + clamp(28 - age, 2, 14);
+  const truePotential = Number.isFinite(forecastUpside)
+    ? forecastUpside
+    : ageOutlook;
 
   const recent = player.seasons?.slice(-2) || [];
   const matchSample = recent.reduce((s, se) => s + (se.matches || 0), 0);

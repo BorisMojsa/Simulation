@@ -1484,21 +1484,28 @@ function showAwardsAnimation(season, individualAwards) {
       awardEl.className = "award-item";
       if (award === "World Player of the Year") awardEl.classList.add("special");
 
+      const label = typeof award === "string" ? award : award?.label || award?.awardId || "Award";
       const icon =
-        award === "World Player of the Year"
+        label === "World Player of the Year"
           ? "Ballon"
-          : award === "Golden Boot"
+          : label === "Golden Boot"
             ? "Boot"
-            : award === "Golden Glove"
+            : label === "Golden Glove"
               ? "Glove"
-              : award === "Team of the Season"
+              : label === "Team of the Season"
                 ? "XI"
-                : "Award";
+                : label === "Player of the Season"
+                  ? "POTS"
+                  : label === "Young Player of the Season"
+                    ? "Youth"
+                    : label === "Rookie of the Season"
+                      ? "Rookie"
+                      : "Award";
 
       awardEl.innerHTML = `
         <div class="award-icon">${icon}</div>
         <div class="award-details">
-          <h3>${award}</h3>
+          <h3>${label}</h3>
           <p>Outstanding performance this season</p>
         </div>
       `;
