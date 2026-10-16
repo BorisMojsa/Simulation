@@ -181,6 +181,7 @@ export function createWorldState({ seed = null, startYear = 2026 } = {}) {
     matches: new Map(),
     ties: new Map(),
     fixtureLedger: [],
+    formAppliedFixtures: new Set(),
     notes: {
       persistence: "session-only; serializeWorldState/deserializeWorldState provided for round-trips",
       baselinePolicy:
@@ -249,6 +250,7 @@ export function serializeWorldState(world = activeWorld) {
     matches: [...(world.matches || new Map()).entries()],
     ties: [...(world.ties || new Map()).entries()],
     fixtureLedger: world.fixtureLedger,
+    formAppliedFixtures: [...(world.formAppliedFixtures || [])],
     clubFinance,
     notes: world.notes,
   };
@@ -291,17 +293,25 @@ export function deserializeWorldState(data) {
     matches: new Map(data.matches || []),
     ties: new Map(data.ties || []),
     fixtureLedger: data.fixtureLedger || [],
+    formAppliedFixtures: new Set(data.formAppliedFixtures || []),
     notes: data.notes,
   };
   setWorldState(world);
   return world;
 }
 
-/** Update short-term form from a decided match (once per fixture). */
+/** Update short-term form from a decided match (once per fixture identity). */
 export function applyMatchFormUpdate(world, match) {
   if (!world || !match || match.isBye) return;
-  if (match._formApplied) return;
+  if (!(world.formAppliedFixtures instanceof Set)) {
+    world.formAppliedFixtures = new Set(world.formAppliedFixtures || []);
+  }
+  const fixtureKey =
+    match.matchId || match.fixtureId || match._formKey || null;
+  if (fixtureKey && world.formAppliedFixtures.has(fixtureKey)) return;
+  if (!fixtureKey && match._formApplied) return;
   match._formApplied = true;
+  if (fixtureKey) world.formAppliedFixtures.add(fixtureKey);
 
   const homeId = match.home?.clubId || match.home?.nationId || match.home?.name;
   const awayId = match.away?.clubId || match.away?.nationId || match.away?.name;

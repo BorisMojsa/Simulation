@@ -11,9 +11,27 @@ import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./world
 import {
   simulateContinentalCampaign,
   reconcileCampaignWithPlayerMatches,
-} from "./continentalTournament.js?v=77";
+  prepareContinentalEdition,
+  processContinentalMatchday,
+  processContinentalFixture,
+  advanceContinentalStage,
+  buildContinentalCampaignView,
+  drainContinentalEdition,
+  listContinentalFixtures,
+  loadContinentalEdition,
+} from "./continentalTournament.js";
 
-export { reconcileCampaignWithPlayerMatches };
+export {
+  reconcileCampaignWithPlayerMatches,
+  prepareContinentalEdition,
+  processContinentalMatchday,
+  processContinentalFixture,
+  advanceContinentalStage,
+  buildContinentalCampaignView,
+  drainContinentalEdition,
+  listContinentalFixtures,
+  loadContinentalEdition,
+};
 
 const EUROPE_NATIONS = new Set([
   "England", "Spain", "Germany", "Italy", "France", "Portugal", "Netherlands",

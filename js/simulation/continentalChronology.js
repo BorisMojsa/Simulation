@@ -1,0 +1,285 @@
+/**
+ * Bridge between chronologicalSeason's dated event queue and the continental edition lifecycle.
+ * Fixtures are played once on their scheduled dates; the campaign view is always projected
+ * from committed store results.
+ */
+
+import { processPlayerMatchDay } from "./playerMatchDay.js";
+import { resolveKnockout } from "./matchEngine.js";
+import {
+  prepareContinentalEdition,
+  processContinentalMatchday,
+  processContinentalFixture,
+  advanceContinentalStage,
+  listContinentalFixtures,
+  buildContinentalCampaignView,
+  drainContinentalEdition,
+  loadContinentalEdition,
+} from "./continentalTournament.js";
+
+function continentalOpts({
+  edition,
+  player,
+  rng,
+  selRng,
+  injuryRng,
+  world,
+  lastDateRef,
+  ledgerRecords,
+  playerMatchStats,
+  accumulatePlayerStats,
+}) {
+  return {
+    player,
+    playerName: edition.playerClub?.name,
+    rng,
+    world,
+    matchProcessor: (req) => {
+      const { match, participation, ledgerRecord } = processPlayerMatchDay({
+        home: req.home,
+        away: req.away,
+        player,
+        playerSide: req.playerSide,
+        date: req.date,
+        lastDate: lastDateRef.current,
+        competition: "europe",
+        competitionType: "continental",
+        competitionId: req.competitionId || edition.competitionId,
+        fixtureId: req.matchId || req.fixtureId,
+        teamType: "club",
+        competitionPriority: 1.05,
+        venue: req.venue || "home",
+        rng,
+        selRng,
+        injuryRng,
+        worldState: world,
+        // Only single-leg knockout finals (etc.) may resolve ET/pens here.
+        // League phase, first legs, and two-leg second legs are handled by the edition engine.
+        resolveKnockout: req.knockout ? resolveKnockout : undefined,
+      });
+      if (ledgerRecord && ledgerRecords) {
+        ledgerRecords.push(ledgerRecord);
+        if (accumulatePlayerStats) accumulatePlayerStats(playerMatchStats, match, participation);
+      }
+      lastDateRef.current = req.date;
+      return { match, participation, ledgerRecord };
+    },
+  };
+}
+
+/** Prepare a continental edition for the season, or null if not qualified. */
+export function prepareSeasonContinental({ standing, league, player, seasonYear, world }) {
+  if (!standing) return null;
+  return prepareContinentalEdition({
+    standing,
+    league,
+    player,
+    seasonYear,
+    world,
+  });
+}
+
+/**
+ * Build dated chronology events for currently scheduled continental fixtures involving
+ * the player, plus one matchday tick per opening MD so non-player fixtures play on time.
+ */
+export function buildContinentalChronoEvents(edition) {
+  if (!edition) return [];
+  const events = [];
+  const openingMds = edition.openingMatchdays || [];
+  for (const md of openingMds) {
+    const mdFixtures = listContinentalFixtures(edition).filter(
+      (f) => f.stageType !== "knockout" && f.matchday === md
+    );
+    if (!mdFixtures.length) continue;
+    const date = mdFixtures[0].date;
+    events.push({
+      kind: "continental_md",
+      date,
+      sortKey: `${date}:E:md${String(md).padStart(2, "0")}`,
+      matchday: md,
+      competitionId: edition.competitionId,
+      editionId: edition.editionId,
+    });
+  }
+
+  // Already-scheduled knockout legs involving the player (e.g. Concacaf R1).
+  const koPlayer = listContinentalFixtures(edition, { status: "scheduled", playerOnly: true }).filter(
+    (f) => f.stageType === "knockout"
+  );
+  for (const f of koPlayer) {
+    events.push({
+      kind: "continental_fixture",
+      date: f.date,
+      sortKey: `${f.date}:E:fx:${f.matchId}`,
+      matchId: f.matchId,
+      competitionId: edition.competitionId,
+      editionId: edition.editionId,
+    });
+  }
+  return events;
+}
+
+/**
+ * After advance creates new fixtures, return chronology events for newly scheduled
+ * player knockout legs (and any new opening MDs — normally none).
+ */
+export function eventsForNewFixtures(edition, previousScheduledIds, afterIndex = 0) {
+  const prev = new Set(previousScheduledIds || []);
+  const fresh = listContinentalFixtures(edition, { status: "scheduled", playerOnly: true }).filter(
+    (f) => !prev.has(f.matchId)
+  );
+  return fresh.map((f, i) => ({
+    kind: "continental_fixture",
+    date: f.date,
+    sortKey: `${f.date}:E:fx:${f.matchId}`,
+    matchId: f.matchId,
+    competitionId: edition.competitionId,
+    editionId: edition.editionId,
+    _insertAfter: afterIndex,
+    _seq: i,
+  }));
+}
+
+function injectEvents(ordered, eventIndex, newEvents) {
+  if (!newEvents?.length) return ordered;
+  const copy = [...ordered];
+  // Insert after current event, keeping chronological order among the new ones.
+  const sorted = [...newEvents].sort((a, b) =>
+    String(a.sortKey).localeCompare(String(b.sortKey)) || (a._seq || 0) - (b._seq || 0)
+  );
+  copy.splice(eventIndex + 1, 0, ...sorted);
+  return copy;
+}
+
+/** Play background (non-player) fixtures that are due so stage gates can open. */
+function playDueBackgroundFixtures(edition, opts, onOrBeforeDate) {
+  const due = listContinentalFixtures(edition, { status: "scheduled" }).filter((f) => {
+    if (f.isPlayerFixture) return false;
+    if (!onOrBeforeDate) return true;
+    return String(f.date || "") <= String(onOrBeforeDate);
+  });
+  for (const f of due) {
+    processContinentalFixture(edition, f.matchId, { ...opts, matchProcessor: null });
+  }
+}
+
+function advanceAndCollect(edition, opts, ordered, eventIndex, onOrBeforeDate = null) {
+  let list = ordered;
+  const seenScheduled = new Set(
+    listContinentalFixtures(edition, { status: "scheduled" }).map((f) => f.matchId)
+  );
+  for (let guard = 0; guard < 16; guard++) {
+    playDueBackgroundFixtures(edition, opts, onOrBeforeDate);
+    const before = [...seenScheduled];
+    const step = advanceContinentalStage(edition, opts);
+    if (!step?.advanced) break;
+    const created = eventsForNewFixtures(edition, before, eventIndex);
+    for (const ev of created) seenScheduled.add(ev.matchId);
+    for (const id of step.createdFixtureIds || []) seenScheduled.add(id);
+    list = injectEvents(list, eventIndex, created);
+  }
+  return { ordered: list, edition };
+}
+
+/**
+ * Process a continental_md or continental_fixture chronology event.
+ * Returns updated { edition, ordered, europePlan }.
+ */
+export function processContinentalChronoEvent({
+  ev,
+  edition,
+  ordered,
+  eventIndex,
+  player,
+  rng,
+  selRng,
+  injuryRng,
+  world,
+  lastDateRef,
+  ledgerRecords,
+  playerMatchStats,
+  accumulatePlayerStats,
+}) {
+  if (!edition) return { edition, ordered, europePlan: null };
+  const opts = continentalOpts({
+    edition,
+    player,
+    rng,
+    selRng,
+    injuryRng,
+    world,
+    lastDateRef,
+    ledgerRecords,
+    playerMatchStats,
+    accumulatePlayerStats,
+  });
+
+  if (ev.kind === "continental_md") {
+    processContinentalMatchday(edition, ev.matchday, opts);
+  } else if (ev.kind === "continental_fixture") {
+    processContinentalFixture(edition, ev.matchId, opts);
+  }
+
+  const advanced = advanceAndCollect(edition, opts, ordered, eventIndex, ev.date);
+  const europePlan = buildContinentalCampaignView(advanced.edition, opts);
+  return {
+    edition: advanced.edition,
+    ordered: advanced.ordered,
+    europePlan,
+  };
+}
+
+/** Finish any remaining continental fixtures after the player's calendar path ends. */
+export function finalizeSeasonContinental({
+  edition,
+  player,
+  rng,
+  selRng,
+  injuryRng,
+  world,
+  lastDateRef,
+  ledgerRecords,
+  playerMatchStats,
+  accumulatePlayerStats,
+}) {
+  if (!edition) return null;
+  if (edition.status === "complete") {
+    return buildContinentalCampaignView(edition, {
+      player,
+      playerName: edition.playerClub?.name,
+      world,
+    });
+  }
+  const opts = continentalOpts({
+    edition,
+    player,
+    rng,
+    selRng,
+    injuryRng,
+    world,
+    lastDateRef,
+    ledgerRecords,
+    playerMatchStats,
+    accumulatePlayerStats,
+  });
+  drainContinentalEdition(edition, opts);
+  return buildContinentalCampaignView(edition, opts);
+}
+
+export function reloadEditionFromWorld(edition, world) {
+  if (!edition?.competitionId || !edition?.editionId) return edition;
+  return (
+    loadContinentalEdition({
+      competitionId: edition.competitionId,
+      editionId: edition.editionId,
+      world,
+    }) || edition
+  );
+}
+
+export {
+  buildContinentalCampaignView,
+  listContinentalFixtures,
+  loadContinentalEdition,
+};

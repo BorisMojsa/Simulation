@@ -88,15 +88,16 @@ test("Champions League campaign uses league phase with 36-team field when pool a
   });
   assert.ok(campaign);
   assert.equal(campaign.competition, "Champions League");
-  assert.ok(campaign.leaguePhase?.table?.length >= 16, `league table size ${campaign.leaguePhase?.table?.length}`);
+  assert.equal(campaign.leaguePhase?.table?.length, 36, `league table size ${campaign.leaguePhase?.table?.length}`);
+  assert.equal(campaign.leaguePhase?.matches?.length, 144);
   assert.ok(campaign.allRounds?.some((r) => r.round === "Final"), "has final");
   assert.ok(campaign.winner, "has champion");
   assert.ok(campaign.feederGraph?.length, "stores feeder graph");
-  // Distinct opponents per club in league phase (allowing repair extras)
-  const playerRow = campaign.leaguePhase.table.find((r) => r.name === club.name);
-  if (playerRow) {
-    assert.ok(playerRow.played >= 6, `player club played ${playerRow.played}`);
+  for (const row of campaign.leaguePhase.table) {
+    assert.equal(row.played, 8, `${row.name} played ${row.played}`);
+    assert.equal(row.points, 3 * row.wins + row.draws);
   }
+  assert.equal(Math.max(...campaign.leaguePhase.matches.map((m) => m.matchday || 0)), 8);
 });
 
 test("Libertadores uses group stage", () => {

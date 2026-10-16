@@ -10,7 +10,6 @@ import {
   dateLeagueFixtures,
   flattenRoundRobinFixtures,
   dateCupRounds,
-  dateContinentalMatches,
   dateInternationalWindows,
   sortChronological,
   simDate,
@@ -35,10 +34,17 @@ import { simulateMatch } from "./matchEngine.js";
 import { applyMatchFormUpdate } from "./worldState.js";
 import { stableCareerId } from "./playerDevelopmentModel.js";
 import {
-  simulateEuropeanCampaign,
   simulateEuropeanFinalsShowcase,
 } from "./europeanCompetition.js?v=81";
-import { reconcileCampaignWithPlayerMatches } from "./continentalTournament.js?v=81";
+import { reconcileCampaignWithPlayerMatches } from "./continentalTournament.js";
+import {
+  prepareSeasonContinental,
+  buildContinentalChronoEvents,
+  processContinentalChronoEvent,
+  finalizeSeasonContinental,
+  buildContinentalCampaignView,
+  reloadEditionFromWorld,
+} from "./continentalChronology.js";
 import { simulateInternationalSeason } from "./nationalTeam.js";
 import {
   prepareDomesticCupBracket,
@@ -379,37 +385,22 @@ export function simulateChronologicalSeason({
     seasonStartYear
   ).map((r) => r.date);
 
-  // Continental: eligibility from prior standing / quality; schedule KO dates.
+  // Continental: prepare edition (schedule only). Fixtures play once on their dates.
   const preStanding = preSeasonContinentalStanding(player, league);
-  let europePlan = null;
-  if (preStanding) {
-    europePlan = simulateEuropeanCampaign({
-      standing: preStanding,
-      league,
-      performanceScore: 70,
-      player,
-    });
-  }
-  if (!europePlan) {
-    europePlan = { ...simulateEuropeanFinalsShowcase(league), qualified: false, showcase: true };
-  }
-
-  // Date player's continental matches across the season; non-player rounds
-  // are already simulated inside europePlan — we re-process PLAYER matches
-  // chronologically with health by replaying dated slots that gate participation.
-  // Practical approach: take playerMatches from europePlan, assign dates, and
-  // when that date arrives run processPlayerMatchDay against the same opponents
-  // (fresh sim with current health) instead of trusting the pre-sim stats.
-  const europePlayerSlots = dateContinentalMatches(
-    (europePlan.playerMatches || []).map((m, i) => ({
-      index: i,
-      home: m.home,
-      away: m.away,
-      round: m.round,
-      prior: m,
-    })),
-    seasonStartYear
-  );
+  let europeEdition = prepareSeasonContinental({
+    standing: preStanding,
+    league,
+    player,
+    seasonYear: seasonStartYear,
+    world,
+  });
+  let europePlan = europeEdition
+    ? buildContinentalCampaignView(europeEdition, {
+        playerName: europeEdition.playerClub?.name,
+        world,
+      })
+    : { ...simulateEuropeanFinalsShowcase(league), qualified: false, showcase: true };
+  const europePlayerSlots = buildContinentalChronoEvents(europeEdition);
 
   // International: decide call-up early using form seed; schedule windows.
   const intlProbe = simulateInternationalSeason({
@@ -462,13 +453,8 @@ export function simulateChronologicalSeason({
   cupRoundDates.forEach((date, i) => {
     events.push({ kind: "cup_round", date, sortKey: `${date}:C:${i}`, roundIndex: i });
   });
-  europePlayerSlots.forEach((slot, i) => {
-    events.push({
-      kind: "continental",
-      date: slot.date,
-      sortKey: slot.sortKey || `${slot.date}:E:${i}`,
-      slot,
-    });
+  europePlayerSlots.forEach((ev) => {
+    events.push(ev);
   });
   intlSlots.forEach((slot, i) => {
     events.push({
@@ -512,8 +498,9 @@ export function simulateChronologicalSeason({
 
   let cupState = null;
   let cupResult = null;
-  let europeResimMatches = [];
+  let europeResimMatches = []; // legacy checkpoint field; continental no longer re-sims
   let intlResimMatches = [];
+  const lastDateRef = { current: null };
   const leaguePlayerMatches = [];
   const leagueAllMatches = [];
   const ledgerRecords = [];
@@ -581,6 +568,7 @@ export function simulateChronologicalSeason({
           cupState,
           cupResult,
           europePlan,
+          europeEdition,
           intlProbe,
           europeResimMatches,
           intlResimMatches,
@@ -642,6 +630,7 @@ export function simulateChronologicalSeason({
           cupState,
           cupResult,
           europePlan,
+          europeEdition,
           intlProbe,
           europeResimMatches,
           intlResimMatches,
@@ -858,40 +847,28 @@ export function simulateChronologicalSeason({
         // Player out — complete remaining rounds without further calendar waits.
         cupResult = finalizeDomesticCup(cupState);
       }
-    } else if (ev.kind === "continental") {
-      if (europePlan.showcase || europePlan.qualified === false) continue;
-      const slot = ev.slot;
-      const prior = slot.prior;
-      if (!prior?.home || !prior?.away) continue;
-      const playerSide = prior.playerSide;
-      if (!playerSide) continue;
-      const { match, participation, ledgerRecord } = processPlayerMatchDay({
-        home: prior.home,
-        away: prior.away,
+    } else if (ev.kind === "continental_md" || ev.kind === "continental_fixture") {
+      if (!europeEdition || europePlan?.showcase || europePlan?.qualified === false) continue;
+      lastDateRef.current = lastDate;
+      const processed = processContinentalChronoEvent({
+        ev,
+        edition: europeEdition,
+        ordered,
+        eventIndex,
         player,
-        playerSide,
-        date: ev.date,
-        lastDate,
-        competition: "europe",
-        competitionType: "continental",
-        competitionId: europePlan.competition,
-        fixtureId: `europe:${europePlan.competition}:${slot.index}`,
-        teamType: "club",
-        competitionPriority: 1.05,
-        venue: prior.venue || "home",
         rng,
         selRng,
         injuryRng,
-        worldState: world,
-        resolveKnockout,
+        world,
+        lastDateRef,
+        ledgerRecords,
+        playerMatchStats,
+        accumulatePlayerStats,
       });
-      match.round = prior.round || slot.round;
-      europeResimMatches.push(match);
-      if (ledgerRecord) {
-        ledgerRecords.push(ledgerRecord);
-        accumulatePlayerStats(playerMatchStats, match, participation);
-      }
-      lastDate = ev.date;
+      europeEdition = processed.edition;
+      ordered = processed.ordered;
+      if (processed.europePlan) europePlan = processed.europePlan;
+      lastDate = lastDateRef.current || ev.date;
     } else if (ev.kind === "international") {
       if (!intlProbe.calledUp) continue;
       const slot = ev.slot;
@@ -949,11 +926,20 @@ export function simulateChronologicalSeason({
     cupResult = finalizeDomesticCup(cupState);
   }
 
-  if (europeResimMatches.length) {
-    europePlan = reconcileCampaignWithPlayerMatches(
-      { ...europePlan, playerMatches: europeResimMatches },
-      europeResimMatches
-    );
+  if (europeEdition && !europePlan?.showcase) {
+    lastDateRef.current = lastDate;
+    europePlan = finalizeSeasonContinental({
+      edition: europeEdition,
+      player,
+      rng,
+      selRng,
+      injuryRng,
+      world,
+      lastDateRef,
+      ledgerRecords,
+      playerMatchStats,
+      accumulatePlayerStats,
+    }) || europePlan;
   }
   if (intlResimMatches.length) {
     const reconciled = reconcileCampaignWithPlayerMatches(
@@ -1135,7 +1121,7 @@ function applyAutoDecisionPolicy(player, decision, offers, policy, ctx = {}) {
 function buildSeasonCheckpoint(parts) {
   return {
     status: parts.status || "awaiting_decision",
-    version: 2,
+    version: 3,
     seasonIndex: parts.seasonIndex,
     leagueId: parts.leagueId,
     eventIndex: parts.eventIndex,
@@ -1156,6 +1142,7 @@ function buildSeasonCheckpoint(parts) {
     cupState: parts.cupState,
     cupResult: parts.cupResult,
     europePlan: parts.europePlan,
+    europeEdition: parts.europeEdition || null,
     intlProbe: parts.intlProbe,
     europeResimMatches: parts.europeResimMatches,
     intlResimMatches: parts.intlResimMatches,
@@ -1336,6 +1323,15 @@ export function resumeChronologicalSeason({
   let cupState = checkpoint.cupState;
   let cupResult = checkpoint.cupResult;
   let europePlan = checkpoint.europePlan;
+  let europeEdition =
+    checkpoint.europeEdition ||
+    reloadEditionFromWorld(checkpoint.europeEdition || europePlan, world);
+  if (europeEdition && !europeEdition.fixtures && europePlan?.editionId) {
+    europeEdition = reloadEditionFromWorld(
+      { competitionId: europePlan.competitionId, editionId: europePlan.editionId },
+      world
+    );
+  }
   const intlProbe = checkpoint.intlProbe;
   let europeResimMatches = [...(checkpoint.europeResimMatches || [])];
   let intlResimMatches = [...(checkpoint.intlResimMatches || [])];
@@ -1344,6 +1340,7 @@ export function resumeChronologicalSeason({
   const ledgerRecords = [...(checkpoint.ledgerRecords || [])];
   const playerMatchStats = { ...(checkpoint.playerMatchStats || {}) };
   let lastDate = checkpoint.lastDate;
+  const lastDateRef = { current: lastDate };
   const cupRoundDates = checkpoint.cupRoundDates || [];
   const europePlayerSlots = checkpoint.europePlayerSlots || [];
   const intlSlots = checkpoint.intlSlots || [];
@@ -1446,6 +1443,7 @@ export function resumeChronologicalSeason({
           cupState,
           cupResult,
           europePlan,
+          europeEdition,
           intlProbe,
           europeResimMatches,
           intlResimMatches,
@@ -1507,6 +1505,7 @@ export function resumeChronologicalSeason({
           cupState,
           cupResult,
           europePlan,
+          europeEdition,
           intlProbe,
           europeResimMatches,
           intlResimMatches,
@@ -1715,40 +1714,28 @@ export function resumeChronologicalSeason({
       } else if (!playerStillIn || cupState.eliminatedRound) {
         cupResult = finalizeDomesticCup(cupState);
       }
-    } else if (ev.kind === "continental") {
-      if (europePlan.showcase || europePlan.qualified === false) continue;
-      const slot = ev.slot;
-      const prior = slot.prior;
-      if (!prior?.home || !prior?.away) continue;
-      const playerSide = prior.playerSide;
-      if (!playerSide) continue;
-      const { match, participation, ledgerRecord } = processPlayerMatchDay({
-        home: prior.home,
-        away: prior.away,
+    } else if (ev.kind === "continental_md" || ev.kind === "continental_fixture") {
+      if (!europeEdition || europePlan?.showcase || europePlan?.qualified === false) continue;
+      lastDateRef.current = lastDate;
+      const processed = processContinentalChronoEvent({
+        ev,
+        edition: europeEdition,
+        ordered,
+        eventIndex,
         player,
-        playerSide,
-        date: ev.date,
-        lastDate,
-        competition: "europe",
-        competitionType: "continental",
-        competitionId: europePlan.competition,
-        fixtureId: `europe:${europePlan.competition}:${slot.index}`,
-        teamType: "club",
-        competitionPriority: 1.05,
-        venue: prior.venue || "home",
         rng,
         selRng,
         injuryRng,
-        worldState: world,
-        resolveKnockout,
+        world,
+        lastDateRef,
+        ledgerRecords,
+        playerMatchStats,
+        accumulatePlayerStats,
       });
-      match.round = prior.round || slot.round;
-      europeResimMatches.push(match);
-      if (ledgerRecord) {
-        ledgerRecords.push(ledgerRecord);
-        accumulatePlayerStats(playerMatchStats, match, participation);
-      }
-      lastDate = ev.date;
+      europeEdition = processed.edition;
+      ordered = processed.ordered;
+      if (processed.europePlan) europePlan = processed.europePlan;
+      lastDate = lastDateRef.current || ev.date;
     } else if (ev.kind === "international") {
       if (!intlProbe.calledUp) continue;
       const slot = ev.slot;
@@ -1803,11 +1790,20 @@ export function resumeChronologicalSeason({
     if (!cupState) cupState = prepareDomesticCupBracket(activeLeague, player);
     cupResult = finalizeDomesticCup(cupState);
   }
-  if (europeResimMatches.length) {
-    europePlan = reconcileCampaignWithPlayerMatches(
-      { ...europePlan, playerMatches: europeResimMatches },
-      europeResimMatches
-    );
+  if (europeEdition && !europePlan?.showcase) {
+    lastDateRef.current = lastDate;
+    europePlan = finalizeSeasonContinental({
+      edition: europeEdition,
+      player,
+      rng,
+      selRng,
+      injuryRng,
+      world,
+      lastDateRef,
+      ledgerRecords,
+      playerMatchStats,
+      accumulatePlayerStats,
+    }) || europePlan;
   }
   if (intlResimMatches.length) {
     const reconciled = reconcileCampaignWithPlayerMatches(

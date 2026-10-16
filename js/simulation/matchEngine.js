@@ -696,34 +696,8 @@ export function resolveTwoLeggedTie(firstLeg, secondLeg, {
     }
   }
 
-  // ET on second leg context
-  let etMatch = {
-    ...secondLeg,
-    regulationHomeGoals: secondLeg.regulationHomeGoals ?? secondLeg.homeGoals,
-    regulationAwayGoals: secondLeg.regulationAwayGoals ?? secondLeg.awayGoals,
-    homeGoals: secondLeg.homeGoals,
-    awayGoals: secondLeg.awayGoals,
-    matchHomeGoals: secondLeg.matchHomeGoals ?? secondLeg.homeGoals,
-    matchAwayGoals: secondLeg.matchAwayGoals ?? secondLeg.awayGoals,
-  };
-
-  // Reset to draw state for ET overlay on aggregate
-  etMatch = {
-    ...etMatch,
-    homeGoals: etMatch.matchHomeGoals,
-    awayGoals: etMatch.matchAwayGoals,
-  };
-
-  // Force level for resolveKnockout path by simulating ET as extension of second leg
-  const levelled = {
-    ...etMatch,
-    homeGoals: etMatch.matchHomeGoals,
-    awayGoals: etMatch.matchAwayGoals,
-    // Trick: if already level on agg, treat match goals as level for ET trigger
-    // We need ET regardless of second-leg score when aggregate level.
-  };
-
-  // Simulate ET from second-leg strengths with synthetic level scoreline
+  // Aggregate is level: ET (then pens) on the second leg only.
+  // winnerSide is always relative to first-leg home (team A), never second-leg orientation.
   const synthetic = {
     ...secondLeg,
     homeGoals: 0,
@@ -747,18 +721,47 @@ export function resolveTwoLeggedTie(firstLeg, secondLeg, {
     rng,
   });
 
+  const regHome = secondLeg.regulationHomeGoals ?? secondLeg.homeGoals ?? 0;
+  const regAway = secondLeg.regulationAwayGoals ?? secondLeg.awayGoals ?? 0;
+  const etHome = afterKo.etHomeGoals ?? 0;
+  const etAway = afterKo.etAwayGoals ?? 0;
+  const resolvedSecond = {
+    ...secondLeg,
+    regulationHomeGoals: regHome,
+    regulationAwayGoals: regAway,
+    etHomeGoals: afterKo.etHomeGoals,
+    etAwayGoals: afterKo.etAwayGoals,
+    homeGoals: regHome + (afterKo.decidedBy === "extraTime" || afterKo.decidedBy === "penalties" ? etHome : 0),
+    awayGoals: regAway + (afterKo.decidedBy === "extraTime" || afterKo.decidedBy === "penalties" ? etAway : 0),
+    matchHomeGoals: regHome + (afterKo.etHomeGoals || 0),
+    matchAwayGoals: regAway + (afterKo.etAwayGoals || 0),
+    penaltyHome: afterKo.penaltyHome,
+    penaltyAway: afterKo.penaltyAway,
+    decidedBy: afterKo.decidedBy,
+    events: afterKo.events,
+    scoreline: afterKo.scoreline || secondLeg.scoreline,
+  };
+
+  // Map second-leg winner orientation → first-leg-home relative side.
+  // Second-leg home is team B (first-leg away); second-leg away is team A.
+  let winnerSide = null;
+  if (afterKo.winnerSide === "home") {
+    winnerSide = "away"; // second-leg home = team B = first-leg away
+  } else if (afterKo.winnerSide === "away") {
+    winnerSide = "home"; // second-leg away = team A = first-leg home
+  }
+
+  // ET goals on the second leg: second-leg home adds to team B, away to team A.
+  const etAdjA = afterKo.decidedBy === "extraTime" || afterKo.decidedBy === "penalties" ? etAway : 0;
+  const etAdjB = afterKo.decidedBy === "extraTime" || afterKo.decidedBy === "penalties" ? etHome : 0;
+
   return {
     firstLeg,
-    secondLeg: {
-      ...secondLeg,
-      etHomeGoals: afterKo.etHomeGoals,
-      etAwayGoals: afterKo.etAwayGoals,
-      penaltyHome: afterKo.penaltyHome,
-      penaltyAway: afterKo.penaltyAway,
-      events: afterKo.events,
-    },
-    aggregate: `${aggA}-${aggB}`,
-    winnerSide: afterKo.winnerSide,
+    secondLeg: resolvedSecond,
+    aggregate: `${aggA + etAdjA}-${aggB + etAdjB}`,
+    aggregateA: aggA + etAdjA,
+    aggregateB: aggB + etAdjB,
+    winnerSide,
     decidedBy: afterKo.decidedBy === "regulation" ? "aggregate" : afterKo.decidedBy,
     etHomeGoals: afterKo.etHomeGoals,
     etAwayGoals: afterKo.etAwayGoals,
