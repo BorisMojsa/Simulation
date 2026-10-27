@@ -89,16 +89,19 @@ function makeSeniorPlayer({ seed = 42, position = "CM", name = "Senior Scene" } 
   return p;
 }
 
-test("bank has at least 24 distinct scenario IDs with three choices", () => {
+test("bank has at least 80 distinct scenario IDs with three choices", () => {
   const bank = allSeniorScenarios();
-  assert.ok(bank.length >= 24, `expected >=24, got ${bank.length}`);
+  assert.ok(bank.length >= 80, `expected >=80, got ${bank.length}`);
   const ids = new Set(bank.map((s) => s.id));
   assert.equal(ids.size, bank.length);
   for (const sc of bank) {
     assert.ok(sc.choices?.length === 3, `${sc.id} needs 3 choices`);
     for (const c of sc.choices) {
-      assert.ok(c.results?.length >= 2, `${c.id} needs outcomes`);
+      assert.ok(c.results?.length >= 3, `${c.id} needs outcomes`);
       assert.ok(c.disposition, `${c.id} needs disposition`);
+      for (const cat of ["positive", "neutral", "negative"]) {
+        assert.ok(c.results.some((r) => r.abilityCategory === cat), `${c.id} ${cat}`);
+      }
     }
   }
   for (const id of [
@@ -107,6 +110,8 @@ test("bank has at least 24 distinct scenario IDs with three choices", () => {
     "veteran-mentor",
     "partner-long-distance",
     "international-first-trip",
+    "video-pattern-review",
+    "experienced-player-role-evolution",
   ]) {
     assert.ok(getSeniorScenarioById(id), `missing ${id}`);
   }

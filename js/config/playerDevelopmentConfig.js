@@ -215,12 +215,12 @@ export const CEILING_CONFIG = Object.freeze({
 /**
  * Base annual learning (attr points/year). Positional maturation shifts the
  * effective age before these knots are read — see POSITION_MATURATION.
- * Tuned so healthy young good seasons land roughly +3–5 raw OVR before caps.
+ * Tuned so healthy young good seasons land roughly +4–6 raw OVR before caps.
  */
 export const LEARNING_CURVE_KNOTS = deepFreeze([
-  { age: 16, physical: 3.2, technical: 2.8, mental: 2.1, goalkeeping: 2.4 },
-  { age: 19, physical: 2.7, technical: 2.8, mental: 2.2, goalkeeping: 2.6 },
-  { age: 22, physical: 1.7, technical: 2.1, mental: 1.9, goalkeeping: 2.2 },
+  { age: 16, physical: 3.5, technical: 3.15, mental: 2.4, goalkeeping: 2.7 },
+  { age: 19, physical: 2.95, technical: 3.15, mental: 2.5, goalkeeping: 2.9 },
+  { age: 22, physical: 1.85, technical: 2.35, mental: 2.15, goalkeeping: 2.4 },
   { age: 25, physical: 0.85, technical: 1.45, mental: 1.5, goalkeeping: 1.8 },
   { age: 28, physical: 0.35, technical: 0.95, mental: 1.15, goalkeeping: 1.45 },
   { age: 31, physical: 0.1, technical: 0.5, mental: 0.8, goalkeeping: 1.0 },
@@ -413,9 +413,9 @@ export const DEVELOPMENT_CAPS = deepFreeze({
    * Covers academy, scenarios, season learning, recognition, and other paths.
    * Not a lifetime ceiling.
    */
-  annualLearningCap: 7,
-  annualLearningCapBreakthrough: 7,
-  breakthroughLearningCap: 7,
+  annualLearningCap: 8,
+  annualLearningCapBreakthrough: 9,
+  breakthroughLearningCap: 9,
   breakthroughAttrPoints: 3,
   annualShockLimit: 0.6,
   deconditioningDaysBeforeLoss: 60,
@@ -432,9 +432,9 @@ export const DEVELOPMENT_CAPS = deepFreeze({
    * Never a hard individual wall; floor keeps elite progress finite but nonzero.
    */
   abilityDifficulty: {
-    softStart: 90,
+    softStart: 88,
     softEnd: 99,
-    floorAtSoftEnd: 0.4,
+    floorAtSoftEnd: 0.28,
     /** Extra challenge demand above this OVR when environment is weak. */
     challengeSoftStart: 92,
   },
@@ -451,9 +451,9 @@ export const DEVELOPMENT_CAPS = deepFreeze({
    * performance into [0,1] before applying. Floor of 0 so a clearly poor season
    * can wipe new learning (net ≈ 0 or negative after ageing).
    */
-  performanceLearningWeight: 1.45,
+  performanceLearningWeight: 1.65,
   performanceMultFloor: 0,
-  performanceMultCeil: 1.9,
+  performanceMultCeil: 2.15,
   /**
    * Extra overall-point drag when sustained poor performances are reliable.
    * Applied after learning so bad seasons can finish flat or slightly down.
@@ -500,8 +500,8 @@ export const OPPORTUNITY_MINUTE_TARGETS = deepFreeze([
 
 export const OPPORTUNITY_CONFIG = Object.freeze({
   /** Share of learning available from training alone (0 minutes). */
-  floor: 0.35,
-  youthFloor: 0.45,
+  floor: 0.12,
+  youthFloor: 0.18,
   youthMaxAge: 18,
   exponent: 0.8,
 });

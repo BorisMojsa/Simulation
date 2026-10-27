@@ -65,8 +65,45 @@ test("healthy 18yo improves with variation", () => {
     deltas.push(p.baseOverallRaw - before);
   }
   const mean = deltas.reduce((a, b) => a + b, 0) / deltas.length;
-  assert.ok(mean > 0.3 && mean < 4, `mean Δ ${mean}`);
+  assert.ok(mean > 0.3 && mean < 6, `mean Δ ${mean}`);
   assert.ok(deltas.some((d) => d < mean) && deltas.some((d) => d > mean));
+});
+
+test("low minutes grow much less than full minutes under matched performance", () => {
+  const baseCtx = {
+    elapsedYears: 1,
+    healthyTrainingFraction: 1,
+    reliability: 0.8,
+    P_long: 0.5,
+    environmentMultiplier: 1.1,
+    alreadyAppliedLearningGain: 0,
+  };
+  const low = [];
+  const full = [];
+  for (let i = 0; i < 24; i++) {
+    const pLow = mkPlayer({ careerId: `mins-low-${i}`, age: 20, budget: 88 });
+    const pFull = mkPlayer({ careerId: `mins-full-${i}`, age: 20, budget: 88 });
+    const bLow = pLow.baseOverallRaw;
+    const bFull = pFull.baseOverallRaw;
+    developSeason(pLow, {
+      ...baseCtx,
+      usefulMinutes: 200,
+      rng: createRng(500 + i),
+      seasonId: `low-${i}`,
+    });
+    developSeason(pFull, {
+      ...baseCtx,
+      usefulMinutes: 2700,
+      rng: createRng(500 + i),
+      seasonId: `full-${i}`,
+    });
+    low.push(pLow.baseOverallRaw - bLow);
+    full.push(pFull.baseOverallRaw - bFull);
+  }
+  const meanLow = low.reduce((a, b) => a + b, 0) / low.length;
+  const meanFull = full.reduce((a, b) => a + b, 0) / full.length;
+  assert.ok(meanFull > meanLow * 2.2, `full ${meanFull} should dwarf low ${meanLow}`);
+  assert.ok(meanLow < 1.35, `bench/low-minute mean Δ too high: ${meanLow}`);
 });
 
 test("high current ability grows slower than mid ability under matched inputs", () => {

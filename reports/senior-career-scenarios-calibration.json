@@ -1,97 +1,295 @@
 {
-  "generatedAt": "2026-10-14T00:24:33.338Z",
-  "git": "5b5aa2c56dd97c54611f52ba73fb939f76da20b9",
+  "generatedAt": "2026-10-16T00:32:19.880Z",
+  "git": "34f15aafed4d459fd8ac20a6598db4fcb73584eb",
   "config": {
     "triggerProbability": 0.3,
     "repeatCooldownSeasons": 2,
-    "bankSize": 24
+    "contentVersion": 2,
+    "probabilityModelVersion": 2,
+    "bankSize": 80,
+    "choiceCount": 240,
+    "outcomeCount": 720,
+    "missingCategorySlots": 0
+  },
+  "probabilityTables": {
+    "thoughtful": {
+      "disposition": "thoughtful",
+      "academyReference": {
+        "positive": 0.698427382053654,
+        "neutral": 0.20351526364477338,
+        "negative": 0.09805735430157261,
+        "total": 10.81
+      },
+      "senior": {
+        "positive": 0.598427382053654,
+        "neutral": 0.2535152636447734,
+        "negative": 0.14805735430157263
+      },
+      "probabilityModelVersion": 2
+    },
+    "balanced": {
+      "disposition": "balanced",
+      "academyReference": {
+        "positive": 0.676728334956183,
+        "neutral": 0.1557935735150925,
+        "negative": 0.16747809152872445,
+        "total": 10.270000000000001
+      },
+      "senior": {
+        "positive": 0.576728334956183,
+        "neutral": 0.20579357351509248,
+        "negative": 0.21747809152872444
+      },
+      "probabilityModelVersion": 2
+    },
+    "ambitious": {
+      "disposition": "ambitious",
+      "academyReference": {
+        "positive": 0.5650224215246638,
+        "neutral": 0.1345291479820628,
+        "negative": 0.3004484304932735,
+        "total": 11.149999999999999
+      },
+      "senior": {
+        "positive": 0.4650224215246638,
+        "neutral": 0.18452914798206282,
+        "negative": 0.3504484304932735
+      },
+      "probabilityModelVersion": 2
+    },
+    "reckless": {
+      "disposition": "reckless",
+      "academyReference": {
+        "positive": 0.308,
+        "neutral": 0.092,
+        "negative": 0.6,
+        "total": 12.5
+      },
+      "senior": {
+        "positive": 0.208,
+        "neutral": 0.14200000000000002,
+        "negative": 0.65
+      },
+      "probabilityModelVersion": 2
+    }
+  },
+  "sampledRates": {
+    "thoughtful": {
+      "samples": 20000,
+      "target": {
+        "positive": 0.598427382053654,
+        "neutral": 0.2535152636447734,
+        "negative": 0.14805735430157263
+      },
+      "academyReference": {
+        "positive": 0.698427382053654,
+        "neutral": 0.20351526364477338,
+        "negative": 0.09805735430157261
+      },
+      "observed": {
+        "positive": 0.59965,
+        "neutral": 0.25315,
+        "negative": 0.1472
+      }
+    },
+    "balanced": {
+      "samples": 20000,
+      "target": {
+        "positive": 0.576728334956183,
+        "neutral": 0.20579357351509248,
+        "negative": 0.21747809152872444
+      },
+      "academyReference": {
+        "positive": 0.676728334956183,
+        "neutral": 0.1557935735150925,
+        "negative": 0.16747809152872445
+      },
+      "observed": {
+        "positive": 0.5786,
+        "neutral": 0.20765,
+        "negative": 0.21375
+      }
+    },
+    "ambitious": {
+      "samples": 20000,
+      "target": {
+        "positive": 0.4650224215246638,
+        "neutral": 0.18452914798206282,
+        "negative": 0.3504484304932735
+      },
+      "academyReference": {
+        "positive": 0.5650224215246638,
+        "neutral": 0.1345291479820628,
+        "negative": 0.3004484304932735
+      },
+      "observed": {
+        "positive": 0.47015,
+        "neutral": 0.18475,
+        "negative": 0.3451
+      }
+    },
+    "reckless": {
+      "samples": 20000,
+      "target": {
+        "positive": 0.208,
+        "neutral": 0.14200000000000002,
+        "negative": 0.65
+      },
+      "academyReference": {
+        "positive": 0.308,
+        "neutral": 0.092,
+        "negative": 0.6
+      },
+      "observed": {
+        "positive": 0.2086,
+        "neutral": 0.14,
+        "negative": 0.6514
+      }
+    }
+  },
+  "development": {
+    "trials": 120,
+    "positive": {
+      "n": 40,
+      "sumRaw": 27.160000000000252,
+      "displayCount": 0,
+      "tickCount": null
+    },
+    "neutral": {
+      "n": 40,
+      "zeroRaw": 40
+    },
+    "negative": {
+      "n": 40,
+      "sumRaw": -8.976438444213258,
+      "tickCount": 3
+    },
+    "limitedAnnual": 0,
+    "duplicates": 120
   },
   "triggerTrials": {
     "league": {
-      "trials": 10000,
+      "trials": 2000,
       "competitionType": "league",
       "probability": 0.3,
-      "drawn": 2977,
-      "rate": 0.2977
+      "drawn": 644,
+      "rate": 0.322
     },
     "cup": {
-      "trials": 10000,
+      "trials": 2000,
       "competitionType": "cup",
       "probability": 0.3,
-      "drawn": 3027,
-      "rate": 0.3027
+      "drawn": 613,
+      "rate": 0.3065
     },
     "continental": {
-      "trials": 10000,
+      "trials": 2000,
       "competitionType": "continental",
       "probability": 0.3,
-      "drawn": 2993,
-      "rate": 0.2993
+      "drawn": 592,
+      "rate": 0.296
     },
     "international": {
-      "trials": 10000,
+      "trials": 2000,
       "competitionType": "international",
       "probability": 0.3,
-      "drawn": 2922,
-      "rate": 0.2922
+      "drawn": 615,
+      "rate": 0.3075
     }
   },
   "schedule": {
-    "seasons": 800,
-    "drawnEditions": 656,
-    "eligibleEditions": 2067,
-    "shownScenes": 656,
+    "seasons": 200,
+    "drawnEditions": 145,
+    "eligibleEditions": 517,
+    "shownScenes": 145,
     "unschedulable": 0,
-    "rollMiss": 1411,
+    "rollMiss": 372,
     "scenarioCounts": {
-      "social-media-mistake": 35,
-      "airport-fan": 49,
-      "press-breakthrough": 62,
-      "sponsor-shoot": 36,
-      "press-after-defeat": 38,
-      "travel-fatigue": 50,
-      "partner-important-date": 11,
-      "extra-session-or-rest": 53,
-      "veteran-mentor": 34,
-      "international-first-trip": 35,
-      "selection-disappointment": 37,
-      "charity-invitation": 25,
-      "transfer-rumour": 38,
-      "family-birthday": 41,
-      "derby-provocation": 51,
-      "help-young-teammate": 26,
-      "family-needs-support": 28,
-      "partner-long-distance": 7
+      "weather-disrupted-session": 2,
+      "missed-chance-response": 6,
+      "derby-provocation": 4,
+      "costly-error-review": 2,
+      "new-shape-rehearsal": 4,
+      "extra-session-or-rest": 8,
+      "family-needs-support": 2,
+      "high-stakes-run-in": 5,
+      "transfer-rumour": 3,
+      "press-after-defeat": 3,
+      "international-first-trip": 4,
+      "press-breakthrough": 6,
+      "academy-player-trains-up": 5,
+      "fitness-load-conversation": 3,
+      "travel-fatigue": 5,
+      "household-disruption": 3,
+      "dressing-room-photo-request": 6,
+      "partner-important-date": 1,
+      "sponsor-shoot": 3,
+      "agent-public-comments": 2,
+      "social-media-mistake": 2,
+      "national-role-adjustment": 1,
+      "substitute-preparation": 4,
+      "video-pattern-review": 4,
+      "airport-fan": 3,
+      "late-team-return": 6,
+      "cup-elimination-response": 3,
+      "critical-column": 4,
+      "viral-training-clip": 2,
+      "strong-opponent-preparation": 4,
+      "return-from-injury": 1,
+      "dressing-room-frustration": 3,
+      "training-unit-disagreement": 1,
+      "cleared-full-training": 2,
+      "scouting-feedback": 3,
+      "charity-invitation": 1,
+      "quiet-time-or-social-invite": 1,
+      "renewal-uncertainty-focus": 1,
+      "individual-recovery-responsibility": 3,
+      "personal-study-schedule": 1,
+      "training-measurement-review": 1,
+      "sleep-routine-disruption": 2,
+      "long-interview-invitation": 2,
+      "long-international-journey": 2,
+      "help-young-teammate": 1,
+      "national-bench-response": 3,
+      "specialist-technique-clinic": 2,
+      "misquoted-comment": 1,
+      "new-teammate-language": 2,
+      "achievement-comedown": 1,
+      "community-coaching-workshop": 1
     },
     "byCompetitionType": {
       "league": {
-        "editions": 800,
-        "drawn": 236,
-        "shown": 236,
+        "editions": 200,
+        "drawn": 53,
+        "shown": 53,
         "unschedulable": 0,
-        "miss": 564
+        "miss": 147
       },
       "cup": {
-        "editions": 800,
-        "drawn": 261,
-        "shown": 261,
+        "editions": 200,
+        "drawn": 58,
+        "shown": 58,
         "unschedulable": 0,
-        "miss": 539
+        "miss": 142
       },
       "continental": {
-        "editions": 267,
-        "drawn": 92,
-        "shown": 92,
+        "editions": 67,
+        "drawn": 18,
+        "shown": 18,
         "unschedulable": 0,
-        "miss": 175
+        "miss": 49
       },
       "international": {
-        "editions": 200,
-        "drawn": 67,
-        "shown": 67,
+        "editions": 50,
+        "drawn": 16,
+        "shown": 16,
         "unschedulable": 0,
-        "miss": 133
+        "miss": 34
       }
     }
+  },
+  "integrity": {
+    "duplicateApplicationsBlocked": 120,
+    "missingCategorySlots": 0
   }
 }

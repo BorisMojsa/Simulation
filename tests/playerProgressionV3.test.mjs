@@ -185,8 +185,13 @@ test("earned exceptional season can reach +6 raw under shared annual allowance",
     forceBreakthrough: true,
     rng: createRng(99),
   });
+  const allowance =
+    Math.max(
+      DEVELOPMENT_CAPS.annualLearningCap,
+      DEVELOPMENT_CAPS.annualLearningCapBreakthrough ?? DEVELOPMENT_CAPS.breakthroughLearningCap ?? 0
+    ) + 0.01;
   assert.ok(delta >= 5.5, `exceptional delta ${delta} below +6 band`);
-  assert.ok(delta <= DEVELOPMENT_CAPS.annualLearningCap + 0.01, `delta ${delta} exceeds annual allowance`);
+  assert.ok(delta <= allowance, `delta ${delta} exceeds annual allowance ${allowance}`);
   assert.ok(result.breakthrough?.occurred || delta >= 6, "breakthrough or +6 required");
 });
 

@@ -6,6 +6,7 @@
 
 import { processPlayerMatchDay } from "./playerMatchDay.js";
 import { resolveKnockout } from "./matchEngine.js";
+import { mergePendingEvents } from "./seasonCalendar.js?v=89";
 import {
   prepareContinentalEdition,
   processContinentalMatchday,
@@ -95,6 +96,7 @@ export function buildContinentalChronoEvents(edition) {
     const date = mdFixtures[0].date;
     events.push({
       kind: "continental_md",
+      eventId: `continental_md:${edition.editionId}:${md}`,
       date,
       sortKey: `${date}:E:md${String(md).padStart(2, "0")}`,
       matchday: md,
@@ -110,6 +112,7 @@ export function buildContinentalChronoEvents(edition) {
   for (const f of koPlayer) {
     events.push({
       kind: "continental_fixture",
+      eventId: `continental_fixture:${f.matchId}`,
       date: f.date,
       sortKey: `${f.date}:E:fx:${f.matchId}`,
       matchId: f.matchId,
@@ -131,31 +134,30 @@ export function eventsForNewFixtures(edition, previousScheduledIds, afterIndex =
   );
   return fresh.map((f, i) => ({
     kind: "continental_fixture",
+    eventId: `continental_fixture:${f.matchId}`,
     date: f.date,
     sortKey: `${f.date}:E:fx:${f.matchId}`,
     matchId: f.matchId,
     competitionId: edition.competitionId,
     editionId: edition.editionId,
-    _insertAfter: afterIndex,
     _seq: i,
   }));
 }
 
+/**
+ * Merge newly unlocked fixtures into the pending calendar only.
+ * Preserves the processed prefix so earlier league/cup dates cannot run after a
+ * later knockout that was just injected.
+ */
 function injectEvents(ordered, eventIndex, newEvents) {
-  if (!newEvents?.length) return ordered;
-  const copy = [...ordered];
-  // Insert after current event, keeping chronological order among the new ones.
-  const sorted = [...newEvents].sort((a, b) =>
-    String(a.sortKey).localeCompare(String(b.sortKey)) || (a._seq || 0) - (b._seq || 0)
-  );
-  copy.splice(eventIndex + 1, 0, ...sorted);
-  return copy;
+  return mergePendingEvents(ordered, eventIndex, newEvents);
 }
 
 /** Play background (non-player) fixtures that are due so stage gates can open. */
-function playDueBackgroundFixtures(edition, opts, onOrBeforeDate) {
+function playDueBackgroundFixtures(edition, opts, { onOrBeforeDate = null, stageId = null } = {}) {
   const due = listContinentalFixtures(edition, { status: "scheduled" }).filter((f) => {
     if (f.isPlayerFixture) return false;
+    if (stageId && f.stageId === stageId) return true;
     if (!onOrBeforeDate) return true;
     return String(f.date || "") <= String(onOrBeforeDate);
   });
@@ -164,13 +166,13 @@ function playDueBackgroundFixtures(edition, opts, onOrBeforeDate) {
   }
 }
 
-function advanceAndCollect(edition, opts, ordered, eventIndex, onOrBeforeDate = null) {
+function advanceAndCollect(edition, opts, ordered, eventIndex, { onOrBeforeDate = null, stageId = null } = {}) {
   let list = ordered;
   const seenScheduled = new Set(
     listContinentalFixtures(edition, { status: "scheduled" }).map((f) => f.matchId)
   );
   for (let guard = 0; guard < 16; guard++) {
-    playDueBackgroundFixtures(edition, opts, onOrBeforeDate);
+    playDueBackgroundFixtures(edition, opts, { onOrBeforeDate, stageId });
     const before = [...seenScheduled];
     const step = advanceContinentalStage(edition, opts);
     if (!step?.advanced) break;
@@ -215,13 +217,18 @@ export function processContinentalChronoEvent({
     accumulatePlayerStats,
   });
 
+  let stageId = null;
   if (ev.kind === "continental_md") {
     processContinentalMatchday(edition, ev.matchday, opts);
   } else if (ev.kind === "continental_fixture") {
     processContinentalFixture(edition, ev.matchId, opts);
+    stageId = edition.fixtures?.[ev.matchId]?.stageId || null;
   }
 
-  const advanced = advanceAndCollect(edition, opts, ordered, eventIndex, ev.date);
+  const advanced = advanceAndCollect(edition, opts, ordered, eventIndex, {
+    onOrBeforeDate: ev.date,
+    stageId,
+  });
   const europePlan = buildContinentalCampaignView(advanced.edition, opts);
   return {
     edition: advanced.edition,
@@ -251,6 +258,8 @@ export function finalizeSeasonContinental({
       world,
     });
   }
+  // Background-only drain so leftover KO legs cannot append earlier-dated ledger rows
+  // after the season calendar has already finished.
   const opts = continentalOpts({
     edition,
     player,
@@ -259,10 +268,11 @@ export function finalizeSeasonContinental({
     injuryRng,
     world,
     lastDateRef,
-    ledgerRecords,
-    playerMatchStats,
-    accumulatePlayerStats,
+    ledgerRecords: null,
+    playerMatchStats: null,
+    accumulatePlayerStats: null,
   });
+  opts.matchProcessor = null;
   drainContinentalEdition(edition, opts);
   return buildContinentalCampaignView(edition, opts);
 }

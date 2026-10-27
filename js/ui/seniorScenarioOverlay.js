@@ -5,14 +5,16 @@ import {
   buildSeniorScenarioFeedback,
   formatSeniorScenarioContextLine,
   resolveSeniorScenarioChoice,
-} from "../simulation/seniorCareerScenarios.js";
-import { formatAbilityForDisplay } from "./abilityFormatting.js";
+} from "../simulation/seniorCareerScenarios.js?v=88";
+import { formatAbilityForDisplay, roundAbilityForDisplay } from "./abilityFormatting.js";
+import { getBaseOverall, getCurrentOverall, refreshAbilityCaches } from "../simulation/playerAbility.js";
 
 /**
  * Show a pending senior scenario and resolve on choice + Continue.
+ * Restores a resolved result screen when pending.resolved is already true.
  * @returns {Promise<{ok:boolean, choiceId?:string, result?:object}>}
  */
-export function showSeniorScenarioOverlay(player, pending, { onResolved } = {}) {
+export function showSeniorScenarioOverlay(player, pending, { onResolved, onPlayerUpdated } = {}) {
   return new Promise((resolve) => {
     const overlay = document.getElementById("senior-scenario-overlay");
     if (!overlay || !pending || pending.unschedulable) {
@@ -41,9 +43,19 @@ export function showSeniorScenarioOverlay(player, pending, { onResolved } = {}) 
       badgesEl.classList.add("hidden");
     }
     if (nextBtn) nextBtn.classList.add("hidden");
-    if (ovrEl) {
-      ovrEl.textContent = formatAbilityForDisplay(player.currentOverall ?? player.rating);
-    }
+
+    refreshAbilityCaches(player);
+    const paintAbility = () => {
+      if (!ovrEl) return;
+      // Headline matches the player card: current overall.
+      const current = roundAbilityForDisplay(getCurrentOverall(player));
+      const base = roundAbilityForDisplay(getBaseOverall(player));
+      ovrEl.textContent =
+        base != null && current != null && base !== current
+          ? `OVR ${formatAbilityForDisplay(current)} · Base ${formatAbilityForDisplay(base)}`
+          : `OVR ${formatAbilityForDisplay(current ?? base)}`;
+    };
+    paintAbility();
     if (choicesEl) choicesEl.innerHTML = "";
 
     let settled = false;
@@ -59,44 +71,86 @@ export function showSeniorScenarioOverlay(player, pending, { onResolved } = {}) 
       resolve(payload);
     };
 
-    for (const choice of pending.choices || []) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "primary career-choice-btn";
-      btn.textContent = choice.label;
-      btn.addEventListener("click", () => {
-        if (settled || lastResult) return;
-        const result = resolveSeniorScenarioChoice(player, pending, choice.id);
-        lastResult = result;
-        for (const b of choicesEl.querySelectorAll("button")) {
-          b.disabled = true;
-          if (b === btn) b.classList.add("career-choice-selected");
+    const showResult = (result) => {
+      lastResult = result;
+      for (const b of choicesEl?.querySelectorAll("button") || []) {
+        b.disabled = true;
+        if (b.dataset.choiceId === pending.chosenOptionId) {
+          b.classList.add("career-choice-selected");
         }
-        if (outcomeEl) {
-          outcomeEl.textContent = buildSeniorScenarioFeedback(result.outcome, result.badges);
-          outcomeEl.classList.remove("hidden");
-        }
-        if (badgesEl && result.badges?.length) {
-          badgesEl.innerHTML = result.badges
-            .map((b) => `<span class="senior-effect-badge">${escapeHtml(b)}</span>`)
-            .join("");
-          badgesEl.classList.remove("hidden");
-        }
-        if (ovrEl) {
-          ovrEl.textContent = formatAbilityForDisplay(player.currentOverall ?? player.rating);
-          ovrEl.classList.add("is-flash");
-          setTimeout(() => ovrEl.classList.remove("is-flash"), 400);
-        }
-        if (nextBtn) {
-          nextBtn.classList.remove("hidden");
-          nextBtn.focus();
-        }
+      }
+      if (outcomeEl) {
+        outcomeEl.textContent = buildSeniorScenarioFeedback(
+          result.outcome,
+          result.badges,
+          result.abilityReceipt
+        );
+        outcomeEl.classList.remove("hidden");
+      }
+      if (badgesEl && result.badges?.length) {
+        badgesEl.innerHTML = result.badges
+          .map((b) => `<span class="senior-effect-badge">${escapeHtml(b)}</span>`)
+          .join("");
+        badgesEl.classList.remove("hidden");
+      }
+      paintAbility();
+      ovrEl?.classList.add("is-flash");
+      setTimeout(() => ovrEl?.classList.remove("is-flash"), 400);
+      if (typeof onPlayerUpdated === "function") onPlayerUpdated(player);
+      if (nextBtn) {
+        nextBtn.classList.remove("hidden");
+        nextBtn.focus();
+      }
+    };
+
+    // Restore resolved-but-not-continued result screen.
+    if (pending.resolved && pending.sampledOutcome) {
+      for (const choice of pending.choices || []) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "primary career-choice-btn";
+        btn.textContent = choice.label;
+        btn.dataset.choiceId = choice.id;
+        btn.disabled = true;
+        if (choice.id === pending.chosenOptionId) btn.classList.add("career-choice-selected");
+        choicesEl?.appendChild(btn);
+      }
+      showResult({
+        ok: true,
+        duplicate: true,
+        outcome: pending.sampledOutcome,
+        badges: pending.badges || [],
+        abilityReceipt: pending.abilityReceipt,
       });
-      choicesEl?.appendChild(btn);
+    } else {
+      for (const choice of pending.choices || []) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "primary career-choice-btn";
+        btn.textContent = choice.label;
+        btn.dataset.choiceId = choice.id;
+        btn.addEventListener("click", () => {
+          if (settled || lastResult) return;
+          const result = resolveSeniorScenarioChoice(player, pending, choice.id);
+          if (!result.ok) {
+            if (outcomeEl) {
+              outcomeEl.textContent = "Something went wrong resolving this moment. Please try again.";
+              outcomeEl.classList.remove("hidden");
+            }
+            return;
+          }
+          showResult(result);
+        });
+        choicesEl?.appendChild(btn);
+      }
     }
 
     if (nextBtn) {
       nextBtn.onclick = () => {
+        // Clear pending only when continuing chronology.
+        if (player.pendingSeniorScenario === pending) {
+          player.pendingSeniorScenario = null;
+        }
         finish({ ok: true, choiceId: pending.chosenOptionId, result: lastResult });
       };
     }
@@ -104,7 +158,7 @@ export function showSeniorScenarioOverlay(player, pending, { onResolved } = {}) 
     overlay.classList.remove("hidden");
     overlay.setAttribute("aria-hidden", "false");
     document.body.classList.add("senior-scenario-open");
-    choicesEl?.querySelector("button")?.focus();
+    if (!pending.resolved) choicesEl?.querySelector("button")?.focus();
   });
 }
 

@@ -3,7 +3,7 @@ import { leagueMatchCount } from "./leaguePhase.js";
 import { getSimRng, createStreamRng } from "./rng.js";
 import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./worldState.js";
 import { effectiveTeamStrength } from "./teamStrength.js";
-import { dateLeagueFixtures, flattenRoundRobinFixtures } from "./seasonCalendar.js?v=81";
+import { dateLeagueFixtures, flattenRoundRobinFixtures } from "./seasonCalendar.js?v=89";
 import { resolvePlayerParticipation } from "./playerSelection.js";
 import { advanceHealth, applyInjury, computeRiskMultiplier, sampleInjuryFromExposure } from "./playerHealth.js";
 import { advanceStateBetweenDates, updateFormFromObservation, updateFatigue } from "./playerState.js";

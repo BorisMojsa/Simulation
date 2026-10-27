@@ -39,6 +39,8 @@ function createCtl() {
     seasonLabel: "",
     allMatches: [],
     playerMatches: [],
+    competitionContext: null,
+    contextMode: "table", // table | bracket
     awaitingChoice: false,
     documentHiddenSkip: false,
   };
@@ -357,15 +359,66 @@ function updateCardFinal(card, match) {
   }
 }
 
-function refreshLiveTable() {
+function refreshContextPanel() {
   const host = $("league-table-host");
+  const heading = $("live-standings-title");
   if (!host) return;
+  const ctx = ctl.competitionContext;
+  const visibleIds = ctl.appliedTableIds;
+
+  if (ctx && ctl.contextMode === "bracket" && typeof ctx.getBracketView === "function") {
+    const bracket = ctx.getBracketView(visibleIds);
+    if (heading) heading.textContent = "Bracket";
+    host.innerHTML = renderBracketPanel(bracket, ctx.playerParticipantId);
+    return;
+  }
+
+  if (ctx && typeof ctx.getTableView === "function") {
+    const view = ctx.getTableView({ groupId: ctx.activeGroupId }, visibleIds);
+    if (heading) {
+      heading.textContent =
+        view.kind === "national-table"
+          ? view.group?.name || "Group table"
+          : view.kind === "continental-table"
+            ? "League phase"
+            : "Table";
+    }
+    if (view.kind === "national-table" || view.kind === "continental-table") {
+      const seed = (view.table || []).map((r) => ({
+        name: r.name,
+        displayName: r.displayName || r.name,
+        badge: r.badge,
+        clubId: r.nationId || r.clubId || r.name,
+        overall: r.overall || 0,
+      }));
+      // Re-account from visible matches already done in getTableView — use returned rows.
+      const result = renderLeagueTable(host, {
+        table: (view.table || []).map((r) => ({
+          ...r,
+          goalsFor: r.goalsFor ?? r.gf,
+          goalsAgainst: r.goalsAgainst ?? r.ga,
+          qualification: r.qualificationStatus || r.qualification || null,
+        })),
+        playerClubId: ctx.playerParticipantId,
+        playerClubName: ctx.playerParticipantId,
+        animateFrom: ctl.prevPositions,
+        live: !ctl.awaitingChoice,
+        showLegend: true,
+        variant: "live",
+      });
+      ctl.prevPositions = result?.positions || ctl.prevPositions;
+      renderContextControls(ctx, view);
+      return;
+    }
+  }
+
+  // Default domestic league table
+  if (heading) heading.textContent = "League table";
   const revealedMatches = (ctl.allMatches || []).filter((m) => {
     const id = matchKey(m);
     return id && ctl.appliedTableIds.has(id);
   });
   const { table } = rebuildTableFromMatches(ctl.seedClubs, revealedMatches);
-  // Carry qualification from final table if present on seed rows later — provisional during live.
   const result = renderLeagueTable(host, {
     table,
     playerClubId: ctl.player?.playingClubId || ctl.player?.club?.clubId || null,
@@ -376,6 +429,115 @@ function refreshLiveTable() {
     variant: "live",
   });
   ctl.prevPositions = result?.positions || ctl.prevPositions;
+}
+
+function refreshLiveTable() {
+  refreshContextPanel();
+}
+
+function renderContextControls(ctx, view) {
+  let bar = $("sim-context-controls");
+  const panel = $("live-standings-panel");
+  if (!panel) return;
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "sim-context-controls";
+    bar.className = "sim-context-controls";
+    panel.insertBefore(bar, panel.firstChild?.nextSibling || null);
+  }
+  const parts = [];
+  if (ctx.participantType === "nation" && ctx.groups?.length) {
+    parts.push(`<button type="button" class="sim-ctx-btn" data-ctx="groups">Other groups</button>`);
+    if ((ctx.tournament?.bestThirds || 0) > 0) {
+      parts.push(`<button type="button" class="sim-ctx-btn" data-ctx="thirds">Best thirds</button>`);
+    }
+  }
+  if (ctx.stageMode === "bracket" || ctx.getBracketView) {
+    parts.push(
+      `<button type="button" class="sim-ctx-btn" data-ctx="toggle">${
+        ctl.contextMode === "bracket" ? "Show table" : "Show bracket"
+      }</button>`
+    );
+  }
+  bar.innerHTML = parts.join("");
+  bar.querySelectorAll("[data-ctx]").forEach((btn) => {
+    btn.onclick = () => {
+      const action = btn.getAttribute("data-ctx");
+      if (action === "toggle") {
+        ctl.contextMode = ctl.contextMode === "bracket" ? "table" : "bracket";
+        refreshContextPanel();
+      } else if (action === "groups") {
+        showOtherGroupsModal(ctx);
+      } else if (action === "thirds") {
+        showBestThirdsModal(ctx);
+      }
+    };
+  });
+}
+
+function renderBracketPanel(bracket, playerId) {
+  if (!bracket?.rounds?.length) {
+    return `<p class="sim-context-empty">Bracket unlocks after the opening phase.</p>`;
+  }
+  return bracket.rounds
+    .map((round) => {
+      const rows = (round.matches || [])
+        .map((m) => {
+          const home = m.home?.displayName || m.home?.name || m.homeParticipantId || "TBD";
+          const away = m.away?.displayName || m.away?.name || m.awayParticipantId || "TBD";
+          const score = m.spoilerHidden
+            ? "vs"
+            : `${m.homeGoals ?? "—"}–${m.awayGoals ?? "—"}`;
+          const hl =
+            playerId &&
+            (m.home?.name === playerId ||
+              m.away?.name === playerId ||
+              m.homeParticipantId === playerId ||
+              m.awayParticipantId === playerId);
+          return `<div class="sim-bracket-row${hl ? " is-player" : ""}"><span>${escapeHtml(
+            home
+          )}</span><strong>${escapeHtml(score)}</strong><span>${escapeHtml(away)}</span></div>`;
+        })
+        .join("");
+      return `<section class="sim-bracket-round"><h4>${escapeHtml(round.round || "")}</h4>${rows}</section>`;
+    })
+    .join("");
+}
+
+function showOtherGroupsModal(ctx) {
+  const host = $("league-table-host");
+  if (!host || !ctx?.groups) return;
+  const chunks = ctx.groups
+    .filter((g) => g.groupId !== ctx.activeGroupId)
+    .map((g) => {
+      const view = ctx.getTableView({ groupId: g.groupId }, ctl.appliedTableIds);
+      const rows = (view.table || [])
+        .map(
+          (r, i) =>
+            `<tr><td>${i + 1}</td><td>${escapeHtml(r.displayName || r.name)}</td><td>${r.played}</td><td>${r.points}</td><td>${r.gd}</td></tr>`
+        )
+        .join("");
+      return `<h4>${escapeHtml(g.name)}</h4><table class="sim-mini-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>Pts</th><th>GD</th></tr></thead><tbody>${rows}</tbody></table>`;
+    })
+    .join("");
+  host.innerHTML = `<div class="sim-other-groups">${chunks}<button type="button" class="sim-ctx-btn" id="sim-back-player-group">Back to your group</button></div>`;
+  $("sim-back-player-group")?.addEventListener("click", () => refreshContextPanel());
+}
+
+function showBestThirdsModal(ctx) {
+  const host = $("league-table-host");
+  if (!host || typeof ctx.getBestThirdsView !== "function") return;
+  const view = ctx.getBestThirdsView(ctl.appliedTableIds);
+  const rows = (view.table || [])
+    .map(
+      (r, i) =>
+        `<tr><td>${i + 1}</td><td>${escapeHtml(r.groupId || "")}</td><td>${escapeHtml(
+          r.displayName || r.name
+        )}</td><td>${r.points}</td><td>${r.gd}</td><td>${r.qualified === false ? "Out" : i < (ctx.tournament?.bestThirds || 0) ? "In" : ""}</td></tr>`
+    )
+    .join("");
+  host.innerHTML = `<div class="sim-best-thirds"><h4>Best third-placed teams</h4><table class="sim-mini-table"><thead><tr><th>#</th><th>Grp</th><th>Team</th><th>Pts</th><th>GD</th><th></th></tr></thead><tbody>${rows}</tbody></table><button type="button" class="sim-ctx-btn" id="sim-back-player-group">Back</button></div>`;
+  $("sim-back-player-group")?.addEventListener("click", () => refreshContextPanel());
 }
 
 function applyMatchesToTable(matches) {
@@ -490,6 +652,7 @@ export async function runSimulationDashboard(opts) {
     allMatches = [],
     playerMatches = [],
     seedClubs = null,
+    competitionContext = null,
     revealedFixtureIds = null,
     awaitingDecision = false,
     awaitingScenario = false,
@@ -513,12 +676,15 @@ export async function runSimulationDashboard(opts) {
   ctl.player = player;
   ctl.league = league;
   ctl.seasonLabel = seasonNumber ? `Season ${seasonNumber}` : "Season";
+  ctl.competitionContext = competitionContext || null;
+  ctl.contextMode = competitionContext?.stageMode === "bracket" ? "bracket" : "table";
   ctl.allMatches = allMatches || [];
   ctl.playerMatches = playerMatches?.length
     ? playerMatches
     : (allMatches || []).filter((m) => m.playerSide);
   ctl.seedClubs =
     seedClubs ||
+    competitionContext?.seedClubs ||
     (league?.clubs || []).map((c) => ({
       name: c.name,
       displayName: c.displayName,
@@ -534,6 +700,9 @@ export async function runSimulationDashboard(opts) {
   }
 
   showDashboardShell();
+  if (competitionContext) {
+    setActiveView(competitionContext.participantType === "nation" ? "national" : "continental");
+  }
   wireControls();
   ctl.paused = false;
   ctl.skipMatch = false;

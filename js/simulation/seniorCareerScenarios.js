@@ -1,19 +1,30 @@
 /**
  * Senior career optional scenes: competition-edition rolls, dated queue events,
- * pause → choice → resume, and bounded temporary consequences.
+ * pause → choice → resume, durable ability development, and temporary effects.
  */
-import { SENIOR_CAREER_SCENARIOS } from "../config/seniorCareerScenarioConfig.js";
+import { SENIOR_CAREER_SCENARIOS } from "../config/seniorCareerScenarioConfig.js?v=88";
 import {
   allSeniorScenarios,
   getSeniorScenarioById,
   normalizeSeniorScenario,
   pickWeightedSeniorResult,
-} from "../data/seniorCareerScenarios.js";
+} from "../data/seniorCareerScenarios.js?v=88";
 import { DOMESTIC_CUPS } from "../data/domesticCups.js";
 import { createStreamRng } from "./rng.js";
-import { stableCareerId } from "./playerDevelopmentModel.js";
+import {
+  alreadyAppliedLearningForPeriod,
+  applyScenarioAbilityChange,
+  developmentPeriodId,
+  ensureLearningPeriodLedger,
+  stableCareerId,
+} from "./playerDevelopmentModel.js?v=88";
 import { ensurePlayerModel } from "./playerModelMigration.js";
 import { getOrUpdateForecast } from "./playerPotential.js";
+import {
+  getBaseOverall,
+  getCurrentOverall,
+  refreshAbilityCaches,
+} from "./playerAbility.js?v=88";
 import {
   addDaysToDate,
   applyMoraleDelta,
@@ -25,7 +36,12 @@ import {
   updateReadiness,
 } from "./playerState.js";
 import { clamp } from "../utils/helpers.js";
-import { formatAbilityForDisplay } from "../ui/abilityFormatting.js";
+import {
+  abilityDisplayChange,
+  formatAbilityDisplayChange,
+  formatAbilityForDisplay,
+  roundAbilityForDisplay,
+} from "../ui/abilityFormatting.js";
 
 function careerId(player) {
   return stableCareerId(player);
@@ -33,6 +49,14 @@ function careerId(player) {
 
 function rollKey(career, competitionId, editionId) {
   return `${career}|${competitionId}|${editionId}`;
+}
+
+/** Stable event identity — independent of choice / scenario swap. */
+export function seniorScenarioEventId(player, event) {
+  if (event?.eventId) return String(event.eventId);
+  const periodId = event?.periodId || developmentPeriodId(player);
+  const cid = careerId(player);
+  return `${cid}|${periodId}|${event.competitionId}|${event.editionId}|senior-scene-slot`;
 }
 
 /**
@@ -44,10 +68,11 @@ export function ensureSeniorCareerState(player, opts = {}) {
     player.seniorCareer = {};
   }
   const sc = player.seniorCareer;
-  if (sc.version == null) sc.version = 1;
+  if (sc.version == null || sc.version < 2) sc.version = 2;
   if (!sc.rolls || typeof sc.rolls !== "object") sc.rolls = {};
   if (!Array.isArray(sc.history)) sc.history = [];
   if (!sc.appliedEventIds || typeof sc.appliedEventIds !== "object") sc.appliedEventIds = {};
+  if (!sc.eventReceipts || typeof sc.eventReceipts !== "object") sc.eventReceipts = {};
   if (!sc.activeModifiers || typeof sc.activeModifiers !== "object") sc.activeModifiers = {};
   if (!sc.life || typeof sc.life !== "object") {
     sc.life = { partner: false, partnerEstablishedSeason: null };
@@ -57,8 +82,17 @@ export function ensureSeniorCareerState(player, opts = {}) {
   if (sc.reputation == null) sc.reputation = 0;
   if (sc.rareCeilingBumpApplied == null) sc.rareCeilingBumpApplied = 0;
   if (!Array.isArray(sc.recentScenarioIds)) sc.recentScenarioIds = [];
+  if (!Array.isArray(sc.plannedScenarioIds)) sc.plannedScenarioIds = [];
+  if (sc.firstNationalCampAttended == null) sc.firstNationalCampAttended = false;
 
-  // Lightweight fictional relationship — no questionnaire.
+  // Migrate legacy choice-dependent application keys into event markers.
+  for (const key of Object.keys(sc.appliedEventIds)) {
+    if (key.startsWith("senior-scenario:") && key.split(":").length >= 4) {
+      // Keep as historical; resolution also checks eventReceipts by eventId.
+      sc.appliedEventIds[key] = sc.appliedEventIds[key] || { legacy: true };
+    }
+  }
+
   if (!sc.life.initialized) {
     const lifeRng =
       opts.lifeRng || createStreamRng(careerId(player), SENIOR_CAREER_SCENARIOS.streams.life);
@@ -77,6 +111,7 @@ export function listEnteredCompetitionEditions({
   europePlan = null,
   intlProbe = null,
   cupRoundDates = [],
+  cupEntered = null,
 }) {
   const editions = [];
   if (player?.club?.isAcademy) return editions;
@@ -91,7 +126,10 @@ export function listEnteredCompetitionEditions({
 
   const nation = league?.nation || player?.club?.nation;
   const cup = nation ? DOMESTIC_CUPS[nation] : null;
-  if (cup && (cupRoundDates?.length || true)) {
+  const hasCupEntry =
+    cupEntered === true ||
+    (Array.isArray(cupRoundDates) && cupRoundDates.length > 0);
+  if (cup && hasCupEntry) {
     const cupId = cup.name || cup.shortName || "Domestic Cup";
     editions.push({
       type: "cup",
@@ -172,7 +210,7 @@ function subtractDays(date, days) {
 }
 
 /**
- * Pick a safe checkpoint date before a competition's early fixtures.
+ * Spread checkpoint dates across the edition rather than only before first fixtures.
  */
 export function pickSceneDateForEdition(edition, ctx = {}) {
   const {
@@ -186,29 +224,38 @@ export function pickSceneDateForEdition(edition, ctx = {}) {
 
   let candidates = [];
   if (edition.type === "league") {
-    const mid = datedLeague.slice(2, Math.max(3, Math.floor(datedLeague.length * 0.45)));
-    candidates = mid.map((fx) => subtractDays(fx.date, 1)).filter(Boolean);
-    if (!candidates.length && datedLeague[0]) {
-      candidates = [subtractDays(datedLeague[0].date, 1) || datedLeague[0].date];
+    const dates = datedLeague.map((fx) => fx.date).filter(Boolean);
+    if (dates.length) {
+      const idxs = [
+        Math.floor(dates.length * 0.2),
+        Math.floor(dates.length * 0.45),
+        Math.floor(dates.length * 0.7),
+      ];
+      for (const i of idxs) {
+        const d = dates[clamp(i, 0, dates.length - 1)];
+        candidates.push(subtractDays(d, 1) || d);
+      }
     }
   } else if (edition.type === "cup") {
-    if (cupRoundDates[0]) candidates = [subtractDays(cupRoundDates[0], 2) || cupRoundDates[0]];
+    for (const d of cupRoundDates.slice(0, 3)) {
+      candidates.push(subtractDays(d, 1) || d);
+    }
   } else if (edition.type === "continental") {
-    if (europePlayerSlots[0]?.date) {
-      candidates = [subtractDays(europePlayerSlots[0].date, 2) || europePlayerSlots[0].date];
+    for (const slot of europePlayerSlots.slice(0, 4)) {
+      if (slot?.date) candidates.push(subtractDays(slot.date, 1) || slot.date);
     }
   } else if (edition.type === "international") {
-    if (intlSlots[0]?.date) {
-      candidates = [subtractDays(intlSlots[0].date, 2) || intlSlots[0].date];
+    for (const slot of intlSlots.slice(0, 3)) {
+      if (slot?.date) candidates.push(subtractDays(slot.date, 1) || slot.date);
     }
   }
 
+  candidates = [...new Set(candidates.filter(Boolean))];
   for (const date of candidates) {
     const ok = occupiedDates.every((d) => daysBetween(d, date) >= minGap);
     if (ok) return { date, reason: null };
   }
   if (candidates[0]) {
-    // Do not silently kill the 30% roll via cooldown — schedule with soft spacing note.
     return { date: candidates[0], reason: "spacing-soft" };
   }
   return { date: null, reason: "no-eligible-date" };
@@ -219,61 +266,173 @@ export function buildSeniorScenarioContext(player, opts = {}) {
   const state = ensureSeniorCareerState(player);
   const stats = opts.playerMatchStats || {};
   const lastResults = opts.recentResults || [];
-  const afterLoss = lastResults.some((r) => r === "L") || Boolean(opts.forceAfterLoss);
+  const afterLoss =
+    lastResults.some((r) => r === "L") || Boolean(opts.forceAfterLoss);
   const standout =
     Boolean(opts.forceStandout) ||
-    (stats.goals || 0) + (stats.assists || 0) >= 3 ||
-    (stats.minutes || 0) >= 450;
-  const benched = Boolean(opts.forceBenched) || ((stats.starts || 0) === 0 && (stats.played || 0) > 0);
+    Boolean(opts.strongRolePerformance) ||
+    ((stats.goals || 0) + (stats.assists || 0) >= 3 && (stats.avgMatchRating || 0) >= 7.2);
+  const benched =
+    Boolean(opts.forceBenched) || ((stats.starts || 0) === 0 && (stats.played || 0) > 0);
+  const substituteAppearances =
+    Boolean(opts.substituteAppearances) ||
+    ((stats.appsFromBench || stats.subApps || 0) > 0) ||
+    (benched && (stats.played || 0) > 0);
+  const unusedSubstitute = Boolean(opts.unusedSubstitute);
   const rivalMatchup = Boolean(opts.rivalMatchup);
   const travelCongestion = Boolean(opts.travelCongestion);
   const fixtureCongestion = Boolean(opts.fixtureCongestion);
   const onLeave = Boolean(opts.onLeave);
+  const healthStatus = player.health?.status;
   const returningFromInjury =
     Boolean(opts.returningFromInjury) ||
-    Boolean(player.health?.activeInjury) ||
-    player.health?.status === "returning" ||
-    player.health?.status === "rehab";
+    healthStatus === "returning" ||
+    healthStatus === "rehab";
+  const clearedFullTraining =
+    Boolean(opts.clearedFullTraining) || healthStatus === "cleared" || healthStatus === "available";
   const recentAbroadMove =
     Boolean(opts.recentAbroadMove) ||
     Boolean(player.state?.adaptationPenalty > 0.15) ||
     Boolean(player.destinationScheduleMeta);
+  const recentClubMove =
+    Boolean(opts.recentClubMove) || recentAbroadMove || Boolean(player.destinationScheduleMeta);
   const pendingRelocation =
     Boolean(opts.pendingRelocation) ||
-    Boolean(player.pendingOffers?.some((o) => !o.isLoan && o.leagueId && o.leagueId !== player.club?.leagueId));
+    Boolean(
+      player.pendingOffers?.some(
+        (o) => !o.isLoan && o.leagueId && o.leagueId !== player.club?.leagueId
+      )
+    );
   const nationalCallUp = Boolean(opts.nationalCallUp) || Boolean(opts.intlCalledUp);
+  const firstNationalCamp =
+    Boolean(opts.firstNationalCamp) ||
+    (nationalCallUp && !state.firstNationalCampAttended);
   const leadershipContext =
     Boolean(opts.leadershipContext) || ((player.age || 0) >= 22 && (stats.starts || 0) >= 5);
+  const experiencedSenior = Boolean(opts.experiencedSenior) || (player.age || 0) >= 28;
+  const activeLoan = Boolean(
+    opts.activeLoan ||
+      player.loan ||
+      (player.employmentClubId &&
+        player.playingClubId &&
+        player.employmentClubId !== player.playingClubId)
+  );
+  const activeLoanStart = Boolean(opts.activeLoanStart) || (activeLoan && opts.loanWeek != null && opts.loanWeek <= 1);
+  const activeLoanProgress =
+    Boolean(opts.activeLoanProgress) || (activeLoan && (stats.minutes || 0) >= 90);
+  const loanReturn = Boolean(opts.loanReturn);
+  const permanentTransferInduction = Boolean(opts.permanentTransferInduction);
+  const contractUncertainty =
+    Boolean(opts.contractUncertainty) ||
+    (Number.isFinite(player.contractEndSeason) &&
+      Number.isFinite(player.seasons?.length) &&
+      player.contractEndSeason - player.seasons.length <= 1 &&
+      player.contractEndSeason - player.seasons.length >= 0);
+  const nextFixture = Boolean(opts.nextFixture);
+  const matchErrorEvidence = Boolean(opts.matchErrorEvidence);
+  const missedChanceEvidence = Boolean(opts.missedChanceEvidence);
+  const gkReboundEvidence =
+    Boolean(opts.gkReboundEvidence) &&
+    String(player.position || "").toUpperCase() === "GK";
+  const cupEliminated = Boolean(opts.cupEliminated);
+  const strongOpponentUpcoming = Boolean(opts.strongOpponentUpcoming);
+  const recentAchievement = Boolean(opts.recentAchievement);
+  const highStakesRunIn = Boolean(opts.highStakesRunIn);
+  const awayTravelReturn = Boolean(opts.awayTravelReturn);
+  const highWorkload = Boolean(opts.highWorkload) || fixtureCongestion || travelCongestion;
+  const returnFromNationalTrip = Boolean(opts.returnFromNationalTrip);
+  const poorFormEvidence =
+    Boolean(opts.poorFormEvidence) ||
+    (Number.isFinite(stats.avgMatchRating) && stats.avgMatchRating > 0 && stats.avgMatchRating < 6.4);
+  const languageAdaptationNeed =
+    Boolean(opts.languageAdaptationNeed) ||
+    (recentAbroadMove && Boolean(player.state?.adaptationPenalty > 0.1));
+  const rotatedAfterStrong = Boolean(opts.rotatedAfterStrong);
+  const nationalBenchDuty = Boolean(opts.nationalBenchDuty);
 
   return {
     afterLoss,
     standoutPerformance: standout,
     benched,
+    substituteAppearances,
+    unusedSubstitute,
     rivalMatchup,
     travelCongestion,
     fixtureCongestion,
     onLeave,
     returningFromInjury,
+    clearedFullTraining,
     recentAbroadMove,
+    recentClubMove,
     pendingRelocation,
     hasPartner: Boolean(state.life?.partner),
     nationalCallUp,
+    firstNationalCamp,
     leadershipContext,
+    experiencedSenior,
+    activeLoan,
+    activeLoanStart,
+    activeLoanProgress,
+    loanReturn,
+    permanentTransferInduction,
+    contractUncertainty,
+    nextFixture,
+    matchErrorEvidence,
+    missedChanceEvidence,
+    gkReboundEvidence,
+    cupEliminated,
+    strongOpponentUpcoming,
+    recentAchievement,
+    highStakesRunIn,
+    awayTravelReturn,
+    highWorkload,
+    returnFromNationalTrip,
+    poorFormEvidence,
+    languageAdaptationNeed,
+    rotatedAfterStrong,
+    nationalBenchDuty,
+    senior: !player.club?.isAcademy,
     any: true,
     seasonIndex: player.seasons?.length ?? 0,
   };
 }
 
-export function scenarioEligible(scenario, context) {
-  const tags = scenario?.eligibility || ["any"];
+export function scenarioEligible(scenario, context, { strict = true } = {}) {
+  const tags = scenario?.eligibility || ["senior"];
   return tags.every((tag) => {
-    if (tag === "any") return true;
+    if (tag === "any" || tag === "senior") return context?.senior !== false && context?.any !== false;
     return Boolean(context?.[tag]);
   });
 }
 
+function preferForEdition(list, edition) {
+  if (edition.type === "international") {
+    const intl = list.filter(
+      (s) =>
+        s.tags?.includes("international") ||
+        s.eligibility?.includes("nationalCallUp") ||
+        s.eligibility?.includes("firstNationalCamp") ||
+        s.id === "international-first-trip"
+    );
+    return intl.length ? intl : [];
+  }
+  if (edition.type === "cup" || edition.type === "continental") {
+    const flavoured = list.filter(
+      (s) =>
+        s.tags?.includes("match") ||
+        s.tags?.includes("travel") ||
+        s.tags?.includes("tactics") ||
+        ["press-breakthrough", "derby-provocation", "travel-fatigue", "airport-fan", "extra-session-or-rest"].includes(
+          s.id
+        )
+    );
+    return flavoured.length ? flavoured : [];
+  }
+  return [];
+}
+
 /**
- * Select a scenario for a drawn edition. Avoids recent repeats when alternatives exist.
+ * Select a scenario. Schedule-time may use soft context; fire-time must be strict.
  */
 export function selectScenarioForEdition(player, edition, context, opts = {}) {
   const state = ensureSeniorCareerState(player);
@@ -292,29 +451,78 @@ export function selectScenarioForEdition(player, edition, context, opts = {}) {
       .filter((h) => seasonIndex - (h.seasonIndex ?? 0) < cooldown)
       .map((h) => h.scenarioId)
   );
+  for (const id of state.plannedScenarioIds || []) recent.add(id);
 
   const bank = allSeniorScenarios();
-  // Soften context for schedule-time: allow scenarios that need mid-season flags
-  // when the edition type can produce them; re-check at fire.
-  const softCtx = { ...context };
-  if (edition.type === "league" || edition.type === "cup" || edition.type === "continental") {
-    softCtx.afterLoss = true;
-    softCtx.standoutPerformance = true;
-    softCtx.benched = true;
-    softCtx.rivalMatchup = true;
-    softCtx.travelCongestion = true;
-    softCtx.fixtureCongestion = true;
-  }
-  if (edition.type === "international") {
-    softCtx.nationalCallUp = true;
-    softCtx.afterLoss = true;
-  }
-  if (edition.type === "league") {
-    softCtx.onLeave = seasonIndex > 0; // mid-season / winter-ish leave stories
-    softCtx.leadershipContext = (player.age || 0) >= 21;
+  const soft = Boolean(opts.soft);
+  let ctx = { ...context };
+  if (soft) {
+    // Permissive schedule-time: mid-season flags may become true later.
+    if (edition.type === "league" || edition.type === "cup" || edition.type === "continental") {
+      ctx = {
+        ...ctx,
+        afterLoss: true,
+        standoutPerformance: true,
+        benched: true,
+        substituteAppearances: true,
+        rivalMatchup: true,
+        travelCongestion: true,
+        fixtureCongestion: true,
+        nextFixture: true,
+        highWorkload: true,
+        awayTravelReturn: true,
+        poorFormEvidence: true,
+        matchErrorEvidence: true,
+        missedChanceEvidence: player.position !== "GK",
+        gkReboundEvidence: player.position === "GK",
+        strongOpponentUpcoming: true,
+        highStakesRunIn: true,
+        rotatedAfterStrong: true,
+        unusedSubstitute: true,
+        cupEliminated: edition.type === "cup",
+      };
+    }
+    if (edition.type === "international") {
+      ctx = {
+        ...ctx,
+        nationalCallUp: true,
+        firstNationalCamp: !state.firstNationalCampAttended,
+        afterLoss: true,
+        returnFromNationalTrip: true,
+        nationalBenchDuty: true,
+        nationalRoleAdjustment: true,
+      };
+    }
+    if (edition.type === "league") {
+      ctx.onLeave = seasonIndex > 0;
+      ctx.leadershipContext = (player.age || 0) >= 21;
+      ctx.experiencedSenior = (player.age || 0) >= 27;
+      ctx.contractUncertainty = true;
+      ctx.recentClubMove = Boolean(player.destinationScheduleMeta);
+      ctx.recentAbroadMove = Boolean(player.state?.adaptationPenalty > 0.1);
+      ctx.languageAdaptationNeed = ctx.recentAbroadMove;
+      ctx.activeLoanStart = Boolean(
+        player.employmentClubId &&
+          player.playingClubId &&
+          player.employmentClubId !== player.playingClubId
+      );
+      ctx.activeLoanProgress = ctx.activeLoanStart;
+      ctx.clearedFullTraining = true;
+      ctx.returningFromInjury = true;
+      ctx.recentAchievement = true;
+      ctx.permanentTransferInduction = Boolean(player.destinationScheduleMeta);
+      ctx.loanReturn = true;
+    }
   }
 
-  let eligible = bank.filter((sc) => scenarioEligible(sc, softCtx));
+  let eligible = bank.filter((sc) => scenarioEligible(sc, ctx, { strict: !soft }));
+  if (!eligible.length) {
+    // Ambient fallback: general senior scenes only.
+    eligible = bank.filter((sc) => {
+      const tags = sc.eligibility || [];
+      return tags.every((t) => t === "any" || t === "senior");
+    });
+  }
   if (!eligible.length) {
     return { scenario: null, reason: "no-eligible-scenario" };
   }
@@ -322,7 +530,6 @@ export function selectScenarioForEdition(player, edition, context, opts = {}) {
   const fresh = eligible.filter((sc) => !recent.has(sc.id));
   if (fresh.length) eligible = fresh;
 
-  // Soft preference: ~35% chance to draw from an edition-flavoured subset when available.
   let pool = eligible;
   if (rng.chance(0.35)) {
     const preferred = preferForEdition(eligible, edition);
@@ -332,28 +539,12 @@ export function selectScenarioForEdition(player, edition, context, opts = {}) {
   return { scenario: pick, reason: null };
 }
 
-function preferForEdition(list, edition) {
-  if (edition.type === "international") {
-    const intl = list.filter(
-      (s) => s.id === "international-first-trip" || s.eligibility?.includes("nationalCallUp")
-    );
-    return intl.length ? intl : [];
-  }
-  if (edition.type === "cup" || edition.type === "continental") {
-    return list.filter((s) =>
-      ["press-breakthrough", "derby-provocation", "travel-fatigue", "airport-fan", "extra-session-or-rest"].includes(
-        s.id
-      )
-    );
-  }
-  return [];
-}
-
 /**
  * Plan dated senior_scenario events for entered competitions. One scene max per drawn edition.
  */
 export function planSeniorScenarioEvents(player, planCtx = {}) {
   const state = ensureSeniorCareerState(player);
+  const periodId = developmentPeriodId(player, { seasonIndex: planCtx.seasonIndex });
   const editions = listEnteredCompetitionEditions({
     player,
     league: planCtx.league,
@@ -361,6 +552,7 @@ export function planSeniorScenarioEvents(player, planCtx = {}) {
     europePlan: planCtx.europePlan,
     intlProbe: planCtx.intlProbe,
     cupRoundDates: planCtx.cupRoundDates,
+    cupEntered: planCtx.cupEntered,
   });
 
   const baseContext = buildSeniorScenarioContext(player, {
@@ -372,6 +564,7 @@ export function planSeniorScenarioEvents(player, planCtx = {}) {
   const events = [];
   const occupied = [];
   const planLog = [];
+  const plannedIds = [];
 
   for (const edition of editions) {
     const roll = rollCompetitionEditionTrigger(player, edition);
@@ -397,7 +590,7 @@ export function planSeniorScenarioEvents(player, planCtx = {}) {
       continue;
     }
 
-    const selected = selectScenarioForEdition(player, edition, baseContext);
+    const selected = selectScenarioForEdition(player, edition, baseContext, { soft: true });
     if (!selected.scenario) {
       planLog.push({
         ...edition,
@@ -409,6 +602,7 @@ export function planSeniorScenarioEvents(player, planCtx = {}) {
     }
 
     occupied.push(datePick.date);
+    plannedIds.push(selected.scenario.id);
     const ev = {
       kind: "senior_scenario",
       date: datePick.date,
@@ -419,18 +613,24 @@ export function planSeniorScenarioEvents(player, planCtx = {}) {
       competitionLabel: edition.label,
       scenarioId: selected.scenario.id,
       rollKey: roll.key,
+      periodId,
+      contentVersion: SENIOR_CAREER_SCENARIOS.contentVersion,
+      probabilityModelVersion: SENIOR_CAREER_SCENARIOS.probabilityModelVersion,
     };
+    ev.eventId = seniorScenarioEventId(player, ev);
     events.push(ev);
     planLog.push({
       ...edition,
       drawn: true,
       scheduled: true,
       scenarioId: selected.scenario.id,
+      eventId: ev.eventId,
       date: datePick.date,
       reason: datePick.reason,
     });
   }
 
+  state.plannedScenarioIds = plannedIds;
   state.lastPlanLog = planLog;
   return { events, planLog, editions };
 }
@@ -438,23 +638,19 @@ export function planSeniorScenarioEvents(player, planCtx = {}) {
 function narrativeRequest(delta) {
   const key = String(delta);
   const table = SENIOR_CAREER_SCENARIOS.narrativeToRequest;
-  if (Object.prototype.hasOwnProperty.call(table, key)) return table[key];
-  return 0;
+  if (!Object.prototype.hasOwnProperty.call(table, key)) {
+    throw new Error(`narrativeRequest: unmapped score ${delta}`);
+  }
+  return table[key];
 }
 
 function nudgeTrust(state, field, amount) {
   state[field] = clamp((Number(state[field]) || 0) + amount, -1, 1);
 }
 
-function applyEffects(player, outcome, { date, scope = "club" } = {}) {
+function applyTemporaryEffects(player, outcome, { date, scope = "club", request } = {}) {
   const state = ensureSeniorCareerState(player);
   ensureState(player);
-  const delta = Number(outcome?.delta) || 0;
-  const request = clamp(
-    narrativeRequest(delta),
-    -SENIOR_CAREER_SCENARIOS.maxNegativePerScene,
-    SENIOR_CAREER_SCENARIOS.maxPositivePerScene
-  );
   const effects = outcome?.effects || ["none"];
   const realized = [];
   const badges = [];
@@ -462,105 +658,146 @@ function applyEffects(player, outcome, { date, scope = "club" } = {}) {
   for (const effect of effects) {
     if (effect === "none") continue;
     if (effect === "morale" || effect === "confidence" || effect === "composure") {
-      const m = clamp(request * 0.35, -0.08, 0.08);
+      const m = clamp(request * 0.25, -0.08, 0.08);
       applyMoraleDelta(player.state, m, { override: true });
       if (request > 0) updateFormFromObservation(player.state, 0.25, 45, date);
       if (request < 0) updateFormFromObservation(player.state, -0.2, 30, date);
-      realized.push({ kind: "morale", amount: m });
-      badges.push(m >= 0 ? "Confidence up" : "Confidence down");
+      realized.push({ kind: "morale", amount: m, temporary: true });
+      badges.push(m >= 0 ? "Temporary confidence up" : "Temporary confidence down");
     } else if (effect === "readiness") {
       if (request >= 0) {
         updateFatigue(player.state, { elapsedDays: 2 });
         updateReadiness(player.state, { minutes: 20, elapsedDays: 0 });
         badges.push("Rested");
-        realized.push({ kind: "readiness", amount: 0.05 });
+        realized.push({ kind: "readiness", amount: 0.05, temporary: true });
       } else {
         updateFatigue(player.state, { minutes: 70, elapsedDays: 0 });
         updateReadiness(player.state, { elapsedDays: 1.5 });
         badges.push("Fatigue up");
-        realized.push({ kind: "fatigue", amount: 0.08 });
+        realized.push({ kind: "fatigue", amount: 0.08, temporary: true });
       }
     } else if (effect === "coachTrust") {
       const field = scope === "national" ? "coachTrustNational" : "coachTrustClub";
-      const amt = clamp(request * 0.5, -0.12, 0.12);
+      const amt = clamp(request * 0.35, -0.12, 0.12);
       nudgeTrust(state, field, amt);
       player.state.roleFit = clamp((player.state.roleFit ?? 1) + amt * 0.15, 0.55, 1.05);
-      realized.push({ kind: field, amount: amt });
+      realized.push({ kind: field, amount: amt, temporary: true });
       badges.push(amt >= 0 ? "Coach trust up" : "Coach trust down");
     } else if (effect === "reputation") {
-      const amt = clamp(request * 0.4, -0.15, 0.15);
+      const amt = clamp(request * 0.3, -0.15, 0.15);
       state.reputation = clamp((state.reputation || 0) + amt, -1, 1);
       state.activeModifiers.reputation = {
         amount: amt,
         expiresSeason: (player.seasons?.length ?? 0) + 1,
       };
-      realized.push({ kind: "reputation", amount: amt });
+      realized.push({ kind: "reputation", amount: amt, temporary: true });
       badges.push(amt >= 0 ? "Public signal up" : "Public signal down");
     } else if (effect === "training") {
-      state.activeModifiers.trainingFocus = {
-        amount: clamp(Math.abs(request), 0, 0.2) * Math.sign(request || 1),
-        expiresAppearances: 6,
-      };
-      realized.push({ kind: "training", amount: request });
-      badges.push(request >= 0 ? "Learning focus" : "Learning stalled");
+      // Routed into durable development separately; keep a short temporary focus badge only.
+      realized.push({ kind: "trainingFocusNarrative", amount: request, temporary: true });
     } else if (effect === "support") {
-      const m = clamp(request * 0.3, -0.07, 0.07);
+      const m = clamp(request * 0.25, -0.07, 0.07);
       applyMoraleDelta(player.state, m, { override: true });
-      if (request < 0) setAdaptationPenalty(player.state, Math.min(0.25, (player.state.adaptationPenalty || 0) + 0.04), {
-        replace: false,
-      });
+      if (request < 0) {
+        setAdaptationPenalty(player.state, Math.min(0.25, (player.state.adaptationPenalty || 0) + 0.04), {
+          replace: false,
+        });
+      }
       if (request > 0 && player.state.adaptationPenalty > 0) {
         player.state.adaptationPenalty = Math.max(0, player.state.adaptationPenalty - 0.05);
       }
-      realized.push({ kind: "support", amount: m });
+      realized.push({ kind: "support", amount: m, temporary: true });
       badges.push(m >= 0 ? "Support up" : "Support strained");
     }
   }
+  return { realized, badges };
+}
 
-  // v3: rare mentoring spark is narrative-only (no latent ceiling bump).
-  if (
-    outcome?.rareCeilingEligible &&
-    delta >= SENIOR_CAREER_SCENARIOS.rareCeilingBump.minNarrative &&
-    (player.age || 99) <= SENIOR_CAREER_SCENARIOS.rareCeilingBump.maxAge
-  ) {
-    const room =
-      SENIOR_CAREER_SCENARIOS.rareCeilingBump.maxLifetime - (state.rareCeilingBumpApplied || 0);
-    const bump = Math.min(SENIOR_CAREER_SCENARIOS.rareCeilingBump.maxPerEvent, room);
-    if (bump > 0 && player.development) {
-      state.rareCeilingBumpApplied = (state.rareCeilingBumpApplied || 0) + bump;
-      realized.push({ kind: "mentoringSpark", amount: bump });
-      badges.push("Mentoring spark");
+function buildAbilityFeedback(outcome, ability) {
+  // Player-facing number is current overall (same headline as the player card).
+  const before = ability.displayedCurrentBefore ?? ability.displayedBaseBefore;
+  const after = ability.displayedCurrentAfter ?? ability.displayedBaseAfter;
+  const change =
+    ability.displayedCurrentChange != null
+      ? ability.displayedCurrentChange
+      : ability.displayedChange;
+  const limited = ability.limitedBy && ability.limitedBy !== "none";
+  const cat =
+    outcome?.abilityCategory ||
+    (outcome?.delta > 0 ? "positive" : outcome?.delta < 0 ? "negative" : "neutral");
+
+  let line;
+  if (cat === "positive" && ability.realizedRaw > 1e-9) {
+    if (change > 0) {
+      line = `${outcome.text} Overall: ${before} → ${after}  (+${change})`;
+    } else {
+      line = `${outcome.text} You made useful progress, though your overall remains ${after} for now. Overall: ${before} → ${after}`;
     }
-  }
-
-  // Forecast evidence only (not hidden max) for strong narrative swings.
-  if (Math.abs(delta) >= 3) {
-    try {
-      getOrUpdateForecast(player, { sampleCount: 24, force: true });
-      realized.push({ kind: "forecastRefresh", amount: 0 });
-    } catch {
-      /* forecast optional */
+  } else if (cat === "positive" && limited) {
+    line = `You handled the situation well, but there is no additional lasting ability gain right now. Overall: ${before} → ${after}`;
+  } else if (cat === "negative" && ability.realizedRaw < -1e-9) {
+    if (change < 0) {
+      line = `${outcome.text} Overall: ${before} → ${after}  (${change})`;
+    } else {
+      line = `${outcome.text} The setback is real, though your overall remains ${after} for now. Overall: ${before} → ${after}`;
     }
+  } else if (cat === "neutral" || Math.abs(ability.realizedRaw) < 1e-9) {
+    line = `${outcome?.text || "You handled the situation without changing your development."} Overall: ${before} → ${after}`;
+  } else {
+    line = `${outcome?.text || ""} Overall: ${before} → ${after}`;
   }
-
-  return { realized, badges, request };
+  return line.trim();
 }
 
 /**
  * Build pending payload for UI / checkpoint (serializable).
  */
 export function buildPendingSeniorScenario(player, event, opts = {}) {
+  const state = ensureSeniorCareerState(player);
+  const eventId = seniorScenarioEventId(player, event);
+  if (state.eventReceipts[eventId]?.resolved) {
+    const receipt = state.eventReceipts[eventId];
+    return {
+      unschedulable: false,
+      kind: "senior_scenario",
+      eventId,
+      periodId: receipt.periodId,
+      scenarioId: receipt.scenarioId,
+      title: receipt.title || getSeniorScenarioById(receipt.scenarioId)?.title,
+      setup: receipt.prompt || "",
+      date: receipt.date || event.date,
+      competitionId: event.competitionId,
+      editionId: event.editionId,
+      competitionType: event.competitionType,
+      competitionLabel: event.competitionLabel,
+      playingClubId: receipt.playingClubIdAtOccurrence,
+      employmentClubId: receipt.employmentClubIdAtOccurrence,
+      nationalSide: receipt.nationalSide,
+      choices: receipt.choicePresentation || [],
+      choiceOrder: receipt.choiceOrder || [],
+      rollKey: event.rollKey,
+      resolved: true,
+      chosenOptionId: receipt.choiceId,
+      sampledOutcome: receipt.sampledOutcome,
+      realizedEffects: receipt.temporaryEffects,
+      badges: receipt.badges,
+      abilityReceipt: receipt,
+      feedbackLine: receipt.outcomeText,
+      contentVersion: receipt.contentVersion,
+      probabilityModelVersion: receipt.probabilityModelVersion,
+    };
+  }
+
   const scenario = getSeniorScenarioById(event.scenarioId);
   if (!scenario) return null;
   const context = buildSeniorScenarioContext(player, {
     ...opts,
-    nationalCallUp: event.competitionType === "international",
-    intlCalledUp: event.competitionType === "international",
+    nationalCallUp: event.competitionType === "international" || opts.nationalCallUp,
+    intlCalledUp: event.competitionType === "international" || opts.intlCalledUp,
   });
 
-  // Re-validate hard eligibility; swap if needed.
   let active = scenario;
-  if (!scenarioEligible(scenario, context)) {
+  if (!scenarioEligible(scenario, context, { strict: true })) {
     const alt = selectScenarioForEdition(
       player,
       {
@@ -568,12 +805,14 @@ export function buildPendingSeniorScenario(player, event, opts = {}) {
         competitionId: event.competitionId,
         editionId: event.editionId,
       },
-      context
+      context,
+      { soft: false }
     );
-    if (!alt.scenario || !scenarioEligible(alt.scenario, context)) {
+    if (!alt.scenario || !scenarioEligible(alt.scenario, context, { strict: true })) {
       return {
         unschedulable: true,
         reason: "context-ineligible",
+        eventId,
         competitionId: event.competitionId,
         editionId: event.editionId,
         date: event.date,
@@ -585,15 +824,19 @@ export function buildPendingSeniorScenario(player, event, opts = {}) {
 
   const orderRng = createStreamRng(
     careerId(player),
-    `${SENIOR_CAREER_SCENARIOS.streams.order}:${event.editionId}:${active.id}`
+    `${SENIOR_CAREER_SCENARIOS.streams.order}:${eventId}`
   );
   const choiceOrder = orderRng.shuffle
     ? orderRng.shuffle(active.choices.map((_, i) => i))
     : shuffleIndices(active.choices.length, orderRng);
 
+  const periodId = event.periodId || developmentPeriodId(player);
+
   return {
     unschedulable: false,
     kind: "senior_scenario",
+    eventId,
+    periodId,
     scenarioId: active.id,
     title: active.title,
     setup: active.setup,
@@ -603,13 +846,16 @@ export function buildPendingSeniorScenario(player, event, opts = {}) {
     competitionType: event.competitionType,
     competitionLabel: event.competitionLabel,
     playingClubId: player.playingClubId || player.club?.clubId || null,
+    employmentClubId: player.employmentClubId || player.club?.clubId || null,
     nationalSide: event.competitionType === "international" ? player.nationality : null,
     choices: choiceOrder.map((i) => {
       const c = active.choices[i];
-      return { id: c.id, label: c.label, disposition: c.disposition };
+      return { id: c.id, label: c.label };
     }),
     choiceOrder,
     rollKey: event.rollKey,
+    contentVersion: SENIOR_CAREER_SCENARIOS.contentVersion,
+    probabilityModelVersion: SENIOR_CAREER_SCENARIOS.probabilityModelVersion,
     resolved: false,
   };
 }
@@ -624,24 +870,37 @@ function shuffleIndices(n, rng) {
 }
 
 /**
- * Resolve a choice once. Idempotent via applicationId.
+ * Resolve a choice once per event identity. Idempotent across different choice attempts.
  */
 export function resolveSeniorScenarioChoice(player, pending, choiceId, opts = {}) {
   const state = ensureSeniorCareerState(player);
   if (!pending || pending.unschedulable) {
     return { ok: false, reason: "no-pending" };
   }
-  const applicationId =
-    opts.applicationId ||
-    `senior-scenario:${pending.editionId}:${pending.scenarioId}:${choiceId}`;
-  if (state.appliedEventIds[applicationId] || pending.resolved) {
+  const eventId =
+    pending.eventId ||
+    opts.eventId ||
+    seniorScenarioEventId(player, {
+      periodId: pending.periodId,
+      competitionId: pending.competitionId,
+      editionId: pending.editionId,
+    });
+  if (!pending.eventId) pending.eventId = eventId;
+  if (!pending.periodId) pending.periodId = developmentPeriodId(player);
+
+  const existing = state.eventReceipts[eventId];
+  if (existing?.resolved || pending.resolved) {
+    const receipt = existing || pending.abilityReceipt;
     return {
       ok: true,
       duplicate: true,
-      applicationId,
-      outcome: pending.sampledOutcome || null,
-      realized: pending.realizedEffects || [],
-      badges: pending.badges || [],
+      eventId,
+      applicationId: eventId,
+      outcome: pending.sampledOutcome || receipt?.sampledOutcome || null,
+      realized: pending.realizedEffects || receipt?.temporaryEffects || [],
+      badges: pending.badges || receipt?.badges || [],
+      abilityReceipt: receipt,
+      feedbackLine: receipt?.outcomeText || pending.feedbackLine,
     };
   }
 
@@ -650,25 +909,165 @@ export function resolveSeniorScenarioChoice(player, pending, choiceId, opts = {}
   const choice = scenario.choices.find((c) => c.id === choiceId);
   if (!choice) return { ok: false, reason: "missing-choice" };
 
-  const rng =
-    opts.rng ||
-    createStreamRng(
+  let outcome;
+  let requestedRaw = 0;
+  try {
+    const categoryRng = createStreamRng(
       careerId(player),
-      `${SENIOR_CAREER_SCENARIOS.streams.outcome}:${pending.editionId}:${pending.scenarioId}:${choiceId}`
+      `${SENIOR_CAREER_SCENARIOS.streams.category}:${eventId}`
     );
-  const outcome = pickWeightedSeniorResult(choice, rng);
-  const scope = pending.competitionType === "international" ? "national" : "club";
-  const { realized, badges, request } = applyEffects(player, outcome, {
-    date: pending.date,
-    scope,
+    const conditionalRng = createStreamRng(
+      careerId(player),
+      `${SENIOR_CAREER_SCENARIOS.streams.conditional}:${eventId}`
+    );
+    outcome = pickWeightedSeniorResult(choice, null, {
+      categoryRng,
+      conditionalRng,
+      forceCategory: opts.forceCategory,
+    });
+    const mapped = narrativeRequest(outcome.delta);
+    requestedRaw = clamp(
+      mapped,
+      -SENIOR_CAREER_SCENARIOS.maxNegativePerScene,
+      SENIOR_CAREER_SCENARIOS.maxPositivePerScene
+    );
+    if (outcome.abilityCategory === "neutral") requestedRaw = 0;
+    if (outcome.abilityCategory === "positive" && !(requestedRaw > 0)) {
+      throw new Error("positive outcome must request positive change");
+    }
+    if (outcome.abilityCategory === "negative" && !(requestedRaw < 0)) {
+      throw new Error("negative outcome must request negative change");
+    }
+  } catch (err) {
+    return { ok: false, reason: "validation-failed", error: String(err?.message || err) };
+  }
+
+  const periodId = pending.periodId || developmentPeriodId(player);
+  ensureLearningPeriodLedger(player, periodId);
+  refreshAbilityCaches(player);
+  const baseRawBefore = getBaseOverall(player);
+  const currentRawBefore = getCurrentOverall(player);
+  const displayedBaseBefore = roundAbilityForDisplay(baseRawBefore);
+
+  const allocRng = createStreamRng(
+    careerId(player),
+    `${SENIOR_CAREER_SCENARIOS.streams.allocation}:${eventId}`
+  );
+  const ability = applyScenarioAbilityChange(player, {
+    eventId,
+    periodId,
+    requestedRaw,
+    focus: outcome.focus || "role-learning",
+    rng: allocRng,
   });
 
-  const historyEntry = {
-    applicationId,
+  const scope = pending.competitionType === "international" ? "national" : "club";
+  const { realized, badges } = applyTemporaryEffects(player, outcome, {
+    date: pending.date,
+    scope,
+    request: requestedRaw,
+  });
+  refreshAbilityCaches(player);
+
+  const baseRawAfter = getBaseOverall(player);
+  const currentRawAfter = getCurrentOverall(player);
+  const displayedBaseAfter = roundAbilityForDisplay(baseRawAfter);
+  const displayedBaseBeforeFinal = displayedBaseBefore;
+  const displayedChange = abilityDisplayChange(baseRawBefore, baseRawAfter);
+  const displayedCurrentBefore = roundAbilityForDisplay(currentRawBefore);
+  const displayedCurrentAfter = roundAbilityForDisplay(currentRawAfter);
+  const displayedCurrentChange = abilityDisplayChange(currentRawBefore, currentRawAfter);
+
+  const abilityView = {
+    ...ability,
+    baseRawBefore,
+    baseRawAfter,
+    displayedBaseBefore: displayedBaseBeforeFinal,
+    displayedBaseAfter,
+    displayedChange,
+    currentRawBefore,
+    currentRawAfter,
+    displayedCurrentBefore,
+    displayedCurrentAfter,
+    displayedCurrentChange,
+    realizedRaw: baseRawAfter - baseRawBefore,
+  };
+
+  const feedbackLine = buildAbilityFeedback(outcome, abilityView);
+  if (displayedCurrentChange > 0) {
+    badges.unshift(`Overall ${formatAbilityDisplayChange(currentRawBefore, currentRawAfter)}`);
+  } else if (displayedCurrentChange < 0) {
+    badges.unshift(`Overall ${formatAbilityDisplayChange(currentRawBefore, currentRawAfter)}`);
+  } else if (abilityView.realizedRaw > 1e-9) {
+    badges.unshift("Overall progress (sub-point)");
+  } else if (abilityView.realizedRaw < -1e-9) {
+    badges.unshift("Overall setback (sub-point)");
+  }
+
+  const probs = choice.seniorCategoryProbabilities || null;
+  const academyProbs = choice.academyReferenceProbabilities || null;
+
+  const receipt = {
+    eventId,
+    periodId,
+    scenarioId: pending.scenarioId,
+    title: pending.title,
+    choiceId,
+    outcomeId: outcome.id,
+    contentVersion: pending.contentVersion || SENIOR_CAREER_SCENARIOS.contentVersion,
+    probabilityModelVersion:
+      pending.probabilityModelVersion || SENIOR_CAREER_SCENARIOS.probabilityModelVersion,
+    date: pending.date,
+    competitionId: pending.competitionId,
+    editionId: pending.editionId,
+    playingClubIdAtOccurrence: pending.playingClubId,
+    employmentClubIdAtOccurrence: pending.employmentClubId,
+    nationalSide: pending.nationalSide,
+    intendedCategory: outcome.intendedCategory || outcome.abilityCategory,
+    academyReferenceProbabilities: academyProbs,
+    seniorProbabilities: probs,
+    requestedRaw,
+    realizedRaw: abilityView.realizedRaw,
+    baseRawBefore,
+    baseRawAfter,
+    displayedBaseBefore,
+    displayedBaseAfter,
+    displayedChange,
+    currentRawBefore,
+    currentRawAfter,
+    displayedCurrentBefore,
+    displayedCurrentAfter,
+    displayedCurrentChange,
+    perAttribute: ability.perAttribute,
+    positiveBudgetCharged: ability.positiveBudgetCharged || 0,
+    limitedBy: ability.limitedBy,
+    temporaryEffects: realized,
+    badges,
+    outcomeText: feedbackLine,
+    prompt: pending.setup,
+    choicePresentation: pending.choices,
+    choiceOrder: pending.choiceOrder,
+    sampledOutcome: {
+      id: outcome.id,
+      text: outcome.text,
+      delta: outcome.delta,
+      abilityCategory: outcome.abilityCategory,
+      focus: outcome.focus,
+      effects: outcome.effects,
+    },
+    resolved: true,
+    seasonIndex: player.seasons?.length ?? 0,
+  };
+
+  state.eventReceipts[eventId] = receipt;
+  state.appliedEventIds[eventId] = true;
+  state.history.push({
+    applicationId: eventId,
+    eventId,
     scenarioId: pending.scenarioId,
     title: pending.title,
     date: pending.date,
-    seasonIndex: player.seasons?.length ?? 0,
+    seasonIndex: receipt.seasonIndex,
     competitionId: pending.competitionId,
     editionId: pending.editionId,
     competitionLabel: pending.competitionLabel,
@@ -678,53 +1077,58 @@ export function resolveSeniorScenarioChoice(player, pending, choiceId, opts = {}
     choiceId,
     choiceLabel: choice.label,
     outcomeId: outcome.id,
-    outcomeText: outcome.text,
+    outcomeText: feedbackLine,
     narrativeDelta: outcome.delta,
-    requested: request,
+    abilityCategory: outcome.abilityCategory,
+    requested: requestedRaw,
+    realizedRaw: abilityView.realizedRaw,
+    displayedBaseBefore,
+    displayedBaseAfter,
+    limitedBy: ability.limitedBy,
     realized,
     badges,
-    expiry: {
-      reputationSeason: state.activeModifiers?.reputation?.expiresSeason ?? null,
-      trainingAppearances: state.activeModifiers?.trainingFocus?.expiresAppearances ?? null,
-    },
-  };
-
-  state.appliedEventIds[applicationId] = true;
-  state.history.push(historyEntry);
+  });
   state.recentScenarioIds = [...(state.recentScenarioIds || []).slice(-12), pending.scenarioId];
 
+  if (pending.scenarioId === "international-first-trip" || pending.scenarioId === "national-role-adjustment") {
+    state.firstNationalCampAttended = true;
+  }
+
+  // Keep pending for result-screen restore; mark resolved but do not discard.
   pending.resolved = true;
   pending.chosenOptionId = choiceId;
-  pending.sampledOutcome = {
-    id: outcome.id,
-    text: outcome.text,
-    delta: outcome.delta,
-    effects: outcome.effects,
-  };
+  pending.sampledOutcome = receipt.sampledOutcome;
   pending.realizedEffects = realized;
   pending.badges = badges;
-  pending.applicationId = applicationId;
+  pending.abilityReceipt = receipt;
+  pending.feedbackLine = feedbackLine;
+  pending.applicationId = eventId;
+  player.pendingSeniorScenario = pending;
 
-  player.pendingSeniorScenario = null;
+  try {
+    if (Math.abs(outcome.delta) >= 3) {
+      getOrUpdateForecast(player, { sampleCount: 24, force: true });
+    }
+  } catch {
+    /* forecast optional */
+  }
 
   return {
     ok: true,
     duplicate: false,
-    applicationId,
-    outcome: pending.sampledOutcome,
+    eventId,
+    applicationId: eventId,
+    outcome: receipt.sampledOutcome,
     realized,
     badges,
-    historyEntry,
+    abilityReceipt: receipt,
+    feedbackLine,
+    historyEntry: state.history[state.history.length - 1],
   };
 }
 
 /**
  * Documented headless policy — does not always pick the largest reward.
- * - thoughtful: prefer thoughtful disposition
- * - balanced: middle option by disposition preference (default)
- * - ambitious: prefer ambitious
- * - first: first button (after shuffle) — for UI parity tests only
- * - random: seeded pick
  */
 export function applySeniorScenarioPolicy(player, pending, policy = SENIOR_CAREER_SCENARIOS.defaultAutoPolicy) {
   if (!pending || pending.unschedulable || !pending.choices?.length) {
@@ -741,14 +1145,13 @@ export function applySeniorScenarioPolicy(player, pending, policy = SENIOR_CAREE
   } else if (mode === "random") {
     const rng = createStreamRng(
       careerId(player),
-      `${SENIOR_CAREER_SCENARIOS.streams.selection}:policy:${pending.editionId}`
+      `${SENIOR_CAREER_SCENARIOS.streams.selection}:policy:${pending.eventId || pending.editionId}`
     );
     choiceId = pending.choices[Math.floor(rng.random() * pending.choices.length)].id;
   } else if (mode === "thoughtful" || mode === "ambitious" || mode === "reckless") {
     const match = pending.choices.find((c) => byId.get(c.id)?.disposition === mode);
     choiceId = match?.id || pending.choices[Math.floor(pending.choices.length / 2)]?.id;
   } else {
-    // balanced / neutral: prefer balanced disposition, else middle button
     const bal = pending.choices.find((c) => byId.get(c.id)?.disposition === "balanced");
     choiceId =
       bal?.id || pending.choices[Math.floor(pending.choices.length / 2)]?.id || pending.choices[0].id;
@@ -757,9 +1160,18 @@ export function applySeniorScenarioPolicy(player, pending, policy = SENIOR_CAREE
   return resolveSeniorScenarioChoice(player, pending, choiceId);
 }
 
-export function buildSeniorScenarioFeedback(outcome, badges = []) {
+export function buildSeniorScenarioFeedback(outcome, badges = [], abilityReceipt = null) {
+  if (abilityReceipt?.outcomeText) return abilityReceipt.outcomeText;
   const lines = [];
   if (outcome?.text) lines.push(outcome.text);
+  if (abilityReceipt && Number.isFinite(abilityReceipt.displayedBaseBefore)) {
+    const before = abilityReceipt.displayedBaseBefore;
+    const after = abilityReceipt.displayedBaseAfter;
+    const change = abilityReceipt.displayedChange;
+    const changeStr =
+      change > 0 ? `  (+${change})` : change < 0 ? `  (${change})` : "";
+    lines.push(`Overall: ${before} → ${after}${changeStr}`);
+  }
   if (badges?.length) lines.push(badges.join(" · "));
   return lines.join(" ");
 }
@@ -771,11 +1183,14 @@ export function formatSeniorScenarioContextLine(pending) {
   return bits.join(" · ");
 }
 
-/** Calibration helper: many independent trigger trials (does not mutate player rolls if useTemp). */
+/** Calibration helper: many independent trigger trials. */
 export function runTriggerCalibration({ trials = 10000, competitionType = "league", seed = 1 } = {}) {
   let drawn = 0;
   for (let i = 0; i < trials; i++) {
-    const rng = createStreamRng(`cal:${seed}`, `${SENIOR_CAREER_SCENARIOS.streams.trigger}:${competitionType}:${i}`);
+    const rng = createStreamRng(
+      `cal:${seed}`,
+      `${SENIOR_CAREER_SCENARIOS.streams.trigger}:${competitionType}:${i}`
+    );
     if (rng.chance(SENIOR_CAREER_SCENARIOS.triggerProbability)) drawn += 1;
   }
   return {
@@ -787,4 +1202,25 @@ export function runTriggerCalibration({ trials = 10000, competitionType = "leagu
   };
 }
 
-export { normalizeSeniorScenario, getSeniorScenarioById, allSeniorScenarios, formatAbilityForDisplay };
+export function periodSceneContribution(player, periodId) {
+  const ledger = player?.development?.learningByPeriod?.[periodId];
+  if (!ledger) {
+    return { scenePositive: 0, sceneNegative: 0, net: 0, eventCount: 0 };
+  }
+  return {
+    scenePositive: ledger.scenePositive || 0,
+    sceneNegative: ledger.sceneNegative || 0,
+    net: (ledger.scenePositive || 0) - (ledger.sceneNegative || 0),
+    eventCount: Object.keys(ledger.events || {}).length,
+    positiveUsed: ledger.positiveUsed || 0,
+  };
+}
+
+export {
+  normalizeSeniorScenario,
+  getSeniorScenarioById,
+  allSeniorScenarios,
+  formatAbilityForDisplay,
+  alreadyAppliedLearningForPeriod,
+  developmentPeriodId,
+};

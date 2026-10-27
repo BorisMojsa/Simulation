@@ -11,7 +11,7 @@ import { effectiveTeamStrength } from "./teamStrength.js";
 import { simulateMatch } from "./matchEngine.js";
 import { applyMatchFormUpdate } from "./worldState.js";
 import { createStreamRng, hashSeed } from "./rng.js";
-import { sortChronological, dateCupRounds } from "./seasonCalendar.js?v=81";
+import { sortChronological, dateCupRounds } from "./seasonCalendar.js?v=89";
 import {
   calendarForLeague,
   destinationSeasonStartYear,

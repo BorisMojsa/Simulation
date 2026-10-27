@@ -194,13 +194,62 @@ export function dateInternationalWindows(matches, calendarYear, { editionYear = 
 
 /** Sort any dated events into chronological order. */
 export function sortChronological(events) {
-  return [...events].sort((a, b) => {
-    const da = a.date || a.sortKey || "";
-    const db = b.date || b.sortKey || "";
-    if (da < db) return -1;
-    if (da > db) return 1;
-    return String(a.sortKey || "").localeCompare(String(b.sortKey || ""));
-  });
+  return [...events].sort(compareChronoEvents);
+}
+
+function compareChronoEvents(a, b) {
+  const da = a.date || a.sortKey || "";
+  const db = b.date || b.sortKey || "";
+  if (da < db) return -1;
+  if (da > db) return 1;
+  const sk = String(a.sortKey || "").localeCompare(String(b.sortKey || ""));
+  if (sk) return sk;
+  return String(a.eventId || a.matchId || "").localeCompare(String(b.eventId || b.matchId || ""));
+}
+
+/**
+ * Preserve the processed prefix (indices 0..processedThroughInclusive) and merge
+ * only the unprocessed suffix with newEvents in global chronological order.
+ * Deduplicates by stable eventId (preferred) or kind+matchId/sortKey.
+ * Never sorts or reindexes the completed prefix.
+ */
+export function mergePendingEvents(ordered, processedThroughInclusive, newEvents) {
+  if (!newEvents?.length) return ordered || [];
+  const list = [...(ordered || [])];
+  const cut = Math.max(-1, Number(processedThroughInclusive));
+  const prefix = cut >= 0 ? list.slice(0, cut + 1) : [];
+  const pending = cut >= 0 ? list.slice(cut + 1) : list;
+
+  const idOf = (ev) =>
+    ev?.eventId ||
+    (ev?.matchId ? `${ev.kind || "fx"}:${ev.matchId}` : null) ||
+    (ev?.kind === "continental_md" || ev?.kind === "national_md"
+      ? `${ev.kind}:${ev.editionId || ""}:${ev.matchday}`
+      : null) ||
+    ev?.sortKey ||
+    null;
+
+  const seen = new Set();
+  for (const ev of prefix) {
+    const id = idOf(ev);
+    if (id) seen.add(id);
+  }
+  for (const ev of pending) {
+    const id = idOf(ev);
+    if (id) seen.add(id);
+  }
+
+  const fresh = [];
+  for (const ev of newEvents) {
+    const id = idOf(ev);
+    if (id && seen.has(id)) continue;
+    if (id) seen.add(id);
+    fresh.push(ev);
+  }
+  if (!fresh.length) return list;
+
+  const mergedPending = sortChronological([...pending, ...fresh]);
+  return [...prefix, ...mergedPending];
 }
 
 /**

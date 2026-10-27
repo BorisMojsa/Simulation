@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=31" />
+  <link rel="stylesheet" href="style.css?v=33" />
 </head>
 <body>
   <div class="app">
@@ -35,48 +35,72 @@
           </p>
         </div>
         <p id="app-boot-error" class="boot-error hidden" role="alert"></p>
-        <form id="setup-form">
-          <div class="field">
-            <label for="player-name">Player name</label>
-            <input id="player-name" name="player-name" type="text" maxlength="30" required autocomplete="nickname" />
+        <form id="setup-form" class="career-setup-form" novalidate>
+          <div class="career-setup-identity">
+            <div class="field career-setup-name-field">
+              <label for="player-name">Player name</label>
+              <input
+                id="player-name"
+                name="player-name"
+                type="text"
+                maxlength="30"
+                autocomplete="nickname"
+                aria-describedby="player-name-error"
+              />
+              <p id="player-name-error" class="field-error" hidden></p>
+            </div>
+
+            <fieldset class="career-setup-ages">
+              <legend>Starting age</legend>
+              <div class="career-setup-age-chips" id="starting-age-chips"></div>
+              <p class="field-hint">Age when you open the academy chapter and begin the climb to a pro contract.</p>
+              <p id="starting-age-error" class="field-error" hidden></p>
+            </fieldset>
           </div>
 
-          <div class="field">
-            <span class="field-label" id="nationality-label">Nationality</span>
-            <div
-              class="custom-select"
-              id="nationality-select"
-              data-name="nationality"
-              role="group"
-              aria-labelledby="nationality-label"
-            ></div>
-            <p class="field-hint">Nations that reached at least one of the last 10 World Cups.</p>
+          <div class="career-setup-selections">
+            <fieldset class="career-setup-nations">
+              <legend>Nationality</legend>
+              <p class="career-setup-selected-line" id="selected-nationality-line">Selected nationality: —</p>
+              <p class="field-hint">Nations that reached at least one of the last 10 World Cups.</p>
+              <div class="career-setup-nation-search">
+                <label class="career-setup-nation-search-label" for="nationality-search">Search nations</label>
+                <div class="career-setup-nation-search-row">
+                  <input
+                    id="nationality-search"
+                    type="search"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="Search nations…"
+                    aria-controls="nationality-grid"
+                  />
+                  <button type="button" class="secondary career-setup-nation-clear" id="nationality-search-clear" hidden>
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <div class="career-setup-nation-scroll">
+                <div class="career-setup-nation-grid" id="nationality-grid"></div>
+                <p id="nationality-empty" class="career-setup-nation-empty" hidden role="status">
+                  No nations match that search.
+                </p>
+              </div>
+              <p id="nationality-error" class="field-error" hidden></p>
+            </fieldset>
+
+            <fieldset class="career-setup-pitch-panel">
+              <legend>Primary position</legend>
+              <p class="career-setup-attack-hint">Attacking direction ↑</p>
+              <div class="career-setup-pitch" id="position-pitch"></div>
+              <p class="career-setup-selected-line" id="selected-position-line">Selected position: —</p>
+              <p id="primary-position-error" class="field-error" hidden></p>
+            </fieldset>
           </div>
 
-          <div class="field">
-            <span class="field-label" id="primary-position-label">Primary position</span>
-            <div
-              class="custom-select"
-              id="primary-position-select"
-              data-name="primary-position"
-              role="group"
-              aria-labelledby="primary-position-label"
-            ></div>
+          <div class="career-setup-actions">
+            <p class="career-setup-summary" id="setup-summary">Choose name, age, nationality, and position.</p>
+            <button type="submit" class="primary" id="start-career-btn">Begin career</button>
           </div>
-
-          <div class="field">
-            <span class="field-label" id="starting-age-label">Starting age</span>
-            <div
-              class="custom-select"
-              id="starting-age-select"
-              data-name="starting-age"
-              role="group"
-              aria-labelledby="starting-age-label"
-            ></div>
-            <p class="field-hint">Age when you open the academy chapter and begin the climb to a pro contract.</p>
-          </div>
-
-          <button type="button" class="primary" id="start-career-btn">Begin career</button>
         </form>
       </section>
 
@@ -510,28 +534,21 @@
           alert(msg);
         }
       }
-      function onStartClick() {
-        if (typeof window.__footballCareerStart === "function") {
-          try {
-            window.__footballCareerStart();
-          } catch (err) {
-            console.error(err);
-            showBoot("Error starting career: " + (err && err.message ? err.message : String(err)));
-          }
-        } else {
+      document.addEventListener("DOMContentLoaded", function () {
+        var form = document.getElementById("setup-form");
+        if (!form) return;
+        form.addEventListener("submit", function (event) {
+          if (typeof window.__footballCareerStart === "function") return;
+          event.preventDefault();
           showBoot(
             "Game scripts are not loaded. Do not open this file directly. In Terminal: cd to the Simulation folder, run python3 -m http.server 8787, then open http://127.0.0.1:8787/ in your browser."
           );
-        }
-      }
-      document.addEventListener("DOMContentLoaded", function () {
-        var btn = document.getElementById("start-career-btn");
-        if (btn) btn.addEventListener("click", onStartClick);
+        });
       });
     })();
   </script>
   <script type="module">
-    import("./main.js?v=85").catch(function (err) {
+    import("./main.js?v=89").catch(function (err) {
       console.error(err);
       var el = document.getElementById("app-boot-error");
       if (el) {

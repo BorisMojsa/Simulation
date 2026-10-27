@@ -1,0 +1,571 @@
+{
+  "scenarioStats": {
+    "trials": 120,
+    "movedDisplay": 78,
+    "movedRaw": 93,
+    "flat": 27,
+    "errors": 0,
+    "byScenario": {
+      "press-after-defeat": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "press-breakthrough": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "transfer-rumour": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "derby-provocation": {
+        "n": 2,
+        "raw": 2,
+        "disp": 1
+      },
+      "partner-long-distance": {
+        "n": 2,
+        "raw": 2,
+        "disp": 1
+      },
+      "partner-important-date": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "relocation-together": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "family-birthday": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "family-needs-support": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "homesick-abroad": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "approved-vacation": {
+        "n": 2,
+        "raw": 2,
+        "disp": 1
+      },
+      "vacation-return-delay": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "travel-fatigue": {
+        "n": 2,
+        "raw": 2,
+        "disp": 1
+      },
+      "airport-fan": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "sponsor-shoot": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "charity-invitation": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "social-media-mistake": {
+        "n": 2,
+        "raw": 2,
+        "disp": 1
+      },
+      "veteran-mentor": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "help-young-teammate": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "selection-disappointment": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "extra-session-or-rest": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "return-from-injury": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "international-first-trip": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "captain-pressure": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "video-pattern-review": {
+        "n": 2,
+        "raw": 2,
+        "disp": 1
+      },
+      "weak-side-session": {
+        "n": 2,
+        "raw": 2,
+        "disp": 1
+      },
+      "new-shape-rehearsal": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "specialist-technique-clinic": {
+        "n": 2,
+        "raw": 2,
+        "disp": 1
+      },
+      "training-measurement-review": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "scouting-feedback": {
+        "n": 2,
+        "raw": 1,
+        "disp": 0
+      },
+      "under-pressure-training": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "personal-training-plan": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "starting-place-competition": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "substitute-preparation": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "rotated-after-strong-game": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "training-unit-disagreement": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "new-teammate-language": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "vice-captain-request": {
+        "n": 2,
+        "raw": 2,
+        "disp": 2
+      },
+      "dressing-room-frustration": {
+        "n": 2,
+        "raw": 1,
+        "disp": 1
+      },
+      "academy-player-trains-up": {
+        "n": 2,
+        "raw": 1,
+        "disp": 0
+      },
+      "costly-error-review": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "missed-chance-response": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "goalkeeper-rebound-review": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "unused-substitute-response": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "cup-elimination-response": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "strong-opponent-preparation": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "achievement-comedown": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "high-stakes-run-in": {
+        "n": 1,
+        "raw": 1,
+        "disp": 0
+      },
+      "sleep-routine-disruption": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "late-team-return": {
+        "n": 1,
+        "raw": 1,
+        "disp": 0
+      },
+      "meal-preparation-schedule": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "fitness-load-conversation": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "individual-recovery-responsibility": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "weather-disrupted-session": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "cleared-full-training": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "long-international-journey": {
+        "n": 1,
+        "raw": 1,
+        "disp": 0
+      },
+      "critical-column": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "viral-training-clip": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "long-interview-invitation": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "supporter-criticism-encounter": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "agent-public-comments": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "community-coaching-workshop": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "dressing-room-photo-request": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "misquoted-comment": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "language-learning-routine": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "new-city-commute": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "family-visit-matchweek": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "quiet-time-or-social-invite": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "personal-study-schedule": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "household-disruption": {
+        "n": 1,
+        "raw": 1,
+        "disp": 0
+      },
+      "partner-shared-routine": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "newcomer-social-integration": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "loan-first-week": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "loan-development-check-in": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "first-permanent-move-induction": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "parent-club-return-review": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "national-role-adjustment": {
+        "n": 1,
+        "raw": 1,
+        "disp": 0
+      },
+      "national-bench-response": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      },
+      "renewal-uncertainty-focus": {
+        "n": 1,
+        "raw": 0,
+        "disp": 0
+      },
+      "experienced-player-role-evolution": {
+        "n": 1,
+        "raw": 1,
+        "disp": 1
+      }
+    }
+  },
+  "gkSample": {
+    "keys": [
+      "Reflexes",
+      "Handling",
+      "Positioning",
+      "Diving",
+      "Kicking",
+      "Physicality"
+    ],
+    "display": [
+      "Reflexes",
+      "Handling",
+      "Positioning",
+      "Diving",
+      "Kicking",
+      "Physicality"
+    ],
+    "attrs": {
+      "Reflexes": 61.11573600993145,
+      "Handling": 53.38642556054407,
+      "Positioning": 56.581185766861985,
+      "Diving": 57.72613582957008,
+      "Kicking": 46.65311662100989,
+      "Physicality": 51.23311695499416
+    }
+  },
+  "gkAllHaveGkKeys": true,
+  "transferCount": 358,
+  "transferWageStats": {
+    "n": 358,
+    "min": 525,
+    "p50": 5500,
+    "p90": 25000,
+    "max": 238500
+  },
+  "suspiciousTransfers": [],
+  "otherFindings": [],
+  "findingCounts": {},
+  "wageOvrSample": [
+    {
+      "pos": "ST",
+      "age": 26,
+      "ovr": 56,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "LW",
+      "age": 27,
+      "ovr": 65,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "RW",
+      "age": 28,
+      "ovr": 69,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "CAM",
+      "age": 29,
+      "ovr": 58,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "CM",
+      "age": 26,
+      "ovr": 72,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "CDM",
+      "age": 27,
+      "ovr": 60,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "CB",
+      "age": 28,
+      "ovr": 69,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "LB",
+      "age": 29,
+      "ovr": 77,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "RB",
+      "age": 26,
+      "ovr": 56,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "GK",
+      "age": 27,
+      "ovr": 69,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "LM",
+      "age": 28,
+      "ovr": 64,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "RM",
+      "age": 29,
+      "ovr": 69,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "ST",
+      "age": 26,
+      "ovr": 67,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "LW",
+      "age": 27,
+      "ovr": 68,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    },
+    {
+      "pos": "RW",
+      "age": 28,
+      "ovr": 67,
+      "wage": 0,
+      "club": "FA",
+      "freeAgent": true
+    }
+  ]
+}

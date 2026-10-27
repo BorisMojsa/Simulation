@@ -15,8 +15,14 @@ import {
   runTriggerCalibration,
   planSeniorScenarioEvents,
   ensureSeniorCareerState,
-  listEnteredCompetitionEditions,
+  resolveSeniorScenarioChoice,
+  buildPendingSeniorScenario,
+  seniorScenarioEventId,
 } from "../js/simulation/seniorCareerScenarios.js";
+import { allSeniorCategoryProbabilityTables } from "../js/simulation/seniorOutcomeProbability.js";
+import { developmentPeriodId } from "../js/simulation/playerDevelopmentModel.js";
+import { createStreamRng } from "../js/simulation/rng.js";
+import { pickWeightedSeniorResult } from "../js/data/seniorCareerScenarios.js";
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../js/data/leagues.js";
 import { createPlayerIdentity } from "../js/simulation/playerDevelopment.js";
 import { ensurePlayerModel } from "../js/simulation/playerModelMigration.js";
@@ -164,16 +170,163 @@ for (let i = 0; i < SEASON_TRIALS; i++) {
 }
 
 const bank = allSeniorScenarios();
+const probabilityTables = allSeniorCategoryProbabilityTables();
+const OUTCOME_SAMPLES = light ? 20000 : 100000;
+const sampledRates = {};
+for (const [disposition, table] of Object.entries(probabilityTables)) {
+  const choice = bank
+    .flatMap((s) => s.choices)
+    .find((c) => c.disposition === disposition);
+  const counts = { positive: 0, neutral: 0, negative: 0 };
+  for (let i = 0; i < OUTCOME_SAMPLES; i++) {
+    const o = pickWeightedSeniorResult(choice, null, {
+      categoryRng: createStreamRng(`cal-out:${disposition}`, `c:${i}`),
+      conditionalRng: createStreamRng(`cal-out:${disposition}`, `o:${i}`),
+    });
+    counts[o.abilityCategory] += 1;
+  }
+  sampledRates[disposition] = {
+    samples: OUTCOME_SAMPLES,
+    target: table.senior,
+    academyReference: {
+      positive: table.academyReference.positive,
+      neutral: table.academyReference.neutral,
+      negative: table.academyReference.negative,
+    },
+    observed: {
+      positive: counts.positive / OUTCOME_SAMPLES,
+      neutral: counts.neutral / OUTCOME_SAMPLES,
+      negative: counts.negative / OUTCOME_SAMPLES,
+    },
+  };
+}
+
+const development = {
+  trials: 0,
+  positive: { n: 0, sumRaw: 0, displayCount: 0 },
+  neutral: { n: 0, zeroRaw: 0 },
+  negative: { n: 0, sumRaw: 0, tickCount: 0 },
+  limitedAnnual: 0,
+  duplicates: 0,
+};
+const DEV_TRIALS = light ? 40 : 120;
+for (let i = 0; i < DEV_TRIALS; i++) {
+  for (const cat of ["positive", "neutral", "negative"]) {
+    const p = makePlayer(5000 + i * 3 + cat.length, i % 6 === 0 ? "GK" : "CM");
+    ensureSeniorCareerState(p);
+    const sc = bank[i % bank.length];
+    const periodId = developmentPeriodId(p);
+    const event = {
+      scenarioId: sc.id,
+      date: "2026-10-01",
+      competitionId: "league:cal",
+      editionId: `cal:${i}:${cat}`,
+      competitionType: "league",
+      competitionLabel: "Cal",
+      periodId,
+    };
+    event.eventId = seniorScenarioEventId(p, event);
+    p.seniorCareer.life.partner = true;
+    const pending = buildPendingSeniorScenario(p, event, {
+      forceAfterLoss: true,
+      forceStandout: true,
+      forceBenched: true,
+      rivalMatchup: true,
+      travelCongestion: true,
+      fixtureCongestion: true,
+      onLeave: true,
+      returningFromInjury: true,
+      nationalCallUp: true,
+      firstNationalCamp: true,
+      leadershipContext: true,
+      pendingRelocation: true,
+      recentAbroadMove: true,
+      nextFixture: true,
+      matchErrorEvidence: true,
+      missedChanceEvidence: p.position !== "GK",
+      gkReboundEvidence: p.position === "GK",
+      substituteAppearances: true,
+      unusedSubstitute: true,
+      cupEliminated: true,
+      strongOpponentUpcoming: true,
+      recentAchievement: true,
+      highStakesRunIn: true,
+      awayTravelReturn: true,
+      highWorkload: true,
+      returnFromNationalTrip: true,
+      poorFormEvidence: true,
+      languageAdaptationNeed: true,
+      recentClubMove: true,
+      activeLoanStart: true,
+      activeLoanProgress: true,
+      permanentTransferInduction: true,
+      loanReturn: true,
+      nationalBenchDuty: true,
+      contractUncertainty: true,
+      experiencedSenior: true,
+      rotatedAfterStrong: true,
+      clearedFullTraining: true,
+    });
+    if (pending?.unschedulable) continue;
+    const r1 = resolveSeniorScenarioChoice(p, pending, pending.choices[0].id, {
+      forceCategory: cat,
+    });
+    const r2 = resolveSeniorScenarioChoice(p, pending, pending.choices[1]?.id || pending.choices[0].id, {
+      forceCategory: cat === "positive" ? "negative" : "positive",
+    });
+    if (r2.duplicate) development.duplicates += 1;
+    if (!r1.ok) continue;
+    development.trials += 1;
+    const receipt = r1.abilityReceipt;
+    const bucket = development[cat];
+    bucket.n += 1;
+    if (cat === "positive") {
+      bucket.sumRaw += receipt.realizedRaw || 0;
+      if ((receipt.displayedChange || 0) > 0) bucket.tickCount += 1;
+      if (receipt.limitedBy === "annual-cap") development.limitedAnnual += 1;
+    } else if (cat === "negative") {
+      bucket.sumRaw += receipt.realizedRaw || 0;
+      if ((receipt.displayedChange || 0) < 0) bucket.tickCount += 1;
+    } else if (Math.abs(receipt.realizedRaw || 0) < 1e-9) {
+      bucket.zeroRaw += 1;
+    }
+  }
+}
+
+const missingCategory = bank.reduce((n, sc) => {
+  for (const c of sc.choices) {
+    for (const cat of ["positive", "neutral", "negative"]) {
+      if (!c.results.some((r) => r.abilityCategory === cat)) n += 1;
+    }
+  }
+  return n;
+}, 0);
+
 const report = {
   generatedAt: new Date().toISOString(),
   git: gitRevision(),
   config: {
     triggerProbability: SENIOR_CAREER_SCENARIOS.triggerProbability,
     repeatCooldownSeasons: SENIOR_CAREER_SCENARIOS.repeatCooldownSeasons,
+    contentVersion: SENIOR_CAREER_SCENARIOS.contentVersion,
+    probabilityModelVersion: SENIOR_CAREER_SCENARIOS.probabilityModelVersion,
     bankSize: bank.length,
+    choiceCount: bank.reduce((s, sc) => s + sc.choices.length, 0),
+    outcomeCount: bank.reduce(
+      (s, sc) => s + sc.choices.reduce((a, c) => a + c.results.length, 0),
+      0
+    ),
+    missingCategorySlots: missingCategory,
   },
+  probabilityTables,
+  sampledRates,
+  development,
   triggerTrials: triggerByType,
   schedule,
+  integrity: {
+    duplicateApplicationsBlocked: development.duplicates,
+    missingCategorySlots: missingCategory,
+  },
 };
 
 mkdirSync(new URL("../reports", import.meta.url), { recursive: true });
@@ -224,11 +377,40 @@ for (const [id, n] of ranked) {
   md.push(`| ${id} | ${n} |`);
 }
 md.push("");
+md.push("## Outcome category probabilities (academy reference → senior)");
+md.push("");
+md.push("| Disposition | Academy +/0/− | Senior target +/0/− | Sampled +/0/− |");
+md.push("| --- | --- | --- | --- |");
+for (const [d, row] of Object.entries(sampledRates)) {
+  const a = row.academyReference;
+  const t = row.target;
+  const o = row.observed;
+  md.push(
+    `| ${d} | ${(a.positive * 100).toFixed(2)} / ${(a.neutral * 100).toFixed(2)} / ${(a.negative * 100).toFixed(2)} | ${(t.positive * 100).toFixed(2)} / ${(t.neutral * 100).toFixed(2)} / ${(t.negative * 100).toFixed(2)} | ${(o.positive * 100).toFixed(2)} / ${(o.neutral * 100).toFixed(2)} / ${(o.negative * 100).toFixed(2)} |`
+  );
+}
+md.push("");
+md.push("## Durable development samples");
+md.push("");
+md.push(`Forced-category trials: ${development.trials}`);
+md.push(
+  `Positive mean raw: ${development.positive.n ? (development.positive.sumRaw / development.positive.n).toFixed(4) : "n/a"} (display ticks: ${development.positive.tickCount})`
+);
+md.push(
+  `Negative mean raw: ${development.negative.n ? (development.negative.sumRaw / development.negative.n).toFixed(4) : "n/a"} (display ticks: ${development.negative.tickCount})`
+);
+md.push(
+  `Neutral zero-raw count: ${development.neutral.zeroRaw}/${development.neutral.n}`
+);
+md.push(`Duplicate second-choice blocks: ${development.duplicates}`);
+md.push("");
 md.push("## Notes");
 md.push("");
 md.push("- Trigger streams are independent of match/transfer RNG.");
+md.push("- Outcome category rates use the academy-reference 10/5/5 transformation.");
 md.push("- Headless seasons use the balanced senior policy (not max-reward).");
 md.push("- Failed 30% rolls do not create history entries or UI modals.");
+md.push("- Durable attribute changes share the annual learning allowance with season development.");
 
 const mdPath = new URL("../reports/senior-career-scenarios-calibration.md", import.meta.url);
 writeFileSync(mdPath, md.join("\n"));

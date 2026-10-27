@@ -1,6 +1,5 @@
 import { STATS_KEYS } from "./js/config/playerConfig.js";
 import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js?v=61";
-import { WORLD_CUP_NATIONS, flagUrl } from "./js/data/worldCupNations.js";
 import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=77";
 import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=61";
 import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=81";
@@ -8,7 +7,7 @@ import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=81";
 import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=81";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=81";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=81";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=85";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=89";
 import { createWorldState, setWorldState } from "./js/simulation/worldState.js";
 import {
   ensureContractAuthority,
@@ -32,82 +31,21 @@ import {
   openSimulationDashboardSegment,
   hideSimulationDashboard,
   getDashboardRevealState,
-} from "./js/ui/seasonAnimation.js?v=81";
+} from "./js/ui/seasonAnimation.js?v=89";
 import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=81";
-import { showSeniorScenarioOverlay } from "./js/ui/seniorScenarioOverlay.js?v=81";
+import { showSeniorScenarioOverlay } from "./js/ui/seniorScenarioOverlay.js?v=88";
 import {
-  customSelectsAreValid,
-  getCustomSelectValue,
-  initCustomSelect,
-  initCustomSelectOutsideClose,
-} from "./js/ui/customSelect.js";
-import { escapeHtml, formatCurrency } from "./js/utils/helpers.js";
-
-const POSITION_OPTIONS = [
-  { value: "GK", label: "Goalkeeper" },
-  { value: "RB", label: "Right Back" },
-  { value: "LB", label: "Left Back" },
-  { value: "CB", label: "Centre Back" },
-  { value: "CDM", label: "Defensive Midfielder" },
-  { value: "CM", label: "Central Midfielder" },
-  { value: "CAM", label: "Attacking Midfielder" },
-  { value: "RM", label: "Right Midfielder" },
-  { value: "LM", label: "Left Midfielder" },
-  { value: "RW", label: "Right Winger" },
-  { value: "LW", label: "Left Winger" },
-  { value: "ST", label: "Striker" },
-];
-
-const STARTING_AGE_OPTIONS = [15, 16, 17, 18, 19].map((age) => ({
-  value: String(age),
-  label: `${age} years old`,
-  html: `<span>${age} years old</span>`,
-}));
-
-function initSetupSelects() {
-  initCustomSelectOutsideClose();
-
-  const nationalityRoot = document.getElementById("nationality-select");
-  if (nationalityRoot) {
-    initCustomSelect(nationalityRoot, {
-      placeholder: "Select nationality",
-      required: true,
-      options: WORLD_CUP_NATIONS.map((nation) => ({
-        value: nation.name,
-        label: nation.name,
-        html: `<img class="select-flag" src="${flagUrl(nation.code)}" alt="" width="22" height="16" loading="lazy" /><span>${escapeHtml(nation.name)}</span>`,
-      })),
-    });
-  }
-
-  const positionRoot = document.getElementById("primary-position-select");
-  if (positionRoot) {
-    initCustomSelect(positionRoot, {
-      placeholder: "Select a position",
-      required: true,
-      options: POSITION_OPTIONS.map((pos) => ({
-        value: pos.value,
-        label: pos.label,
-        html: `<span class="select-pos-code">${escapeHtml(pos.value)}</span><span>${escapeHtml(pos.label)}</span>`,
-      })),
-    });
-  }
-
-  const ageRoot = document.getElementById("starting-age-select");
-  if (ageRoot) {
-    initCustomSelect(ageRoot, {
-      placeholder: "Select starting age",
-      required: true,
-      options: STARTING_AGE_OPTIONS,
-    });
-  }
-}
-
-initSetupSelects();
+  applyCareerSetupErrors,
+  clearCareerSetupErrors,
+  initCareerSetup,
+  readCareerSetupValues,
+} from "./js/ui/careerSetup.js";
+import { formatCurrency } from "./js/utils/helpers.js";
 
 let player = null;
 /** Scoped to one in-flight offer/window submission — not career-wide. */
 let dealBookingGuard = null;
+let careerStartInFlight = false;
 
 const setupForm = document.getElementById("setup-form");
 const setupSection = document.getElementById("setup-section");
@@ -120,6 +58,17 @@ const simulateBtn = document.getElementById("simulate-btn");
 const retireBtn = document.getElementById("retire-btn");
 const standingsBoard = document.getElementById("standings-board");
 const competitionsBoard = document.getElementById("competitions-board");
+const startCareerBtn = document.getElementById("start-career-btn");
+
+if (setupForm) initCareerSetup(setupForm);
+
+function setCareerStartBusy(busy) {
+  careerStartInFlight = busy;
+  if (startCareerBtn) {
+    startCareerBtn.disabled = busy;
+    startCareerBtn.setAttribute("aria-busy", busy ? "true" : "false");
+  }
+}
 
 function startCareerFromSetup() {
   const bootErr = document.getElementById("app-boot-error");
@@ -136,29 +85,18 @@ function startCareerFromSetup() {
     return;
   }
 
-  const formData = new FormData(setupForm);
-  const name = String(formData.get("player-name") ?? "").trim();
-  const nationality = getCustomSelectValue("nationality");
-  const position = getCustomSelectValue("primary-position");
-  const startingAgeRaw = getCustomSelectValue("starting-age");
-  const startingAge = Number(startingAgeRaw);
+  if (careerStartInFlight) return;
 
-  if (!name) {
-    setupForm.querySelector("#player-name")?.reportValidity?.();
-    setupForm.querySelector("#player-name")?.focus();
+  const result = readCareerSetupValues(setupForm);
+  if (!result.ok) {
+    applyCareerSetupErrors(setupForm, result.errors, result.focus);
     return;
   }
 
-  if (!customSelectsAreValid(["nationality", "primary-position", "starting-age"])) {
-    if (bootErr) {
-      bootErr.textContent = "Choose a nationality, primary position, and starting age to open the file.";
-      bootErr.classList.remove("hidden");
-    }
-    if (!nationality) document.querySelector("#nationality-select .custom-select-trigger")?.focus();
-    else if (!position) document.querySelector("#primary-position-select .custom-select-trigger")?.focus();
-    else document.querySelector("#starting-age-select .custom-select-trigger")?.focus();
-    return;
-  }
+  const { name, nationality, position, age: startingAge } = result.data;
+  clearCareerSetupErrors(setupForm);
+  setCareerStartBusy(true);
+  window.__lastAcceptedCareerSetup = { name, nationality, position, age: startingAge };
 
   try {
     setWorldState(createWorldState({ startYear: new Date().getFullYear() }));
@@ -177,6 +115,7 @@ function startCareerFromSetup() {
     });
   } catch (err) {
     console.error(err);
+    setCareerStartBusy(false);
     setupSection.classList.remove("hidden");
     if (bootErr) {
       bootErr.textContent =
@@ -190,8 +129,11 @@ function startCareerFromSetup() {
   }
 }
 
-/** Exposed for inline index.html click handler (runs even if other init lines fail). */
+/** Exposed for diagnostics; same guarded start path as form submit. */
 window.__footballCareerStart = startCareerFromSetup;
+
+/** Narrow hook for browser verification of the setup payload boundary. */
+window.__readCareerSetupValues = () => (setupForm ? readCareerSetupValues(setupForm) : { ok: false, errors: { form: "missing" }, focus: null });
 
 /**
  * Deterministic mid-season loan fixture for live browser verification.
@@ -295,7 +237,9 @@ async function presentSeniorScenarioThenResume(pending) {
     return;
   }
   simulateBtn.disabled = true;
-  await showSeniorScenarioOverlay(player, pending);
+  await showSeniorScenarioOverlay(player, pending, {
+    onPlayerUpdated: () => refreshOverview(),
+  });
   ensureTransferSave(player);
   refreshOverview();
   resumeSeasonAfterDecision({ pauseForDecisions: true });

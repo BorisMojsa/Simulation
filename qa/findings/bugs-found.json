@@ -1,0 +1,64 @@
+{
+  "updatedAt": "2026-10-27T22:12:00.000Z",
+  "meta": {
+    "note": "Summarized from browser QA + 100/250 full-career engine batches and integrity probes. See bugs-found.md.",
+    "batches": [
+      { "script": "qaBulkCareers.mjs", "n": 100 },
+      { "script": "qaCareerOutcomes.mjs", "n": 100, "seed": 20261027 },
+      { "script": "qaCareerOutcomes.mjs", "n": 250, "seed": 202610278, "afterGrowthRetune": true }
+    ]
+  },
+  "byCode": {
+    "flat-club-unit-strengths": 2371,
+    "free-agent-ui-softlock": 1825,
+    "long-free-agency-no-offers": 423,
+    "academy-home-pathway-only": 56,
+    "stuck-in-academy": 4,
+    "individual-awards-never-fire": "confirmed-0-wins",
+    "cl-midtier-finalists-seeding": "confirmed",
+    "star-player-club-boost-too-weak": "confirmed",
+    "flat-club-unit-strengths-database": "572/572",
+    "wc-group-wins-vs-tournament-wins-ux": "confirmed-ux",
+    "peak-overalls-too-low": "post-retune-max-83"
+  },
+  "ratingSnapshots": {
+    "preRetune100": {
+      "final": { "min": 46.3, "avg": 61.4, "p50": 61.9, "p90": 69.9, "max": 73.8 },
+      "peak": { "min": 54, "avg": 65.7, "p50": 65.7, "p90": 73.7, "max": 79.9 }
+    },
+    "postRetune250": {
+      "final": { "min": 44, "avg": 61.4, "p50": 60.9, "p90": 72, "max": 79.8 },
+      "peak": { "min": 53.9, "avg": 66, "p50": 65.9, "p90": 75.2, "max": 83 },
+      "peakGe80": 3,
+      "peakGe85": 0,
+      "peakGe90": 0
+    }
+  },
+  "integrityProbes": [
+    {
+      "code": "individual-awards-rival-field-dominates",
+      "severity": "critical",
+      "summary": "Synthetic rivals overscore; potsMetric>0 gate leaves awardRecords empty."
+    },
+    {
+      "code": "flat-club-unit-strengths-database",
+      "severity": "medium",
+      "summary": "572/572 clubs attack=midfield=defence=goalkeeper=overall."
+    },
+    {
+      "code": "star-player-club-boost-too-weak",
+      "severity": "high",
+      "summary": "95 OVR at Hull (~70) only +0.62 club effective OVR."
+    },
+    {
+      "code": "cl-midtier-finalists-seeding",
+      "severity": "high",
+      "summary": "overall≥80 seeds CL; compressed ratings; mid-tier CL winners/finalists observed."
+    },
+    {
+      "code": "wc-group-wins-vs-tournament-wins-ux",
+      "severity": "medium",
+      "summary": "Bracket scores OK; group table W is group-stage only."
+    }
+  ]
+}

@@ -5,6 +5,7 @@
  */
 
 import { WORLD_CUP_NATIONS } from "./worldCupNations.js";
+import { NATIONAL_FORMATS } from "./competitions/formats.js";
 
 export const CONFEDERATIONS = {
   UEFA: "UEFA",
@@ -98,8 +99,28 @@ export const NATION_CONFEDERATION = {
   Wales: "UEFA",
 };
 
+function nationalEdition(id, year, overrides = {}) {
+  const format = NATIONAL_FORMATS[id] || {};
+  return {
+    id,
+    name: format.name || id,
+    shortName: overrides.shortName || format.name || id,
+    confederation: overrides.confederation || format.confederation || null,
+    fieldSize: format.fieldSize,
+    groupSize: format.groupSize,
+    bestThirds: format.bestThirds || 0,
+    thirdPlaceMatch: Boolean(format.thirdPlaceMatch),
+    knockoutStart: format.knockoutStart,
+    ruleVersion: format.ruleVersion,
+    editionYear: year,
+    year,
+    ...overrides,
+  };
+}
+
 /**
- * Major tournaments by calendar year rules (simplified but realistic cycles).
+ * Major tournaments by calendar year. Field/advancement rules come from NATIONAL_FORMATS;
+ * this calendar only chooses which editions occur in a year.
  * World Cup: every 4 years (…2026, 2030) → year % 4 === 2
  * Euro + Copa América: every 4 years (…2024, 2028) → year % 4 === 0
  * AFCON: every 2 years on odd years (…2025, 2027, 2029)
@@ -111,72 +132,24 @@ export function tournamentsForYear(year) {
   const list = [];
 
   if (y % 4 === 2) {
-    list.push({
-      id: "world-cup",
-      name: "FIFA World Cup",
-      shortName: "World Cup",
-      confederation: "FIFA",
-      fieldSize: 48,
-      groupSize: 4,
-      bestThirds: 8,
-      thirdPlaceMatch: true,
-      editionYear: y,
-    });
+    list.push(nationalEdition("world-cup", y, { shortName: "World Cup", confederation: "FIFA" }));
   }
 
   if (y % 4 === 0) {
-    list.push({
-      id: "euro",
-      name: "UEFA European Championship",
-      shortName: "EURO",
-      confederation: "UEFA",
-      fieldSize: 24,
-      groupSize: 4,
-      bestThirds: 4,
-      editionYear: y,
-    });
-    list.push({
-      id: "copa-america",
-      name: "Copa América",
-      shortName: "Copa América",
-      confederation: "CONMEBOL",
-      fieldSize: 16,
-      groupSize: 4,
-      editionYear: y,
-    });
+    list.push(nationalEdition("euro", y, { shortName: "EURO", confederation: "UEFA" }));
+    list.push(
+      nationalEdition("copa-america", y, { shortName: "Copa América", confederation: "CONMEBOL" })
+    );
   }
 
   if (y % 2 === 1) {
-    // Field sizes match the selectable WORLD_CUP_NATIONS pool (CAF 14, CONCACAF 10).
-    // Simplified vs real 24/16-team tournaments — must stay fillable without inventing nations.
-    list.push({
-      id: "afcon",
-      name: "Africa Cup of Nations",
-      shortName: "AFCON",
-      confederation: "CAF",
-      fieldSize: 12,
-      groupSize: 3,
-    });
-    list.push({
-      id: "gold-cup",
-      name: "CONCACAF Gold Cup",
-      shortName: "Gold Cup",
-      confederation: "CONCACAF",
-      fieldSize: 8,
-      groupSize: 4,
-    });
+    // Pool-limited vs real AFCON/Gold Cup field sizes — documented in NATIONAL_FORMATS.
+    list.push(nationalEdition("afcon", y, { shortName: "AFCON", confederation: "CAF" }));
+    list.push(nationalEdition("gold-cup", y, { shortName: "Gold Cup", confederation: "CONCACAF" }));
   }
 
   if (y % 4 === 3) {
-    // AFC selectable pool is 12 nations in this project.
-    list.push({
-      id: "asian-cup",
-      name: "AFC Asian Cup",
-      shortName: "Asian Cup",
-      confederation: "AFC",
-      fieldSize: 12,
-      groupSize: 3,
-    });
+    list.push(nationalEdition("asian-cup", y, { shortName: "Asian Cup", confederation: "AFC" }));
   }
 
   return list;

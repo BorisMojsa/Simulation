@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>QA repro — free agent soft-lock</title>
+    <link rel="stylesheet" href="../style.css" />
+    <style>
+      body { padding: 24px; font-family: system-ui, sans-serif; }
+      #qa-log { white-space: pre-wrap; background: #111; color: #ddd; padding: 12px; border-radius: 8px; max-width: 720px; }
+      #qa-controls { margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Free-agent soft-lock repro</h1>
+    <p>
+      Mirrors production: free-agent <code>simulateSeason</code> payload lacks
+      <code>league</code>/<code>standings</code>, then <code>showSeasonAnimation</code>
+      opens the overlay and early-returns without <code>onContinue</code>.
+    </p>
+    <div id="qa-controls">
+      <button id="run-repro" class="primary">Run soft-lock repro</button>
+      <button id="check-state" class="secondary">Check overlay / continue state</button>
+    </div>
+    <pre id="qa-log">Ready.</pre>
+
+    <!-- Minimal overlay shell matching production ids used by seasonAnimation -->
+    <div id="season-animation-overlay" class="animation-overlay hidden">
+      <div class="animation-content">
+        <div id="simulation-dashboard" class="hidden"></div>
+        <div id="match-viewer-section" class="hidden"></div>
+        <div id="league-animation" class="hidden"></div>
+        <div id="cup-animation" class="hidden"></div>
+        <div id="european-animation" class="hidden"></div>
+        <div id="international-callup-animation" class="hidden"></div>
+        <div id="international-animation" class="hidden"></div>
+        <div id="awards-animation" class="hidden"></div>
+        <div id="trophies-animation" class="hidden"></div>
+        <div id="summary-animation" class="hidden"></div>
+        <div id="overall-reveal" class="hidden"></div>
+        <div id="animation-continue" class="hidden">
+          <button id="continue-btn" class="primary">Continue</button>
+        </div>
+        <button id="match-skip-btn" class="secondary hidden">Skip match</button>
+        <button id="match-skip-phase-btn" class="secondary hidden">Skip phase</button>
+        <div id="match-card-rail"></div>
+        <div id="league-table-host"></div>
+        <div id="league-table-rows"></div>
+        <div id="cup-rounds"></div>
+        <div id="european-rounds"></div>
+        <div id="international-tournaments"></div>
+        <div id="international-announcement"></div>
+        <div id="awards-items"></div>
+        <div id="trophies-items"></div>
+        <div id="player-stats-grid"></div>
+        <div id="rating-changes-grid"></div>
+        <div id="match-events-feed"></div>
+        <div id="league-trophy-banner"></div>
+        <div id="old-rating-value"></div>
+        <div id="new-rating-value"></div>
+        <div id="rating-change-text"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { showSeasonAnimation } from "../js/ui/seasonAnimation.js?v=89";
+
+      const logEl = document.getElementById("qa-log");
+      const log = (msg) => {
+        logEl.textContent += `\n${msg}`;
+      };
+
+      let continueCalled = false;
+
+      document.getElementById("run-repro").addEventListener("click", () => {
+        continueCalled = false;
+        logEl.textContent = "Running repro…";
+        const fakeFreeAgentSeason = {
+          season: {
+            seasonId: "free-agent-1",
+            year: 2030,
+            club: null,
+            clubName: "Free agent",
+            league: null,
+            matches: 0,
+            freeAgent: true,
+            freeAgentReason: "contract-expired",
+          },
+          freeAgent: true,
+          performanceScore: 55,
+          // intentionally no league / standings — matches production free-agent return
+        };
+        const player = {
+          name: "QA Softlock",
+          position: "CM",
+          age: 28,
+          club: null,
+          attributes: {
+            Speed: 70,
+            Passing: 70,
+            Shooting: 70,
+            Defending: 70,
+            Physicality: 70,
+            Dribbling: 70,
+          },
+        };
+
+        showSeasonAnimation(fakeFreeAgentSeason, player, Object.keys(player.attributes), () => {
+          continueCalled = true;
+          log("onContinue FIRED (unexpected if bug still present)");
+        });
+
+        setTimeout(() => {
+          const overlay = document.getElementById("season-animation-overlay");
+          const hidden = overlay.classList.contains("hidden");
+          log(
+            JSON.stringify(
+              {
+                overlayHidden: hidden,
+                continueCalled,
+                verdict: !hidden && !continueCalled ? "SOFT-LOCK CONFIRMED" : "no soft-lock",
+              },
+              null,
+              2
+            )
+          );
+        }, 250);
+      });
+
+      document.getElementById("check-state").addEventListener("click", () => {
+        const overlay = document.getElementById("season-animation-overlay");
+        log(
+          JSON.stringify(
+            {
+              overlayHidden: overlay.classList.contains("hidden"),
+              continueCalled,
+            },
+            null,
+            2
+          )
+        );
+      });
+    </script>
+  </body>
+</html>

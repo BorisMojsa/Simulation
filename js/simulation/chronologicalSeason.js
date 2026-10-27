@@ -10,11 +10,10 @@ import {
   dateLeagueFixtures,
   flattenRoundRobinFixtures,
   dateCupRounds,
-  dateInternationalWindows,
   sortChronological,
   simDate,
   daysBetween,
-} from "./seasonCalendar.js?v=81";
+} from "./seasonCalendar.js?v=89";
 import { rivalsForClub } from "../data/clubRivals.js";
 import { createRng } from "./rng.js";
 import { squadReviewCheckpointDate } from "../data/registrationWindows.js";
@@ -36,7 +35,6 @@ import { stableCareerId } from "./playerDevelopmentModel.js";
 import {
   simulateEuropeanFinalsShowcase,
 } from "./europeanCompetition.js?v=81";
-import { reconcileCampaignWithPlayerMatches } from "./continentalTournament.js";
 import {
   prepareSeasonContinental,
   buildContinentalChronoEvents,
@@ -45,7 +43,14 @@ import {
   buildContinentalCampaignView,
   reloadEditionFromWorld,
 } from "./continentalChronology.js";
-import { simulateInternationalSeason } from "./nationalTeam.js";
+import {
+  prepareSeasonInternational,
+  buildNationalChronoEvents,
+  processNationalChronoEvent,
+  finalizeSeasonNational,
+  buildInternationalSeasonView,
+  reloadNationalEditionFromWorld,
+} from "./nationalChronology.js";
 import {
   prepareDomesticCupBracket,
   simulateDomesticCupRound,
@@ -62,7 +67,7 @@ import {
   buildPendingSeniorScenario,
   applySeniorScenarioPolicy,
   ensureSeniorCareerState,
-} from "./seniorCareerScenarios.js";
+} from "./seniorCareerScenarios.js?v=88";
 import { ensureLeagueMatchId } from "./leagueTable.js";
 import { commitLeagueMatchResult } from "./leagueEditionAdapter.js";
 
@@ -402,40 +407,18 @@ export function simulateChronologicalSeason({
     : { ...simulateEuropeanFinalsShowcase(league), qualified: false, showcase: true };
   const europePlayerSlots = buildContinentalChronoEvents(europeEdition);
 
-  // International: decide call-up early using form seed; schedule windows.
-  const intlProbe = simulateInternationalSeason({
+  // International: prepare editions (draw/call-up/schedule only) — play on dated events.
+  const intlSeason = prepareSeasonInternational({
     player,
     calendarYear,
     avgMatchRating: 6.8,
+    world,
+    rng,
   });
-  const intlEditionYear =
-    intlProbe.primary?.editionYear ||
-    intlProbe.primary?.year ||
-    intlProbe.tournaments?.[0]?.editionYear ||
-    intlProbe.tournaments?.[0]?.year ||
-    calendarYear;
-  const intlSlots = dateInternationalWindows(
-    (intlProbe.playerMatches || []).map((m, i) => ({
-      index: i,
-      prior: m,
-      home: m.home,
-      away: m.away,
-    })),
-    calendarYear,
-    { editionYear: intlEditionYear }
-  );
-  // If called up but tournament is summer-only with few matches, still place them.
-  if (intlProbe.calledUp && !intlSlots.length) {
-    const fallback = simDate(intlEditionYear, 6, 15);
-    intlSlots.push({
-      index: 0,
-      date: fallback,
-      competitionType: "international",
-      sortKey: `${fallback}:I:0`,
-      prior: null,
-      synthetic: true,
-    });
-  }
+  let intlPrimaryEdition = intlSeason.primaryEdition || null;
+  const intlSlots = intlPrimaryEdition ? buildNationalChronoEvents(intlPrimaryEdition) : [];
+  // Compatibility alias used by senior-scenario planners and checkpoints.
+  const intlProbe = intlSeason;
 
   // Cup: simulate via progressive engine on round dates (player-aware).
   // Build events: league fixtures + cup round ticks + europe slots + intl slots.
@@ -456,13 +439,8 @@ export function simulateChronologicalSeason({
   europePlayerSlots.forEach((ev) => {
     events.push(ev);
   });
-  intlSlots.forEach((slot, i) => {
-    events.push({
-      kind: "international",
-      date: slot.date,
-      sortKey: slot.sortKey || `${slot.date}:I:${i}`,
-      slot,
-    });
+  intlSlots.forEach((ev) => {
+    events.push(ev);
   });
 
   // Mid-season SQUAD REVIEW checkpoint (not a universal registration authorisation).
@@ -499,7 +477,7 @@ export function simulateChronologicalSeason({
   let cupState = null;
   let cupResult = null;
   let europeResimMatches = []; // legacy checkpoint field; continental no longer re-sims
-  let intlResimMatches = [];
+  let intlResimMatches = []; // legacy checkpoint field; national results live in store/edition
   const lastDateRef = { current: null };
   const leaguePlayerMatches = [];
   const leagueAllMatches = [];
@@ -570,6 +548,7 @@ export function simulateChronologicalSeason({
           europePlan,
           europeEdition,
           intlProbe,
+          intlPrimaryEdition,
           europeResimMatches,
           intlResimMatches,
           leaguePlayerMatches,
@@ -632,6 +611,7 @@ export function simulateChronologicalSeason({
           europePlan,
           europeEdition,
           intlProbe,
+          intlPrimaryEdition,
           europeResimMatches,
           intlResimMatches,
           leaguePlayerMatches,
@@ -869,55 +849,31 @@ export function simulateChronologicalSeason({
       ordered = processed.ordered;
       if (processed.europePlan) europePlan = processed.europePlan;
       lastDate = lastDateRef.current || ev.date;
-    } else if (ev.kind === "international") {
-      if (!intlProbe.calledUp) continue;
-      const slot = ev.slot;
-      const prior = slot.prior;
-      // Build sides from prior match or synthetic nation vs opponent
-      let home = prior?.home;
-      let away = prior?.away;
-      let playerSide = prior?.playerSide || "home";
-      if (!home || !away) {
-        // Synthetic window match: nation vs generic opponent shell
-        home = {
-          name: player.nationality,
-          displayName: player.nationality,
-          isNation: true,
-          nationId: player.nationality,
-        };
-        away = {
-          name: "International Opponent",
-          displayName: "International Opponent",
-          isNation: true,
-          nationId: "OPP",
-        };
-        playerSide = "home";
-      }
-      const { match, participation, ledgerRecord } = processPlayerMatchDay({
-        home,
-        away,
+    } else if (ev.kind === "national_md" || ev.kind === "national_fixture") {
+      if (!intlPrimaryEdition) continue;
+      lastDateRef.current = lastDate;
+      const processed = processNationalChronoEvent({
+        ev,
+        edition: intlPrimaryEdition,
+        ordered,
+        eventIndex,
         player,
-        playerSide,
-        date: ev.date,
-        lastDate,
-        competition: "international",
-        competitionType: "international",
-        competitionId: intlProbe.callUpTournament || "international",
-        fixtureId: `intl:${calendarYear}:${slot.index}`,
-        teamType: "national",
-        competitionPriority: 1.1,
-        venue: "neutral",
         rng,
         selRng,
         injuryRng,
-        worldState: world,
+        world,
+        lastDateRef,
+        ledgerRecords,
+        playerMatchStats,
+        accumulatePlayerStats,
       });
-      intlResimMatches.push(match);
-      if (ledgerRecord) {
-        ledgerRecords.push(ledgerRecord);
-        accumulatePlayerStats(playerMatchStats, match, participation);
+      intlPrimaryEdition = processed.edition;
+      ordered = processed.ordered;
+      if (processed.campaignView) {
+        intlSeason.primary = processed.campaignView;
+        intlSeason.playerMatches = processed.campaignView.playerMatches || [];
       }
-      lastDate = ev.date;
+      lastDate = lastDateRef.current || ev.date;
     }
   }
 
@@ -941,13 +897,25 @@ export function simulateChronologicalSeason({
       accumulatePlayerStats,
     }) || europePlan;
   }
-  if (intlResimMatches.length) {
-    const reconciled = reconcileCampaignWithPlayerMatches(
-      { allRounds: intlProbe.allRounds, playerMatches: intlResimMatches },
-      intlResimMatches
-    );
-    intlProbe.playerMatches = intlResimMatches;
-    if (reconciled?.allRounds) intlProbe.allRounds = reconciled.allRounds;
+  // National editions finalize through the store-backed lifecycle (no reconcile/replay).
+  if (typeof intlSeason !== "undefined" && (intlSeason?.editions?.length || intlPrimaryEdition)) {
+    lastDateRef.current = lastDate;
+    const finalizedIntl = finalizeSeasonNational({
+      edition: intlPrimaryEdition,
+      season: intlSeason,
+      player,
+      rng,
+      selRng,
+      injuryRng,
+      world,
+      lastDateRef,
+      ledgerRecords,
+      playerMatchStats,
+      accumulatePlayerStats,
+    });
+    if (finalizedIntl) {
+      Object.assign(intlProbe, finalizedIntl);
+    }
   }
 
   const table = buildTable(records);
@@ -1144,6 +1112,7 @@ function buildSeasonCheckpoint(parts) {
     europePlan: parts.europePlan,
     europeEdition: parts.europeEdition || null,
     intlProbe: parts.intlProbe,
+    intlPrimaryEdition: parts.intlPrimaryEdition || null,
     europeResimMatches: parts.europeResimMatches,
     intlResimMatches: parts.intlResimMatches,
     leaguePlayerMatches: parts.leaguePlayerMatches,
@@ -1226,6 +1195,51 @@ function handleSeniorScenarioEvent({
   const benched =
     (playerMatchStats?.starts || 0) === 0 && (playerMatchStats?.played || 0) > 0;
 
+  // Next fixture after this scene date (for derby / opponent context).
+  let nextFixture = false;
+  let strongOpponentUpcoming = false;
+  let awayTravelReturn = false;
+  if (event.date && ordered.length) {
+    const upcoming = ordered.find(
+      (ev, i) =>
+        i > eventIndex &&
+        ev?.date &&
+        (ev.kind === "league_match" ||
+          ev.kind === "cup_match" ||
+          ev.kind === "continental_match" ||
+          ev.home ||
+          ev.away)
+    );
+    nextFixture = Boolean(upcoming);
+    if (upcoming) {
+      const opp =
+        upcoming.opponent?.name ||
+        (upcoming.home?.name === myName ? upcoming.away?.name : upcoming.home?.name);
+      if (opp && rivals.includes(opp)) {
+        /* rival already handled via nearby match */
+      }
+      const myStr = Number(player.club?.strength ?? player.rating ?? 70);
+      const oppStr = Number(upcoming.opponentStrength ?? upcoming.away?.strength ?? upcoming.home?.strength);
+      if (Number.isFinite(oppStr) && oppStr > myStr + 4) strongOpponentUpcoming = true;
+      const isAway =
+        upcoming.away?.clubId === player.playingClubId ||
+        upcoming.away?.name === myName ||
+        upcoming.isHome === false;
+      if (isAway) awayTravelReturn = true;
+    }
+  }
+
+  const matchAnnotations = leaguePlayerMatches.flatMap((m) => m.annotations || m.events || []);
+  const matchErrorEvidence = matchAnnotations.some(
+    (a) => a === "error" || a?.type === "error" || a?.kind === "error"
+  );
+  const missedChanceEvidence =
+    player.position !== "GK" &&
+    matchAnnotations.some((a) => a === "miss" || a?.type === "miss" || a?.kind === "missed_chance");
+  const gkReboundEvidence =
+    player.position === "GK" &&
+    matchAnnotations.some((a) => a === "rebound" || a?.type === "rebound" || a?.kind === "handling");
+
   const pending = buildPendingSeniorScenario(player, event, {
     playerMatchStats,
     recentResults,
@@ -1235,16 +1249,30 @@ function handleSeniorScenarioEvent({
     travelCongestion,
     onLeave,
     rivalMatchup,
+    nextFixture: nextFixture || rivalMatchup,
+    strongOpponentUpcoming,
+    awayTravelReturn,
+    matchErrorEvidence,
+    missedChanceEvidence,
+    gkReboundEvidence,
+    highWorkload: fixtureCongestion || travelCongestion,
     // force* only when the underlying fact is true (not invented).
     forceAfterLoss: afterLoss,
     forceStandout: standout,
     forceBenched: benched,
     leadershipContext: (player.age || 0) >= 22 && (playerMatchStats?.starts || 0) >= 5,
+    experiencedSenior: (player.age || 0) >= 28,
     returningFromInjury: Boolean(
-      player.health?.status === "returning" ||
-        player.health?.status === "rehab" ||
-        (player.health?.activeInjury && player.health?.recovering)
+      player.health?.status === "returning" || player.health?.status === "rehab"
     ),
+    clearedFullTraining: player.health?.status === "cleared" || player.health?.status === "available",
+    firstNationalCamp:
+      event.competitionType === "international" &&
+      !player.seniorCareer?.firstNationalCampAttended,
+    poorFormEvidence:
+      Number.isFinite(playerMatchStats?.avgMatchRating) &&
+      playerMatchStats.avgMatchRating > 0 &&
+      playerMatchStats.avgMatchRating < 6.4,
   });
 
   if (!pending || pending.unschedulable) {
@@ -1333,6 +1361,22 @@ export function resumeChronologicalSeason({
     );
   }
   const intlProbe = checkpoint.intlProbe;
+  let intlSeason = checkpoint.intlProbe || null;
+  let intlPrimaryEdition =
+    checkpoint.intlPrimaryEdition ||
+    reloadNationalEditionFromWorld(checkpoint.intlPrimaryEdition, world) ||
+    (intlSeason?.primaryEdition
+      ? reloadNationalEditionFromWorld(intlSeason.primaryEdition, world)
+      : null);
+  if (!intlPrimaryEdition && intlSeason?.primary?.editionId) {
+    intlPrimaryEdition = reloadNationalEditionFromWorld(
+      {
+        competitionId: intlSeason.primary.competitionId || intlSeason.primary.id,
+        editionId: intlSeason.primary.editionId,
+      },
+      world
+    );
+  }
   let europeResimMatches = [...(checkpoint.europeResimMatches || [])];
   let intlResimMatches = [...(checkpoint.intlResimMatches || [])];
   const leaguePlayerMatches = [...(checkpoint.leaguePlayerMatches || [])];
@@ -1445,6 +1489,7 @@ export function resumeChronologicalSeason({
           europePlan,
           europeEdition,
           intlProbe,
+          intlPrimaryEdition,
           europeResimMatches,
           intlResimMatches,
           leaguePlayerMatches,
@@ -1507,6 +1552,7 @@ export function resumeChronologicalSeason({
           europePlan,
           europeEdition,
           intlProbe,
+          intlPrimaryEdition,
           europeResimMatches,
           intlResimMatches,
           leaguePlayerMatches,
@@ -1736,53 +1782,31 @@ export function resumeChronologicalSeason({
       ordered = processed.ordered;
       if (processed.europePlan) europePlan = processed.europePlan;
       lastDate = lastDateRef.current || ev.date;
-    } else if (ev.kind === "international") {
-      if (!intlProbe.calledUp) continue;
-      const slot = ev.slot;
-      const prior = slot.prior;
-      let home = prior?.home;
-      let away = prior?.away;
-      let playerSide = prior?.playerSide || "home";
-      if (!home || !away) {
-        home = {
-          name: player.nationality,
-          displayName: player.nationality,
-          isNation: true,
-          nationId: player.nationality,
-        };
-        away = {
-          name: "International Opponent",
-          displayName: "International Opponent",
-          isNation: true,
-          nationId: "OPP",
-        };
-        playerSide = "home";
-      }
-      const { match, participation, ledgerRecord } = processPlayerMatchDay({
-        home,
-        away,
+    } else if (ev.kind === "national_md" || ev.kind === "national_fixture") {
+      if (!intlPrimaryEdition) continue;
+      lastDateRef.current = lastDate;
+      const processed = processNationalChronoEvent({
+        ev,
+        edition: intlPrimaryEdition,
+        ordered,
+        eventIndex,
         player,
-        playerSide,
-        date: ev.date,
-        lastDate,
-        competition: "international",
-        competitionType: "international",
-        competitionId: intlProbe.callUpTournament || "international",
-        fixtureId: `intl:${calendarYear}:${slot.index}`,
-        teamType: "national",
-        competitionPriority: 1.1,
-        venue: "neutral",
         rng,
         selRng,
         injuryRng,
-        worldState: world,
+        world,
+        lastDateRef,
+        ledgerRecords,
+        playerMatchStats,
+        accumulatePlayerStats,
       });
-      intlResimMatches.push(match);
-      if (ledgerRecord) {
-        ledgerRecords.push(ledgerRecord);
-        accumulatePlayerStats(playerMatchStats, match, participation);
+      intlPrimaryEdition = processed.edition;
+      ordered = processed.ordered;
+      if (processed.campaignView && intlSeason) {
+        intlSeason.primary = processed.campaignView;
+        intlSeason.playerMatches = processed.campaignView.playerMatches || [];
       }
-      lastDate = ev.date;
+      lastDate = lastDateRef.current || ev.date;
     }
   }
 
@@ -1805,13 +1829,25 @@ export function resumeChronologicalSeason({
       accumulatePlayerStats,
     }) || europePlan;
   }
-  if (intlResimMatches.length) {
-    const reconciled = reconcileCampaignWithPlayerMatches(
-      { allRounds: intlProbe.allRounds, playerMatches: intlResimMatches },
-      intlResimMatches
-    );
-    intlProbe.playerMatches = intlResimMatches;
-    if (reconciled?.allRounds) intlProbe.allRounds = reconciled.allRounds;
+  // National editions finalize through the store-backed lifecycle (no reconcile/replay).
+  if (typeof intlSeason !== "undefined" && (intlSeason?.editions?.length || intlPrimaryEdition)) {
+    lastDateRef.current = lastDate;
+    const finalizedIntl = finalizeSeasonNational({
+      edition: intlPrimaryEdition,
+      season: intlSeason,
+      player,
+      rng,
+      selRng,
+      injuryRng,
+      world,
+      lastDateRef,
+      ledgerRecords,
+      playerMatchStats,
+      accumulatePlayerStats,
+    });
+    if (finalizedIntl) {
+      Object.assign(intlProbe, finalizedIntl);
+    }
   }
 
   const table = buildTable(records);

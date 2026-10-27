@@ -1,9 +1,18 @@
 /**
  * Senior career optional decision scenes — tuning only.
  * Independent of match / transfer / academy-opening RNG streams.
+ *
+ * Outcome category probabilities are derived from academy OUTCOME_WEIGHT_BY_DISPOSITION
+ * via the absolute percentage-point shift in SENIOR_PROBABILITY_SHIFT — not from a
+ * separate senior weight table.
  */
 
+import { ACADEMY_OPENING } from "./academyOpeningConfig.js";
+
 export const SENIOR_CAREER_SCENARIOS = Object.freeze({
+  contentVersion: 2,
+  probabilityModelVersion: 2,
+
   /** One independent roll per entered competition edition. */
   triggerProbability: 0.3,
 
@@ -17,34 +26,22 @@ export const SENIOR_CAREER_SCENARIOS = Object.freeze({
     trigger: "senior-scenario:trigger",
     selection: "senior-scenario:selection",
     outcome: "senior-scenario:outcome",
+    category: "senior-scenario:category",
+    conditional: "senior-scenario:conditional",
+    allocation: "senior-scenario:allocation",
     order: "senior-scenario:order",
     life: "senior-scenario:life",
   }),
 
-  /** Narrative score → temporary-state / soft learning request (not raw OVR). */
-  narrativeToRequest: Object.freeze({
-    4: 0.35,
-    3: 0.28,
-    2: 0.2,
-    1: 0.12,
-    0: 0,
-    "-1": -0.08,
-    "-2": -0.14,
-    "-3": -0.2,
-    "-4": -0.28,
-  }),
+  /**
+   * Narrative score → requested base-OVR equivalent (academy mapping).
+   * Probability difficulty is separate; do not also shrink these magnitudes.
+   */
+  narrativeToRequest: Object.freeze({ ...ACADEMY_OPENING.narrativeToRequest }),
 
-  /** Soft per-scene clamps on temporary overall-equivalent influence. */
-  maxPositivePerScene: 0.4,
-  maxNegativePerScene: 0.3,
-
-  /** Lifetime cap on rare latent-ceiling nudges from mentoring. */
-  rareCeilingBump: Object.freeze({
-    maxLifetime: 0.25,
-    maxPerEvent: 0.12,
-    minNarrative: 3,
-    maxAge: 23,
-  }),
+  /** Soft per-scene clamps after narrative mapping (before annual allowance). */
+  maxPositivePerScene: ACADEMY_OPENING.maxPositivePerMoment,
+  maxNegativePerScene: ACADEMY_OPENING.maxNegativePerMoment,
 
   defaultUnweightedWeight: 1,
 
@@ -53,7 +50,21 @@ export const SENIOR_CAREER_SCENARIOS = Object.freeze({
 });
 
 /**
- * Disposition → relative weights by narrative delta (shared idea with academy opening).
+ * Absolute percentage-point adjustment from the academy full-table reference.
+ * senior.positive = academy.positive − 0.10 (or available mass if lower)
+ * senior.neutral/negative each receive half of the moved mass.
+ */
+export const SENIOR_PROBABILITY_SHIFT = Object.freeze({
+  positiveReduction: 0.1,
+  /** Half of the moved mass is added to neutral and half to negative. */
+  splitToNeutralAndNegative: 0.05,
+});
+
+/**
+ * @deprecated Legacy disposition weight table — no longer controls category totals.
+ * Retained only for documentation / migration diagnostics. Conditional weights
+ * within a category may still mirror severity ideas, but category probability
+ * comes from the academy-reference transform.
  */
 export const SENIOR_OUTCOME_WEIGHT_BY_DISPOSITION = Object.freeze({
   thoughtful: Object.freeze({

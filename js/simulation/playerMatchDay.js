@@ -153,17 +153,26 @@ export function processPlayerMatchDay({
     const conceded = playerSide === "home" ? match.awayGoals : match.homeGoals;
     const cleanSheet =
       (match.playerStats.minutes || 0) >= 60 && conceded === 0 && player.position === "GK";
+    const nationTeamId =
+      playerSide === "home"
+        ? home.nationId || home.name || player.nationality
+        : away.nationId || away.name || player.nationality;
+    const opponent =
+      playerSide === "home" ? away : home;
     ledgerRecord = {
       matchId: fixtureId || match.fixtureId || `${competitionId}:${date}`,
       date,
       competitionId,
       competitionType,
       teamType,
-      teamId: player.club?.clubId || player.club?.name || player.nationality,
+      teamId:
+        teamType === "national"
+          ? nationTeamId
+          : player.club?.clubId || player.club?.name || player.nationality,
       opponentId:
-        (playerSide === "home" ? away : home).clubId ||
-        (playerSide === "home" ? away : home).name ||
-        (playerSide === "home" ? away : home).nationId,
+        teamType === "national"
+          ? opponent.nationId || opponent.name
+          : opponent.clubId || opponent.name || opponent.nationId,
       positionPlayed: player.position,
       position: player.position,
       selected: Boolean(participation.selected),

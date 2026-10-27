@@ -664,7 +664,9 @@ export function developSeason(player, context = {}) {
   }
 
   const rawGain = weightedDelta(weights, positive);
-  const annualCap = caps.annualLearningCap * years;
+  const baseCap = Number(caps.annualLearningCap) || 0;
+  const breakthroughCap = Number(caps.annualLearningCapBreakthrough ?? caps.breakthroughLearningCap) || baseCap;
+  const annualCap = (breakthrough ? Math.max(baseCap, breakthroughCap) : baseCap) * years;
   const capRoom = Math.max(0, annualCap - alreadyApplied);
   let scale = 1;
   let limitedBy = "none";
@@ -915,4 +917,242 @@ export function applyAcademyGrowth(player, requestedDelta, { rng = null, focusBi
   player.development.academyGrowthApplied = (player.development.academyGrowthApplied || 0) + Math.max(0, realized);
   budgetRecord.used = Math.max(0, calculateOverall(attrs, player.position).raw - budgetRecord.startOverallRaw);
   return { requested, realized, limitedBy, perAttribute };
+}
+
+/* ------------------------------------------------------------------ */
+/* Shared period learning ledger + scenario ability changes            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Development-period id: seasonIndex convention (not calendar year / club).
+ */
+export function developmentPeriodId(player, opts = {}) {
+  if (opts.periodId != null) return String(opts.periodId);
+  const idx = Number.isFinite(opts.seasonIndex)
+    ? opts.seasonIndex
+    : player?.seasons?.length ?? 0;
+  return `season-${idx + 1}`;
+}
+
+/**
+ * Serializable per-period learning ledger. Positive scene/academy gains share
+ * DEVELOPMENT_CAPS.annualLearningCap with season-end developSeason().
+ */
+export function ensureLearningPeriodLedger(player, periodId) {
+  if (!player.development) {
+    throw new Error("ensureLearningPeriodLedger requires initialised player.development");
+  }
+  if (!player.development.learningByPeriod || typeof player.development.learningByPeriod !== "object") {
+    player.development.learningByPeriod = {};
+  }
+  const key = String(periodId);
+  if (!player.development.learningByPeriod[key]) {
+    player.development.learningByPeriod[key] = {
+      positiveUsed: 0,
+      scenePositive: 0,
+      sceneNegative: 0,
+      academyImported: 0,
+      finalized: false,
+      events: {},
+    };
+  }
+  return player.development.learningByPeriod[key];
+}
+
+/**
+ * Gross positive learning already charged this period (scenes + imported academy).
+ * Does not refund for later negative scene results.
+ */
+export function periodPositiveLearningUsed(player, periodId) {
+  const ledger = ensureLearningPeriodLedger(player, periodId);
+  // Import legacy academy counter once into this period if present and unused.
+  const academyCarry = Math.max(0, Number(player.development?.academyGrowthApplied) || 0);
+  if (academyCarry > 0 && !(ledger.academyImported > 0) && !ledger._academyImportedMarked) {
+    ledger.positiveUsed += academyCarry;
+    ledger.academyImported = academyCarry;
+    ledger._academyImportedMarked = true;
+    player.development.academyGrowthApplied = 0;
+  }
+  return Math.max(0, Number(ledger.positiveUsed) || 0);
+}
+
+/**
+ * Map scene focus labels onto supported position attributes.
+ * GK never receives outfield Shooting/Defending keys.
+ */
+export function focusBiasForScene(player, focus = "role-learning") {
+  const keys = getDisplayAttributeKeys(player.position);
+  const weights = getOverallWeights(player.position);
+  const bias = {};
+  const bump = (k, amount) => {
+    if (keys.includes(k)) bias[k] = (bias[k] || 0) + amount;
+  };
+  const topByWeight = [...keys].sort((a, b) => weights[b] - weights[a]);
+  const kind = String(focus || "role-learning");
+
+  if (kind === "technique") {
+    for (const k of topByWeight.slice(0, 3)) bump(k, 0.9);
+    bump("Passing", 0.4);
+    bump("Dribbling", 0.4);
+    bump("Shooting", 0.5);
+    bump("Handling", 0.7);
+    bump("Kicking", 0.6);
+    bump("Reflexes", 0.5);
+  } else if (kind === "routine") {
+    bump("Physicality", 0.7);
+    bump("Speed", 0.5);
+    bump("Positioning", 0.6);
+    bump("Diving", 0.4);
+    for (const k of topByWeight.slice(0, 2)) bump(k, 0.35);
+  } else if (kind === "support" || kind === "adaptation") {
+    bump("Passing", 0.45);
+    bump("Positioning", 0.5);
+    bump("Speed", 0.3);
+    for (const k of topByWeight.slice(0, 3)) bump(k, 0.4);
+  } else {
+    // role-learning (default): follow role weights
+    for (const k of keys) bias[k] = (bias[k] || 0) + weights[k] * 2.5;
+  }
+  return bias;
+}
+
+/**
+ * Generic signed attribute development for narrative scenes.
+ * Does not touch academyBudgetUsed / academyGrowthApplied counters.
+ *
+ * @returns {{
+ *   rawBefore:number, rawAfter:number, realizedRaw:number, requestedRaw:number,
+ *   perAttribute:object, limitedBy:string, positiveBudgetCharged:number
+ * }}
+ */
+export function applyScenarioAbilityChange(player, {
+  eventId,
+  periodId,
+  requestedRaw,
+  focusBias = null,
+  focus = "role-learning",
+  rng = null,
+} = {}) {
+  if (!player.development) {
+    throw new Error("applyScenarioAbilityChange requires an initialised player");
+  }
+  const pid = periodId || developmentPeriodId(player);
+  const ledger = ensureLearningPeriodLedger(player, pid);
+  if (eventId && ledger.events[eventId]) {
+    const prev = ledger.events[eventId];
+    return {
+      rawBefore: prev.rawBefore,
+      rawAfter: prev.rawAfter,
+      realizedRaw: prev.realizedRaw,
+      requestedRaw: prev.requestedRaw,
+      perAttribute: { ...(prev.perAttribute || {}) },
+      limitedBy: prev.limitedBy || "duplicate",
+      positiveBudgetCharged: prev.positiveBudgetCharged || 0,
+      duplicate: true,
+    };
+  }
+
+  const keys = getDisplayAttributeKeys(player.position);
+  const weights = getOverallWeights(player.position);
+  const attrs = player.attributes;
+  const rawBefore = calculateOverall(attrs, player.position).raw;
+  const requested = Number(requestedRaw) || 0;
+  const bias = focusBias || focusBiasForScene(player, focus);
+  const already = periodPositiveLearningUsed(player, pid);
+  const perAttribute = {};
+  let limitedBy = "none";
+  let positiveBudgetCharged = 0;
+
+  if (requested === 0) {
+    refreshAbilityCaches(player);
+    const receipt = {
+      rawBefore,
+      rawAfter: rawBefore,
+      realizedRaw: 0,
+      requestedRaw: 0,
+      perAttribute: {},
+      limitedBy: "none",
+      positiveBudgetCharged: 0,
+    };
+    if (eventId) ledger.events[eventId] = receipt;
+    return { ...receipt, duplicate: false };
+  }
+
+  if (requested < 0) {
+    const sumSq = keys.reduce((s, k) => s + weights[k] * weights[k], 0) || 1;
+    for (const k of keys) {
+      const share = (requested * weights[k]) / sumSq;
+      const biased = share * (1 + 0.35 * Math.max(0, Number(bias[k]) || 0));
+      const next = clamp(attrs[k] + biased, ATTRIBUTE_MIN, ATTRIBUTE_MAX);
+      perAttribute[k] = next - attrs[k];
+      attrs[k] = next;
+    }
+    refreshAbilityCaches(player);
+    const rawAfter = calculateOverall(attrs, player.position).raw;
+    const realizedRaw = rawAfter - rawBefore;
+    if (realizedRaw > requested + 1e-9) limitedBy = "attribute-floor";
+    ledger.sceneNegative = (ledger.sceneNegative || 0) + Math.abs(Math.min(0, realizedRaw));
+    const receipt = {
+      rawBefore,
+      rawAfter,
+      realizedRaw,
+      requestedRaw: requested,
+      perAttribute,
+      limitedBy,
+      positiveBudgetCharged: 0,
+    };
+    if (eventId) ledger.events[eventId] = receipt;
+    return { ...receipt, duplicate: false };
+  }
+
+  // Positive request — charge shared annual allowance (gross; no refund later).
+  const abilityRoom = Math.max(0, ATTRIBUTE_MAX - rawBefore) * abilityDifficultyFactor(rawBefore);
+  const capRoom = Math.max(0, DEVELOPMENT_CAPS.annualLearningCap - already);
+  const target = Math.min(requested, abilityRoom, capRoom);
+  if (target < requested - 1e-12) {
+    limitedBy = abilityRoom <= capRoom + 1e-12 ? "ability-difficulty" : "annual-cap";
+    if (capRoom <= abilityRoom + 1e-12 && capRoom < requested) limitedBy = "annual-cap";
+  }
+
+  const shares = {};
+  const headroom = {};
+  for (const k of keys) {
+    const b = Math.max(0, 1 + (Number(bias[k]) || 0));
+    const jitter = rng ? 0.75 + 0.5 * rng.random() : 1;
+    shares[k] = weights[k] * b * jitter;
+    headroom[k] = Math.max(0, ATTRIBUTE_MAX - attrs[k]);
+  }
+  const inc = allocateOverallGain(keys, weights, shares, headroom, target);
+  for (const k of keys) {
+    attrs[k] = clamp(attrs[k] + inc[k], ATTRIBUTE_MIN, ATTRIBUTE_MAX);
+    perAttribute[k] = inc[k];
+  }
+  refreshAbilityCaches(player);
+  const rawAfter = calculateOverall(attrs, player.position).raw;
+  const realizedRaw = rawAfter - rawBefore;
+  positiveBudgetCharged = Math.max(0, realizedRaw);
+  ledger.positiveUsed = (ledger.positiveUsed || 0) + positiveBudgetCharged;
+  ledger.scenePositive = (ledger.scenePositive || 0) + positiveBudgetCharged;
+  if (positiveBudgetCharged + 1e-12 < requested && limitedBy === "none") {
+    limitedBy = "attribute-bounds";
+  }
+
+  const receipt = {
+    rawBefore,
+    rawAfter,
+    realizedRaw,
+    requestedRaw: requested,
+    perAttribute,
+    limitedBy,
+    positiveBudgetCharged,
+  };
+  if (eventId) ledger.events[eventId] = receipt;
+  return { ...receipt, duplicate: false };
+}
+
+/**
+ * Gross positive learning already applied this period for developSeason accounting.
+ */
+export function alreadyAppliedLearningForPeriod(player, periodId) {
+  return periodPositiveLearningUsed(player, periodId);
 }

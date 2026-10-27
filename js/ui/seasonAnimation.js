@@ -359,17 +359,27 @@ async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) 
     hideSection("international-callup-animation");
     showPhaseContinue(false);
 
-    // Then internationals / tournaments
+    // Then internationals / tournaments — same dashboard (match left, live group/bracket right)
     if (intl.calledUp && intl.playerMatches?.length) {
-      setSkipBarVisible(true);
-      animationCtl.skipPhase = false;
-      await playMatchList(intl.playerMatches, {
-        competitionLabel: intl.callUpTournament || "International",
-        phaseLabel: intl.callUpTournament || "National team",
-        showMatchCount: false,
+      const primary = intl.primary || intl.tournaments?.find((t) => t.calledUp);
+      const { buildNationalPlaybackContext } = await import("../simulation/competitionPlayback.js");
+      const ctx = buildNationalPlaybackContext({ tournament: primary, player });
+      const groupFixtures = (primary?.groups || []).flatMap((g) => g.matches || []);
+      const allIntl = [
+        ...groupFixtures,
+        ...(primary?.allRounds || []).flatMap((r) => r.matches || []),
+      ];
+      // Prefer store-identical player matches; include same-batch group mates for table updates.
+      await runSimulationDashboard({
+        player,
+        league,
+        seasonNumber: season.seasonNumber,
+        allMatches: allIntl.length ? allIntl : intl.playerMatches,
+        playerMatches: intl.playerMatches,
+        competitionContext: ctx,
+        reset: true,
       });
-      setSkipBarVisible(false);
-      hideSection("match-viewer-section");
+      hideSimulationDashboard();
     }
 
     if (intl.hasTournaments || intl.tournaments?.length) {

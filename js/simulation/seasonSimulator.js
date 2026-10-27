@@ -1,18 +1,25 @@
 import { POSITION_PROFILES, STATS_KEYS } from "../config/playerConfig.js";
 import { getDisplayAttributeKeys } from "./playerAbility.js";
 import { ensurePlayerModel } from "./playerModelMigration.js";
-import { developSeason, stableCareerId } from "./playerDevelopmentModel.js";
+import {
+  alreadyAppliedLearningForPeriod,
+  developSeason,
+  developmentPeriodId,
+  ensureLearningPeriodLedger,
+  stableCareerId,
+} from "./playerDevelopmentModel.js?v=88";
 import { getOrUpdateForecast } from "./playerPotential.js";
 import { createEmptyLedger, recordMatchObservation, aggregateSeason } from "./playerSeasonLedger.js";
 import { createStreamRng } from "./rng.js";
-import { refreshAbilityCaches } from "./playerAbility.js";
+import { refreshAbilityCaches } from "./playerAbility.js?v=88";
+import { periodSceneContribution } from "./seniorCareerScenarios.js?v=88";
 import {
   applyDivisionMovement,
   divisionMoveSlots,
   findSisterLeagues,
   qualificationForPosition,
 } from "./leaguePhase.js";
-import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=81";
+import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=89";
 import { findLeagueById } from "./destinationSchedule.js?v=81";
 import { evaluateSeasonAwards } from "./individualAwards.js?v=85";
 import {
@@ -189,10 +196,26 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   if (!resuming && player.development?.lastProcessedSeasonId === seasonId) {
     throw new Error(`simulateSeason: season ${seasonId} already applied`);
   }
-  const previousRating = player.rating;
-  const previousBaseRaw = player.baseOverallRaw;
-  const previousAttributes = { ...player.attributes };
-  const previousForecast = player.potentialForecast ? { ...player.potentialForecast } : null;
+  const periodId = developmentPeriodId(player, { seasonIndex });
+  // Preserve the original season-start baseline across pause/resume.
+  if (!resuming || !player.development?.seasonStartBaseline?.[periodId]) {
+    if (!player.development.seasonStartBaseline || typeof player.development.seasonStartBaseline !== "object") {
+      player.development.seasonStartBaseline = {};
+    }
+    refreshAbilityCaches(player);
+    player.development.seasonStartBaseline[periodId] = {
+      rating: player.rating,
+      baseOverallRaw: player.baseOverallRaw,
+      attributes: { ...player.attributes },
+      potentialForecast: player.potentialForecast ? { ...player.potentialForecast } : null,
+    };
+  }
+  const baseline = player.development.seasonStartBaseline[periodId];
+  const previousRating = baseline.rating;
+  const previousBaseRaw = baseline.baseOverallRaw;
+  const previousAttributes = { ...baseline.attributes };
+  const previousForecast = baseline.potentialForecast ? { ...baseline.potentialForecast } : null;
+  ensureLearningPeriodLedger(player, periodId);
 
   // Age advances only when the season completes (not at a January pause).
   const age = player.age + 1;
@@ -449,7 +472,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   );
   const devCtx = evidenceToDevelopmentContext(evidence, { environmentMultiplier: envProxy });
   const devRng = createStreamRng(stableCareerId(player), `development:${seasonId}`);
-  const already = player.development?.academyGrowthApplied || 0;
+  const already = alreadyAppliedLearningForPeriod(player, periodId);
   const developmentResult = developSeason(player, {
     elapsedYears: 1,
     ...devCtx,
@@ -458,8 +481,11 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     alreadyAppliedLearningGain: already,
   });
 
-  // Clear academy charge once consumed by the shared annual allowance.
+  // Mark period finalized; clear transient academy counter if any remain.
+  const periodLedger = ensureLearningPeriodLedger(player, periodId);
+  periodLedger.finalized = true;
   if (player.development) player.development.academyGrowthApplied = 0;
+  const sceneContribution = periodSceneContribution(player, periodId);
 
   getOrUpdateForecast(player, { sampleCount: 48 });
   refreshAbilityCaches(player);
@@ -537,6 +563,14 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     developmentExplanations: developmentResult?.explanations || [],
     developmentBreakdown: developmentResult?.breakdown || null,
     breakthrough: Boolean(developmentResult?.breakthrough?.occurred),
+    sceneDevelopment: {
+      periodId,
+      grossPositive: sceneContribution.scenePositive,
+      grossNegative: sceneContribution.sceneNegative,
+      net: sceneContribution.net,
+      eventCount: sceneContribution.eventCount,
+      positiveLearningUsedBeforeSeasonDev: already,
+    },
     seasonEvidence: {
       seasonP: evidence.seasonP,
       reliability: evidence.reliability,

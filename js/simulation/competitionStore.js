@@ -79,11 +79,52 @@ export function listEditions(world = getWorldState()) {
   return [...w.editions.values()];
 }
 
+function meaningfulResultFields(match) {
+  return {
+    homeGoals: match.matchHomeGoals ?? match.homeGoals,
+    awayGoals: match.matchAwayGoals ?? match.awayGoals,
+    homePenalties: match.homePenalties ?? null,
+    awayPenalties: match.awayPenalties ?? null,
+    winnerSide: match.winnerSide ?? null,
+    homeParticipantId: match.homeParticipantId || match.home?.clubId || match.home?.name,
+    awayParticipantId: match.awayParticipantId || match.away?.clubId || match.away?.name,
+  };
+}
+
+/**
+ * Commit a match result. Missing matchId returns null with a diagnostic.
+ * An already-played fixture returns the original result (idempotent).
+ * A conflicting score/identity write throws with structured detail.
+ */
 export function commitMatch(match, world = getWorldState()) {
   const w = ensureEditions(world);
-  if (!w || !match?.matchId) return null;
-  if (w.matches.has(match.matchId) && w.matches.get(match.matchId).status === "played") {
-    return w.matches.get(match.matchId);
+  if (!w) return null;
+  if (!match?.matchId) {
+    const err = new Error("commitMatch: missing matchId");
+    err.code = "MISSING_MATCH_ID";
+    throw err;
+  }
+  const existing = w.matches.get(match.matchId);
+  if (existing?.status === "played") {
+    const a = meaningfulResultFields(existing);
+    const b = meaningfulResultFields(match);
+    const conflict =
+      match.status === "played" &&
+      (a.homeGoals !== b.homeGoals ||
+        a.awayGoals !== b.awayGoals ||
+        a.winnerSide !== b.winnerSide ||
+        (b.homeGoals != null &&
+          a.homeParticipantId &&
+          b.homeParticipantId &&
+          a.homeParticipantId !== b.homeParticipantId));
+    if (conflict) {
+      const err = new Error(`commitMatch conflict for ${match.matchId}`);
+      err.code = "RESULT_CONFLICT";
+      err.existing = a;
+      err.incoming = b;
+      throw err;
+    }
+    return existing;
   }
   const stored = {
     ...match,
