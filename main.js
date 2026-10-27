@@ -16,6 +16,7 @@ import {
   declineWindowAndContinue,
 } from "./js/simulation/contractLifecycle.js?v=81";
 import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=81";
+import { buildFreeAgentBrowserFixture } from "./js/simulation/freeAgentBrowserFixture.js?v=90";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -24,14 +25,14 @@ import {
   renderCompetitions,
   renderTransferOffers,
   renderCareerMoments,
-} from "./js/ui/rendering.js?v=81";
+} from "./js/ui/rendering.js?v=90";
 import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=81";
 import {
   showSeasonAnimation,
   openSimulationDashboardSegment,
   hideSimulationDashboard,
   getDashboardRevealState,
-} from "./js/ui/seasonAnimation.js?v=89";
+} from "./js/ui/seasonAnimation.js?v=90";
 import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=81";
 import { showSeniorScenarioOverlay } from "./js/ui/seniorScenarioOverlay.js?v=88";
 import {
@@ -46,6 +47,10 @@ let player = null;
 /** Scoped to one in-flight offer/window submission — not career-wide. */
 let dealBookingGuard = null;
 let careerStartInFlight = false;
+/** Covers simulate → recap/overlay through leaving Continue (or recovery). */
+let seasonActionInFlight = false;
+/** Prevents duplicate history append when completion is invoked twice. */
+let lastFinishedSeasonKey = null;
 
 const setupForm = document.getElementById("setup-form");
 const setupSection = document.getElementById("setup-section");
@@ -171,10 +176,48 @@ window.__loadLiveLoanBrowserFixture = function loadLiveLoanBrowserFixture(opts =
   };
 };
 
+/**
+ * Deterministic released-player fixture for free-agent soft-lock / desk checks.
+ * Modes: "empty" (default), "offers", "retire-41", "signed".
+ * Open: http://127.0.0.1:8000/?fixture=free-agent
+ * Or call: window.__loadFreeAgentBrowserFixture({ mode: "empty" })
+ */
+window.__loadFreeAgentBrowserFixture = function loadFreeAgentBrowserFixture(opts = {}) {
+  const result = buildFreeAgentBrowserFixture(opts);
+  if (!result.ok) {
+    console.error("Free-agent fixture failed:", result.reason, result);
+    return result;
+  }
+  player = result.player;
+  dealBookingGuard = null;
+  seasonActionInFlight = false;
+  lastFinishedSeasonKey = null;
+  ensureContractAuthority(player);
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  syncSimulateButton();
+  return {
+    ok: true,
+    mode: result.mode,
+    age: player.age,
+    seasons: player.seasons?.length ?? 0,
+    weeklyWage: player.weeklyWage || 0,
+    pendingOffers: player.pendingOffers?.length ?? 0,
+    pendingDecision: player.pendingDecision?.kind || null,
+    nextAction: selectNextCareerAction(player),
+    club: player.club?.displayName || player.club?.name || null,
+    simulateLabel: simulateBtn?.textContent || null,
+    simulateDisabled: Boolean(simulateBtn?.disabled),
+  };
+};
+
 window.__getLiveCareerDebug = function getLiveCareerDebug() {
   if (!player) return null;
   return {
     name: player.name,
+    age: player.age,
     club: player.club?.displayName || player.club?.name,
     clubId: player.club?.clubId,
     employmentClubId: player.employmentClubId,
@@ -183,6 +226,11 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
     contractEndSeason: player.contractEndSeason,
     rating: player.rating,
     ovrDisplay: Math.round(Number(player.rating) || 0),
+    isRetired: Boolean(player.isRetired),
+    freeAgent: isFreeAgent(player) || !player.club,
+    careerTotals: player.careerTotals
+      ? { ...player.careerTotals }
+      : { matches: 0, goals: 0, assists: 0, cleanSheets: 0 },
     activeLoan: player.activeLoan
       ? {
           status: player.activeLoan.status,
@@ -201,6 +249,17 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
     })),
     seasonCheckpoint: player.seasonCheckpoint?.status || null,
     seasons: player.seasons?.length ?? 0,
+    lastSeason: player.seasons?.[player.seasons.length - 1]
+      ? {
+          seasonId: player.seasons[player.seasons.length - 1].seasonId,
+          freeAgent: Boolean(player.seasons[player.seasons.length - 1].freeAgent),
+          year: player.seasons[player.seasons.length - 1].year,
+          age: player.seasons[player.seasons.length - 1].age,
+          clubName: player.seasons[player.seasons.length - 1].clubName,
+        }
+      : null,
+    nextAction: selectNextCareerAction(player),
+    seasonActionInFlight,
     dealBookingGuard,
   };
 };
@@ -354,6 +413,8 @@ function refreshAll() {
 }
 
 async function simulateSeasonWithAnimation() {
+  if (seasonActionInFlight || !player || player.isRetired) return;
+  seasonActionInFlight = true;
   simulateBtn.disabled = true;
 
   let seasonData;
@@ -362,7 +423,7 @@ async function simulateSeasonWithAnimation() {
     seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, { pauseForDecisions: true });
 
     if (!seasonData) {
-      simulateBtn.disabled = !!player?.isRetired;
+      syncSimulateButton();
       return;
     }
 
@@ -396,13 +457,12 @@ async function simulateSeasonWithAnimation() {
 
     // Fresh season start cursor when beginning a completed run without prior segment
     if (!player.simRevealCursor) player.simRevealCursor = [];
-    finalizeCompletedSeasonUi(seasonData);
+    await finalizeCompletedSeasonUi(seasonData);
   } catch (err) {
     console.error("Season simulation failed:", err);
-    simulateBtn.disabled = !!player?.isRetired;
-    window.alert(
-      `Season simulation failed: ${err?.message || err}. Check the console for details.`
-    );
+    recoverSeasonPresentationFailure(err, { alert: true, committed: Boolean(seasonData?.season) });
+  } finally {
+    seasonActionInFlight = false;
   }
 }
 
@@ -438,23 +498,28 @@ async function resumeSeasonAfterDecision(opts = {}) {
     player.pendingSeniorScenario = null;
     seasonData.continueDashboard = true;
     seasonData.revealedFixtureIds = player.simRevealCursor || [];
-    finalizeCompletedSeasonUi(seasonData);
+    await finalizeCompletedSeasonUi(seasonData);
   } catch (err) {
     console.error("Season resume failed:", err);
-    simulateBtn.disabled = !!player?.isRetired;
-    window.alert(`Season resume failed: ${err?.message || err}`);
+    recoverSeasonPresentationFailure(err, { alert: true, committed: true });
   }
 }
 
-function finalizeCompletedSeasonUi(seasonData) {
+async function finalizeCompletedSeasonUi(seasonData) {
   if (!seasonData) {
-    simulateBtn.disabled = !!player?.isRetired;
+    syncSimulateButton();
     return;
   }
 
   if (maybeAutoRetire()) {
     refreshOverview();
-    appendSeasonCard(seasonData.season, seasonLogEl, player);
+    if (seasonData.season) {
+      const key = seasonHistoryKey(seasonData.season);
+      if (key !== lastFinishedSeasonKey) {
+        lastFinishedSeasonKey = key;
+        appendSeasonCard(seasonData.season, seasonLogEl, player);
+      }
+    }
     refreshStandings();
     refreshCompetitions();
     refreshTransferOffers();
@@ -492,27 +557,71 @@ function finalizeCompletedSeasonUi(seasonData) {
 
   seasonData.revealedFixtureIds = player.simRevealCursor || seasonData.revealedFixtureIds || [];
   seasonData.continueDashboard = Boolean(seasonData.continueDashboard || player.simRevealCursor?.length);
-  showSeasonAnimation(
-    seasonData,
-    player,
-    getDisplayAttributeKeys(player.position),
-    finishSeasonAnimation
+  try {
+    await showSeasonAnimation(
+      seasonData,
+      player,
+      getDisplayAttributeKeys(player.position),
+      finishSeasonAnimation
+    );
+  } catch (err) {
+    // Engine state is already committed — restore the desk without re-simulating.
+    recoverSeasonPresentationFailure(err, { alert: true, committed: true });
+  }
+}
+
+function seasonHistoryKey(season) {
+  if (!season) return null;
+  return (
+    season.seasonId ||
+    `fa:${season.year}:${season.age}:${season.clubName || season.clubDisplay || ""}` ||
+    null
   );
 }
 
 function finishSeasonAnimation() {
   const overlay = document.getElementById("season-animation-overlay");
-  overlay.classList.add("hidden");
+  overlay?.classList.add("hidden");
   hideSimulationDashboard();
-  player.simRevealCursor = null;
+  if (player) player.simRevealCursor = null;
+
+  const season = player?.seasons?.[player.seasons.length - 1];
+  const key = seasonHistoryKey(season);
 
   refreshOverview();
-  appendSeasonCard(player.seasons[player.seasons.length - 1], seasonLogEl, player);
+  // Authoritative redraw — safe if Continue is activated more than once.
+  if (key && key === lastFinishedSeasonKey) {
+    // Already recorded this completion; still sync controls below.
+  } else {
+    lastFinishedSeasonKey = key;
+    refreshSeasonLog();
+  }
   refreshStandings();
   refreshCompetitions();
   refreshTransferOffers();
 
   syncSimulateButton();
+}
+
+/**
+ * Presentation failed after (or without) a committed period. Never advances
+ * another season or regenerates offers — only clears trapping UI.
+ */
+function recoverSeasonPresentationFailure(err, opts = {}) {
+  console.error("Season presentation recovery:", err?.message || err, {
+    committed: Boolean(opts.committed),
+  });
+  const overlay = document.getElementById("season-animation-overlay");
+  overlay?.classList.add("hidden");
+  hideSimulationDashboard();
+  if (player) player.simRevealCursor = null;
+  refreshAll();
+  syncSimulateButton();
+  if (opts.alert) {
+    window.alert(
+      `Season presentation failed: ${err?.message || err}. Your career desk has been restored.`
+    );
+  }
 }
 
 function retirePlayer() {
@@ -678,3 +787,28 @@ function finishOfferWindow(accepted, offer) {
   }
   syncSimulateButton();
 }
+
+// Auto-mount deterministic QA fixtures from the query string for local acceptance.
+(function bootQueryFixture() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fixture = params.get("fixture");
+    if (!fixture) return;
+    if (fixture === "free-agent" || fixture === "free-agent-empty") {
+      const mode = params.get("mode") || "empty";
+      queueMicrotask(() => window.__loadFreeAgentBrowserFixture?.({ mode }));
+    } else if (fixture === "free-agent-offers") {
+      queueMicrotask(() => window.__loadFreeAgentBrowserFixture?.({ mode: "offers" }));
+    } else if (fixture === "free-agent-signed") {
+      queueMicrotask(() => window.__loadFreeAgentBrowserFixture?.({ mode: "signed" }));
+    } else if (fixture === "free-agent-retire") {
+      queueMicrotask(() => window.__loadFreeAgentBrowserFixture?.({ mode: "retire-41" }));
+    } else if (fixture === "free-agent-expiry") {
+      queueMicrotask(() => window.__loadFreeAgentBrowserFixture?.({ mode: "expiry-club" }));
+    } else if (fixture === "live-loan") {
+      queueMicrotask(() => window.__loadLiveLoanBrowserFixture?.());
+    }
+  } catch (err) {
+    console.warn("Fixture boot skipped:", err);
+  }
+})();

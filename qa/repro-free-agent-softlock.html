@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>QA repro — free agent soft-lock</title>
+    <title>QA — free agent soft-lock (fixed contract)</title>
     <link rel="stylesheet" href="../style.css" />
     <style>
       body { padding: 24px; font-family: system-ui, sans-serif; }
@@ -11,19 +11,19 @@
     </style>
   </head>
   <body>
-    <h1>Free-agent soft-lock repro</h1>
+    <h1>Free-agent soft-lock — presentation contract</h1>
     <p>
-      Mirrors production: free-agent <code>simulateSeason</code> payload lacks
-      <code>league</code>/<code>standings</code>, then <code>showSeasonAnimation</code>
-      opens the overlay and early-returns without <code>onContinue</code>.
+      A valid marked free-agent result must open an identifiable recap with an
+      enabled Continue control (no league/match phase). Clicking Continue must
+      complete exactly once and close the overlay through the caller.
     </p>
     <div id="qa-controls">
-      <button id="run-repro" class="primary">Run soft-lock repro</button>
-      <button id="check-state" class="secondary">Check overlay / continue state</button>
+      <button id="run-repro" class="primary">Run free-agent presentation</button>
+      <button id="click-continue" class="secondary">Click Continue</button>
+      <button id="check-state" class="secondary">Check state</button>
     </div>
     <pre id="qa-log">Ready.</pre>
 
-    <!-- Minimal overlay shell matching production ids used by seasonAnimation -->
     <div id="season-animation-overlay" class="animation-overlay hidden">
       <div class="animation-content">
         <div id="simulation-dashboard" class="hidden"></div>
@@ -37,6 +37,14 @@
         <div id="trophies-animation" class="hidden"></div>
         <div id="summary-animation" class="hidden"></div>
         <div id="overall-reveal" class="hidden"></div>
+        <div id="free-agent-recap" class="animation-section free-agent-recap hidden" data-testid="free-agent-recap">
+          <div class="animation-header">
+            <p class="section-kicker">Market window</p>
+            <h2>Free-agent period complete</h2>
+            <div class="season-info" id="free-agent-recap-info"></div>
+          </div>
+          <div id="free-agent-recap-body" class="free-agent-recap-body"></div>
+        </div>
         <div id="animation-continue" class="hidden">
           <button id="continue-btn" class="primary">Continue</button>
         </div>
@@ -62,38 +70,84 @@
     </div>
 
     <script type="module">
-      import { showSeasonAnimation } from "../js/ui/seasonAnimation.js?v=89";
+      import { showSeasonAnimation } from "../js/ui/seasonAnimation.js?v=90";
+      import { selectNextCareerAction } from "../js/simulation/contractLifecycle.js";
 
       const logEl = document.getElementById("qa-log");
       const log = (msg) => {
         logEl.textContent += `\n${msg}`;
       };
 
-      let continueCalled = false;
+      let continueCalled = 0;
+      let presentationPromise = null;
+
+      function snapshot() {
+        const overlay = document.getElementById("season-animation-overlay");
+        const recap = document.getElementById("free-agent-recap");
+        const continueSection = document.getElementById("animation-continue");
+        const continueBtn = document.getElementById("continue-btn");
+        const matchViewer = document.getElementById("match-viewer-section");
+        const dashboard = document.getElementById("simulation-dashboard");
+        return {
+          overlayHidden: overlay.classList.contains("hidden"),
+          recapVisible: recap && !recap.classList.contains("hidden"),
+          continueVisible: continueSection && !continueSection.classList.contains("hidden"),
+          continueEnabled: Boolean(continueBtn && typeof continueBtn.onclick === "function"),
+          matchPhaseActive: matchViewer && !matchViewer.classList.contains("hidden"),
+          dashboardActive: dashboard && !dashboard.classList.contains("hidden"),
+          continueCalled,
+        };
+      }
+
+      function verdictFrom(state) {
+        if (
+          state.recapVisible &&
+          state.continueVisible &&
+          state.continueEnabled &&
+          !state.matchPhaseActive &&
+          !state.dashboardActive &&
+          state.continueCalled === 0 &&
+          !state.overlayHidden
+        ) {
+          return "RECAP_READY";
+        }
+        if (state.continueCalled === 1 && state.overlayHidden) {
+          return "COMPLETED_ONCE";
+        }
+        if (!state.overlayHidden && state.continueCalled === 0 && !state.continueEnabled) {
+          return "SOFT-LOCK";
+        }
+        return "INCOMPLETE";
+      }
 
       document.getElementById("run-repro").addEventListener("click", () => {
-        continueCalled = false;
-        logEl.textContent = "Running repro…";
+        continueCalled = 0;
+        logEl.textContent = "Running free-agent presentation…";
         const fakeFreeAgentSeason = {
           season: {
             seasonId: "free-agent-1",
+            seasonNumber: 1,
             year: 2030,
+            age: 28,
             club: null,
             clubName: "Free agent",
+            clubDisplay: "Free agent",
             league: null,
             matches: 0,
+            minutes: 0,
             freeAgent: true,
             freeAgentReason: "contract-expired",
           },
           freeAgent: true,
           performanceScore: 55,
-          // intentionally no league / standings — matches production free-agent return
+          wait: { ok: true, action: "free-agent-wait", seasonsAdvanced: 1, age: 28 },
         };
         const player = {
           name: "QA Softlock",
           position: "CM",
           age: 28,
           club: null,
+          pendingOffers: [],
           attributes: {
             Speed: 70,
             Passing: 70,
@@ -104,40 +158,78 @@
           },
         };
 
-        showSeasonAnimation(fakeFreeAgentSeason, player, Object.keys(player.attributes), () => {
-          continueCalled = true;
-          log("onContinue FIRED (unexpected if bug still present)");
+        presentationPromise = showSeasonAnimation(
+          fakeFreeAgentSeason,
+          player,
+          Object.keys(player.attributes),
+          () => {
+            continueCalled += 1;
+            document.getElementById("season-animation-overlay").classList.add("hidden");
+            log(`onContinue fired (count=${continueCalled})`);
+          }
+        ).catch((err) => {
+          log(`presentation error: ${err?.message || err}`);
+          throw err;
         });
 
-        setTimeout(() => {
-          const overlay = document.getElementById("season-animation-overlay");
-          const hidden = overlay.classList.contains("hidden");
+        const waitForRecap = () =>
+          new Promise((resolve) => {
+            const started = Date.now();
+            const tick = () => {
+              const state = snapshot();
+              if (state.recapVisible && state.continueEnabled) {
+                resolve(state);
+                return;
+              }
+              if (Date.now() - started > 2000) {
+                resolve(state);
+                return;
+              }
+              requestAnimationFrame(tick);
+            };
+            tick();
+          });
+
+        waitForRecap().then((state) => {
+          const next = selectNextCareerAction({
+            ...player,
+            contractStatus: "released",
+            employmentClubId: null,
+            consumedTransitionIds: [],
+            seasons: [fakeFreeAgentSeason.season],
+          });
           log(
             JSON.stringify(
               {
-                overlayHidden: hidden,
-                continueCalled,
-                verdict: !hidden && !continueCalled ? "SOFT-LOCK CONFIRMED" : "no soft-lock",
+                ...state,
+                verdict: verdictFrom(state),
+                nextActionId: next?.id || null,
+                nextCanSimulate: next?.canSimulate ?? null,
               },
               null,
               2
             )
           );
-        }, 250);
+        });
+      });
+
+      document.getElementById("click-continue").addEventListener("click", async () => {
+        const btn = document.getElementById("continue-btn");
+        if (typeof btn.onclick === "function") btn.onclick();
+        if (presentationPromise) {
+          try {
+            await presentationPromise;
+          } catch {
+            /* logged above */
+          }
+        }
+        const state = snapshot();
+        log(JSON.stringify({ ...state, verdict: verdictFrom(state) }, null, 2));
       });
 
       document.getElementById("check-state").addEventListener("click", () => {
-        const overlay = document.getElementById("season-animation-overlay");
-        log(
-          JSON.stringify(
-            {
-              overlayHidden: overlay.classList.contains("hidden"),
-              continueCalled,
-            },
-            null,
-            2
-          )
-        );
+        const state = snapshot();
+        log(JSON.stringify({ ...state, verdict: verdictFrom(state) }, null, 2));
       });
     </script>
   </body>

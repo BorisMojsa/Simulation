@@ -506,17 +506,23 @@ export function advanceFreeAgentPeriod(player, opts = {}) {
       player.state.fatigue = Math.max(0, (player.state.fatigue || 0) * 0.5);
       player.state.form = Math.max(-0.5, Math.min(0.5, (player.state.form || 0) * 0.7));
     }
+    const seasonNumber = completedSeasons(player) + 1;
     const seasonRecord = {
-      seasonId: `free-agent-${completedSeasons(player) + 1}`,
+      seasonId: `free-agent-${seasonNumber}`,
+      seasonNumber,
       year: year + i,
+      age: player.age,
       club: null,
       clubName: "Free agent",
+      clubDisplay: "Free agent",
       league: null,
+      leagueDisplay: "No league fixtures",
       matches: 0,
       starts: 0,
       minutes: 0,
       goals: 0,
       assists: 0,
+      cleanSheets: 0,
       freeAgent: true,
       freeAgentReason: player.freeAgentReason || "contract-expired",
       avgMatchRating: null,

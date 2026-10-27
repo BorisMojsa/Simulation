@@ -138,14 +138,160 @@ function badgeHtml(club, className = "match-badge") {
   return `<img src="${club.badge}" alt="${club.displayName || club.name}" class="${classes}" />`;
 }
 
+/**
+ * Present a completed period result. Resolves after the player leaves the
+ * result overlay (Continue), or rejects on invalid/unrecoverable presentation.
+ * Callers must handle the returned promise — fire-and-forget leaves soft-locks.
+ */
 export function showSeasonAnimation(seasonData, player, statsKeys, onContinue) {
   const overlay = document.getElementById("season-animation-overlay");
   clearAnimationContent();
   resetSkipFlags();
   clearTimers();
-  overlay.classList.remove("hidden");
+  overlay?.classList.remove("hidden");
   wireSkipControls();
-  animateSeasonSequence(seasonData, player, statsKeys, onContinue);
+
+  return presentSeasonResult(seasonData, player, statsKeys, onContinue).catch((err) => {
+    console.error("Season presentation failed:", err);
+    closeSeasonOverlayForRecovery();
+    throw err;
+  });
+}
+
+function isMarkedFreeAgentResult(seasonData) {
+  return Boolean(seasonData?.freeAgent || seasonData?.season?.freeAgent);
+}
+
+/**
+ * Validate an explicitly marked free-agent engine result before showing a recap.
+ * Classify by the result payload — not by the player's current contract state.
+ */
+export function assertUsableFreeAgentResult(seasonData) {
+  if (!seasonData) return { ok: false, reason: "missing-season-data" };
+  if (!isMarkedFreeAgentResult(seasonData)) {
+    return { ok: false, reason: "not-marked-free-agent" };
+  }
+  if (seasonData.wait && seasonData.wait.ok === false) {
+    return { ok: false, reason: seasonData.wait.reason || "free-agent-wait-failed" };
+  }
+  const season = seasonData.season;
+  if (!season || typeof season !== "object") {
+    return { ok: false, reason: "missing-free-agent-period" };
+  }
+  // A club campaign with real fixtures is never a free-agent recap, even if
+  // the player is now released after that season.
+  if ((Number(season.matches) || 0) > 0 && season.league && !season.freeAgent) {
+    return { ok: false, reason: "club-season-misclassified" };
+  }
+  if (!season.freeAgent && !seasonData.freeAgent) {
+    return { ok: false, reason: "unmarked-period-record" };
+  }
+  return { ok: true, season };
+}
+
+function closeSeasonOverlayForRecovery() {
+  clearTimers();
+  resetSkipFlags();
+  showPhaseContinue(false);
+  const btn = document.getElementById("continue-btn");
+  if (btn) btn.onclick = null;
+  hideSimulationDashboard();
+  setSkipBarVisible(false);
+  const overlay = document.getElementById("season-animation-overlay");
+  overlay?.classList.add("hidden");
+}
+
+async function presentSeasonResult(seasonData, player, statsKeys, onContinue) {
+  if (!seasonData) {
+    throw new Error("No season data provided to animation");
+  }
+
+  if (isMarkedFreeAgentResult(seasonData)) {
+    const check = assertUsableFreeAgentResult(seasonData);
+    if (!check.ok) {
+      throw new Error(`Invalid free-agent result: ${check.reason}`);
+    }
+    await presentFreeAgentRecap(seasonData, player, onContinue);
+    return { kind: "free-agent" };
+  }
+
+  await animateSeasonSequence(seasonData, player, statsKeys, onContinue);
+  return { kind: "club-season" };
+}
+
+async function presentFreeAgentRecap(seasonData, player, onContinue) {
+  setSkipBarVisible(false);
+  hideSimulationDashboard();
+
+  const season = seasonData.season;
+  const section = document.getElementById("free-agent-recap");
+  const info = document.getElementById("free-agent-recap-info");
+  const body = document.getElementById("free-agent-recap-body");
+
+  const periodNumber = Number.isFinite(season.seasonNumber)
+    ? season.seasonNumber
+    : Number.isFinite(season.year)
+      ? null
+      : player?.seasons?.length || null;
+  const periodLabel = periodNumber != null
+    ? `Period ${periodNumber}`
+    : Number.isFinite(season.year)
+      ? `Year ${season.year}`
+      : "Free-agent period";
+  const age = Number.isFinite(season.age) ? season.age : player?.age;
+  const yearBit = Number.isFinite(season.year) ? ` · ${season.year}` : "";
+  const ageBit = Number.isFinite(age) ? ` · Age ${age}` : "";
+
+  if (info) {
+    info.textContent = `${periodLabel}${yearBit}${ageBit}`;
+  }
+
+  const pendingCount = Array.isArray(player?.pendingOffers) ? player.pendingOffers.length : 0;
+  const offerMessage =
+    pendingCount > 0
+      ? `${pendingCount} club offer${pendingCount === 1 ? "" : "s"} ready to review on the career desk.`
+      : "No suitable offers arrived this period.";
+
+  if (body) {
+    body.innerHTML = `
+      <p class="free-agent-recap-status">Status: <strong>Free agent</strong></p>
+      <p class="free-agent-recap-copy">
+        You remained without a club while training and searching the market.
+        No club appearances or minutes were recorded for this period.
+      </p>
+      <dl class="free-agent-recap-stats">
+        <div><dt>Appearances</dt><dd>0</dd></div>
+        <div><dt>Minutes</dt><dd>0</dd></div>
+        <div><dt>Goals / assists</dt><dd>0 / 0</dd></div>
+      </dl>
+      <p class="free-agent-recap-offers" data-offer-count="${pendingCount}">${offerMessage}</p>
+    `;
+  }
+
+  if (section) {
+    section.classList.remove("hidden");
+    section.classList.add("active");
+  }
+
+  await waitForFinalContinue(onContinue);
+  hideSection("free-agent-recap");
+}
+
+function waitForFinalContinue(onContinue) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    showContinueButton(() => {
+      if (settled) return;
+      settled = true;
+      try {
+        showPhaseContinue(false);
+        if (typeof onContinue === "function") onContinue();
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
 }
 
 /**
@@ -205,6 +351,7 @@ function clearAnimationContent() {
     "trophies-animation",
     "summary-animation",
     "overall-reveal",
+    "free-agent-recap",
     "animation-continue",
   ];
 
@@ -255,8 +402,7 @@ function clearAnimationContent() {
 
 async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) {
   if (!seasonData) {
-    console.error("No season data provided to animation");
-    return;
+    throw new Error("No season data provided to animation");
   }
 
   const {
@@ -274,7 +420,7 @@ async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) 
 
   if (!season || !league || !standings) {
     console.error("Missing required season data:", { season, league, standings });
-    return;
+    throw new Error("Missing required season data");
   }
 
   // 1) Live league dashboard — full fixture store + player cards + live table
@@ -414,9 +560,11 @@ async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) 
   // 8) Overall
   showOverallRatingReveal(season, previousRating, newRating);
   await waitForContinue();
+  hideSection("overall-reveal");
+  showPhaseContinue(false);
 
-  // Final continue closes overlay via caller
-  showContinueButton(onContinue);
+  // Final continue closes overlay via caller — keep the promise pending until then.
+  await waitForFinalContinue(onContinue);
 }
 
 function setSkipBarVisible(visible) {

@@ -517,6 +517,15 @@
         </div>
       </div>
 
+      <div id="free-agent-recap" class="animation-section free-agent-recap hidden" data-testid="free-agent-recap">
+        <div class="animation-header">
+          <p class="section-kicker">Market window</p>
+          <h2>Free-agent period complete</h2>
+          <div class="season-info" id="free-agent-recap-info"></div>
+        </div>
+        <div id="free-agent-recap-body" class="free-agent-recap-body"></div>
+      </div>
+
       <div id="animation-continue" class="animation-continue hidden">
         <button id="continue-btn" class="primary">Continue</button>
       </div>
@@ -548,7 +557,7 @@
     })();
   </script>
   <script type="module">
-    import("./main.js?v=89").catch(function (err) {
+    import("./main.js?v=90").catch(function (err) {
       console.error(err);
       var el = document.getElementById("app-boot-error");
       if (el) {

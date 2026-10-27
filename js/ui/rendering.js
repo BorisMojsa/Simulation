@@ -177,7 +177,102 @@ export function renderCareerMoments(player, containerEl) {
     .join("");
 }
 
+function isFreeAgentSeasonRecord(season) {
+  return Boolean(
+    season?.freeAgent ||
+      season?.clubName === "Free agent" ||
+      (season?.club == null && season?.league == null && season?.matches === 0 && season?.seasonId?.startsWith?.("free-agent"))
+  );
+}
+
+function freeAgentYearLabel(season, player) {
+  if (Number.isFinite(season?.year)) {
+    const y = Number(season.year);
+    return `${y}/${String(y + 1).slice(-2)}`;
+  }
+  if (Number.isFinite(season?.seasonNumber) && Number.isFinite(player?.startYear)) {
+    const start = player.startYear + season.seasonNumber - 1;
+    return `${start}/${String(start + 1).slice(-2)}`;
+  }
+  return "Free-agent period";
+}
+
+function appendFreeAgentSeasonCard(season, seasonLogEl, player) {
+  const template = document.getElementById("season-template");
+  const node = template.content.cloneNode(true);
+  const header = node.querySelector("header");
+  const summary = node.querySelector(".summary");
+  const stats = node.querySelector(".stats");
+
+  const periodLabel = Number.isFinite(season.seasonNumber)
+    ? `Period ${season.seasonNumber}`
+    : Number.isFinite(season.year)
+      ? `Year ${season.year}`
+      : "Free-agent period";
+  const ageLabel = Number.isFinite(season.age)
+    ? `Age ${season.age}`
+    : Number.isFinite(player?.age)
+      ? `Age ${player.age}`
+      : "Age —";
+  const clubLabel = season.clubDisplay || season.clubName || "Free agent";
+  const yearLabel = freeAgentYearLabel(season, player);
+  const matches = Number(season.matches) || 0;
+  const minutes = Number(season.minutes) || 0;
+  const starts = Number(season.starts) || 0;
+  const goals = Number(season.goals) || 0;
+  const assists = Number(season.assists) || 0;
+  const cleanSheets = Number(season.cleanSheets) || 0;
+
+  header.innerHTML = `
+    <div class="season-title">
+      <div>
+        <h4>${escapeHtml(periodLabel)} - ${escapeHtml(ageLabel)}</h4>
+        <span class="season-club">${escapeHtml(clubLabel)}</span>
+      </div>
+    </div>
+    <span>${escapeHtml(yearLabel)}</span>
+  `;
+
+  summary.innerHTML = `
+    <dt>Status</dt>
+    <dd>Free agent</dd>
+    <dt>Club</dt>
+    <dd>${escapeHtml(clubLabel)}</dd>
+    <dt>League</dt>
+    <dd>No league fixtures during this period</dd>
+    <dt>Finish</dt>
+    <dd>N/A</dd>
+    <dt>Minutes / starts</dt>
+    <dd>${minutes} min · ${starts} starts</dd>
+    <dt>Average rating</dt>
+    <dd>—</dd>
+    <dt>Europe</dt>
+    <dd>No competition</dd>
+    <dt>International</dt>
+    <dd>No major tournaments</dd>
+    <dt>Domestic cup</dt>
+    <dd>N/A</dd>
+  `;
+
+  stats.innerHTML = [
+    `${matches} appearances`,
+    `${goals} goals`,
+    `${assists} assists`,
+    `${cleanSheets} clean sheets`,
+    "Trained / searched without a club",
+  ]
+    .map((item) => `<span>${item}</span>`)
+    .join("");
+
+  seasonLogEl.prepend(node);
+}
+
 export function appendSeasonCard(season, seasonLogEl, player) {
+  if (isFreeAgentSeasonRecord(season)) {
+    appendFreeAgentSeasonCard(season, seasonLogEl, player);
+    return;
+  }
+
   const template = document.getElementById("season-template");
   const node = template.content.cloneNode(true);
   const header = node.querySelector("header");
@@ -454,7 +549,11 @@ export function renderCompetitions(player, boardEl) {
     const comps = competitionsForSeason(season);
     const comp = comps[Number(nameSelect.value)] || comps[0];
     if (!comp) {
-      viewEl.innerHTML = `<p class="empty-state">No competition data for this season.</p>`;
+      viewEl.innerHTML = `<p class="empty-state">${
+        isFreeAgentSeasonRecord(season)
+          ? "No league fixtures during this period."
+          : "No competition data for this season."
+      }</p>`;
       return;
     }
     const d = comp.data;

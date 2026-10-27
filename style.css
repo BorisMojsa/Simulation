@@ -3077,6 +3077,53 @@ button.bracket-toggle {
   display: block;
 }
 
+.free-agent-recap-body {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 36rem;
+}
+
+.free-agent-recap-status,
+.free-agent-recap-copy,
+.free-agent-recap-offers {
+  margin: 0;
+  color: var(--bone-dim);
+  line-height: 1.55;
+}
+
+.free-agent-recap-status strong {
+  color: var(--bone);
+}
+
+.free-agent-recap-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.free-agent-recap-stats div {
+  background: color-mix(in srgb, var(--panel) 80%, #000 20%);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0.75rem 0.85rem;
+}
+
+.free-agent-recap-stats dt {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+
+.free-agent-recap-stats dd {
+  margin: 0.25rem 0 0;
+  font-size: 1.25rem;
+  color: var(--bone);
+  font-family: var(--font-display);
+}
+
 /* Career start */
 .career-start-wrap {
   max-width: 760px;
