@@ -481,6 +481,7 @@ export function simulateChronologicalSeason({
 
   let cupState = null;
   let cupResult = null;
+  let cupCampaigns = [];
   let europeResimMatches = []; // legacy checkpoint field; continental no longer re-sims
   let intlResimMatches = []; // legacy checkpoint field; national results live in store/edition
   const lastDateRef = { current: null };
@@ -560,6 +561,7 @@ export function simulateChronologicalSeason({
           records,
           cupState,
           cupResult,
+          cupCampaigns,
           europePlan,
           europeEdition,
           intlProbe,
@@ -623,6 +625,7 @@ export function simulateChronologicalSeason({
           records,
           cupState,
           cupResult,
+          cupCampaigns,
           europePlan,
           europeEdition,
           intlProbe,
@@ -674,9 +677,12 @@ export function simulateChronologicalSeason({
       if (player.playingClubId || ev.destinationLeagueId) {
         const destLeague = findLeagueById(ev.destinationLeagueId) || activeLeague;
         if (destLeague && (!cupState || !cupState._destBound)) {
-          if (cupState && !cupState._destBound && !cupResult) {
-            cupState.playerAttached = false;
-            cupResult = finalizeDomesticCup(cupState);
+          if (cupState && !cupState._destBound) {
+            if (!cupResult) {
+              cupState.playerAttached = false;
+              cupResult = finalizeDomesticCup(cupState);
+            }
+            cupCampaigns = rememberCupCampaign(cupCampaigns, cupResult);
           }
           cupState = prepareDestinationCupContinuation(destLeague, player, {
             asOfDate: ev.date,
@@ -718,7 +724,9 @@ export function simulateChronologicalSeason({
           }
           cupState.lastProcessorResult = null;
           if (cupState.finished || cupState.eliminatedRound) {
-            cupResult = finalizeDomesticCup(cupState);
+            const destCup = finalizeDomesticCup(cupState);
+            cupCampaigns = rememberCupCampaign(cupCampaigns, destCup);
+            cupResult = destCup;
           }
         }
       }
@@ -857,7 +865,11 @@ export function simulateChronologicalSeason({
         // Player out — complete remaining rounds without further calendar waits.
         cupResult = finalizeDomesticCup(cupState);
       }
-    } else if (ev.kind === "continental_md" || ev.kind === "continental_fixture") {
+    } else if (
+      ev.kind === "continental_md" ||
+      ev.kind === "continental_fixture" ||
+      ev.kind === "continental_gate"
+    ) {
       if (!europeEdition || europePlan?.showcase || europePlan?.qualified === false) continue;
       lastDateRef.current = lastDate;
       const processed = processContinentalChronoEvent({
@@ -911,6 +923,7 @@ export function simulateChronologicalSeason({
     if (!cupState) cupState = prepareDomesticCupBracket(activeLeague, player);
     cupResult = finalizeDomesticCup(cupState);
   }
+  cupCampaigns = rememberCupCampaign(cupCampaigns, cupResult);
 
   if (europeEdition && !europePlan?.showcase) {
     lastDateRef.current = lastDate;
@@ -966,6 +979,7 @@ export function simulateChronologicalSeason({
     ledgerRecords,
     expectedMatches: leagueMatchCount(activeLeague),
     domesticCupResult: cupResult,
+    domesticCupCampaigns: cupCampaigns.length ? cupCampaigns : cupResult ? [cupResult] : [],
     europeanCampaign: europePlan,
     internationalSeason: intlProbe,
     chronology: {
@@ -1116,6 +1130,25 @@ function applyAutoDecisionPolicy(player, decision, offers, policy, ctx = {}) {
   );
 }
 
+/** Retain distinct domestic-cup campaigns (e.g. Coppa then Croatian cup) without merging brackets. */
+function rememberCupCampaign(campaigns, result) {
+  if (!result?.name) return campaigns || [];
+  const list = [...(campaigns || [])];
+  const firstId =
+    (result.playerMatches || [])[0]?.fixtureId ||
+    (result.playerMatches || [])[0]?.matchId ||
+    `${result.name}:${result.result || ""}:${(result.playerMatches || []).length}`;
+  const exists = list.some((c) => {
+    const id =
+      (c.playerMatches || [])[0]?.fixtureId ||
+      (c.playerMatches || [])[0]?.matchId ||
+      `${c.name}:${c.result || ""}:${(c.playerMatches || []).length}`;
+    return c.name === result.name && id === firstId;
+  });
+  if (!exists) list.push(result);
+  return list;
+}
+
 function buildSeasonCheckpoint(parts) {
   return {
     status: parts.status || "awaiting_decision",
@@ -1139,6 +1172,7 @@ function buildSeasonCheckpoint(parts) {
     clubs: parts.clubs,
     cupState: parts.cupState,
     cupResult: parts.cupResult,
+    cupCampaigns: parts.cupCampaigns || [],
     europePlan: parts.europePlan,
     europeEdition: parts.europeEdition || null,
     intlProbe: parts.intlProbe,
@@ -1380,6 +1414,7 @@ export function resumeChronologicalSeason({
   }
   let cupState = checkpoint.cupState;
   let cupResult = checkpoint.cupResult;
+  let cupCampaigns = [...(checkpoint.cupCampaigns || [])];
   let europePlan = checkpoint.europePlan;
   let europeEdition =
     checkpoint.europeEdition ||
@@ -1535,6 +1570,7 @@ export function resumeChronologicalSeason({
           records,
           cupState,
           cupResult,
+          cupCampaigns,
           europePlan,
           europeEdition,
           intlProbe,
@@ -1598,6 +1634,7 @@ export function resumeChronologicalSeason({
           records,
           cupState,
           cupResult,
+          cupCampaigns,
           europePlan,
           europeEdition,
           intlProbe,
@@ -1648,9 +1685,12 @@ export function resumeChronologicalSeason({
       if (player.playingClubId || ev.destinationLeagueId) {
         const destLeague = findLeagueById(ev.destinationLeagueId) || activeLeague;
         if (destLeague && (!cupState || !cupState._destBound)) {
-          if (cupState && !cupState._destBound && !cupResult) {
-            cupState.playerAttached = false;
-            cupResult = finalizeDomesticCup(cupState);
+          if (cupState && !cupState._destBound) {
+            if (!cupResult) {
+              cupState.playerAttached = false;
+              cupResult = finalizeDomesticCup(cupState);
+            }
+            cupCampaigns = rememberCupCampaign(cupCampaigns, cupResult);
           }
           cupState = prepareDestinationCupContinuation(destLeague, player, {
             asOfDate: ev.date,
@@ -1692,7 +1732,9 @@ export function resumeChronologicalSeason({
           }
           cupState.lastProcessorResult = null;
           if (cupState.finished || cupState.eliminatedRound) {
-            cupResult = finalizeDomesticCup(cupState);
+            const destCup = finalizeDomesticCup(cupState);
+            cupCampaigns = rememberCupCampaign(cupCampaigns, destCup);
+            cupResult = destCup;
           }
         }
       }
@@ -1824,7 +1866,11 @@ export function resumeChronologicalSeason({
       } else if (!playerStillIn || cupState.eliminatedRound) {
         cupResult = finalizeDomesticCup(cupState);
       }
-    } else if (ev.kind === "continental_md" || ev.kind === "continental_fixture") {
+    } else if (
+      ev.kind === "continental_md" ||
+      ev.kind === "continental_fixture" ||
+      ev.kind === "continental_gate"
+    ) {
       if (!europeEdition || europePlan?.showcase || europePlan?.qualified === false) continue;
       lastDateRef.current = lastDate;
       const processed = processContinentalChronoEvent({
@@ -1878,6 +1924,7 @@ export function resumeChronologicalSeason({
     if (!cupState) cupState = prepareDomesticCupBracket(activeLeague, player);
     cupResult = finalizeDomesticCup(cupState);
   }
+  cupCampaigns = rememberCupCampaign(cupCampaigns, cupResult);
   if (europeEdition && !europePlan?.showcase) {
     lastDateRef.current = lastDate;
     europePlan = finalizeSeasonContinental({
@@ -1932,6 +1979,7 @@ export function resumeChronologicalSeason({
     ledgerRecords,
     expectedMatches: leagueMatchCount(activeLeague),
     domesticCupResult: cupResult,
+    domesticCupCampaigns: cupCampaigns.length ? cupCampaigns : cupResult ? [cupResult] : [],
     europeanCampaign: europePlan,
     internationalSeason: intlProbe,
     chronology: {

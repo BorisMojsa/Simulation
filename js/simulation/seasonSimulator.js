@@ -342,12 +342,19 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   let redCards = chrono.playerMatchStats.red;
 
   const domesticCupResult = chrono.domesticCupResult;
+  const domesticCupCampaigns =
+    Array.isArray(chrono.domesticCupCampaigns) && chrono.domesticCupCampaigns.length
+      ? chrono.domesticCupCampaigns
+      : domesticCupResult
+        ? [domesticCupResult]
+        : [];
   const europeanCampaign = chrono.europeanCampaign;
   const internationalSeason = chrono.internationalSeason;
 
+  const cupPlayerMatches = domesticCupCampaigns.flatMap((c) => c?.playerMatches || []);
   const clubRated = [
     ...(chrono.playerMatches || []),
-    ...(domesticCupResult?.playerMatches || []),
+    ...cupPlayerMatches,
     ...((europeanCampaign?.qualified !== false && europeanCampaign?.playerMatches) || []),
   ].filter((m) => m.playerStats?.rating != null);
 
@@ -411,19 +418,22 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       });
     }
   }
-  const cupWinnerId = domesticCupResult?.winningClubId || null;
-  if (
-    domesticCupResult &&
-    cupWinnerId &&
-    playerEntitledToClubHonor(player, {
-      winningClubId: cupWinnerId,
-      competitionId: domesticCupResult.name,
-      ledgerRecords: chrono.ledgerRecords,
-      playerMatches: domesticCupResult.playerMatches,
-      requireContribution: true,
-    })
-  ) {
-    const cupName = domesticCupResult.name || `${playingLeague.nation} Cup`;
+  for (const cupCampaign of domesticCupCampaigns) {
+    const cupWinnerId = cupCampaign?.winningClubId || null;
+    if (
+      !cupCampaign ||
+      !cupWinnerId ||
+      !playerEntitledToClubHonor(player, {
+        winningClubId: cupWinnerId,
+        competitionId: cupCampaign.name,
+        ledgerRecords: chrono.ledgerRecords,
+        playerMatches: cupCampaign.playerMatches,
+        requireContribution: true,
+      })
+    ) {
+      continue;
+    }
+    const cupName = cupCampaign.name || `${playingLeague.nation} Cup`;
     const cupHonorKey = `cup:${seasonId}:${cupName}:${cupWinnerId}`;
     if (!creditedHonorKeys.includes(cupHonorKey)) {
       player.careerHonors.domesticCups += 1;
@@ -648,6 +658,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     europeanCampaign,
     internationalSeason,
     domesticCupResult,
+    domesticCupCampaigns,
     individualAwards,
     awardRecords,
     trophies,
@@ -718,6 +729,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     europeanCampaign,
     internationalSeason,
     domesticCupResult,
+    domesticCupCampaigns,
     individualAwards,
     attributeChanges,
     previousRating,

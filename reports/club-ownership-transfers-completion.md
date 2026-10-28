@@ -1,12 +1,20 @@
 # Fix 02 completion: Club ownership after transfers and loans
 
-Prepared 27 Oct 2026 (America/Chicago). Follow-up after review of `8fc7060`.
+Prepared 27 Oct 2026 (America/Chicago). Follow-ups after reviews of `8fc7060` and `7ad381a`.
 
 ## Baseline
 
 - **Original base:** `9f87dee4303075517f0795a96d8a2a65a05f3801`
 - **First Fix 02 commit reviewed:** `8fc7060af5e7d4c2102478ca1b91bb4ca37f871b`
+- **F01–F04 follow-up:** `7ad381a3de2d9771c207b6f7efc64447b54d88d8`
 - **Authority:** dated `player.playingStints` via [`js/simulation/playingRegistration.js`](../js/simulation/playingRegistration.js). Employment alone never authorizes a club appearance.
+
+## Re-review follow-up (R1–R2)
+
+| ID | Gap on `7ad381a` | Fix |
+| --- | --- | --- |
+| R1 | Direct R16 destinations lost KO path (finalize drained after empty `attachedPending`) | `continental_gate` calendar ticks for background stage dates; finalize loops attach/background/advance |
+| R2 | Dest cup overwrite dropped Coppa player history | `domesticCupCampaigns[]` retains origin + destination; playback/honors iterate campaigns |
 
 ## Review follow-up (F01–F04)
 
@@ -33,7 +41,7 @@ Reproduction: `node scripts/probeOwnershipBaseline.mjs`
 ## Tests run
 
 ```bash
-node tests/clubOwnershipTransfers.test.mjs   # 12 OK (8 original + F01–F04)
+node tests/clubOwnershipTransfers.test.mjs   # 14 OK (8 original + F01–F04 + R1–R2)
 node --test tests/*.test.mjs                 # 70 pass, 1 fail
 # FAIL tests/playerAbility.test.mjs — pre-existing growth-cap (same on base)
 node scripts/probeOwnershipBaseline.mjs      # 0 post-move Arsenal / Atalanta leaks

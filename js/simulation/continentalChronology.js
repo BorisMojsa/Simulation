@@ -148,6 +148,35 @@ export function eventsForNewFixtures(edition, previousScheduledIds, afterIndex =
 }
 
 /**
+ * Stage-gate ticks for newly scheduled background (non-player) fixture dates.
+ * Needed when the player skips a stage (e.g. direct R16) so playoff ties still
+ * resolve on the calendar and unlock the player's next round before finalize.
+ */
+export function eventsForBackgroundGateDates(edition, previousScheduledIds, player = null) {
+  if (!edition) return [];
+  const prev = new Set(previousScheduledIds || []);
+  const listed = listContinentalFixtures(edition, {
+    status: "scheduled",
+    player: player || null,
+  });
+  const dates = new Set();
+  for (const f of listed) {
+    if (prev.has(f.matchId)) continue;
+    if (f.isPlayerFixture) continue;
+    if (!f.date) continue;
+    dates.add(String(f.date));
+  }
+  return [...dates].sort().map((date) => ({
+    kind: "continental_gate",
+    eventId: `continental_gate:${edition.editionId}:${date}`,
+    date,
+    sortKey: `${date}:E:gate:0`,
+    competitionId: edition.competitionId,
+    editionId: edition.editionId,
+  }));
+}
+
+/**
  * After a mid-season move, schedule any already-open fixtures that now attach to the
  * destination registration (without redrawing the edition).
  */
@@ -212,10 +241,19 @@ function advanceAndCollect(edition, opts, ordered, eventIndex, { onOrBeforeDate 
     const before = [...seenScheduled];
     const step = advanceContinentalStage(edition, opts);
     if (!step?.advanced) break;
-    const created = eventsForNewFixtures(edition, before, eventIndex, opts.player || null);
-    for (const ev of created) seenScheduled.add(ev.matchId);
+    const createdPlayer = eventsForNewFixtures(edition, before, eventIndex, opts.player || null);
+    const createdGates = eventsForBackgroundGateDates(edition, before, opts.player || null);
+    for (const ev of createdPlayer) seenScheduled.add(ev.matchId);
     for (const id of step.createdFixtureIds || []) seenScheduled.add(id);
-    list = injectEvents(list, eventIndex, created);
+    // Mark newly scheduled background fixtures so their gate dates are emitted once.
+    for (const f of listContinentalFixtures(edition, {
+      status: "scheduled",
+      player: opts.player || null,
+    })) {
+      if (before.includes(f.matchId) || f.isPlayerFixture) continue;
+      seenScheduled.add(f.matchId);
+    }
+    list = injectEvents(list, eventIndex, [...createdPlayer, ...createdGates]);
   }
   return { ordered: list, edition };
 }
@@ -259,6 +297,9 @@ export function processContinentalChronoEvent({
   } else if (ev.kind === "continental_fixture") {
     processContinentalFixture(edition, ev.matchId, opts);
     stageId = edition.fixtures?.[ev.matchId]?.stageId || null;
+  } else if (ev.kind === "continental_gate") {
+    // Background stage tick only — no player fixture of our own on this date.
+    stageId = null;
   }
 
   const advanced = advanceAndCollect(edition, opts, ordered, eventIndex, {
@@ -294,8 +335,6 @@ export function finalizeSeasonContinental({
       world,
     });
   }
-  // Process any still-scheduled fixtures that attach to the live player through the
-  // normal match-day path once, then drain the rest as true world-only.
   const playerOpts = continentalOpts({
     edition,
     player,
@@ -308,14 +347,6 @@ export function finalizeSeasonContinental({
     playerMatchStats,
     accumulatePlayerStats,
   });
-  const attachedPending = listContinentalFixtures(edition, {
-    status: "scheduled",
-    playerOnly: true,
-    player,
-  });
-  for (const f of attachedPending) {
-    processContinentalFixture(edition, f.matchId, playerOpts);
-  }
   const drainOpts = continentalOpts({
     edition,
     player: null,
@@ -329,7 +360,42 @@ export function finalizeSeasonContinental({
     accumulatePlayerStats: null,
   });
   drainOpts.matchProcessor = null;
-  drainContinentalEdition(edition, drainOpts);
+
+  // Prefer calendar gates for chrono order. Finalize only catches leftovers: process
+  // attached player fixtures before any world drain that would create later rounds.
+  for (let guard = 0; guard < 64; guard++) {
+    if (edition.status === "complete") break;
+    const attachedPending = listContinentalFixtures(edition, {
+      status: "scheduled",
+      playerOnly: true,
+      player,
+    }).sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+    if (attachedPending.length) {
+      for (const f of attachedPending) {
+        processContinentalFixture(edition, f.matchId, playerOpts);
+      }
+      continue;
+    }
+    const background = listContinentalFixtures(edition, {
+      status: "scheduled",
+      player: player || null,
+    }).filter((f) => !f.isPlayerFixture);
+    if (background.length) {
+      for (const f of background) {
+        processContinentalFixture(edition, f.matchId, {
+          ...drainOpts,
+          matchProcessor: null,
+          player: null,
+        });
+      }
+      continue;
+    }
+    const step = advanceContinentalStage(edition, drainOpts);
+    if (!step?.advanced) break;
+  }
+  if (edition.status !== "complete") {
+    drainContinentalEdition(edition, drainOpts);
+  }
   return buildContinentalCampaignView(edition, { player, playerName: edition.playerClub?.name, world });
 }
 

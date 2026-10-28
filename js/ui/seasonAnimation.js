@@ -418,6 +418,14 @@ async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) 
     previousRating,
     newRating,
   } = seasonData;
+  const domesticCupCampaigns =
+    (Array.isArray(seasonData.domesticCupCampaigns) && seasonData.domesticCupCampaigns.length
+      ? seasonData.domesticCupCampaigns
+      : null) ||
+    (Array.isArray(season.domesticCupCampaigns) && season.domesticCupCampaigns.length
+      ? season.domesticCupCampaigns
+      : null) ||
+    (domesticCupResult ? [domesticCupResult] : []);
 
   if (!season || !league || !standings) {
     console.error("Missing required season data:", { season, league, standings });
@@ -426,7 +434,11 @@ async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) 
 
   // 1) Live league dashboard — full fixture store + player cards + live table
   configureCompetitionTabs({
-    hasCup: Boolean(domesticCupResult?.playerMatches?.length || domesticCupResult?.name),
+    hasCup: Boolean(
+      domesticCupCampaigns.some((c) => c?.playerMatches?.length || c?.name) ||
+        domesticCupResult?.playerMatches?.length ||
+        domesticCupResult?.name
+    ),
     hasContinental: Boolean(europeanCampaign && europeanCampaign.qualified !== false),
     hasNational: Boolean(internationalSeason || season.internationalSeason),
   });
@@ -456,23 +468,37 @@ async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) 
   resetSkipFlags();
   clearTimers();
 
-  // 2) Domestic cup — dedicated match viewer + sticky skip bar (not dashboard tabs)
+  // 2) Domestic cup(s) — preserve cross-association campaigns separately
   setSkipBarVisible(true);
   animationCtl.skipPhase = false;
   animationCtl.skipAll = false;
-  const cupName = domesticCupResult?.name || "Domestic Cup";
-  await playMatchList(domesticCupResult?.playerMatches || [], {
-    competitionLabel: cupName,
-    phaseLabel: cupName,
+  const cupMatchesChrono = domesticCupCampaigns
+    .flatMap((c) => (c?.playerMatches || []).map((m) => ({ ...m, _cupName: c.name })))
+    .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+  const cupPhaseLabel =
+    domesticCupCampaigns.length > 1
+      ? domesticCupCampaigns.map((c) => c.name).filter(Boolean).join(" · ")
+      : domesticCupResult?.name || domesticCupCampaigns[0]?.name || "Domestic Cup";
+  await playMatchList(cupMatchesChrono, {
+    competitionLabel: cupPhaseLabel,
+    phaseLabel: cupPhaseLabel,
     showMatchCount: false,
   });
   setSkipBarVisible(false);
   hideSection("match-viewer-section");
 
-  showCupBracket(domesticCupResult, player);
-  await waitForContinue();
-  hideSection("cup-animation");
-  showPhaseContinue(false);
+  for (const campaign of domesticCupCampaigns) {
+    showCupBracket(campaign, player);
+    await waitForContinue();
+    hideSection("cup-animation");
+    showPhaseContinue(false);
+  }
+  if (!domesticCupCampaigns.length && domesticCupResult) {
+    showCupBracket(domesticCupResult, player);
+    await waitForContinue();
+    hideSection("cup-animation");
+    showPhaseContinue(false);
+  }
 
   // 3) Continental / Europe
   setSkipBarVisible(true);

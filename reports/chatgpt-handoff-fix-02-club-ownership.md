@@ -1,4 +1,4 @@
-# ChatGPT handoff — Fix 02 follow-up (paste this)
+# ChatGPT handoff — Fix 02 re-review follow-up (paste this)
 
 Copy everything below this line into ChatGPT.
 
@@ -7,49 +7,38 @@ Copy everything below this line into ChatGPT.
 ## Context for ChatGPT
 
 Repo: https://github.com/BorisMojsa/Simulation  
-Branch: `main` (local follow-up not necessarily pushed yet)  
-Issue: **Fix 02 — Club ownership** follow-up after review of commit `8fc7060`.  
-Review file used: `02-Club-Ownership-Review-8fc7060.md` (verdict: not complete; F01–F04 required).  
-Fixes 03 and 04 must stay separate.
+Branch: `main`  
+Issue: **Fix 02 — Club ownership** second follow-up after re-review of `7ad381a`.  
+Review: `02-Club-Ownership-Re-Review-7ad381a.md` (verdict: R1 + R2 remaining).  
+Fixes 03 and 04 stay separate.
 
-Full write-up: `reports/club-ownership-transfers-completion.md`
+Parent follow-up: `7ad381a3de2d9771c207b6f7efc64447b54d88d8`  
+Original reviewed Fix 02: `8fc7060af5e7d4c2102478ca1b91bb4ca37f871b`
 
-## What the review found on `8fc7060`
+## What `7ad381a` still missed
 
-| ID | Severity | Gap |
-| --- | --- | --- |
-| F01 | P1 | Undated free-agent / post-season accepts recorded no destination playing stint → 0 league fixtures |
-| F02 | P1 | In-field continental destination fixtures bypassed match-day/ledger (tagged without ledger IDs) |
-| F03 | P2 | Destination cup used only three Sep–Dec anchors → January moves got 0 cup events |
-| F04 | P2 | Empty `season.trophies: []` fell through to `europeanCampaign.won` as a personal trophy |
+| ID | Gap |
+| --- | --- |
+| R1 | Direct top-eight / R16 destinations: playoff background never gated on the calendar, so finalize drained later KO as `playerSide: null` (Brighton: 4 eligible KO fixtures, 0 ledger) |
+| R2 | Cross-association cup continuation overwrote `domesticCupResult`, dropping Coppa Italia pre-move player history |
 
-Original Arsenal/Brentford and Atalanta/Rudeš detachment probes on that commit were already green; the review gaps were additional.
+F01–F04 from the prior review remained green.
 
-## What Cursor fixed in this follow-up
+## What this commit fixes
 
-- **F01:** `resolveDealSimulationDate` (career calendar / next July 1); permanent accept always `recordPlayingTransition`.
-- **F02:** Background/finalize never attach without `matchProcessor`; `eventsForAttachedPendingFixtures` merged after club-change on initial + resume paths; eligible destination KO goes through ledger once.
-- **F03:** Cross-association uses all six cup anchors; `prepareDestinationCupContinuation` world-advances prior rounds once then rebinds (no fresh January bracket).
-- **F04:** `collectSeasonTrophyWins` treats array (including empty) as authoritative; Europe path celebrates only on entitlement, else attributed world winner.
+- **R1:** `continental_gate` events for newly scheduled background stage dates; chrono processes them so playoff resolves on calendar and unlocks destination R16/QF `continental_fixture` events with match-day/ledger before finalize. Finalize loops attach → background → advance instead of one-shot world drain.
+- **R2:** `domesticCupCampaigns[]` retains origin + destination cup results separately; compatibility `domesticCupResult` remains the latest campaign; season + animation consume all campaigns.
 
 ## Evidence
 
-Failing-before / passing-after:
-
-- F01 free-agent signed season: `8fc7060` → 0 league fixtures / 0 apps; follow-up → 34 fixtures, apps restored.
-- F02 Crystal Palace (etc.) in-field playoff: ledger IDs match player match IDs; includes +minutes and 0-minute legs.
-- F03 Jan move: `destinationCupEvents` dates `2027-01-22`, `2027-03-08`, `2027-05-12`.
-- F04 counterexample `trophies: []` + `won: true` → 0 personal trophy wins.
-
-Suites:
-
-- `node tests/clubOwnershipTransfers.test.mjs` → **12 OK**
-- `node --test tests/*.test.mjs` → **70 pass, 1 fail** (`playerAbility` growth-cap, pre-existing on base)
-- `node scripts/probeOwnershipBaseline.mjs` → 0 post-move Arsenal / Atalanta continental playerMatches
-- Browser checklist passed (loan both IDs, Brentford trophies with `winningClubId`, signed FA open stint)
+- Brighton direct-R16 probe: **4** post-move player matches, **4** matching ledger IDs, includes 0-minute and positive-minute legs.
+- Atalanta → Rudeš: Coppa Italia fixture `cup:Coppa Italia:1:Round of 32` (2026-10-28) retained in `domesticCupCampaigns` alongside Croatian cup.
+- `node tests/clubOwnershipTransfers.test.mjs` → **14 OK** (incl. R1, R2)
+- `node --test tests/*.test.mjs` → **70 pass / 1 fail** (`playerAbility` growth-cap, pre-existing)
+- Baseline probes: still **0** post-move Arsenal / Atalanta continental playerMatches
 
 ## Ask of ChatGPT
 
-1. Re-review Fix 02 against the original brief + F01–F04.
-2. Confirm whether Fix 02 can be marked complete, or list remaining gaps.
-3. Do **not** start Fix 03/04 in the same change.
+1. Re-check R1/R2 against the re-review acceptance criteria.
+2. Confirm whether Fix 02 can be marked complete.
+3. Do not start Fix 03/04 here.
