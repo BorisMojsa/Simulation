@@ -152,6 +152,68 @@ export function resolveAcademyParentClub(player) {
   );
 }
 
+function offerMatchesParentClub(offer, player, dealKind = null) {
+  if (!offer || !player?.club?.parentClub) return false;
+  if (dealKind === "parent" || offer.isParentOffer) return true;
+  const parent = player.club.parentClub;
+  if (parent.clubId && offer.clubId === parent.clubId) return true;
+  const parentName = parent.displayName || parent.name;
+  if (parentName && (offer.club === parentName || offer.clubDisplay === parentName || offer.club === parent.name)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Executable parent offer from the current validated review / desk tray.
+ * Does not invent a fresh parent contract.
+ */
+export function findExecutableParentOffer(player) {
+  if (!player?.club?.isAcademy || !player.club.parentClub) return null;
+  const review = player.academyLifecycle?.pendingReview;
+  for (const d of review?.offers || []) {
+    const offer = d?.offer || d;
+    if (!offer || !offerMatchesParentClub(offer, player, d?.kind)) continue;
+    if (isOfferExecutable(player, offer).ok) return offer;
+  }
+  for (const offer of player.pendingOffers || []) {
+    if (!offerMatchesParentClub(offer, player)) continue;
+    if (isOfferExecutable(player, offer).ok) return offer;
+  }
+  return null;
+}
+
+/**
+ * Keep desk tray aligned with a still-pending academy review after failure/restore.
+ * Restores executable offers when the tray was wiped but the review still holds them.
+ */
+export function reconcileAcademyReviewTray(player) {
+  if (!player?.club?.isAcademy) return false;
+  const review = player.academyLifecycle?.pendingReview;
+  if (!review) return false;
+  const executable = (review.offers || [])
+    .map((d) => d?.offer || null)
+    .filter((o) => o && isOfferExecutable(player, o).ok);
+  const tray = player.pendingOffers || [];
+  if (executable.length === 0) return false;
+  if (tray.length === 0) {
+    player.pendingOffers = executable.slice();
+    return true;
+  }
+  // Drop tray entries that are no longer executable while preserving remaining review IDs.
+  const byId = new Map(executable.map((o) => [o.offerId, o]));
+  const next = tray.map((o) => byId.get(o.offerId) || o).filter((o) => isOfferExecutable(player, o).ok);
+  if (next.length === 0) {
+    player.pendingOffers = executable.slice();
+    return true;
+  }
+  if (next.length !== tray.length) {
+    player.pendingOffers = next;
+    return true;
+  }
+  return false;
+}
+
 /**
  * Clear stale senior pending state that must not block academy continuation.
  */

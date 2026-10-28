@@ -23,6 +23,11 @@ import {
   ensureAcademyOpeningState,
   applySkipOpeningDevelopment,
 } from "./academyOpening.js?v=76";
+import {
+  acceptAcademyGraduationOffer,
+  findExecutableParentOffer,
+  reconcileAcademyReviewTray,
+} from "./academyLifecycle.js";
 
 export { applySkipOpeningDevelopment };
 
@@ -111,17 +116,45 @@ export function finalizeAcademyPlayer(player, academyEntry) {
 
 /**
  * After the opening academy story, move to the senior (parent) club on a pro deal.
- * Routes through the shared deal pipeline — no unsigned financial bypass.
+ * With a pending academy review, only accepts a validated parent offer from that
+ * review via lifecycle settlement — never invents a fresh parent deal or wipes
+ * unrelated alternatives. Without a review, routes through the shared pipeline.
  */
 export function promoteAcademyGraduateToFirstTeam(player, performanceHint = 72) {
   ensurePlayerModel(player);
   if (!player.club?.isAcademy) {
     return null;
   }
+
+  const life = player.academyLifecycle;
+  const hasPendingReview =
+    Boolean(life?.pendingReview) ||
+    life?.status === "pending-review" ||
+    life?.status === "pending-final-review";
+
+  if (hasPendingReview) {
+    reconcileAcademyReviewTray(player);
+    const parentOffer = findExecutableParentOffer(player);
+    if (!parentOffer) {
+      // No validated parent offer in this review — do not clear alternatives.
+      player.suppressParentContractOffer = true;
+      return null;
+    }
+    const result = acceptAcademyGraduationOffer(player, {
+      offer: { ...parentOffer, isParentOffer: true },
+      kind: "parent",
+      club: null,
+    });
+    if (!result.ok) {
+      player.suppressParentContractOffer = true;
+      return null;
+    }
+    return result.clubName || player.club?.displayName || player.club?.name || null;
+  }
+
   const parent = player.club.parentClub;
   if (!parent) {
     // Unresolvable parent is not a signed club — do not flip isAcademy.
-    // Caller should route through academy continuation / other-club review.
     player.suppressParentContractOffer = true;
     return null;
   }
@@ -129,7 +162,6 @@ export function promoteAcademyGraduateToFirstTeam(player, performanceHint = 72) 
   const club =
     findSeniorClubById(parent.clubId) || findSeniorClub(parent.name) || null;
   if (!club) {
-    // Parent metadata exists but no senior club resolves — keep academy enrollment.
     player.suppressParentContractOffer = true;
     return null;
   }
@@ -141,9 +173,8 @@ export function promoteAcademyGraduateToFirstTeam(player, performanceHint = 72) 
     forceParent: true,
   });
   if (!built.ok) {
-    // Supported continuation: remain academy; do not invent an ineligible senior deal.
+    // Remain academy; never wipe unrelated pending offers.
     player.suppressParentContractOffer = true;
-    player.pendingOffers = [];
     return null;
   }
   const accepted = acceptPipelineOffer(player, {

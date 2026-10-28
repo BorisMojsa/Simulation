@@ -1,0 +1,71 @@
+{
+  "name": "Academy Fixture",
+  "age": 21,
+  "club": "Aston Villa Academy",
+  "playingStints": [],
+  "seasonsCount": 1,
+  "careerHonors": {
+    "leagueTitles": 0,
+    "europeanTitles": 0,
+    "domesticCups": 0,
+    "individualAwards": 0,
+    "internationalTitles": 0
+  },
+  "lastSeasonHonors": "Academy programme",
+  "lastSeasonTrophies": [],
+  "lastSeasonClubApps": null,
+  "openPlayingStintClubId": null,
+  "contractEndSeason": null,
+  "rating": 70,
+  "ovrDisplay": 70,
+  "isRetired": false,
+  "freeAgent": false,
+  "careerTotals": {
+    "matches": 22,
+    "goals": 4,
+    "assists": 3,
+    "cleanSheets": 1
+  },
+  "activeLoan": null,
+  "pendingDecision": null,
+  "pendingOffers": [
+    {
+      "club": "Coventry City",
+      "isLoan": false,
+      "wage": 8000
+    },
+    {
+      "club": "Hull City",
+      "isLoan": false,
+      "wage": 184500
+    }
+  ],
+  "seasonCheckpoint": null,
+  "seasons": 1,
+  "lastSeason": {
+    "seasonId": "academy-narrative-1",
+    "freeAgent": false,
+    "year": 2026,
+    "age": 21
+  },
+  "nextAction": {
+    "id": "resolve-offers",
+    "label": "Review offers",
+    "canSimulate": false
+  },
+  "seasonActionInFlight": false,
+  "dealBookingGuard": null,
+  "isAcademy": true,
+  "academyLifecycle": {
+    "status": "pending-final-review",
+    "periodCount": 1,
+    "pendingReviewId": "academy-final-review:academy-ui-fixture-v1:1:mvsgaszh",
+    "exitAge": 21
+  },
+  "academyCareerTotals": {
+    "matches": 22,
+    "goals": 4,
+    "assists": 3,
+    "cleanSheets": 1
+  }
+}

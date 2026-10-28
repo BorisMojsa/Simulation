@@ -22,8 +22,8 @@
   "freeAgent": false,
   "careerTotals": {
     "matches": 24,
-    "goals": 5,
-    "assists": 4,
+    "goals": 4,
+    "assists": 5,
     "cleanSheets": 1
   },
   "activeLoan": null,
@@ -54,13 +54,13 @@
   "academyLifecycle": {
     "status": "pending-review",
     "periodCount": 1,
-    "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvsfqcp3",
+    "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvsg9y50",
     "exitAge": 21
   },
   "academyCareerTotals": {
     "matches": 24,
-    "goals": 5,
-    "assists": 4,
+    "goals": 4,
+    "assists": 5,
     "cleanSheets": 1
   }
 }

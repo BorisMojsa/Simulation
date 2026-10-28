@@ -678,6 +678,79 @@ async function flowOrdinaryCareerGraduate(page) {
   });
 }
 
+async function flowParentShortcutAbsentAndSafe(page) {
+  note("FLOW: R4 parent shortcut absent; helper preserves alternatives + restore");
+  await loadFixture(page, "?fixture=academy-age21-final-offers");
+  const before = await debug(page);
+  assert(before.debug?.age === 21, "age 21", before);
+  assert((before.debug?.pendingOffers || []).length >= 2, "non-parent alternatives", before);
+  const ui = await page.evaluate(() => {
+    const texts = [...document.querySelectorAll("#transfer-offers button")].map((b) => b.textContent || "");
+    return {
+      parentShortcut: texts.some((t) => /^Sign with /i.test(t)),
+      declineAll: texts.some((t) => /Decline all and leave academy/i.test(t)),
+      acceptCount: texts.filter((t) => /Accept Offer/i.test(t)).length,
+    };
+  });
+  assert(!ui.parentShortcut, "no unsupported parent shortcut when review has no parent offer", ui);
+  assert(ui.declineAll, "decline-all visible", ui);
+  assert(ui.acceptCount >= 2, "offer Accept controls present", ui);
+  await shot(page, "14-parent-shortcut-absent");
+
+  const promo = await page.evaluate(() => {
+    const beforeOffers = (window.__getLiveCareerDebug?.()?.pendingOffers || []).map((o) => o.offerId);
+    const signed = window.__promoteToParentClub?.();
+    const after = window.__getLiveCareerDebug?.();
+    return {
+      signed,
+      beforeOffers,
+      afterOffers: (after?.pendingOffers || []).map((o) => o.offerId),
+      status: after?.academyLifecycle?.status,
+      isAcademy: after?.isAcademy,
+    };
+  });
+  assert(promo.signed == null, "direct parent helper returns null", promo);
+  assert(
+    JSON.stringify(promo.afterOffers) === JSON.stringify(promo.beforeOffers),
+    "helper does not erase alternatives",
+    promo
+  );
+  assert(promo.isAcademy && promo.status === "pending-final-review", "still pending final", promo);
+  await dumpState(page, "14-after-parent-helper");
+
+  const snap = await page.evaluate(() => window.__exportCareerSnapshot?.());
+  assert(snap?.player, "exported snapshot");
+  await page.evaluate((data) => window.__restoreCareerSnapshot?.(data), snap);
+  await page.waitForTimeout(200);
+  const restored = await debug(page);
+  assert((restored.debug?.pendingOffers || []).length >= 2, "offers after restore", restored);
+  const restoredUi = await page.evaluate(() => {
+    const texts = [...document.querySelectorAll("#transfer-offers button")].map((b) => b.textContent || "");
+    return {
+      parentShortcut: texts.some((t) => /^Sign with /i.test(t)),
+      declineAll: texts.some((t) => /Decline all and leave academy/i.test(t)),
+    };
+  });
+  assert(!restoredUi.parentShortcut, "still no parent shortcut after restore", restoredUi);
+  assert(restoredUi.declineAll, "decline-all after restore", restoredUi);
+  await shot(page, "14-parent-after-restore");
+
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll("#transfer-offers button")].find((b) =>
+      /Decline all and leave academy/i.test(b.textContent || "")
+    );
+    btn?.click();
+  });
+  await page.waitForTimeout(300);
+  const afterDecline = await debug(page);
+  assert(afterDecline.debug?.freeAgent === true, "released via decline-all", afterDecline);
+  await shot(page, "14-parent-decline-released");
+  await record("parent-shortcut-safe", "PASS", {
+    alternatives: promo.beforeOffers.length,
+    restoreMethod: "window.__exportCareerSnapshot → __restoreCareerSnapshot",
+  });
+}
+
 async function main() {
   await mkdir(SHOT_DIR, { recursive: true });
   await mkdir(STATE_DIR, { recursive: true });
@@ -705,6 +778,7 @@ async function main() {
     ["final-offers", flowFinalOffersAcceptAndDecline],
     ["double-continue", flowDoubleContinue],
     ["pending-review-restore", flowPendingReviewRestore],
+    ["parent-shortcut-safe", flowParentShortcutAbsentAndSafe],
     ["ordinary-career-graduate", flowOrdinaryCareerGraduate],
   ];
 

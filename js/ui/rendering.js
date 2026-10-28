@@ -22,6 +22,10 @@ import {
   isContractActive,
   isFreeAgent,
 } from "../simulation/contractLifecycle.js";
+import {
+  findExecutableParentOffer,
+  reconcileAcademyReviewTray,
+} from "../simulation/academyLifecycle.js";
 
 export function renderPlayerOverview(player, overviewEl, statsKeys) {
   if (!player) return;
@@ -1003,8 +1007,12 @@ export function renderTransferOffers({
 }) {
   transferContainer.innerHTML = "";
 
+  // Keep tray aligned with a still-pending academy review after failure/restore.
+  if (player.club?.isAcademy) reconcileAcademyReviewTray(player);
+
   const hasDecision = Boolean(player.pendingDecision);
-  const hasOffers = Boolean(player.pendingOffers?.length);
+  let hasOffers = Boolean(player.pendingOffers?.length);
+  const pendingAcademyReview = Boolean(player.academyLifecycle?.pendingReview);
 
   if (!hasOffers && !hasDecision) {
     if (player.club?.isAcademy) {
@@ -1015,6 +1023,21 @@ export function renderTransferOffers({
           ? "No suitable professional offer is available right now. You can continue at the academy or wait for a fitting club."
           : "Complete career setup to begin.";
       transferContainer.appendChild(notice);
+      // Pending review with an empty tray must still expose decline/release — never soft-lock.
+      if (pendingAcademyReview) {
+        const isFinalReview =
+          player.academyLifecycle?.status === "pending-final-review" ||
+          Boolean(player.academyLifecycle?.pendingReview?.isFinal);
+        const declineBtn = document.createElement("button");
+        declineBtn.className = "secondary";
+        declineBtn.textContent = isFinalReview
+          ? "Decline all and leave academy"
+          : "Decline offers and continue academy training";
+        declineBtn.addEventListener("click", () => {
+          finishOfferWindow(false);
+        });
+        transferContainer.appendChild(declineBtn);
+      }
     } else if (isFreeAgent(player) || !player.club) {
       const empty = document.createElement("p");
       empty.className = "empty-state";
@@ -1210,27 +1233,21 @@ export function renderTransferOffers({
       const isFinalReview =
         player.academyLifecycle?.status === "pending-final-review" || Boolean(review?.isFinal);
 
-      if (player.club.parentClub && !player.suppressParentContractOffer) {
+      // Only show the parent shortcut when the validated review actually includes
+      // an executable parent offer — never invent a fresh unrelated parent deal.
+      const parentOffer = findExecutableParentOffer(player);
+      if (parentOffer && !player.suppressParentContractOffer) {
         const parentBtn = document.createElement("button");
         parentBtn.className = "secondary";
         const parentDisplay = clubNameForDisplay(player.club.parentClub);
         parentBtn.textContent = `Sign with ${parentDisplay}`;
         parentBtn.addEventListener("click", () => {
-          const signed = promoteToParentClub("manual");
-          if (!signed) {
-            window.alert(
-              "Professional contract could not be completed under the club's current limits. You remain at the academy."
-            );
-            return;
+          parentBtn.disabled = true;
+          // Same lifecycle settlement path as the normal offer card.
+          const outcome = applyTransfer({ ...parentOffer, isParentOffer: true });
+          if (outcome && outcome.ok === false && parentBtn.isConnected && !parentBtn.dataset.settled) {
+            parentBtn.disabled = false;
           }
-          finishOfferWindow(true, {
-            isParentOffer: true,
-            club: player.club.name,
-            clubDisplay: clubNameForDisplay(player.club),
-            league: player.club.league,
-            leagueDisplay: player.club.leagueDisplay ?? player.club.league,
-            transferFee: 0,
-          });
         });
         transferContainer.appendChild(parentBtn);
       }

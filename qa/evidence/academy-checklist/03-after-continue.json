@@ -21,9 +21,9 @@
   "isRetired": false,
   "freeAgent": false,
   "careerTotals": {
-    "matches": 44,
-    "goals": 9,
-    "assists": 10,
+    "matches": 46,
+    "goals": 8,
+    "assists": 8,
     "cleanSheets": 2
   },
   "activeLoan": null,
@@ -53,9 +53,9 @@
     "exitAge": 21
   },
   "academyCareerTotals": {
-    "matches": 44,
-    "goals": 9,
-    "assists": 10,
+    "matches": 46,
+    "goals": 8,
+    "assists": 8,
     "cleanSheets": 2
   }
 }

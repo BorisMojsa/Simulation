@@ -32,99 +32,115 @@
     {
       "name": "pending-review-restore",
       "status": "PASS",
-      "reviewId": "academy-review:academy-ui-fixture-v1:1:mvsfr5ql",
+      "reviewId": "academy-review:academy-ui-fixture-v1:1:mvsgar6f",
       "restoreMethod": "window.__exportCareerSnapshot → __restoreCareerSnapshot",
       "declineLabel": "Decline offers and continue academy training"
     },
     {
+      "name": "parent-shortcut-safe",
+      "status": "PASS",
+      "alternatives": 2,
+      "restoreMethod": "window.__exportCareerSnapshot → __restoreCareerSnapshot"
+    },
+    {
       "name": "ordinary-career-graduate",
       "status": "PASS",
-      "club": "Hull City",
+      "club": "Birmingham City",
       "seasons": 2,
       "age": 18
     }
   ],
   "failed": 0,
-  "passed": 7,
+  "passed": 8,
   "blocked": 0,
   "log": [
     {
-      "t": "2026-10-28T18:15:37.014Z",
+      "t": "2026-10-28T18:30:51.768Z",
       "msg": "FLOW: unsigned AVA empty continuation"
     },
     {
-      "t": "2026-10-28T18:15:39.162Z",
+      "t": "2026-10-28T18:30:53.419Z",
       "msg": "PASS: continue-empty",
       "age": 18,
       "history": 2
     },
     {
-      "t": "2026-10-28T18:15:39.162Z",
+      "t": "2026-10-28T18:30:53.420Z",
       "msg": "FLOW: rejected Accept via finance revalidation (R1 remaining + final)"
     },
     {
-      "t": "2026-10-28T18:15:40.118Z",
+      "t": "2026-10-28T18:30:54.506Z",
       "alert": "Deal could not be completed: exceeds-wage-headroom. 1 other offer(s) remain available."
     },
     {
-      "t": "2026-10-28T18:15:41.392Z",
+      "t": "2026-10-28T18:30:55.764Z",
       "alert": "Deal could not be completed: exceeds-wage-headroom. 1 other offer(s) remain available."
     },
     {
-      "t": "2026-10-28T18:15:41.773Z",
+      "t": "2026-10-28T18:30:56.134Z",
       "alert": "Deal could not be completed: exceeds-wage-headroom. No executable academy offers remain — you are now a free agent."
     },
     {
-      "t": "2026-10-28T18:15:42.280Z",
+      "t": "2026-10-28T18:30:56.624Z",
       "msg": "PASS: reject-offer",
       "midStillAcademy": true,
       "finalReleased": true
     },
     {
-      "t": "2026-10-28T18:15:42.280Z",
+      "t": "2026-10-28T18:30:56.624Z",
       "msg": "FLOW: age 20→21 empty → release + FA train"
     },
     {
-      "t": "2026-10-28T18:15:43.569Z",
+      "t": "2026-10-28T18:30:57.871Z",
       "msg": "PASS: final-empty-release",
       "age": 22,
       "offers": 2
     },
     {
-      "t": "2026-10-28T18:15:43.569Z",
+      "t": "2026-10-28T18:30:57.871Z",
       "msg": "FLOW: final review accept + decline-all"
     },
     {
-      "t": "2026-10-28T18:15:45.833Z",
+      "t": "2026-10-28T18:31:00.093Z",
       "msg": "PASS: final-offers",
       "accepted": "Accept Offer"
     },
     {
-      "t": "2026-10-28T18:15:45.833Z",
+      "t": "2026-10-28T18:31:00.094Z",
       "msg": "FLOW: rapid double Continue / simulate"
     },
     {
-      "t": "2026-10-28T18:16:16.804Z",
+      "t": "2026-10-28T18:31:31.055Z",
       "msg": "PASS: double-continue",
       "age": 18
     },
     {
-      "t": "2026-10-28T18:16:16.805Z",
+      "t": "2026-10-28T18:31:31.055Z",
       "msg": "FLOW: pending review serialize → restore → complete"
     },
     {
-      "t": "2026-10-28T18:16:19.197Z",
+      "t": "2026-10-28T18:31:33.376Z",
       "msg": "PASS: pending-review-restore",
-      "reviewId": "academy-review:academy-ui-fixture-v1:1:mvsfr5ql",
+      "reviewId": "academy-review:academy-ui-fixture-v1:1:mvsgar6f",
       "restoreMethod": "window.__exportCareerSnapshot → __restoreCareerSnapshot",
       "declineLabel": "Decline offers and continue academy training"
     },
     {
-      "t": "2026-10-28T18:16:19.198Z",
+      "t": "2026-10-28T18:31:33.377Z",
+      "msg": "FLOW: R4 parent shortcut absent; helper preserves alternatives + restore"
+    },
+    {
+      "t": "2026-10-28T18:31:35.420Z",
+      "msg": "PASS: parent-shortcut-safe",
+      "alternatives": 2,
+      "restoreMethod": "window.__exportCareerSnapshot → __restoreCareerSnapshot"
+    },
+    {
+      "t": "2026-10-28T18:31:35.420Z",
       "msg": "FLOW: ordinary setup → opening → sign → senior season"
     },
     {
-      "t": "2026-10-28T18:16:20.248Z",
+      "t": "2026-10-28T18:31:36.484Z",
       "msg": "ordinary:after-backstory",
       "step": "career-step-academy",
       "choiceHidden": true,
@@ -137,7 +153,7 @@
       "careerHidden": true
     },
     {
-      "t": "2026-10-28T18:16:20.317Z",
+      "t": "2026-10-28T18:31:36.553Z",
       "msg": "ordinary:after-academy-intro",
       "step": "career-step-academy",
       "choiceHidden": true,
@@ -150,7 +166,7 @@
       "careerHidden": true
     },
     {
-      "t": "2026-10-28T18:16:28.291Z",
+      "t": "2026-10-28T18:31:44.462Z",
       "msg": "ordinary:before-academy-choice",
       "step": "career-step-academy",
       "choiceHidden": false,
@@ -163,7 +179,7 @@
       "careerHidden": true
     },
     {
-      "t": "2026-10-28T18:16:29.851Z",
+      "t": "2026-10-28T18:31:46.039Z",
       "msg": "ordinary:after-moments",
       "step": "career-step-rating",
       "choiceHidden": false,
@@ -176,7 +192,7 @@
       "careerHidden": true
     },
     {
-      "t": "2026-10-28T18:16:35.844Z",
+      "t": "2026-10-28T18:31:51.987Z",
       "msg": "ordinary:after-senior-loop",
       "seasons": 2,
       "seasonsBefore": 1,
@@ -188,9 +204,9 @@
       "pendingDecision": null
     },
     {
-      "t": "2026-10-28T18:16:35.962Z",
+      "t": "2026-10-28T18:31:52.097Z",
       "msg": "PASS: ordinary-career-graduate",
-      "club": "Hull City",
+      "club": "Birmingham City",
       "seasons": 2,
       "age": 18
     }

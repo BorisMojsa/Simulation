@@ -21,10 +21,10 @@
   "isRetired": false,
   "freeAgent": false,
   "careerTotals": {
-    "matches": 27,
-    "goals": 4,
-    "assists": 4,
-    "cleanSheets": 2
+    "matches": 18,
+    "goals": 3,
+    "assists": 3,
+    "cleanSheets": 1
   },
   "activeLoan": null,
   "pendingDecision": null,
@@ -59,13 +59,13 @@
   "academyLifecycle": {
     "status": "pending-review",
     "periodCount": 1,
-    "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvsfr5ql",
+    "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvsgar6f",
     "exitAge": 21
   },
   "academyCareerTotals": {
-    "matches": 27,
-    "goals": 4,
-    "assists": 4,
-    "cleanSheets": 2
+    "matches": 18,
+    "goals": 3,
+    "assists": 3,
+    "cleanSheets": 1
   }
 }

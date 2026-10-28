@@ -855,8 +855,15 @@ function promoteToParentClub() {
   refreshOverview();
   refreshStandings();
   refreshCompetitions();
+  // Always redraw the tray after a failed/successful parent attempt so alternatives
+  // and decline/release controls stay aligned with the pending review.
+  refreshTransferOffers();
+  syncSimulateButton();
   return seniorName;
 }
+
+/** Browser QA seam for the standalone parent-signing helper (R4). */
+window.__promoteToParentClub = promoteToParentClub;
 
 function applyTransfer(offer) {
   if (!player || !offer) return;

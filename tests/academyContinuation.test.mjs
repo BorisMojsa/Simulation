@@ -34,7 +34,11 @@ import {
   assertNotAcademyForSeniorSimulation,
   ACADEMY_EXIT_AGE,
   ACADEMY_RESULT_KIND,
+  findExecutableParentOffer,
+  reconcileAcademyReviewTray,
 } from "../js/simulation/academyLifecycle.js";
+import { renderTransferOffers } from "../js/ui/rendering.js";
+import { FakeElement, installMinimalDom } from "./helpers/minimalDom.mjs";
 import { buildFirstProContractDecision, signFirstProfessionalContract } from "../js/simulation/proContractOffers.js";
 import { buildValidatedOffer, acceptPipelineOffer } from "../js/simulation/dealPipeline.js";
 import {
@@ -703,6 +707,192 @@ test("Snapshot restore of pending review keeps offer identity", () => {
   const declined = declineAcademyReview(restored);
   assert(declined.action === "continue-academy", "decline continues below 21", declined);
   assert(restored.academyLifecycle.status === "enrolled", "enrolled after restore decline");
+});
+
+test("R4: rejected parent shortcut preserves non-parent final alternatives", () => {
+  const fixture = buildAcademyBrowserFixture({ mode: "age21-final-offers" });
+  assert(fixture.ok, "fixture", fixture);
+  const p = fixture.player;
+  const beforeIds = (p.pendingOffers || []).map((o) => o.offerId);
+  assert(beforeIds.length >= 2, "two alternatives", beforeIds);
+  assert(!findExecutableParentOffer(p), "no validated parent offer in tray");
+  const financeBefore = JSON.stringify(exportClubFinanceState());
+  const ageBefore = p.age;
+  const histBefore = p.seasons.length;
+  const promo = promoteAcademyGraduateToFirstTeam(p, 75);
+  assert(promo === null, "parent promo rejected");
+  assert((p.pendingOffers || []).map((o) => o.offerId).join() === beforeIds.join(), "offer IDs intact");
+  assert(p.academyLifecycle.status === "pending-final-review", "still final review");
+  assert(p.age === ageBefore && p.seasons.length === histBefore, "no year/growth");
+  assert(financeBefore === JSON.stringify(exportClubFinanceState()), "finances unchanged");
+
+  const restored = roundTripCareerSnapshot({ player: p, world: getWorldState() }).player;
+  reconcileAcademyReviewTray(restored);
+  assert((restored.pendingOffers || []).length === beforeIds.length, "tray after restore");
+  const { ensure } = installMinimalDom(["offer-template", "transfer-offers", "simulate-btn"]);
+  const offerTemplate = ensure("offer-template", "template");
+  offerTemplate.content = {
+    cloneNode() {
+      const root = new FakeElement("", "div");
+      const details = new FakeElement("", "div");
+      details.className = "details";
+      const actions = new FakeElement("", "div");
+      actions.className = "offer-actions";
+      root.appendChild(details);
+      root.appendChild(actions);
+      root.querySelector = (sel) => (sel === ".details" ? details : sel === ".offer-actions" ? actions : null);
+      return root;
+    },
+  };
+  const tray = ensure("transfer-offers");
+  tray.children = [];
+  const boom = () => {
+    throw new Error("unexpected");
+  };
+  renderTransferOffers({
+    player: restored,
+    transferContainer: tray,
+    simulateBtn: ensure("simulate-btn"),
+    applyTransfer: boom,
+    finishOfferWindow: boom,
+    promoteToParentClub: boom,
+  });
+  const labels = tray.children.map((c) => c.textContent || "");
+  assert(!labels.some((t) => /Sign with /i.test(t)), "no unsupported parent shortcut");
+  assert(labels.some((t) => /Decline all and leave academy/i.test(t)), "decline-all present");
+  const declined = declineAcademyReview(restored);
+  assert(declined.released, "decline releases after restore", declined);
+  assert(isFreeAgent(restored), "free agent after decline");
+});
+
+test("R4: failed sole parent offer settles final release / below-21 continue", () => {
+  // Final: sole parent offer fails revalidation → release once.
+  {
+    const p = makeAcademyPlayer({ age: 21 });
+    for (const k of Object.keys(p.attributes || {})) p.attributes[k] = Math.max(p.attributes[k], 78);
+    refreshAbilityCaches(p);
+    const parent = findSeniorClubById(p.club.parentClub.clubId);
+    assert(parent, "parent resolves");
+    const built = buildValidatedOffer({
+      player: p,
+      club: parent,
+      dealType: "first_pro",
+      performanceScore: 80,
+      forceParent: true,
+    });
+    assert(built.ok, "parent builds for settlement fixture", built.reasons);
+    const review = buildAndPersistAcademyReview(p, {
+      isFinal: true,
+      offerProvider() {
+        return {
+          offers: [{ offer: { ...built.offer, isParentOffer: true }, kind: "parent", club: parent }],
+          verdict: { headline: "Parent", lead: "test" },
+          emptyOffers: false,
+          rejectionLog: [],
+        };
+      },
+    });
+    assert(review.offerCount === 1, "sole parent");
+    assert(findExecutableParentOffer(p), "parent executable before fail");
+    const ledger = getOrInitClubSeasonFinance(built.offer.clubId, String(p.startYear + p.seasons.length));
+    ledger.remainingWageHeadroom = 0;
+    const ageBefore = p.age;
+    const histBefore = p.seasons.length;
+    const financeBefore = JSON.stringify(exportClubFinanceState());
+    const result = acceptAcademyGraduationOffer(p, {
+      offer: p.pendingOffers[0],
+      kind: "parent",
+      club: parent,
+    });
+    assert(!result.ok && result.released, "final sole parent fail releases", result);
+    assert(isFreeAgent(p), "FA");
+    assert(p.age === ageBefore && p.seasons.length === histBefore, "no birthday/history");
+    assert(financeBefore === JSON.stringify(exportClubFinanceState()), "no finance txn");
+  }
+  // Below 21: sole parent fail → continue academy.
+  {
+    const p = makeAcademyPlayer({ age: 18 });
+    for (const k of Object.keys(p.attributes || {})) p.attributes[k] = Math.max(p.attributes[k], 78);
+    refreshAbilityCaches(p);
+    const parent = findSeniorClubById(p.club.parentClub.clubId);
+    const built = buildValidatedOffer({
+      player: p,
+      club: parent,
+      dealType: "first_pro",
+      performanceScore: 80,
+      forceParent: true,
+    });
+    assert(built.ok, "parent builds younger", built.reasons);
+    buildAndPersistAcademyReview(p, {
+      isFinal: false,
+      offerProvider() {
+        return {
+          offers: [{ offer: { ...built.offer, isParentOffer: true }, kind: "parent", club: parent }],
+          verdict: { headline: "Parent", lead: "test" },
+          emptyOffers: false,
+          rejectionLog: [],
+        };
+      },
+    });
+    const ledger = getOrInitClubSeasonFinance(built.offer.clubId, String(p.startYear + p.seasons.length));
+    ledger.remainingWageHeadroom = 0;
+    const result = acceptAcademyGraduationOffer(p, {
+      offer: p.pendingOffers[0],
+      kind: "parent",
+      club: parent,
+    });
+    assert(!result.ok && result.action === "continue-academy", "younger continues", result);
+    assert(p.club?.isAcademy, "still academy");
+    assert(selectNextCareerAction(p).canSimulate === true, "can continue training");
+  }
+});
+
+test("R4: successful parent offer from review graduates once", () => {
+  const p = makeAcademyPlayer({ age: 21 });
+  for (const k of Object.keys(p.attributes || {})) p.attributes[k] = Math.max(p.attributes[k], 82);
+  refreshAbilityCaches(p);
+  const parent = findSeniorClubById(p.club.parentClub.clubId);
+  const built = buildValidatedOffer({
+    player: p,
+    club: parent,
+    dealType: "first_pro",
+    performanceScore: 85,
+    forceParent: true,
+  });
+  assert(built.ok, "parent validates", built.reasons);
+  const altClub = (LEAGUE_BY_ID.get(parent.leagueId)?.clubs || []).find((c) => c.clubId !== parent.clubId);
+  const alt = altClub
+    ? buildValidatedOffer({ player: p, club: altClub, dealType: "first_pro", performanceScore: 80 })
+    : { ok: false };
+  buildAndPersistAcademyReview(p, {
+    isFinal: true,
+    offerProvider() {
+      const offers = [{ offer: { ...built.offer, isParentOffer: true }, kind: "parent", club: parent }];
+      if (alt.ok) offers.push({ offer: alt.offer, kind: "counter", club: altClub });
+      return { offers, verdict: { headline: "Deals", lead: "test" }, emptyOffers: false, rejectionLog: [] };
+    },
+  });
+  assert(findExecutableParentOffer(p), "parent present");
+  const siblingId = (p.pendingOffers || []).find((o) => o.clubId !== parent.clubId)?.offerId;
+  const accepted = acceptAcademyGraduationOffer(p, {
+    offer: findExecutableParentOffer(p),
+    kind: "parent",
+    club: parent,
+  });
+  assert(accepted.ok && accepted.graduated, "graduated", accepted);
+  assert(p.club?.clubId === parent.clubId, "parent club");
+  assert(!p.club?.isAcademy, "senior");
+  assert(p.academyLifecycle.status === "graduated", "status");
+  assert(isContractActive(p), "contract active");
+  if (siblingId) {
+    const replay = acceptPipelineOffer(p, {
+      offerId: siblingId,
+      clubId: altClub.clubId,
+      dealType: "first_pro",
+      academyReviewId: "stale",
+    });
+    assert(!replay.ok, "stale sibling rejected", replay);
+  }
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
