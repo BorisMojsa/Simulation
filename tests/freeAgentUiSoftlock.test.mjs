@@ -147,56 +147,50 @@ describe("free-agent UI soft-lock", () => {
     assert.equal(completions, 1);
   });
 
-  it("real empty-market free-agent period advances once and leaves a usable next action", async () => {
-    const player = makeReleasedPlayer({ age: 28, rating: 62, seed: 3 });
-    const before = snapshot(player);
-    const seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
-      pauseForDecisions: false,
-      autoDecisionPolicy: "stay",
-    });
-    assert.equal(seasonData.freeAgent, true);
-    assert.equal(player.age, before.age + 1);
-    assert.equal(player.seasons.length, before.seasons + 1);
-    assert.equal(player.careerTotals.matches, before.matches);
-    assert.equal(player.weeklyWage || 0, 0);
-
-    // Mirror main.js post-period market + presentation completion.
-    const offers = generateTransferOffers(
-      seasonData.performanceScore,
-      player,
-      LEAGUES,
-      LEAGUE_LOOKUP,
-      seasonData.season?.avgMatchRating ?? null
-    );
-    player.pendingOffers = offers;
-
+  it("deterministic empty-result fixture: two periods stay empty and searchable", async () => {
+    const fixture = buildFreeAgentBrowserFixture({ mode: "empty-result" });
+    assert.equal(fixture.ok, true, fixture.reason || "empty-result fixture");
+    const player = fixture.player;
     const { showSeasonAnimation } = await import("../js/ui/seasonAnimation.js");
     const { appendSeasonCard } = await import("../js/ui/rendering.js");
-    let done = 0;
-    const presentation = showSeasonAnimation(seasonData, player, Object.keys(player.attributes), () => {
-      done += 1;
-      appendSeasonCard(player.seasons[player.seasons.length - 1], dom.ensure("season-log"), player);
-      dom.ensure("season-animation-overlay").classList.add("hidden");
-    });
-    await new Promise((r) => setTimeout(r, 10));
-    dom.ensure("continue-btn").click();
-    await presentation;
-    assert.equal(done, 1);
 
-    if (player.pendingOffers?.length) {
-      assert.equal(selectNextCareerAction(player).id, "resolve-offers");
-      assert.equal(selectNextCareerAction(player).canSimulate, false);
-    } else {
+    for (let i = 0; i < 2; i++) {
+      const before = snapshot(player);
+      assert.equal(player.pendingOffers?.length || 0, 0);
+      const seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+        pauseForDecisions: false,
+        autoDecisionPolicy: "stay",
+      });
+      assert.equal(seasonData.freeAgent, true);
+      const offers = generateTransferOffers(
+        seasonData.performanceScore,
+        player,
+        LEAGUES,
+        LEAGUE_LOOKUP,
+        seasonData.season?.avgMatchRating ?? null
+      );
+      player.pendingOffers = offers;
+      assert.equal(offers.length, 0, `period ${i + 1} must stay empty under empty-result identity`);
+
+      const presentation = showSeasonAnimation(seasonData, player, Object.keys(player.attributes), () => {
+        appendSeasonCard(player.seasons[player.seasons.length - 1], dom.ensure("season-log"), player);
+        dom.ensure("season-animation-overlay").classList.add("hidden");
+      });
+      await new Promise((r) => setTimeout(r, 10));
+      const body = dom.ensure("free-agent-recap-body").innerHTML;
+      assert.match(body, /No suitable offers arrived/i);
+      dom.ensure("continue-btn").click();
+      await presentation;
+
+      assert.equal(player.age, before.age + 1);
+      assert.equal(player.seasons.length, before.seasons + 1);
+      assert.equal(player.careerTotals.matches, before.matches);
+      assert.equal(player.weeklyWage || 0, 0);
+      assert.equal(!player.club, true);
       const next = selectNextCareerAction(player);
       assert.equal(next.id, "free-agent");
       assert.equal(next.canSimulate, true);
     }
-
-    const card = dom.ensure("season-log").children[0];
-    const html = `${card?._header?.innerHTML || ""}${card?._summary?.innerHTML || ""}${card?._stats?.innerHTML || ""}`;
-    assert.match(html, /Free agent/i);
-    assert.doesNotMatch(html, /undefined|NaN/i);
-    assert.doesNotMatch(html, /0\.00/);
   });
 
   it("two successive empty periods produce two history entries without trapping overlay", async () => {
@@ -233,31 +227,9 @@ describe("free-agent UI soft-lock", () => {
     assert.notEqual(player.seasons[0].seasonId, player.seasons[1].seasonId);
   });
 
-  it("offers after a free-agent period block next simulation until resolved; decline restores search", async () => {
+  it("offers after a free-agent period block next simulation until resolved; decline restores search", () => {
     const fixture = buildFreeAgentBrowserFixture({ mode: "offers" });
-    if (!fixture.ok) {
-      // Market calibration can yield empty — fall back to forced generation probe.
-      const player = makeReleasedPlayer({ age: 24, rating: 86, potential: 90, seed: 17 });
-      const seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
-        pauseForDecisions: false,
-        autoDecisionPolicy: "stay",
-      });
-      const offers = generateTransferOffers(95, player, LEAGUES, LEAGUE_LOOKUP, null);
-      player.pendingOffers = offers;
-      if (!offers.length) {
-        assert.ok(true, "skipped: no validated offers in market for this seed");
-        return;
-      }
-      assert.equal(selectNextCareerAction(player).canSimulate, false);
-      declineWindowAndContinue(player, { choiceId: "decline-window" });
-      player.pendingOffers = [];
-      const next = selectNextCareerAction(player);
-      assert.equal(next.id, "free-agent");
-      assert.equal(next.canSimulate, true);
-      assert.equal(player.seasons.filter((s) => s.freeAgent).length, 1);
-      return;
-    }
-
+    assert.equal(fixture.ok, true, fixture.reason || "offers fixture must establish validated offers");
     const player = fixture.player;
     assert.ok(player.pendingOffers.length > 0);
     assert.equal(selectNextCareerAction(player).id, "resolve-offers");
@@ -274,10 +246,7 @@ describe("free-agent UI soft-lock", () => {
 
   it("accepting a suitable free-agent offer uses the deal pipeline once", () => {
     const fixture = buildFreeAgentBrowserFixture({ mode: "signed" });
-    if (!fixture.ok) {
-      assert.ok(true, `skipped signed fixture: ${fixture.reason}`);
-      return;
-    }
+    assert.equal(fixture.ok, true, fixture.reason || "signed fixture must establish a contract");
     assert.ok(fixture.player.club);
     assert.ok(fixture.player.weeklyWage > 0);
     assert.equal(isFreeAgent(fixture.player), false);
@@ -400,8 +369,8 @@ describe("free-agent UI soft-lock", () => {
     assert.equal(completions, 0);
   });
 
-  it("older thin free-agent records render without undefined/NaN/fake rating", async () => {
-    const { appendSeasonCard } = await import("../js/ui/rendering.js");
+  it("older thin free-agent records render without undefined/NaN/fake rating or borrowed current age", async () => {
+    const { appendSeasonCard, renderSeasonLog } = await import("../js/ui/rendering.js");
     const log = dom.ensure("season-log");
     const thin = {
       seasonId: "free-agent-1",
@@ -418,15 +387,88 @@ describe("free-agent UI soft-lock", () => {
       freeAgentReason: "contract-expired",
       avgMatchRating: null,
     };
-    const player = { startYear: 2026, age: 28, seasons: [thin] };
-    appendSeasonCard(thin, log, player);
-    const card = log.children[0];
-    const html = `${card._header.innerHTML}${card._summary.innerHTML}${card._stats.innerHTML}`;
+    const withAge = {
+      ...thin,
+      seasonId: "free-agent-2",
+      seasonNumber: 2,
+      year: 2031,
+      age: 29,
+    };
+    const player = { startYear: 2026, age: 28, seasons: [thin, withAge] };
+    renderSeasonLog(player, log);
+    let html = log.children.map((c) => `${c._header.innerHTML}${c._summary.innerHTML}${c._stats.innerHTML}`).join("\n");
     assert.match(html, /Free agent/i);
     assert.match(html, /No league fixtures/i);
+    assert.match(html, /Age unavailable/);
+    assert.match(html, /Age 29/);
     assert.doesNotMatch(html, /undefined|NaN/i);
     assert.doesNotMatch(html, />0\.00</);
-    assert.match(html, /0 appearances/);
+
+    player.age = 41;
+    renderSeasonLog(player, log);
+    html = log.children.map((c) => `${c._header.innerHTML}`).join("\n");
+    assert.match(html, /Age unavailable/);
+    assert.match(html, /Age 29/);
+    assert.doesNotMatch(html, /Age 41/);
+  });
+
+  it("standings panel does not relabel prior club table as a free-agent campaign", async () => {
+    const { renderStandings } = await import("../js/ui/rendering.js");
+    const board = dom.ensure("standings-board");
+    const clubTable = [
+      { position: 1, name: "Como", displayName: "Como", points: 70, clubId: "club:italy:como" },
+      { position: 2, name: "Other", displayName: "Other", points: 60, clubId: "club:other" },
+    ];
+    const player = {
+      age: 28,
+      seasons: [
+        {
+          seasonNumber: 1,
+          age: 27,
+          matches: 20,
+          clubDisplay: "Como",
+          league: "Serie A",
+          freeAgent: false,
+        },
+        {
+          seasonId: "free-agent-2",
+          seasonNumber: 2,
+          year: 2027,
+          age: 28,
+          freeAgent: true,
+          club: null,
+          clubName: "Free agent",
+          league: null,
+          matches: 0,
+        },
+      ],
+      latestStanding: {
+        league: "Serie A",
+        leagueDisplay: "Serie A",
+        seasonNumber: 1,
+        table: clubTable,
+        playerRow: clubTable[0],
+      },
+    };
+
+    renderStandings(player, board);
+    assert.equal(board.children.length, 1);
+    assert.match(board.children[0].textContent, /No league fixtures during this period/i);
+    assert.doesNotMatch(board.children[0].textContent || "", /Season 2/);
+    // Underlying historical table must remain stored.
+    assert.equal(player.latestStanding.table, clubTable);
+    assert.equal(player.latestStanding.seasonNumber, 1);
+
+    // After the club season (before FA), real standings still show with source season.
+    // Minimal DOM cannot finish league-table rows; caption is appended first.
+    player.seasons = [player.seasons[0]];
+    try {
+      renderStandings(player, board);
+    } catch {
+      /* table host querySelectorAll not fully shimmed */
+    }
+    assert.match(board.children[0].textContent || "", /Serie A - Season 1/);
+    assert.doesNotMatch(board.children[0].textContent || "", /No league fixtures/);
   });
 
   it("injected async presentation failure recovers without unhandled rejection", async () => {

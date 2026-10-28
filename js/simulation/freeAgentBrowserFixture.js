@@ -4,12 +4,17 @@
  * exercise Train/search without playing many seasons or editing console state.
  *
  * Modes:
- * - empty (default): released, no pending offers/decisions — search available
+ * - empty (default): released, no pending offers at load — search available
+ * - empty-result: same desk, but careerId chosen so post-period market review
+ *   stays empty under current production recruitment (assert, don't force)
  * - offers: released with validated free-agent offers ready to review
  * - retire-41: age 41 free agent — next search reaches the age-42 retirement path
  * - signed: already accepted a permanent offer — next season is ordinary club play
  * - expiry-club: under a 1-year deal so the next completed club season releases the player
  */
+
+/** Deterministic identity that yields zero offers after FA search at default OVR. */
+export const FREE_AGENT_EMPTY_RESULT_CAREER_ID = "free-agent-ui-empty-2";
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
 import { createPlayerIdentity } from "./playerDevelopment.js";
 import { createWorldState, setWorldState } from "./worldState.js";
@@ -114,13 +119,16 @@ function releaseReady(player) {
 
 /**
  * @param {object} [opts]
- * @param {"empty"|"offers"|"retire-41"|"signed"|"expiry-club"} [opts.mode]
+ * @param {"empty"|"empty-result"|"offers"|"retire-41"|"signed"|"expiry-club"} [opts.mode]
  */
 export function buildFreeAgentBrowserFixture(opts = {}) {
   const mode = opts.mode || "empty";
   const cfg = {
     ...FREE_AGENT_FIXTURE,
     ...opts,
+    careerId:
+      opts.careerId ??
+      (mode === "empty-result" ? FREE_AGENT_EMPTY_RESULT_CAREER_ID : FREE_AGENT_FIXTURE.careerId),
     age: opts.age ?? (mode === "retire-41" ? 41 : FREE_AGENT_FIXTURE.age),
     rating: opts.rating ?? (mode === "offers" || mode === "signed" ? 84 : FREE_AGENT_FIXTURE.rating),
     potential: opts.potential ?? (mode === "offers" || mode === "signed" ? 88 : FREE_AGENT_FIXTURE.potential),
@@ -209,15 +217,16 @@ export function buildFreeAgentBrowserFixture(opts = {}) {
     };
   }
 
-  // empty market desk
+  // empty / empty-result desk (no pending offers at load)
   player.pendingOffers = [];
   ensureTransferSave(player);
   return {
     ok: true,
-    mode: "empty",
+    mode: mode === "empty-result" ? "empty-result" : "empty",
     player,
     offers: [],
     freeAgent: isFreeAgent(player),
+    careerId: player.careerId,
     nextAction: selectNextCareerAction(player),
   };
 }

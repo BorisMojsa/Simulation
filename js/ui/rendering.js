@@ -209,11 +209,8 @@ function appendFreeAgentSeasonCard(season, seasonLogEl, player) {
     : Number.isFinite(season.year)
       ? `Year ${season.year}`
       : "Free-agent period";
-  const ageLabel = Number.isFinite(season.age)
-    ? `Age ${season.age}`
-    : Number.isFinite(player?.age)
-      ? `Age ${player.age}`
-      : "Age —";
+  // Never fall back to the live player age — that rewrites older cards on redraw.
+  const ageLabel = Number.isFinite(season.age) ? `Age ${season.age}` : "Age unavailable";
   const clubLabel = season.clubDisplay || season.clubName || "Free agent";
   const yearLabel = freeAgentYearLabel(season, player);
   const matches = Number(season.matches) || 0;
@@ -933,7 +930,27 @@ function standingsBadgeHtml(team) {
 
 export function renderStandings(player, standingsBoard) {
   standingsBoard.innerHTML = "";
-  if (!player || !player.seasons.length || !player.latestStanding) {
+  if (!player || !player.seasons.length) {
+    const note = document.createElement("p");
+    note.className = "empty-state";
+    note.textContent = "Standings appear after you simulate a season with league fixtures.";
+    standingsBoard.appendChild(note);
+    return;
+  }
+
+  const latestSeason = player.seasons[player.seasons.length - 1];
+  // Free-agent periods keep latestStanding for history, but must not relabel that
+  // prior club table as a new league campaign for the current period.
+  if (isFreeAgentSeasonRecord(latestSeason)) {
+    const note = document.createElement("p");
+    note.className = "empty-state";
+    note.dataset.standingsState = "no-league-fixtures";
+    note.textContent = "No league fixtures during this period.";
+    standingsBoard.appendChild(note);
+    return;
+  }
+
+  if (!player.latestStanding) {
     const note = document.createElement("p");
     note.className = "empty-state";
     note.textContent = "Standings appear after you simulate a season with league fixtures.";
@@ -942,9 +959,14 @@ export function renderStandings(player, standingsBoard) {
   }
 
   const { league, leagueDisplay, table, playerRow } = player.latestStanding;
+  const sourceSeasonNumber = Number.isFinite(latestSeason?.seasonNumber)
+    ? latestSeason.seasonNumber
+    : Number.isFinite(player.latestStanding.seasonNumber)
+      ? player.latestStanding.seasonNumber
+      : player.seasons.filter((s) => !isFreeAgentSeasonRecord(s)).length || player.seasons.length;
   const caption = document.createElement("div");
   caption.className = "standings-summary";
-  caption.textContent = `${leagueDisplay ?? league} - Season ${player.seasons.length}`;
+  caption.textContent = `${leagueDisplay ?? league} - Season ${sourceSeasonNumber}`;
   standingsBoard.appendChild(caption);
 
   const host = document.createElement("div");

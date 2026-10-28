@@ -797,6 +797,8 @@ function finishOfferWindow(accepted, offer) {
     if (fixture === "free-agent" || fixture === "free-agent-empty") {
       const mode = params.get("mode") || "empty";
       queueMicrotask(() => window.__loadFreeAgentBrowserFixture?.({ mode }));
+    } else if (fixture === "free-agent-empty-result") {
+      queueMicrotask(() => window.__loadFreeAgentBrowserFixture?.({ mode: "empty-result" }));
     } else if (fixture === "free-agent-offers") {
       queueMicrotask(() => window.__loadFreeAgentBrowserFixture?.({ mode: "offers" }));
     } else if (fixture === "free-agent-signed") {

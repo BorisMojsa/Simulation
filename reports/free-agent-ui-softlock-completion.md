@@ -4,7 +4,8 @@
 
 - **Working branch:** `fix/01-free-agent-ui-softlock`
 - **Starting commit:** `50fd6cfb9d614bd10da0f4e16a0a40df0bd601d2` (`main`, audited baseline)
-- **Not pushed.** Local review only.
+- **Previously reviewed push:** `50140f5633b2b79cb9b1ed17e46c97d6767a4339`
+- **Follow-up status:** F01–F04 repairs committed and pushed for review. Do not merge until independent sign-off.
 
 ## Confirmed cause
 
@@ -16,52 +17,58 @@
 2. Compact “Free-agent period complete” recap + enabled Continue; match/dashboard/award phases stay hidden.
 3. Continue closes the overlay once, redraws history authoritatively, regenerates desk controls, and syncs the next action via `selectNextCareerAction`.
 4. Async presentation returns a handled promise; missing club-season data and render failures recover the desk without re-simulating or regenerating offers.
-5. New free-agent history records include truthful `seasonNumber` / `age` / display labels; older thin records render safely without `undefined` / `NaN` / fake `0.00` ratings.
+5. New free-agent history records include truthful `seasonNumber` / `age` / display labels; older thin records render “Age unavailable” instead of borrowing current age.
+6. When the latest completed record is a free-agent period, the standings panel shows “No league fixtures during this period.” Historical `latestStanding` is preserved; a final club season that releases the player still shows its real table.
 
 Gameplay unchanged: one season per action, no fabricated league, recruitment thresholds untouched, zero offers still valid.
+
+## Follow-up repairs (review F01–F04)
+
+| Finding | Repair |
+| --- | --- |
+| F01 checklist bypass | Removed forced overlay `hidden` / `onclick` completion fallback. Club season must finish via skip/Continue/scenario UI or fail on timeout. Page errors fail acceptance. Retirement requires `isRetired` **and** simulate disabled **and** both overlays closed. |
+| F02 standings relabel | `renderStandings` classifies from the latest season record; FA periods get the no-fixtures empty state. |
+| F03 thin age fallback | `appendFreeAgentSeasonCard` uses stored `season.age` or “Age unavailable”. |
+| F04 empty market | New `empty-result` fixture (`careerId: free-agent-ui-empty-2`) and URL; Flow 1/2 assert genuine zero offers after review. |
 
 ## Changed files
 
 | File | Purpose |
 | --- | --- |
 | `js/ui/seasonAnimation.js` | Free-agent recap dispatch, promise/error contract, final Continue await |
-| `main.js` | In-flight guard, await presentation, recovery, idempotent history finish, fixtures |
-| `js/ui/rendering.js` | Free-agent history card branch + competitions empty copy |
+| `main.js` | In-flight guard, await presentation, recovery, idempotent history finish, fixtures incl. empty-result |
+| `js/ui/rendering.js` | FA history cards, age fallback, standings no-fixtures for latest FA period |
 | `js/simulation/contractLifecycle.js` | Truthful metadata on new free-agent period records |
-| `js/simulation/freeAgentBrowserFixture.js` | Deterministic released-player fixtures |
+| `js/simulation/freeAgentBrowserFixture.js` | Deterministic fixtures incl. `empty-result` / `FREE_AGENT_EMPTY_RESULT_CAREER_ID` |
 | `index.html` / `style.css` | Free-agent recap section + styling |
-| `qa/repro-free-agent-softlock.html` | Updated success criteria (recap + Continue, not “visible overlay = lock”) |
-| `tests/freeAgentUiSoftlock.test.mjs` | Node regressions against production presentation path |
-| `tests/helpers/minimalDom.mjs` | Minimal DOM shim for presentation tests |
-| `scripts/browserFreeAgentSoftlock.mjs` | Real Chrome acceptance script |
+| `qa/repro-free-agent-softlock.html` | Updated success criteria |
+| `tests/freeAgentUiSoftlock.test.mjs` | Soft-lock + empty-result + age/standings regressions |
+| `tests/helpers/minimalDom.mjs` | Minimal DOM shim (`dataset`, `innerHTML` clears children) |
+| `scripts/browserFreeAgentSoftlock.mjs` | Soft-lock browser smoke |
+| `scripts/browserFreeAgentChecklist.mjs` | Six-flow acceptance without overlay bypass; empty-result flows |
 
 ## Fixture entry points (Boris checklist)
-
-Serve the repo root, then open:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-| Checklist item | URL / command | Expected |
+| Checklist item | URL | Expected |
 | --- | --- | --- |
-| Empty free agent desk | http://127.0.0.1:8000/?fixture=free-agent&mode=empty | Free agent / No club, wage 0, button “Train / search as free agent” |
+| Genuine empty-result market | http://127.0.0.1:8000/?fixture=free-agent-empty-result | Free agent; two searches stay at 0 offers; search re-enabled without decline |
+| Empty desk (offers may appear after search) | http://127.0.0.1:8000/?fixture=free-agent&mode=empty | Desk starts empty; market after search is not asserted empty |
 | Offers ready | http://127.0.0.1:8000/?fixture=free-agent-offers | Pending offers, simulate disabled |
 | Already signed | http://127.0.0.1:8000/?fixture=free-agent-signed | Club registered, ordinary next season |
-| Age-41 retirement | http://127.0.0.1:8000/?fixture=free-agent-retire | Age 41; one search → age 42 retirement path, no stuck recap |
+| Age-41 retirement | http://127.0.0.1:8000/?fixture=free-agent-retire | Age 41; one search → age 42 retirement; both overlays close |
 | Expiry club season | http://127.0.0.1:8000/?fixture=free-agent-expiry | Under contract; next club season uses ordinary playback |
 
-Or in the console after load: `window.__loadFreeAgentBrowserFixture({ mode: "empty" })`.
-
-Debug snapshot: `window.__getLiveCareerDebug()`.
-
-Standalone animation contract page: http://127.0.0.1:8000/qa/repro-free-agent-softlock.html
+Console: `window.__loadFreeAgentBrowserFixture({ mode: "empty-result" })`.  
+Debug: `window.__getLiveCareerDebug()`.  
+Standalone: http://127.0.0.1:8000/qa/repro-free-agent-softlock.html
 
 ## Commands run
 
 ```bash
-node --test tests/freeAgentUiSoftlock.test.mjs
-
 node --test --test-reporter=tap \
   tests/contractLifecycle.test.mjs \
   tests/browserFlowSmoke.test.mjs \
@@ -72,63 +79,53 @@ node --test --test-reporter=tap \
 
 node --test tests/*.test.mjs
 
-# Browser (requires system Chrome + playwright-core)
-npm install --no-save playwright-core
-node scripts/browserFreeAgentSoftlock.mjs
+python3 -m http.server 8000
+# other terminal — system Chrome + playwright-core:
+BASE_URL=http://127.0.0.1:8000 node scripts/browserFreeAgentChecklist.mjs
+# optional: CHROME_PATH=/path/to/chrome
 ```
 
-## Test results
+## Test results (follow-up revalidation)
 
-| Suite | Result |
-| --- | --- |
-| `tests/freeAgentUiSoftlock.test.mjs` | **12/12 pass** |
-| Focused existing + new (above) | **29/29 pass** |
-| Full `tests/*.test.mjs` | **68 pass, 1 fail** |
-| Real browser (`scripts/browserFreeAgentSoftlock.mjs`) | **PASS** |
+| Suite | Result | Notes |
+| --- | --- | --- |
+| Focused existing + new | **30/30 pass** | All subtests executed; none skipped |
+| Full `tests/*.test.mjs` | **69 pass, 1 fail** | Fail is baseline `playerAbility` only |
+| Browser checklist | **PASS** | All six flows; `pageErrors: []` |
 
 ### Unrelated full-suite failure
 
-`tests/playerAbility.test.mjs` fails **alone** on this baseline (`development: annual cap…`, `academy growth…`). Not introduced by this branch; no player-ability / growth files were changed.
+`tests/playerAbility.test.mjs` fails alone on the original baseline (annual development cap / academy allowance). Not introduced by this branch; growth logic was not changed.
 
-### Real browser
+### Browser acceptance evidence (corrected harness)
 
-Yes — Google Chrome was launched via Playwright Core against `http://127.0.0.1:8000`.
+| Flow | Outcome |
+| --- | --- |
+| 1 Genuine empty-result | age 27→28, history 1, offers 0, search enabled, FA label |
+| 2 Second empty-result search | age →29, history 2, offers 0, no decline needed |
+| 3 Double-click empty-result | one period / one history card |
+| 4a Decline offers | no age/period advance; search restored |
+| 4b Accept → club season | ordinary playback; overlay closed via UI; history 1; overview age matches; guard cleared; Eintracht Frankfurt |
+| 5 Expiry → FA search | club season then FA recap on subsequent search |
+| 6 Retirement | age 42, `isRetired`, simulate disabled, both overlays closed |
 
-Automated checklist (`scripts/browserFreeAgentChecklist.mjs`) **PASS** for all six Boris acceptance flows:
+Screenshots: `qa/screenshots/checklist-free-agent/` (fresh final-run set).
 
-1. Empty free agent → recap → Continue → age +1, history +1, wage/apps unchanged  
-2. Search again 3× → readable history, no `undefined`/`NaN`  
-3. Double-click search/Continue → still one period / one history card  
-4. Offers → decline (no time advance) → restart → accept → Bundesliga club season (not FA recap)  
-5. Expiry fixture → club season matches/results → later Train/search shows FA recap only then  
-6. Age-41 → 42 retirement, no stuck overlay  
+Distinctions required by review:
 
-Page errors / unhandled rejections: none.
-
-## Before / after trace (empty free-agent action)
-
-| Field | Before click | After engine (before Continue) | After Continue |
-| --- | --- | --- | --- |
-| Age | 27 | 28 | 28 |
-| Period count | 0 | 1 | 1 |
-| Career matches/goals/assists/CS | 0 | 0 | 0 |
-| Wage | 0 | 0 | 0 |
-| Pending offers | 0 | market-dependent (0 or more) | unchanged until declined/accepted |
-| Completion count | 0 | 0 (recap waiting) | 1 |
-| Overlay | hidden | visible free-agent recap | hidden |
-| Next action | free-agent / canSimulate | blocked while overlay open | offers → resolve-offers; else free-agent |
-
-## Contract-expiry / age-42 outcomes
-
-- **Result classification:** a completed club season with league data is never treated as a free-agent recap, even if the player is released afterward.
-- **Age 41 → search:** advances to 42; `maybeAutoRetire()` takes the retirement path; free-agent recap is not left open; simulation stays disabled when retired.
+- **Engine state committed** — seasons/age/totals asserted from `__getLiveCareerDebug`.
+- **Presentation finished through real controls** — skip/Continue/scenario/retirement buttons only; no forced overlay hide.
+- **Visible desk/history refreshed** — history card count and overview age match committed state; “No seasons yet” rejected after club season.
+- **Unexpected browser errors absent** — soft page errors fail the run.
+- **Tests executed vs skipped** — Node offer/signed fixtures hard-fail if they cannot establish state; no `assert.ok(true, "skipped…")`.
 
 ## Remaining limitations
 
-- Browser acceptance uses system Chrome + locally installed `playwright-core` (`node_modules/` already gitignored). Sandboxed CI without Chrome will skip this until those prerequisites exist.
-- Prolonged unemployment / offer frequency is unchanged (out of scope).
-- Awards / Europe / growth backlog items are untouched.
+- Browser acceptance needs system Chrome + locally installed `playwright-core`.
+- Prolonged unemployment / offer frequency unchanged (out of scope).
+- Awards / Europe / growth backlog untouched.
+- `empty-result` identity is calibrated against current recruitment; if calibration drifts, replace with another explicit deterministic fixture rather than accepting offers.
 
 ## Handoff
 
-Ready for Boris local review and push. Independent sign-off should compare the pushed commit against `50fd6cfb…` using this report and the fixture URLs above. Do not merge from this agent session.
+Follow-up changes are on `fix/01-free-agent-ui-softlock` for independent sign-off. Do not merge or start the next backlog item from this session.

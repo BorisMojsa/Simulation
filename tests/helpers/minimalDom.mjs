@@ -41,6 +41,18 @@ export class FakeElement {
     this.attributes = {};
     this.parentNode = null;
     this.content = null;
+    this.dataset = new Proxy(
+      {},
+      {
+        set: (target, prop, value) => {
+          const attr = `data-${String(prop).replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
+          this.attributes[attr] = String(value);
+          target[prop] = String(value);
+          return true;
+        },
+        get: (target, prop) => target[prop],
+      }
+    );
   }
 
   get textContent() {
@@ -49,6 +61,19 @@ export class FakeElement {
   set textContent(v) {
     this._text = v == null ? "" : String(v);
     this.innerHTML = this._text;
+  }
+
+  get innerHTML() {
+    return this._innerHTML ?? "";
+  }
+  set innerHTML(v) {
+    this._innerHTML = v == null ? "" : String(v);
+    if (this._innerHTML === "") {
+      this.children = [];
+      this._text = "";
+    } else {
+      this._text = this._innerHTML;
+    }
   }
 
   get className() {

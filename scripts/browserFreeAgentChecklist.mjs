@@ -59,10 +59,16 @@ async function debug(page) {
     const d = window.__getLiveCareerDebug?.() || null;
     const logEl = document.getElementById("season-log");
     const cards = [...(logEl?.querySelectorAll(".season-card") || [])];
+    const overviewText = document.querySelector(".player-summary")?.innerText || "";
+    const overviewAgeMatch = overviewText.match(/(\d+)\s*yrs/i);
+    const retirementEl = document.getElementById("retirement-animation-overlay");
+    const scenarioEl = document.getElementById("senior-scenario-overlay");
     return {
       debug: d,
       historyCount: cards.length,
       historyText: logEl?.innerText || "",
+      overviewText,
+      overviewAge: overviewAgeMatch ? Number(overviewAgeMatch[1]) : null,
       simulateLabel: document.getElementById("simulate-btn")?.textContent || null,
       simulateDisabled: Boolean(document.getElementById("simulate-btn")?.disabled),
       overlayHidden: document.getElementById("season-animation-overlay")?.classList.contains("hidden"),
@@ -71,6 +77,8 @@ async function debug(page) {
       matchHidden: document.getElementById("match-viewer-section")?.classList.contains("hidden"),
       dashboardHidden: document.getElementById("simulation-dashboard")?.classList.contains("hidden"),
       careerHidden: document.getElementById("career-section")?.classList.contains("hidden"),
+      retirementOverlayHidden: !retirementEl || retirementEl.classList.contains("hidden"),
+      scenarioOverlayHidden: !scenarioEl || scenarioEl.classList.contains("hidden"),
     };
   });
 }
@@ -113,136 +121,98 @@ async function clickContinue(page) {
   );
 }
 
+async function runEmptyResultSearch(page, label) {
+  const before = await debug(page);
+  assert(before.debug?.freeAgent || !before.debug?.club, `${label}: free agent`, before);
+  assert((before.debug?.weeklyWage || 0) === 0, `${label}: wage 0`, before);
+  assert(before.simulateDisabled === false, `${label}: search enabled`, before);
+  assert(/free agent/i.test(before.simulateLabel || ""), `${label}: FA button label`, before);
+  assert((before.debug?.pendingOffers || []).length === 0, `${label}: no pending offers before search`, before);
+
+  await clickSearch(page);
+  await waitRecap(page);
+  const mid = await debug(page);
+  assert(mid.recapHidden === false, `${label}: recap visible`, mid);
+  assert(mid.continueVisible === true, `${label}: Continue visible`, mid);
+  assert(mid.matchHidden === true, `${label}: no match playback`, mid);
+  const offerCopy = await page.evaluate(
+    () => document.querySelector(".free-agent-recap-offers")?.textContent || ""
+  );
+  assert(/No suitable offers arrived/i.test(offerCopy), `${label}: empty-offer recap copy`, { offerCopy, mid });
+
+  await clickContinue(page);
+  const after = await debug(page);
+  note(`${label} after Continue`, {
+    age: after.debug?.age,
+    history: after.historyCount,
+    offers: after.debug?.pendingOffers?.length,
+    simulateDisabled: after.simulateDisabled,
+    label: after.simulateLabel,
+  });
+  assert(after.overlayHidden, `${label}: overlay closed via Continue`, after);
+  assert(after.careerHidden === false, `${label}: desk visible`, after);
+  assert(after.debug?.age === before.debug.age + 1, `${label}: age +1`, after);
+  assert(after.historyCount === before.historyCount + 1, `${label}: history +1`, after);
+  assert(after.debug?.seasons === (before.debug?.seasons || 0) + 1, `${label}: engine periods +1`, after);
+  assert((after.debug?.pendingOffers || []).length === 0, `${label}: market still empty`, after);
+  assert(after.simulateDisabled === false, `${label}: search re-enabled without decline`, after);
+  assert(/free agent/i.test(after.simulateLabel || ""), `${label}: FA search label`, after);
+  assert(!after.debug?.club, `${label}: still no club`, after);
+  assert((after.debug?.weeklyWage || 0) === 0, `${label}: wage 0`, after);
+  assert(
+    (after.debug?.careerTotals?.matches || 0) === (before.debug?.careerTotals?.matches || 0),
+    `${label}: matches unchanged`,
+    after
+  );
+  assert(
+    (after.debug?.careerTotals?.goals || 0) === (before.debug?.careerTotals?.goals || 0),
+    `${label}: goals unchanged`,
+    after
+  );
+  assert(
+    (after.debug?.careerTotals?.assists || 0) === (before.debug?.careerTotals?.assists || 0),
+    `${label}: assists unchanged`,
+    after
+  );
+  assert(!/undefined|NaN/.test(after.historyText), `${label}: history readable`, after);
+  assert(after.debug?.seasonActionInFlight === false, `${label}: action guard cleared`, after);
+  return after;
+}
+
 async function flow1_emptyNoOffers(page) {
-  note("FLOW 1 start: free agent with no offers");
-  await loadFixture(page, "?fixture=free-agent&mode=empty");
+  note("FLOW 1 start: genuine empty-result market (careerId free-agent-ui-empty-2)");
+  await loadFixture(page, "?fixture=free-agent-empty-result");
   const before = await debug(page);
   note("FLOW 1 before", {
     age: before.debug?.age,
     history: before.historyCount,
     wage: before.debug?.weeklyWage,
-    club: before.debug?.club,
     totals: before.debug?.careerTotals,
   });
-  assert(before.debug?.freeAgent || !before.debug?.club, "should be free agent", before);
-  assert((before.debug?.weeklyWage || 0) === 0, "wage 0", before);
-  assert(before.simulateDisabled === false, "search enabled", before);
-
-  await clickSearch(page);
-  await waitRecap(page);
-  const mid = await debug(page);
-  note("FLOW 1 recap", {
-    age: mid.debug?.age,
-    history: mid.historyCount,
-    recapHidden: mid.recapHidden,
-    continueVisible: mid.continueVisible,
-    matchHidden: mid.matchHidden,
-  });
-  assert(mid.recapHidden === false, "recap visible", mid);
-  assert(mid.continueVisible === true, "Continue visible", mid);
-  assert(mid.matchHidden === true, "no match playback", mid);
-  assert(mid.debug?.age === before.debug.age + 1, "age +1 before continue", mid);
-  assert(mid.debug?.seasons === (before.debug?.seasons || 0) + 1, "engine period +1", mid);
-
-  await clickContinue(page);
-  const after = await debug(page);
-  note("FLOW 1 after Continue", {
-    age: after.debug?.age,
-    history: after.historyCount,
-    wage: after.debug?.weeklyWage,
-    club: after.debug?.club,
-    totals: after.debug?.careerTotals,
-    overlayHidden: after.overlayHidden,
-    simulateDisabled: after.simulateDisabled,
-    offers: after.debug?.pendingOffers?.length,
-  });
-  assert(after.overlayHidden, "overlay closed", after);
-  assert(after.careerHidden === false, "career desk visible", after);
-  assert(after.debug?.age === before.debug.age + 1, "age +1 exactly", after);
-  assert(after.historyCount === before.historyCount + 1, "history +1 exactly", after);
-  assert((after.debug?.weeklyWage || 0) === 0, "still no wage", after);
-  assert(!after.debug?.club, "still no club", after);
-  assert(
-    (after.debug?.careerTotals?.matches || 0) === (before.debug?.careerTotals?.matches || 0),
-    "matches unchanged",
-    after
-  );
-  assert(
-    (after.debug?.careerTotals?.goals || 0) === (before.debug?.careerTotals?.goals || 0),
-    "goals unchanged",
-    after
-  );
-  assert(
-    (after.debug?.careerTotals?.assists || 0) === (before.debug?.careerTotals?.assists || 0),
-    "assists unchanged",
-    after
-  );
-  assert(!/undefined|NaN/.test(after.historyText), "history readable", after);
+  const after = await runEmptyResultSearch(page, "FLOW 1");
   await shot(page, "01-empty-after-continue");
   return after;
 }
 
 async function flow2_searchAgain(page, prior) {
-  note("FLOW 2 start: search again 2–3 times");
-  // Ensure searching is available (decline offers if market produced any).
-  let state = prior || (await debug(page));
-  for (let attempt = 0; attempt < 3; attempt++) {
-    state = await debug(page);
-    if ((state.debug?.pendingOffers || []).length > 0) {
-      note("FLOW 2 declining offers before search", { offers: state.debug.pendingOffers.length });
-      const clicked = await page.evaluate(() => {
-        const btn = [...document.querySelectorAll("#transfer-offers button")].find((b) =>
-          /continue as free agent/i.test(b.textContent || "")
-        );
-        if (!btn) return false;
-        btn.click();
-        return true;
-      });
-      assert(clicked, "decline/continue-as-FA button present", state);
-      await waitFor(page, () => {
-        const btn = document.getElementById("simulate-btn");
-        return btn && !btn.disabled;
-      });
-    }
-    state = await debug(page);
-    assert(state.simulateDisabled === false, `search available attempt ${attempt + 1}`, state);
-    const beforeAge = state.debug.age;
-    const beforeHist = state.historyCount;
-    await clickSearch(page);
-    await waitRecap(page);
-    await clickContinue(page);
-    const after = await debug(page);
-    note(`FLOW 2 attempt ${attempt + 1}`, {
-      ageBefore: beforeAge,
-      ageAfter: after.debug?.age,
-      histBefore: beforeHist,
-      histAfter: after.historyCount,
-    });
-    assert(after.debug.age === beforeAge + 1, "age +1", after);
-    assert(after.historyCount === beforeHist + 1, "history +1", after);
-    assert(!/undefined|NaN/.test(after.historyText), "no undefined/NaN", after);
-    // Readable year/age markers
-    assert(/Age\s+\d+/i.test(after.historyText) || /Period\s+\d+/i.test(after.historyText), "age/period labels", after);
-    state = after;
+  note("FLOW 2 start: second consecutive empty-result search");
+  // empty-result identity stays empty for two completed periods (ages 28 then 29).
+  // Flow 1 already completed period 1 — do exactly one more from that desk.
+  if (!prior || (prior.debug?.pendingOffers || []).length > 0 || (prior.debug?.seasons || 0) !== 1) {
+    await loadFixture(page, "?fixture=free-agent-empty-result");
+    await runEmptyResultSearch(page, "FLOW 2 seed period 1");
   }
+  const state = await runEmptyResultSearch(page, "FLOW 2");
+  assert(/Age\s+\d+/i.test(state.historyText) || /Period\s+\d+/i.test(state.historyText), "age/period labels", state);
+  assert(state.historyCount === 2, "FLOW 2: two visible empty-result periods", state);
   await shot(page, "02-search-again");
   return state;
 }
 
 async function flow3_doubleClicks(page) {
-  note("FLOW 3 start: repeated clicks");
-  await loadFixture(page, "?fixture=free-agent&mode=empty");
-  // Clear any offers path by ensuring empty simulate
+  note("FLOW 3 start: repeated clicks on empty-result fixture");
+  await loadFixture(page, "?fixture=free-agent-empty-result");
   let state = await debug(page);
-  if ((state.debug?.pendingOffers || []).length) {
-    await page.evaluate(() => {
-      [...document.querySelectorAll("#transfer-offers button")]
-        .find((b) => /continue as free agent/i.test(b.textContent || ""))
-        ?.click();
-    });
-    await page.waitForTimeout(200);
-  }
-  state = await debug(page);
   const beforeAge = state.debug.age;
   const beforeHist = state.historyCount;
   const beforeSeasons = state.debug.seasons;
@@ -268,6 +238,7 @@ async function flow3_doubleClicks(page) {
   });
   assert(after.debug.age === beforeAge + 1, "still one year", after);
   assert(after.historyCount === beforeHist + 1, "still one history entry", after);
+  assert((after.debug?.pendingOffers || []).length === 0, "empty market after double-click path", after);
   await shot(page, "03-double-clicks");
   return after;
 }
@@ -403,73 +374,117 @@ async function flow4_offersDeclineAndAccept(page) {
   );
   await shot(page, "04b-club-season-playback");
 
-  // Ordinary club path may pause for a senior scene; resolve and finish when possible.
-  await finishClubPresentation(page);
-  for (let i = 0; i < 10; i++) {
-    const cur = await debug(page);
-    if (cur.debug?.seasonCheckpoint === "awaiting_scenario" || cur.debug?.nextAction?.id === "resolve-scenario") {
-      note("FLOW 4b resolving senior scenario pause");
-      await page.evaluate(() => {
-        const choices = [...document.querySelectorAll("#senior-scenario-choices button, #senior-scenario-next")];
-        const pick = choices.find((b) => !b.classList.contains("hidden")) || choices[0];
-        pick?.click();
-        document.getElementById("senior-scenario-next")?.click();
-      });
-      await page.waitForTimeout(400);
-      // Season may resume into dashboard again.
-      const overlayOpen = await page.evaluate(
-        () => !document.getElementById("season-animation-overlay")?.classList.contains("hidden")
-      );
-      if (overlayOpen) await finishClubPresentation(page);
-      continue;
-    }
-    if (cur.debug?.pendingDecision || (cur.debug?.pendingOffers || []).length) {
-      await page.evaluate(() => {
-        const btns = [...document.querySelectorAll("#transfer-offers button")];
-        btns
-          .find((b) => /stay|compete|acknowledge|decline offers and continue|see it out/i.test(b.textContent || ""))
-          ?.click();
-      });
-      await page.waitForTimeout(250);
-      continue;
-    }
-    break;
-  }
+  // Drive ordinary club presentation through real skip/Continue/scenario controls only.
+  // Bounded timeout fails the flow — never force-hide the overlay.
+  await driveClubSeasonToDesk(page, "FLOW 4b");
 
-  const afterClub = await debug(page);
-  note("FLOW 4b club season path result", {
-    club: afterClub.debug?.club,
-    seasons: afterClub.debug?.seasons,
-    overlayHidden: afterClub.overlayHidden,
-    history: afterClub.historyCount,
-    next: afterClub.debug?.nextAction,
-    checkpoint: afterClub.debug?.seasonCheckpoint,
-  });
-  // Soft-lock acceptance for this flow: signed club season used ordinary league playback
-  // and committed a non-free-agent season. Closing the multi-phase overlay is best-effort.
-  if (!afterClub.overlayHidden) {
-    // Don't burn two minutes here — club path already validated.
-    await page.evaluate(() => {
-      document.getElementById("season-animation-overlay")?.classList.add("hidden");
-      document.getElementById("continue-btn")?.onclick?.({ preventDefault() {}, stopPropagation() {} });
-    });
-  }
   const settled = await debug(page);
   note("FLOW 4b settled", {
     club: settled.debug?.club,
     seasons: settled.debug?.seasons,
     overlayHidden: settled.overlayHidden,
     history: settled.historyCount,
+    overviewAge: settled.overviewAge,
     totals: settled.debug?.careerTotals,
+    next: settled.debug?.nextAction,
+    checkpoint: settled.debug?.seasonCheckpoint,
+    inFlight: settled.debug?.seasonActionInFlight,
     lastFreeAgent: settled.debug?.lastSeason?.freeAgent,
   });
-  assert(settled.debug?.club === clubBefore || settled.debug?.freeAgent, "still at signed club or released after season", settled);
-  assert(settled.debug?.seasons >= 1, "club season committed", settled);
-  assert(settled.debug?.lastSeason?.freeAgent !== true, "committed season is club football, not FA recap record", settled);
-  assert((settled.debug?.careerTotals?.matches || 0) > 0, "club appearances recorded", settled);
-  Object.assign(afterClub, settled);
+  assert(settled.overlayHidden, "FLOW 4b: season overlay closed through UI", settled);
+  assert(settled.careerHidden === false, "FLOW 4b: career desk visible", settled);
+  assert(settled.scenarioOverlayHidden, "FLOW 4b: no unresolved senior scenario", settled);
+  assert(
+    !settled.debug?.seasonCheckpoint || settled.debug.seasonCheckpoint === "complete",
+    "FLOW 4b: no unresolved season checkpoint",
+    settled
+  );
+  assert(settled.debug?.seasonActionInFlight === false, "FLOW 4b: action guard cleared", settled);
+  assert(settled.debug?.seasons >= 1, "FLOW 4b: club season committed", settled);
+  assert(settled.debug?.lastSeason?.freeAgent !== true, "FLOW 4b: committed season is club football", settled);
+  assert((settled.debug?.careerTotals?.matches || 0) > 0, "FLOW 4b: club appearances recorded", settled);
+  assert(settled.historyCount === settled.debug.seasons, "FLOW 4b: visible history matches committed seasons", settled);
+  assert(settled.overviewAge === settled.debug.age, "FLOW 4b: overview age matches committed age", settled);
+  assert(settled.historyCount >= 1, "FLOW 4b: desk shows completed history (not empty)", settled);
+  assert(!/No seasons yet/i.test(settled.historyText), "FLOW 4b: history is not empty placeholder", settled);
+  assert(
+    settled.debug?.club === clubBefore || settled.debug?.freeAgent,
+    "FLOW 4b: still at signed club or released after season",
+    settled
+  );
+  const next = settled.debug?.nextAction;
+  assert(next, "FLOW 4b: next action present", settled);
+  if (next.canSimulate) {
+    assert(settled.simulateDisabled === false, "FLOW 4b: button enabled when canSimulate", settled);
+  } else {
+    assert(settled.simulateDisabled === true, "FLOW 4b: button disabled when blocked", settled);
+  }
   await shot(page, "04b-after-club-season");
-  return afterClub;
+  return settled;
+}
+
+async function driveClubSeasonToDesk(page, label, timeoutMs = 90000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const cur = await debug(page);
+    if (
+      cur.overlayHidden &&
+      cur.careerHidden === false &&
+      cur.scenarioOverlayHidden &&
+      cur.debug?.seasonActionInFlight === false &&
+      (cur.debug?.seasons || 0) >= 1 &&
+      (!cur.debug?.seasonCheckpoint || cur.debug.seasonCheckpoint === "complete")
+    ) {
+      return cur;
+    }
+
+    if (cur.debug?.seasonCheckpoint === "awaiting_scenario" || cur.debug?.nextAction?.id === "resolve-scenario") {
+      note(`${label}: resolving senior scenario via UI`);
+      await resolveSeniorScenarioIfOpen(page);
+      continue;
+    }
+
+    if (cur.debug?.pendingDecision || (cur.debug?.pendingOffers || []).length) {
+      note(`${label}: resolving desk decision/offers via UI`);
+      await page.evaluate(() => {
+        const btns = [...document.querySelectorAll("#transfer-offers button")];
+        btns
+          .find((b) =>
+            /stay|compete|acknowledge|decline offers and continue|see it out|continue as free agent/i.test(
+              b.textContent || ""
+            )
+          )
+          ?.click();
+      });
+      await page.waitForTimeout(250);
+      continue;
+    }
+
+    if (!cur.overlayHidden) {
+      try {
+        await finishClubPresentation(page, Math.min(45000, deadline - Date.now()));
+      } catch (err) {
+        // Re-check for scenario pause that appeared mid-skip.
+        if (await resolveSeniorScenarioIfOpen(page)) continue;
+        throw new Error(`${label}: ${err.message}`);
+      }
+      continue;
+    }
+
+    await page.waitForTimeout(200);
+  }
+  const snap = await debug(page);
+  throw new Error(
+    `${label}: timed out returning to career desk via real controls: ${JSON.stringify({
+      overlayHidden: snap.overlayHidden,
+      history: snap.historyCount,
+      seasons: snap.debug?.seasons,
+      checkpoint: snap.debug?.seasonCheckpoint,
+      next: snap.debug?.nextAction,
+      inFlight: snap.debug?.seasonActionInFlight,
+      scenarioHidden: snap.scenarioOverlayHidden,
+    })}`
+  );
 }
 
 function documentImpliesClubPlayback(mid) {
@@ -481,6 +496,7 @@ function documentImpliesClubPlayback(mid) {
 async function finishClubPresentation(page, timeoutMs = 45000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
+    if (timeoutMs <= 0) break;
     if (await resolveSeniorScenarioIfOpen(page)) continue;
 
     const state = await page.evaluate(() => {
@@ -490,7 +506,7 @@ async function finishClubPresentation(page, timeoutMs = 45000) {
       const contVisible = cont && !cont.classList.contains("hidden");
       const dash = document.getElementById("simulation-dashboard");
       const dashVisible = dash && !dash.classList.contains("hidden");
-      // Mash every skip control that exists — dashboard handlers are live while visible.
+      // Click only visible, enabled production controls — never force-hide the overlay.
       const clicked = [];
       for (const id of [
         "sim-skip-phase-btn",
@@ -499,18 +515,14 @@ async function finishClubPresentation(page, timeoutMs = 45000) {
         "match-skip-btn",
       ]) {
         const el = document.getElementById(id);
-        if (el && !el.disabled) {
+        if (el && !el.disabled && el.offsetParent !== null) {
           el.click();
           clicked.push(id);
         }
       }
       const contBtn = document.getElementById("continue-btn");
-      if (contVisible && contBtn) {
-        if (typeof contBtn.onclick === "function") {
-          contBtn.onclick({ preventDefault() {}, stopPropagation() {} });
-        } else {
-          contBtn.click();
-        }
+      if (contVisible && contBtn && !contBtn.disabled) {
+        contBtn.click();
         clicked.push("continue-btn");
       }
       return { hidden, contVisible, dashVisible, clicked };
@@ -518,7 +530,17 @@ async function finishClubPresentation(page, timeoutMs = 45000) {
     if (state.hidden) return;
     await page.waitForTimeout(state.clicked.length ? 120 : 250);
   }
-  throw new Error("Timed out finishing club presentation");
+  const snap = await debug(page).catch(() => null);
+  throw new Error(
+    `Timed out finishing club presentation via real controls: ${JSON.stringify({
+      overlayHidden: snap?.overlayHidden,
+      continueVisible: snap?.continueVisible,
+      dashboardHidden: snap?.dashboardHidden,
+      checkpoint: snap?.debug?.seasonCheckpoint,
+      next: snap?.debug?.nextAction,
+      inFlight: snap?.debug?.seasonActionInFlight,
+    })}`
+  );
 }
 
 async function resolveSeniorScenarioIfOpen(page) {
@@ -531,6 +553,7 @@ async function resolveSeniorScenarioIfOpen(page) {
     return { open, hasChoice: Boolean(choice), nextReady };
   });
   if (!info.open) return false;
+  if (!info.hasChoice && !info.nextReady) return false;
   if (info.hasChoice) {
     await page.evaluate(() => {
       document.querySelector("#senior-scenario-choices button:not([disabled])")?.click();
@@ -540,7 +563,7 @@ async function resolveSeniorScenarioIfOpen(page) {
   await page.waitForTimeout(100);
   await page.evaluate(() => {
     const next = document.getElementById("senior-scenario-next");
-    if (next && !next.classList.contains("hidden")) next.click();
+    if (next && !next.classList.contains("hidden") && !next.disabled) next.click();
   });
   await page.waitForTimeout(400);
   return true;
@@ -702,44 +725,52 @@ async function flow6_retirement(page) {
   assert(state.simulateDisabled === false, "can search", state);
 
   await clickSearch(page);
-  // Retirement may skip FA recap and open retirement overlay, or retire after period.
-  await page.waitForTimeout(800);
+  await waitFor(
+    page,
+    () => {
+      const d = window.__getLiveCareerDebug?.();
+      const retirement = document.getElementById("retirement-animation-overlay");
+      const retiredVisible = retirement && !retirement.classList.contains("hidden");
+      return Boolean(d && d.age === 42 && (d.isRetired || retiredVisible));
+    },
+    15000
+  );
   state = await debug(page);
   note("FLOW 6 after advance", {
     age: state.debug?.age,
     retired: state.debug?.isRetired,
     overlayHidden: state.overlayHidden,
     recapHidden: state.recapHidden,
+    retirementOverlayHidden: state.retirementOverlayHidden,
     simulateDisabled: state.simulateDisabled,
   });
   assert(state.debug?.age === 42, "reached 42", state);
 
-  // If FA recap somehow opened, Continue should still work — but expected path is retirement.
   if (state.recapHidden === false) {
     await shot(page, "06-UNEXPECTED-fa-recap-at-42");
     throw new Error("Age-42 path opened free-agent recap (should retire cleanly)");
   }
 
-  // Dismiss retirement continue if present.
-  await page.evaluate(() => {
-    const btn = document.getElementById("retirement-continue-btn");
-    if (btn && !btn.closest(".hidden")) btn.click();
-  });
-  await page.waitForTimeout(300);
+  // Legitimate retirement Continue — wait until overlay is open, then click real control.
+  if (!state.retirementOverlayHidden) {
+    await page.click("#retirement-continue-btn");
+    await waitFor(page, () => {
+      const el = document.getElementById("retirement-animation-overlay");
+      return !el || el.classList.contains("hidden");
+    }, 8000);
+  }
   state = await debug(page);
-  const retirementOverlayHidden = await page.evaluate(() => {
-    const el = document.getElementById("retirement-animation-overlay");
-    return !el || el.classList.contains("hidden");
-  });
   note("FLOW 6 final", {
     age: state.debug?.age,
     retired: state.debug?.isRetired,
     seasonOverlayHidden: state.overlayHidden,
-    retirementOverlayHidden,
+    retirementOverlayHidden: state.retirementOverlayHidden,
     simulateDisabled: state.simulateDisabled,
   });
-  assert(state.overlayHidden, "season overlay not stuck", state);
-  assert(state.debug?.isRetired === true || state.simulateDisabled === true, "retired or sim disabled", state);
+  assert(state.overlayHidden, "FLOW 6: season overlay closed", state);
+  assert(state.retirementOverlayHidden, "FLOW 6: retirement overlay closed after Continue", state);
+  assert(state.debug?.isRetired === true, "FLOW 6: isRetired true", state);
+  assert(state.simulateDisabled === true, "FLOW 6: simulate disabled after retirement", state);
   await shot(page, "06-retirement");
   return state;
 }
@@ -767,9 +798,11 @@ async function run() {
     const softErrors = pageErrors.filter(
       (e) => !/favicon|ResizeObserver|expression evaluation/i.test(e)
     );
-    if (softErrors.length) {
-      console.warn("Page errors:", softErrors);
-    }
+    assert(
+      softErrors.length === 0,
+      "unexpected page errors / unhandled rejections during acceptance",
+      { softErrors }
+    );
     console.log("\nPASS all free-agent checklist flows");
     console.log(JSON.stringify({ base: BASE, pageErrors: softErrors, shots: SHOT_DIR }, null, 2));
   } catch (err) {

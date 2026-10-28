@@ -611,6 +611,8 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
         leagueId: playingLeague.leagueId,
         table: chrono.table,
         playerRow,
+        seasonNumber: season.seasonNumber,
+        seasonId: season.seasonId || seasonId,
       }
     : null;
 
