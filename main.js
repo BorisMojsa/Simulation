@@ -4,7 +4,8 @@ import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/si
 import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=61";
 import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=81";
 import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=81";
-import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=81";
+import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=82";
+import { resolvePlayingClubAt, resolvePlayingStintAt } from "./js/simulation/playingRegistration.js?v=82";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=81";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=81";
 import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=89";
@@ -21,7 +22,7 @@ import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipT
 import {
   buildMembershipBrowserFixture,
   inspectMembershipDebug,
-} from "./js/simulation/membershipBrowserFixture.js?v=95";
+} from "./js/simulation/membershipBrowserFixture.js?v=96";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -290,6 +291,29 @@ window.__loadMembershipBrowserFixture = function loadMembershipBrowserFixture(op
 
 window.__getMembershipDebug = function getMembershipDebug() {
   return inspectMembershipDebug(player, getWorldState());
+};
+
+window.__resolvePlayingClubAt = function resolvePlayingClubAtDebug(date) {
+  if (!player) return null;
+  return resolvePlayingClubAt(player, date);
+};
+
+window.__getPlayingRegistrationDebug = function getPlayingRegistrationDebug(date = null) {
+  if (!player) return null;
+  const stints = (player.playingStints || []).map((s) => ({ ...s }));
+  const returnStint = stints.find((s) => s.kind === "loan_return" || s.kind === "loan_recall") || null;
+  const loanStint = stints.find((s) => s.onLoan && s.to != null) || stints.find((s) => s.onLoan) || null;
+  return {
+    date,
+    playingClubId: date ? resolvePlayingClubAt(player, date) : player.playingClubId,
+    stintAtDate: date ? resolvePlayingStintAt(player, date) : null,
+    returnStint,
+    loanStint,
+    stints,
+    activeLoanStatus: player.activeLoan?.status || null,
+    clubId: player.club?.clubId || null,
+    clubLeagueId: player.club?.leagueId || null,
+  };
 };
 
 window.__getLiveCareerDebug = function getLiveCareerDebug() {

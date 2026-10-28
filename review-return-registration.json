@@ -1,0 +1,38 @@
+{
+  "reviewedCommit": "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
+  "input": {
+    "mode": "ui-loan-return-ready",
+    "seed": 42
+  },
+  "parentId": "club:england:ipswich-town",
+  "borrowerId": "club:england:birmingham-city",
+  "seasonsBefore": 1,
+  "seasonsAfter": 2,
+  "loanStatus": "returned",
+  "displayedClubId": "club:england:ipswich-town",
+  "displayedLeagueId": "league:england-championship",
+  "returnStint": {
+    "stintId": "stint:loan_return:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town:2027-06-30:2",
+    "from": "2027-06-30",
+    "to": null,
+    "playingClubId": "club:england:ipswich-town",
+    "employmentClubId": "club:england:ipswich-town",
+    "leagueId": "league:england-championship",
+    "clubName": "Ipswich Town",
+    "kind": "loan_return",
+    "onLoan": false
+  },
+  "firstParentFixture": {
+    "date": "2027-08-12",
+    "home": "club:england:blackburn-rovers",
+    "away": "club:england:ipswich-town",
+    "expectedRegistration": "club:england:ipswich-town",
+    "actualRegistration": "club:england:ipswich-town"
+  },
+  "parentFixtureCount": 46,
+  "parentFixturesWithWrongRegistration": 0,
+  "playerFixtureSides": [
+    "club:england:ipswich-town"
+  ],
+  "positiveMinuteLeagueFixtures": 33
+}

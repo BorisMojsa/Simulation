@@ -432,44 +432,125 @@ async function main() {
         assert(loaded.loan?.parentWorldLeagueId === "league:england-championship", "parent already relegated", loaded);
         assert(loaded.loan?.seasonsCompleted >= 1, "borrower season completed in fixture", loaded);
         assert(loaded.loan?.loanStillActive === true, "loan still active at boundary", loaded);
-        assert(loaded.evidence?.membership?.premier === 20, "PL 20", loaded);
-        assert(loaded.evidence?.membership?.championship === 24, "CH 24", loaded);
+        const parentId = loaded.clubId;
+        const borrowerId = loaded.borrowerId;
+        assert(parentId && borrowerId, "parent/borrower ids", loaded);
         const before = await debug(page);
         assert(before?.parentClubSnapshotLeagueId === "league:england-premier-league", "debug stale snapshot", before);
-        assert(before?.seasonsCount >= 1, "seasons before return", before);
-        // Next season via production Simulate — return resolves at the boundary using live Championship.
+        // Next season via production Simulate — return + parent Championship season.
         const simLabel = await clickSimulate(page);
         const returned = await waitFor(
           page,
           () => {
             const d = window.__getLiveCareerDebug?.() || {};
             const m = window.__getMembershipDebug?.() || {};
+            const reg = window.__getPlayingRegistrationDebug?.();
             const league = m.clubLeagueId || d.clubLeagueId;
             const loanDone = d.activeLoan?.status === "returned" || !d.activeLoan;
-            if (league === "league:england-championship" && loanDone) {
-              return { league, loanStatus: d.activeLoan?.status || "cleared", membership: m.membership };
+            if (league === "league:england-championship" && loanDone && reg?.returnStint?.from) {
+              return {
+                league,
+                loanStatus: d.activeLoan?.status || "cleared",
+                membership: m.membership,
+                returnFrom: reg.returnStint.from,
+                returnClubId: reg.returnStint.playingClubId,
+              };
             }
             return null;
           },
           120000
         );
-        // Advance dashboard enough for a meaningful screenshot of the returned registration.
-        const skip = await clickMatching(page, "skip remaining|skip match|^skip$");
-        if (skip) await page.waitForTimeout(400);
+        assert(returned?.returnFrom, "return stint recorded", returned);
+        assert(
+          String(returned.returnFrom) <= "2027-08-12",
+          "return on/before first parent fixture",
+          returned
+        );
+        assert(returned.returnClubId === parentId, "return stint is parent", returned);
+
+        const skip = await clickMatching(page, "skip remaining|skip phase");
+        assert(skip, "skip remaining required to progress returned season", { returned, simLabel });
+        await page.waitForTimeout(500);
+
+        // Inspect a real dated parent fixture and its registration side.
+        const fixtureProbe = await page.evaluate((ids) => {
+          const world = window.__getMembershipDebug?.();
+          const regApi = window.__getPlayingRegistrationDebug;
+          const resolve = window.__resolvePlayingClubAt;
+          // Pull first Championship fixture involving the parent from live career debug / standings context.
+          const d = window.__getLiveCareerDebug?.() || {};
+          const matches = d.recentLeagueFixtures || d.leagueFixtures || [];
+          let sample = matches.find(
+            (m) =>
+              m?.date &&
+              [m.home?.clubId || m.homeClubId, m.away?.clubId || m.awayClubId].includes(ids.parentId)
+          );
+          if (!sample) {
+            // Fallback: ask registration debug alone with the known first CH date window.
+            const probeDate = "2027-08-12";
+            return {
+              date: probeDate,
+              expected: ids.parentId,
+              actual: resolve?.(probeDate) || null,
+              reg: regApi?.(probeDate) || null,
+              source: "date-fallback",
+              membership: world?.membership || null,
+            };
+          }
+          const date = sample.date;
+          const home = sample.home?.clubId || sample.homeClubId;
+          const away = sample.away?.clubId || sample.awayClubId;
+          return {
+            date,
+            home,
+            away,
+            expected: ids.parentId,
+            actual: resolve?.(date) || null,
+            reg: regApi?.(date) || null,
+            source: "live-fixture",
+            membership: world?.membership || null,
+          };
+        }, { parentId, borrowerId });
+
+        assert(fixtureProbe?.date, "dated parent fixture required", fixtureProbe);
+        assert(
+          fixtureProbe.actual === parentId,
+          "registration on fixture date must be parent",
+          fixtureProbe
+        );
+        assert(
+          fixtureProbe.actual !== borrowerId,
+          "must not remain registered to borrower after return",
+          fixtureProbe
+        );
+        assert(
+          String(returned.returnFrom) <= String(fixtureProbe.date),
+          "return boundary <= fixture date",
+          { returned, fixtureProbe }
+        );
+
         const m = await membership(page);
         const d = await debug(page);
-        assert(returned?.league === "league:england-championship", "returned league", returned);
-        assert(
-          m?.clubLeagueId === "league:england-championship" ||
-            d?.clubLeagueId === "league:england-championship",
-          "returned to parent's current Championship",
-          { m, d, before, returned, loaded }
-        );
-        assert(!d?.parentClubSnapshotLeagueId, "snapshot cleared after return", d);
-        assert(m?.membership?.premier === 20, "PL 20", m);
-        assert(m?.membership?.championship === 24, "CH 24", m);
+        const reg = await page.evaluate(() => window.__getPlayingRegistrationDebug?.());
+        assert(m?.clubLeagueId === "league:england-championship", "Championship label", m);
+        assert(m?.membership?.premier === 20 && m?.membership?.championship === 24, "capacities", m);
+        assert(!d?.parentClubSnapshotLeagueId, "snapshot cleared", d);
+        assert(reg?.returnStint?.playingClubId === parentId, "return stint parent", reg);
         const shotPath = await shot(page, "07-moved-parent-loan-return");
-        return { loaded, before, simLabel, returned, skip, membership: m, debug: d, shotPath, commit, dirty };
+        return {
+          loaded,
+          before,
+          simLabel,
+          returned,
+          skip,
+          fixtureProbe,
+          registration: reg,
+          membership: m,
+          debug: d,
+          shotPath,
+          commit,
+          dirty,
+        };
       })
     )
   );

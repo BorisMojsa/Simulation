@@ -1,10 +1,10 @@
 {
-  "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
+  "commit": "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
   "dirtyWorkingTree": true,
   "testedSource": "working-tree-uncommitted",
   "baseUrl": "http://127.0.0.1:8000",
   "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "generatedAt": "2026-10-28T16:04:44.222Z",
+  "generatedAt": "2026-10-28T16:29:09.865Z",
   "results": [
     {
       "name": "promotion-ui-simulate",
@@ -246,7 +246,7 @@
           "seasonsCount": 1
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/01-promotion-next-pl.png",
-        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
+        "commit": "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
         "dirty": true,
         "consoleErrors": []
       }
@@ -377,7 +377,7 @@
           "seasonsCount": 1
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/02-relegation-next-ch.png",
-        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
+        "commit": "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
         "dirty": true,
         "consoleErrors": []
       }
@@ -473,7 +473,7 @@
           "clubLeagueId": "league:england-championship"
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/03-midtable-zones.png",
-        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
+        "commit": "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
         "dirty": true,
         "consoleErrors": []
       }
@@ -1087,7 +1087,7 @@
           "clubLeagueId": "league:england-premier-league"
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/04-offer-loan.png",
-        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
+        "commit": "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
         "dirty": true,
         "consoleErrors": []
       }
@@ -362501,7 +362501,7 @@
         },
         "skip": "Skip remaining",
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/05-pause-skip-continue.png",
-        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
+        "commit": "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
         "dirty": true,
         "consoleErrors": []
       }
@@ -363137,7 +363137,7 @@
           "clubLeagueId": "league:england-premier-league"
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/06-snapshot-history.png",
-        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
+        "commit": "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
         "dirty": true,
         "consoleErrors": []
       }
@@ -363374,9 +363374,161 @@
           "membership": {
             "premier": 20,
             "championship": 24
-          }
+          },
+          "returnFrom": "2027-06-30",
+          "returnClubId": "club:england:ipswich-town"
         },
         "skip": "Skip remaining",
+        "fixtureProbe": {
+          "date": "2027-08-12",
+          "expected": "club:england:ipswich-town",
+          "actual": "club:england:ipswich-town",
+          "reg": {
+            "date": "2027-08-12",
+            "playingClubId": "club:england:ipswich-town",
+            "stintAtDate": {
+              "stintId": "stint:loan_return:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town:2027-06-30:2",
+              "from": "2027-06-30",
+              "to": null,
+              "playingClubId": "club:england:ipswich-town",
+              "employmentClubId": "club:england:ipswich-town",
+              "leagueId": "league:england-championship",
+              "clubName": "Ipswich Town",
+              "kind": "loan_return",
+              "onLoan": false
+            },
+            "returnStint": {
+              "stintId": "stint:loan_return:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town:2027-06-30:2",
+              "from": "2027-06-30",
+              "to": null,
+              "playingClubId": "club:england:ipswich-town",
+              "employmentClubId": "club:england:ipswich-town",
+              "leagueId": "league:england-championship",
+              "clubName": "Ipswich Town",
+              "kind": "loan_return",
+              "onLoan": false
+            },
+            "loanStint": {
+              "stintId": "stint:loan_start:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:birmingham-city:2026-07-15:1",
+              "from": "2026-07-15",
+              "to": "2027-06-30",
+              "playingClubId": "club:england:birmingham-city",
+              "employmentClubId": "club:england:ipswich-town",
+              "leagueId": "league:england-championship",
+              "clubName": "Birmingham City",
+              "kind": "loan_start",
+              "onLoan": true
+            },
+            "stints": [
+              {
+                "stintId": "stint:seed:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town",
+                "from": "2026-07-01",
+                "to": "2026-07-15",
+                "playingClubId": "club:england:ipswich-town",
+                "employmentClubId": "club:england:ipswich-town",
+                "leagueId": "league:england-premier-league",
+                "clubName": "Ipswich Town",
+                "kind": "seed",
+                "onLoan": false
+              },
+              {
+                "stintId": "stint:loan_start:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:birmingham-city:2026-07-15:1",
+                "from": "2026-07-15",
+                "to": "2027-06-30",
+                "playingClubId": "club:england:birmingham-city",
+                "employmentClubId": "club:england:ipswich-town",
+                "leagueId": "league:england-championship",
+                "clubName": "Birmingham City",
+                "kind": "loan_start",
+                "onLoan": true
+              },
+              {
+                "stintId": "stint:loan_return:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town:2027-06-30:2",
+                "from": "2027-06-30",
+                "to": null,
+                "playingClubId": "club:england:ipswich-town",
+                "employmentClubId": "club:england:ipswich-town",
+                "leagueId": "league:england-championship",
+                "clubName": "Ipswich Town",
+                "kind": "loan_return",
+                "onLoan": false
+              }
+            ],
+            "activeLoanStatus": "returned",
+            "clubId": "club:england:ipswich-town",
+            "clubLeagueId": "league:england-championship"
+          },
+          "source": "date-fallback",
+          "membership": {
+            "premier": 20,
+            "championship": 24
+          }
+        },
+        "registration": {
+          "date": null,
+          "playingClubId": "club:england:ipswich-town",
+          "stintAtDate": null,
+          "returnStint": {
+            "stintId": "stint:loan_return:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town:2027-06-30:2",
+            "from": "2027-06-30",
+            "to": null,
+            "playingClubId": "club:england:ipswich-town",
+            "employmentClubId": "club:england:ipswich-town",
+            "leagueId": "league:england-championship",
+            "clubName": "Ipswich Town",
+            "kind": "loan_return",
+            "onLoan": false
+          },
+          "loanStint": {
+            "stintId": "stint:loan_start:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:birmingham-city:2026-07-15:1",
+            "from": "2026-07-15",
+            "to": "2027-06-30",
+            "playingClubId": "club:england:birmingham-city",
+            "employmentClubId": "club:england:ipswich-town",
+            "leagueId": "league:england-championship",
+            "clubName": "Birmingham City",
+            "kind": "loan_start",
+            "onLoan": true
+          },
+          "stints": [
+            {
+              "stintId": "stint:seed:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town",
+              "from": "2026-07-01",
+              "to": "2026-07-15",
+              "playingClubId": "club:england:ipswich-town",
+              "employmentClubId": "club:england:ipswich-town",
+              "leagueId": "league:england-premier-league",
+              "clubName": "Ipswich Town",
+              "kind": "seed",
+              "onLoan": false
+            },
+            {
+              "stintId": "stint:loan_start:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:birmingham-city:2026-07-15:1",
+              "from": "2026-07-15",
+              "to": "2027-06-30",
+              "playingClubId": "club:england:birmingham-city",
+              "employmentClubId": "club:england:ipswich-town",
+              "leagueId": "league:england-championship",
+              "clubName": "Birmingham City",
+              "kind": "loan_start",
+              "onLoan": true
+            },
+            {
+              "stintId": "stint:loan_return:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town:2027-06-30:2",
+              "from": "2027-06-30",
+              "to": null,
+              "playingClubId": "club:england:ipswich-town",
+              "employmentClubId": "club:england:ipswich-town",
+              "leagueId": "league:england-championship",
+              "clubName": "Ipswich Town",
+              "kind": "loan_return",
+              "onLoan": false
+            }
+          ],
+          "activeLoanStatus": "returned",
+          "clubId": "club:england:ipswich-town",
+          "clubLeagueId": "league:england-championship"
+        },
         "membership": {
           "membership": {
             "premier": 20,
@@ -363473,7 +363625,7 @@
             {
               "stintId": "stint:loan_start:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:birmingham-city:2026-07-15:1",
               "from": "2026-07-15",
-              "to": "2028-06-30",
+              "to": "2027-06-30",
               "playingClubId": "club:england:birmingham-city",
               "employmentClubId": "club:england:ipswich-town",
               "leagueId": "league:england-championship",
@@ -363482,8 +363634,8 @@
               "onLoan": true
             },
             {
-              "stintId": "stint:loan_return:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town:2028-06-30:2",
-              "from": "2028-06-30",
+              "stintId": "stint:loan_return:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town:2027-06-30:2",
+              "from": "2027-06-30",
               "to": null,
               "playingClubId": "club:england:ipswich-town",
               "employmentClubId": "club:england:ipswich-town",
@@ -363553,7 +363705,7 @@
           "dealBookingGuard": null
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/07-moved-parent-loan-return.png",
-        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
+        "commit": "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
         "dirty": true,
         "consoleErrors": []
       }
@@ -363929,7 +364081,7 @@
         },
         "faShot": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/08-fix01-free-agent-continue.png",
         "ownShot": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/09-fix02-ownership-continue.png",
-        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
+        "commit": "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
         "dirty": true,
         "consoleErrors": []
       }

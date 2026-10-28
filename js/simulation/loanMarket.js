@@ -549,8 +549,7 @@ export function endLoan(player, resolution = "return", opts = {}) {
   player.parentClubSnapshot = null;
   if (!player.consumedTransitionIds) player.consumedTransitionIds = [];
   player.consumedTransitionIds.push(settleId);
-  const returnDate =
-    opts.effectiveDate || opts.date || loan.endDate || `${(player.startYear || 2026) + completedSeasons(player) + 1}-06-30`;
+  const returnDate = resolveLoanReturnEffectiveDate(player, loan, opts);
   ensurePlayingStints(player, { asOfDate: returnDate });
   recordPlayingTransition(player, {
     effectiveDate: returnDate,
@@ -561,7 +560,23 @@ export function endLoan(player, resolution = "return", opts = {}) {
     kind: opts.recall ? "loan_recall" : "loan_return",
     onLoan: false,
   });
-  return { ok: true, resolution: "return" };
+  return { ok: true, resolution: "return", effectiveDate: returnDate };
+}
+
+/**
+ * Authoritative loan-return registration date.
+ * Prefer an explicit caller/loan date; otherwise use the summer boundary after
+ * the seasons already completed (not +1 — that pushed returns a year late).
+ */
+export function resolveLoanReturnEffectiveDate(player, loan, opts = {}) {
+  const explicit = opts.effectiveDate || opts.date || opts.asOfDate || null;
+  if (explicit) return String(explicit);
+  if (loan?.endDate) return String(loan.endDate);
+  const completed = completedSeasons(player);
+  const startYear = player?.startYear || 2026;
+  // After N completed seasons the summer boundary is startYear+N-06-30
+  // (e.g. start 2026, 1 season done → 2027-06-30, before 2027/28 fixtures).
+  return `${startYear + completed}-06-30`;
 }
 
 export function recallLoan(player, dateKey = null) {

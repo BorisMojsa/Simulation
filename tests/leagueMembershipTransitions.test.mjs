@@ -52,11 +52,12 @@ import { simulateSeason } from "../js/simulation/seasonSimulator.js";
 import { buildDestinationLeagueSchedule } from "../js/simulation/destinationSchedule.js";
 import { allSeniorClubs, findSeniorClubById } from "../js/simulation/seniorClubs.js";
 import { resetClubFinanceLedgers } from "../js/simulation/clubFinance.js";
-import { ensurePlayingStints } from "../js/simulation/playingRegistration.js";
+import { ensurePlayingStints, resolvePlayingClubAt } from "../js/simulation/playingRegistration.js";
 import { roundTripCareerSnapshot } from "../js/simulation/careerSnapshot.js";
 import { applyOfferToPlayer, buildValidatedOffer } from "../js/simulation/dealPipeline.js";
-import { startLoan, endLoan } from "../js/simulation/loanMarket.js";
+import { startLoan, endLoan, resolveLoanReturnEffectiveDate } from "../js/simulation/loanMarket.js";
 import { applyContractExpiryAtBoundary } from "../js/simulation/contractLifecycle.js";
+import { buildMembershipBrowserFixture } from "../js/simulation/membershipBrowserFixture.js";
 
 const PL = LEAGUE_BY_ID.get("league:england-premier-league");
 const CH = LEAGUE_BY_ID.get("league:england-championship");
@@ -867,6 +868,143 @@ test("R3 cross-country move still transitions the source pair", () => {
   });
   assert.equal(again.ok, true);
   assert.equal(world.membershipTransitions.size >= 1, true);
+});
+
+test("loan return registration opens on the actual season boundary", () => {
+  const fixture = buildMembershipBrowserFixture({ mode: "ui-loan-return-ready", seed: 42 });
+  assert.equal(fixture.ok, true, fixture.reason);
+  assert.equal(fixture.loan.loanStillActive, true);
+  const player = fixture.player;
+  const parentId = fixture.clubId;
+  const borrowerId = fixture.borrowerId;
+  const borrowerHistoryBefore = JSON.parse(JSON.stringify(player.playingStints || []));
+  const seasonsBefore = player.seasons.length;
+
+  // Snapshot while loan still active.
+  const snap = roundTripCareerSnapshot({ player, world: getWorldState() });
+  assert.equal(snap.player.activeLoan?.status, "active");
+  assert.equal(snap.player.parentClubSnapshot?.leagueId, PL.leagueId);
+
+  const result = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: false,
+    autoDecisionPolicy: "stay",
+  });
+  assert.ok(result.season, "returned season must finish");
+  assert.equal(player.activeLoan?.status, "returned");
+  assert.equal(player.club?.clubId, parentId);
+  assert.equal(player.club?.leagueId, CH.leagueId);
+
+  const returnStint = (player.playingStints || []).find((s) => s.kind === "loan_return");
+  assert.ok(returnStint, "loan_return stint required");
+  assert.equal(returnStint.from <= "2027-08-12", true, `return ${returnStint.from} must precede first fixture`);
+  assert.equal(returnStint.from, "2027-06-30");
+
+  const parentFixtures = (result.leagueAllMatches || [])
+    .filter((m) => [m.home?.clubId, m.away?.clubId].includes(parentId))
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  assert.equal(parentFixtures.length, 46);
+  const first = parentFixtures[0];
+  assert.ok(first);
+  assert.equal(resolvePlayingClubAt(player, first.date), parentId);
+  for (const m of parentFixtures) {
+    assert.equal(
+      resolvePlayingClubAt(player, m.date),
+      parentId,
+      `wrong registration on ${m.date}`
+    );
+  }
+  for (const m of result.leaguePlayerMatches || []) {
+    const sideId = m.playerSide === "home" ? m.home?.clubId : m.away?.clubId;
+    if (m.playerSide) assert.equal(sideId, parentId);
+    if ((m.playerStats?.minutes || 0) > 0) assert.equal(sideId, parentId);
+  }
+  const positive = (result.leaguePlayerMatches || []).filter((m) => (m.playerStats?.minutes || 0) > 0);
+  assert.ok(positive.length > 0, "healthy parent season must yield minutes");
+  assert.equal(result.leagueAllMatches?.length, 552);
+
+  // Pre-return borrower history preserved (closed stint still names borrower).
+  const loanStint = (player.playingStints || []).find(
+    (s) => s.playingClubId === borrowerId && s.from === "2026-07-15"
+  );
+  assert.ok(loanStint);
+  assert.equal(loanStint.to, returnStint.from);
+  assert.equal(borrowerHistoryBefore.some((s) => s.playingClubId === borrowerId), true);
+
+  // Explicit agreed endDate is respected.
+  assert.equal(
+    resolveLoanReturnEffectiveDate({ startYear: 2026, seasons: [{}, {}] }, { endDate: "2027-01-15" }, {}),
+    "2027-01-15"
+  );
+  assert.equal(
+    resolveLoanReturnEffectiveDate({ startYear: 2026, seasons: [{}] }, { endSeason: 1 }, {}),
+    "2027-06-30"
+  );
+
+  // Repeat return is idempotent — no duplicate settlement / season bump.
+  const again = endLoan(player, "return", { effectiveDate: returnStint.from });
+  assert.equal(again.ok, true);
+  assert.equal(again.duplicate, true);
+  assert.equal(player.seasons.length, seasonsBefore + 1);
+  assert.equal((player.playingStints || []).filter((s) => s.kind === "loan_return").length, 1);
+  void snap;
+});
+
+test("same-league loan return never attaches post-return borrower appearances", () => {
+  const { p, world, club } = setupPlayer(PL, "Ipswich Town", { seed: 501 });
+  forceMove(p, PL, 20, world);
+  assert.equal(resolveClubLeagueMetadata(club.clubId, world)?.leagueId, CH.leagueId);
+  const parentId = club.clubId;
+  const borrowerId = world.leagueMemberships.get(CH.leagueId).find((id) => id !== parentId);
+  assert.ok(borrowerId);
+  const borrower = findSeniorClubById(borrowerId);
+  p.club = { ...findSeniorClubById(parentId), ...resolveClubLeagueMetadata(parentId, world) };
+  p.employmentClubId = parentId;
+  p.playingClubId = parentId;
+  p.seasons = [];
+  const accepted = startLoan(p, {
+    isLoan: true,
+    wage: 4000,
+    expectedRole: "starter",
+    clubId: borrower.clubId,
+    club: borrower,
+    loanTerms: {
+      loanId: "fix03-same-league-loan",
+      borrowingClubId: borrower.clubId,
+      parentClubId: parentId,
+      borrowerWageShare: 0.5,
+      parentWageShare: 0.5,
+      loanFee: 0,
+      endSeason: 1,
+      startDate: "2026-07-15",
+    },
+  });
+  assert.equal(accepted.ok, true, String(accepted.reason));
+  const borrowerSeason = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: false,
+    autoDecisionPolicy: "stay",
+  });
+  assert.ok(borrowerSeason.season);
+  assert.equal(p.activeLoan?.status, "active");
+  const next = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: false,
+    autoDecisionPolicy: "stay",
+  });
+  assert.ok(next.season);
+  assert.equal(p.activeLoan?.status, "returned");
+  const returnStint = (p.playingStints || []).find((s) => s.kind === "loan_return");
+  assert.ok(returnStint);
+  assert.ok(returnStint.from <= String(next.leagueAllMatches?.[0]?.date || "2027-08-01"));
+  for (const m of next.leaguePlayerMatches || []) {
+    const sideId = m.playerSide === "home" ? m.home?.clubId : m.away?.clubId;
+    if (!m.playerSide) continue;
+    assert.notEqual(sideId, borrowerId, `post-return borrower side on ${m.date}`);
+    assert.equal(sideId, parentId);
+  }
+  const positiveBorrowerAfter = (next.leaguePlayerMatches || []).filter((m) => {
+    const sideId = m.playerSide === "home" ? m.home?.clubId : m.away?.clubId;
+    return sideId === borrowerId && (m.playerStats?.minutes || 0) > 0;
+  });
+  assert.equal(positiveBorrowerAfter.length, 0);
 });
 
 console.log(process.exitCode ? "Some membership tests failed." : "All membership transition tests passed.");

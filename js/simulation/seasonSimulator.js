@@ -172,7 +172,13 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     player.activeLoan.endSeason != null &&
     (player.seasons?.length ?? 0) >= player.activeLoan.endSeason
   ) {
-    endLoan(player, isFreeAgent(player) || !assertPlayableRegistration(player).ok ? "expiry" : "return");
+    const boundaryYear = (player.startYear || 2026) + (player.seasons?.length ?? 0);
+    const boundaryDate = `${boundaryYear}-06-30`;
+    endLoan(
+      player,
+      isFreeAgent(player) || !assertPlayableRegistration(player).ok ? "expiry" : "return",
+      { effectiveDate: boundaryDate, seasonBoundary: true }
+    );
   }
 
   // Free agent / expired: no club football — train/wait and open a market review.
