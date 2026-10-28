@@ -3,6 +3,7 @@ import { cupConfigForNation } from "../data/domesticCups.js";
 import { LEAGUES } from "../data/leagues.js";
 import { getSimRng } from "./rng.js";
 import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./worldState.js";
+import { resolveValidatedClubSide } from "./playingRegistration.js";
 
 function nextPowerOfTwo(n) {
   let p = 1;
@@ -129,16 +130,45 @@ export function prepareDomesticCupBracket(league, player) {
   }
 
   clubs = arrangeBracketWithByes(rng.shuffle(clubs), bracketSize, rng);
+  const playerClubId = player.playingClubId || player.club?.clubId || null;
   return {
     config,
     remaining: clubs,
     playerName: player.club.name,
+    playerClubId,
+    playerAttached: true,
     playerMatches: [],
     allRounds: [],
     rounds: [],
     eliminatedRound: null,
     finished: false,
   };
+}
+
+/**
+ * Rebind cup attachment after a club move without resetting the bracket.
+ * Destination must still be in remaining; otherwise detach the user.
+ */
+export function rebindDomesticCupAttachment(state, player) {
+  if (!state || state.finished) return state;
+  const destId = player?.playingClubId || player?.club?.clubId || null;
+  const destName = player?.club?.name || null;
+  if (!destId && !destName) {
+    state.playerAttached = false;
+    return state;
+  }
+  const stillIn = (state.remaining || []).some(
+    (c) => c && !c.isBye && (c.clubId === destId || c.name === destName)
+  );
+  if (stillIn) {
+    state.playerClubId = destId;
+    state.playerName = destName;
+    state.playerAttached = true;
+    state.eliminatedRound = null;
+  } else {
+    state.playerAttached = false;
+  }
+  return state;
 }
 
 /**
@@ -155,6 +185,7 @@ export function simulateDomesticCupRound(state, { player, date = null, matchProc
 
   let remaining = state.remaining;
   const playerName = state.playerName;
+  const playerClubId = state.playerClubId || null;
   const size = remaining.length;
   if (size % 2 === 1) throw new Error(`Domestic cup invalid odd field ${size}`);
   const label = roundLabelForSize(size);
@@ -209,8 +240,35 @@ export function simulateDomesticCupRound(state, { player, date = null, matchProc
       continue;
     }
 
-    const playerInTie = a.name === playerName || b.name === playerName;
-    const playerSide = a.name === playerName ? "home" : b.name === playerName ? "away" : null;
+    // Attachment: dated registration must match a participant. Frozen playerName alone is insufficient.
+    let playerSide = null;
+    if (state.playerAttached !== false && player) {
+      playerSide = resolveValidatedClubSide({
+        player,
+        home: a,
+        away: b,
+        date,
+        teamType: "club",
+      });
+    } else if (state.playerAttached !== false && !player) {
+      // Finalization drain without live player: never invent user effects.
+      playerSide = null;
+    }
+    // Legacy name match only when IDs missing and still attached to that club name.
+    if (
+      !playerSide &&
+      state.playerAttached !== false &&
+      player &&
+      (player.playingClubId || player.club?.clubId) &&
+      playerClubId &&
+      (a.clubId === playerClubId || b.clubId === playerClubId)
+    ) {
+      playerSide = a.clubId === playerClubId ? "home" : "away";
+      const validated = resolveValidatedClubSide({ player, home: a, away: b, date, teamType: "club" });
+      if (validated !== playerSide) playerSide = null;
+    }
+
+    const playerInTie = Boolean(playerSide);
     let match;
     let processorResult = null;
     if (playerInTie && typeof matchProcessor === "function") {
@@ -222,9 +280,13 @@ export function simulateDomesticCupRound(state, { player, date = null, matchProc
         label,
       });
       match = processorResult.match;
+      if (processorResult.playerSide === null) {
+        // Hard gate cleared attachment — treat as world-only.
+        playerSide = null;
+      }
     } else {
       match = simulateMatch(a, b, {
-        playerSide,
+        playerSide: playerInTie ? playerSide : null,
         player: playerInTie ? player : null,
         competition: "cup",
         worldState: world,
@@ -238,12 +300,13 @@ export function simulateDomesticCupRound(state, { player, date = null, matchProc
     match.round = label;
     match.cupName = state.config.name;
     match.date = date;
+    match.playerSide = playerSide;
 
     const winner = match.winnerSide === "home" ? a : b;
     next.push(winner);
     roundMatches.push(match);
 
-    if (playerInTie) {
+    if (playerSide) {
       state.playerMatches.push(match);
       const qualified =
         (playerSide === "home" && match.winnerSide === "home") ||
@@ -258,8 +321,19 @@ export function simulateDomesticCupRound(state, { player, date = null, matchProc
         qualified,
         match,
       });
-      if (winner.name !== playerName) state.eliminatedRound = label;
+      const winnerIsPlayer =
+        (playerSide === "home" && match.winnerSide === "home") ||
+        (playerSide === "away" && match.winnerSide === "away");
+      if (!winnerIsPlayer) state.eliminatedRound = label;
       if (processorResult) state.lastProcessorResult = processorResult;
+    } else if (
+      // Focus-club world path: track elimination of attached identity without user stats.
+      state.playerAttached !== false &&
+      playerName &&
+      (a.name === playerName || b.name === playerName) &&
+      winner.name !== playerName
+    ) {
+      state.eliminatedRound = label;
     }
   }
 
@@ -271,12 +345,19 @@ export function simulateDomesticCupRound(state, { player, date = null, matchProc
 
 function finalizeCupState(state) {
   const winnerClub = state.remaining[0];
-  const won = winnerClub?.name === state.playerName;
+  const winningClubId = winnerClub?.clubId || null;
+  // Focus/attachment identity for campaign display — career honors need entitlement separately.
+  const focusWon =
+    state.playerAttached !== false &&
+    Boolean(winnerClub) &&
+    (winnerClub.clubId
+      ? winnerClub.clubId === state.playerClubId
+      : winnerClub.name === state.playerName);
   const finalMatch = state.allRounds.find((r) => r.round === "Final")?.matches?.[0] || null;
   let result = state.rounds.length
     ? state.rounds[state.rounds.length - 1].round
     : roundLabelForSize(Math.max(2, state.allRounds[0]?.matches?.length * 2 || 2));
-  if (won) result = "Winners";
+  if (focusWon) result = "Winners";
   else if (state.eliminatedRound === "Final") result = "Finalists";
   else if (state.eliminatedRound) result = state.eliminatedRound;
 
@@ -284,7 +365,9 @@ function finalizeCupState(state) {
     name: state.config.name,
     shortName: state.config.shortName,
     result,
-    won,
+    won: focusWon,
+    winningClubId,
+    playerClubId: state.playerClubId || null,
     rounds: state.rounds,
     playerMatches: state.playerMatches,
     allRounds: state.allRounds,

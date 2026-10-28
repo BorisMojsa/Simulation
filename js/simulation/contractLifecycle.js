@@ -14,6 +14,7 @@ import { findSeniorClub, findSeniorClubById } from "./seniorClubs.js";
 import { evaluateSportingFit } from "./recruitmentModel.js";
 import { releaseWageCommitment, weeklyToAnnual, getOrInitClubSeasonFinance } from "./clubFinance.js";
 import { safePlayerOverall } from "./playerOverallSafe.js";
+import { ensurePlayingStints, recordPlayingTransition } from "./playingRegistration.js";
 
 /** Local copy of renewal interest — avoid circular import with transferMarket. */
 function calculateRenewalInterest(player, performanceScore) {
@@ -102,6 +103,7 @@ export function ensureContractAuthority(player) {
   if (!player.playingClubId && player.club?.clubId) {
     player.playingClubId = player.club.clubId;
   }
+  ensurePlayingStints(player);
 
   if (!Number.isFinite(player.weeklyWage) && Number.isFinite(player.wage)) {
     player.weeklyWage = player.wage;
@@ -333,6 +335,15 @@ export function releaseToFreeAgency(player, reason = "contract-expired") {
   }
 
   // Preserve history — do not wipe seasons.
+  const releaseDate = `${(player.startYear || 2026) + completedSeasons(player)}-06-30`;
+  ensurePlayingStints(player, { asOfDate: releaseDate });
+  recordPlayingTransition(player, {
+    effectiveDate: releaseDate,
+    playingClubId: null,
+    employmentClubId: null,
+    kind: "release",
+    onLoan: false,
+  });
   player.club = null;
   player.employmentClubId = null;
   player.playingClubId = null;

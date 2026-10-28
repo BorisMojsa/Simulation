@@ -17,6 +17,7 @@ import {
 } from "./js/simulation/contractLifecycle.js?v=81";
 import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=81";
 import { buildFreeAgentBrowserFixture } from "./js/simulation/freeAgentBrowserFixture.js?v=90";
+import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipTransferBrowserFixture.js?v=91";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -213,8 +214,40 @@ window.__loadFreeAgentBrowserFixture = function loadFreeAgentBrowserFixture(opts
   };
 };
 
+window.__loadOwnershipTransferBrowserFixture = function loadOwnershipTransferBrowserFixture(opts = {}) {
+  const result = buildOwnershipTransferBrowserFixture(opts);
+  if (!result.ok) {
+    console.error("Ownership transfer fixture failed:", result.reason, result);
+    return result;
+  }
+  player = result.player;
+  dealBookingGuard = null;
+  ensureContractAuthority(player);
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  const note = document.createElement("p");
+  note.className = "empty-state";
+  note.textContent =
+    "Ownership QA: Arsenal mid-season review with a Brentford permanent offer. Accept to verify cup/continental detachment.";
+  transferContainer?.prepend(note);
+  syncSimulateButton();
+  simulateBtn.disabled = true;
+  return {
+    ok: true,
+    fromClubId: result.fromClubId,
+    toClubId: result.toClubId,
+    offerCount: result.offers?.length ?? 0,
+    playingClubId: player.playingClubId,
+    employmentClubId: player.employmentClubId,
+    checkpointDate: player.seasonCheckpoint?.lastDate,
+  };
+};
+
 window.__getLiveCareerDebug = function getLiveCareerDebug() {
   if (!player) return null;
+  const last = player.seasons?.[player.seasons.length - 1] || null;
   return {
     name: player.name,
     age: player.age,
@@ -222,6 +255,11 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
     clubId: player.club?.clubId,
     employmentClubId: player.employmentClubId,
     playingClubId: player.playingClubId,
+    playingStints: player.playingStints || [],
+    seasonsCount: player.seasons?.length ?? 0,
+    careerHonors: player.careerHonors ? { ...player.careerHonors } : null,
+    lastSeasonHonors: last?.honors || null,
+    lastSeasonTrophies: last?.trophies || null,
     weeklyWage: player.weeklyWage,
     contractEndSeason: player.contractEndSeason,
     rating: player.rating,
@@ -809,6 +847,8 @@ function finishOfferWindow(accepted, offer) {
       queueMicrotask(() => window.__loadFreeAgentBrowserFixture?.({ mode: "expiry-club" }));
     } else if (fixture === "live-loan") {
       queueMicrotask(() => window.__loadLiveLoanBrowserFixture?.());
+    } else if (fixture === "ownership-transfer") {
+      queueMicrotask(() => window.__loadOwnershipTransferBrowserFixture?.());
     }
   } catch (err) {
     console.warn("Fixture boot skipped:", err);

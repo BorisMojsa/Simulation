@@ -20,6 +20,15 @@ import {
   nextOpenRegistration,
   REGISTRATION_RULE_VERSION,
 } from "../data/registrationWindows.js";
+import { resolvePlayingClubAt, isPendingRegistrationBlocking } from "./playingRegistration.js";
+
+function isContinentalChronoEvent(ev) {
+  return (
+    ev?.kind === "continental" ||
+    ev?.kind === "continental_md" ||
+    ev?.kind === "continental_fixture"
+  );
+}
 
 function roundRobinFixtures(clubs) {
   const fixtures = [];
@@ -189,10 +198,13 @@ export function reconcileAfterClubChange({
 
   const sameLeague = previousLeagueId && previousLeagueId === destLeagueId;
   // Same-league moves keep the existing remaining league events; only swap participation via club id.
+  // Keep continental_md world ticks; drop player-only continental_fixture slots for the departed club
+  // (attachment is also enforced at play time). Cup rounds stay — attachment rebinds separately.
   if (sameLeague) {
     const head = ordered.slice(0, eventIndex + 1);
     const tail = ordered.slice(eventIndex + 1).map((ev) => {
-      if (ev.kind === "continental") return null; // typically cannot switch clubs mid-continental freely
+      if (ev.kind === "continental_fixture") return null;
+      if (ev.kind === "continental") return null;
       return ev;
     }).filter(Boolean);
     if (registration.futureStart || effectiveDate > departureDate) {
@@ -306,10 +318,14 @@ export function reconcileAfterClubChange({
   // should still run as world matches for the origin league table if we still care;
   // for career focus, drop origin-league events after departure (world already has results).
   const filteredTail = oldTail.filter((ev) => {
-    if (ev.kind === "international") return true;
+    if (ev.kind === "international" || ev.kind === "national_md" || ev.kind === "national_fixture") {
+      return true;
+    }
     if (ev.kind === "window_decision") return false;
     if (ev.kind === "registration_effective") return false;
-    if (ev.kind === "continental") return false; // previous club's continental path
+    // Keep continental_md so other clubs / stages advance; drop player-only fixture slots.
+    if (ev.kind === "continental_md") return true;
+    if (ev.kind === "continental_fixture" || ev.kind === "continental") return false;
     if (ev.kind === "cup_round") {
       // Only keep if same association domestic cup — drop cross-association
       const prevAssoc = calendarForLeague(previousLeagueId).association;
@@ -422,9 +438,11 @@ function dedupeLeagueEvents(events) {
 
 /**
  * Whether the player is eligible to appear in a club fixture on this date.
+ * Uses dated playing registration when available.
  */
 export function playerEligibleForClubMatch(player, date) {
-  if (!player?.club || player.club.isAcademy) return false;
+  if (!player) return false;
+  if (player.club?.isAcademy) return false;
   if (player.contractStatus === "released" || player.contractStatus === "expired") {
     // Still allow appearances that belong to a season already underway if contract
     // covers the current season index (half-open: seasons.length < end).
@@ -436,12 +454,13 @@ export function playerEligibleForClubMatch(player, date) {
     const done = player.seasons?.length ?? 0;
     if (done >= player.contractEndSeason) return false;
   }
-  if (!player.club?.clubId && !player.playingClubId) return false;
-  if (player.pendingRegistration?.effectiveDate) {
-    if (String(date) < player.pendingRegistration.effectiveDate) return false;
-  }
+  if (isPendingRegistrationBlocking(player, date)) return false;
+  const playingId = resolvePlayingClubAt(player, date);
+  if (!playingId) return false;
   return true;
 }
+
+export { isContinentalChronoEvent };
 
 export function findLeagueById(leagueId) {
   return LEAGUE_BY_ID.get(leagueId) || LEAGUES.find((l) => l.leagueId === leagueId) || null;

@@ -38,6 +38,11 @@ import {
   selectNextCareerAction,
 } from "./contractLifecycle.js";
 import { endLoan } from "./loanMarket.js";
+import {
+  playerEntitledToClubHonor,
+  playingStintsForEvidence,
+  ensurePlayingStints,
+} from "./playingRegistration.js";
 
 /** Legacy 0–100 adapter for awards/transfers — not used for durable development. */
 export function legacyPerformanceScoreAdapter({ reliableSignal, avgMatchRating, appearances }) {
@@ -387,45 +392,92 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   const seasonStartAge = age - 1;
   const preDevOverall = player.baseOverallRaw;
 
+  ensurePlayingStints(player);
+  const creditedHonorKeys = player.creditedHonorKeys || (player.creditedHonorKeys = []);
   const trophies = [];
+  const playingClubForLeague = player.playingClubId || player.club?.clubId || null;
   if (standing && standing.position === 1) {
-    player.careerHonors.leagueTitles += 1;
-    trophies.push({
-      kind: "league",
-      label: `${playingLeague.displayName ?? playingLeague.name} Champions`,
-      competition: playingLeague.displayName ?? playingLeague.name,
-      simKey: playingLeague.name,
-    });
+    const leagueHonorKey = `league:${seasonId}:${playingLeague.leagueId || playingLeague.name}:${playingClubForLeague || "club"}`;
+    if (!creditedHonorKeys.includes(leagueHonorKey)) {
+      player.careerHonors.leagueTitles += 1;
+      creditedHonorKeys.push(leagueHonorKey);
+      trophies.push({
+        kind: "league",
+        label: `${playingLeague.displayName ?? playingLeague.name} Champions`,
+        competition: playingLeague.displayName ?? playingLeague.name,
+        simKey: playingLeague.name,
+        winningClubId: playingClubForLeague,
+        editionId: seasonId,
+      });
+    }
   }
-  if (domesticCupResult?.won) {
-    player.careerHonors.domesticCups += 1;
+  const cupWinnerId = domesticCupResult?.winningClubId || null;
+  if (
+    domesticCupResult &&
+    cupWinnerId &&
+    playerEntitledToClubHonor(player, {
+      winningClubId: cupWinnerId,
+      competitionId: domesticCupResult.name,
+      ledgerRecords: chrono.ledgerRecords,
+      playerMatches: domesticCupResult.playerMatches,
+      requireContribution: true,
+    })
+  ) {
     const cupName = domesticCupResult.name || `${playingLeague.nation} Cup`;
-    trophies.push({
-      kind: "cup",
-      label: `${cupName} Winners`,
-      competition: cupName,
-      simKey: cupName,
-    });
+    const cupHonorKey = `cup:${seasonId}:${cupName}:${cupWinnerId}`;
+    if (!creditedHonorKeys.includes(cupHonorKey)) {
+      player.careerHonors.domesticCups += 1;
+      creditedHonorKeys.push(cupHonorKey);
+      trophies.push({
+        kind: "cup",
+        label: `${cupName} Winners`,
+        competition: cupName,
+        simKey: cupName,
+        winningClubId: cupWinnerId,
+        editionId: seasonId,
+      });
+    }
   }
-  if (europeanCampaign?.won && europeanCampaign?.qualified !== false) {
-    player.careerHonors.europeanTitles += 1;
-    trophies.push({
-      kind: "continental",
-      label: `${europeanCampaign.competition} Winners`,
-      competition: europeanCampaign.competition,
-      simKey: europeanCampaign.competition,
-    });
+  const europeWinnerId = europeanCampaign?.winningClubId || null;
+  if (
+    europeanCampaign?.qualified !== false &&
+    europeWinnerId &&
+    playerEntitledToClubHonor(player, {
+      winningClubId: europeWinnerId,
+      competitionId: europeanCampaign.competitionId || europeanCampaign.competition,
+      ledgerRecords: chrono.ledgerRecords,
+      playerMatches: europeanCampaign.playerMatches,
+      requireContribution: true,
+    })
+  ) {
+    const contHonorKey = `continental:${europeanCampaign.editionId || seasonId}:${europeWinnerId}`;
+    if (!creditedHonorKeys.includes(contHonorKey)) {
+      player.careerHonors.europeanTitles += 1;
+      creditedHonorKeys.push(contHonorKey);
+      trophies.push({
+        kind: "continental",
+        label: `${europeanCampaign.competition} Winners`,
+        competition: europeanCampaign.competition,
+        simKey: europeanCampaign.competition,
+        winningClubId: europeWinnerId,
+        editionId: europeanCampaign.editionId || null,
+      });
+    }
   }
   if (internationalSeason?.primary?.won) {
     if (!player.careerHonors.internationalTitles) player.careerHonors.internationalTitles = 0;
-    player.careerHonors.internationalTitles += 1;
     const intlName = internationalSeason.primary.name;
-    trophies.push({
-      kind: "international",
-      label: `${intlName} Winners`,
-      competition: intlName,
-      simKey: intlName,
-    });
+    const intlHonorKey = `intl:${seasonId}:${intlName}`;
+    if (!creditedHonorKeys.includes(intlHonorKey)) {
+      player.careerHonors.internationalTitles += 1;
+      creditedHonorKeys.push(intlHonorKey);
+      trophies.push({
+        kind: "international",
+        label: `${intlName} Winners`,
+        competition: intlName,
+        simKey: intlName,
+      });
+    }
   }
 
   const evidence = buildSeasonEvidence(player, {
@@ -443,6 +495,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     leagueGoals: agg.byCompetitionType?.league?.goals ?? goals,
     leagueCleanSheets: cleanSheets,
     seasonDays: 300,
+    playingStints: playingStintsForEvidence(player),
   });
 
   const awardRng = createStreamRng(stableCareerId(player), `awards:${seasonId}`);

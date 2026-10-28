@@ -21,6 +21,7 @@ import {
   isContractActive,
   completedSeasons,
 } from "./contractLifecycle.js";
+import { recordPlayingTransition, ensurePlayingStints } from "./playingRegistration.js";
 
 function settleLoanSlotsAndWages(player, loan, sk, mode = "return") {
   if (!loan || loan.settledFinance) return { ok: true, duplicate: true };
@@ -375,6 +376,7 @@ export function startLoan(player, offer) {
   player.consumedTransitionIds.push(`loan-start:${terms.loanId}`);
 
   const departureDate = offer.effectiveDate || offer.reviewDate || offer.loanTerms?.startDate;
+  let stintFrom = departureDate;
   if (departureDate && borrower?.leagueId) {
     const reg =
       offer.registration ||
@@ -390,7 +392,21 @@ export function startLoan(player, offer) {
         effectiveDate: reg.effectiveDate,
         ruleVersion: reg.ruleVersion,
       };
+      stintFrom = reg.effectiveDate;
     }
+  }
+  if (stintFrom) {
+    ensurePlayingStints(player, { asOfDate: departureDate || stintFrom });
+    recordPlayingTransition(player, {
+      effectiveDate: stintFrom,
+      closePriorAt: departureDate || stintFrom,
+      playingClubId: terms.borrowingClubId,
+      employmentClubId: terms.parentClubId,
+      leagueId: borrower?.leagueId || null,
+      clubName: borrower?.name || null,
+      kind: "loan_start",
+      onLoan: true,
+    });
   }
 
   return { ok: true, loan: player.activeLoan };
@@ -504,6 +520,18 @@ export function endLoan(player, resolution = "return", opts = {}) {
   player.parentClubSnapshot = null;
   if (!player.consumedTransitionIds) player.consumedTransitionIds = [];
   player.consumedTransitionIds.push(settleId);
+  const returnDate =
+    opts.effectiveDate || opts.date || loan.endDate || `${(player.startYear || 2026) + completedSeasons(player) + 1}-06-30`;
+  ensurePlayingStints(player, { asOfDate: returnDate });
+  recordPlayingTransition(player, {
+    effectiveDate: returnDate,
+    playingClubId: loan.parentClubId,
+    employmentClubId: loan.parentClubId,
+    leagueId: parent?.leagueId || null,
+    clubName: parent?.name || null,
+    kind: opts.recall ? "loan_recall" : "loan_return",
+    onLoan: false,
+  });
   return { ok: true, resolution: "return" };
 }
 
@@ -513,5 +541,5 @@ export function recallLoan(player, dateKey = null) {
   if (loan.allowedRecallDates?.length && dateKey && !loan.allowedRecallDates.includes(dateKey)) {
     return { ok: false, reason: "recall-date-not-allowed" };
   }
-  return endLoan(player, "return");
+  return endLoan(player, "return", { recall: true, effectiveDate: dateKey || undefined });
 }

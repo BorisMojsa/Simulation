@@ -105,10 +105,11 @@ export function buildContinentalChronoEvents(edition) {
     });
   }
 
-  // Already-scheduled knockout legs involving the player (e.g. Concacaf R1).
-  const koPlayer = listContinentalFixtures(edition, { status: "scheduled", playerOnly: true }).filter(
-    (f) => f.stageType === "knockout"
-  );
+  // Already-scheduled knockout legs involving the attached player (e.g. Concacaf R1).
+  const koPlayer = listContinentalFixtures(edition, {
+    status: "scheduled",
+    playerOnly: true,
+  }).filter((f) => f.stageType === "knockout");
   for (const f of koPlayer) {
     events.push({
       kind: "continental_fixture",
@@ -127,11 +128,13 @@ export function buildContinentalChronoEvents(edition) {
  * After advance creates new fixtures, return chronology events for newly scheduled
  * player knockout legs (and any new opening MDs — normally none).
  */
-export function eventsForNewFixtures(edition, previousScheduledIds, afterIndex = 0) {
+export function eventsForNewFixtures(edition, previousScheduledIds, afterIndex = 0, player = null) {
   const prev = new Set(previousScheduledIds || []);
-  const fresh = listContinentalFixtures(edition, { status: "scheduled", playerOnly: true }).filter(
-    (f) => !prev.has(f.matchId)
-  );
+  const fresh = listContinentalFixtures(edition, {
+    status: "scheduled",
+    playerOnly: true,
+    player,
+  }).filter((f) => !prev.has(f.matchId));
   return fresh.map((f, i) => ({
     kind: "continental_fixture",
     eventId: `continental_fixture:${f.matchId}`,
@@ -176,7 +179,7 @@ function advanceAndCollect(edition, opts, ordered, eventIndex, { onOrBeforeDate 
     const before = [...seenScheduled];
     const step = advanceContinentalStage(edition, opts);
     if (!step?.advanced) break;
-    const created = eventsForNewFixtures(edition, before, eventIndex);
+    const created = eventsForNewFixtures(edition, before, eventIndex, opts.player || null);
     for (const ev of created) seenScheduled.add(ev.matchId);
     for (const id of step.createdFixtureIds || []) seenScheduled.add(id);
     list = injectEvents(list, eventIndex, created);

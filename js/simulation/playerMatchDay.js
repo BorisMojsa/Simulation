@@ -14,6 +14,7 @@ import { advanceStateBetweenDates, updateFormFromObservation, updateFatigue } fr
 import { refreshAbilityCaches } from "./playerAbility.js";
 import { effectiveTeamStrength } from "./teamStrength.js";
 import { applyMatchFormUpdate, getWorldState } from "./worldState.js";
+import { resolveValidatedClubSide, resolvePlayingStintAt } from "./playingRegistration.js";
 
 function expectedRatingForContext(player, teamEff, oppEff) {
   const base = Number(player.baseOverallRaw ?? player.rating) || 70;
@@ -54,12 +55,21 @@ export function processPlayerMatchDay({
   let participation = null;
   let minutes = 0;
 
-  if (playerSide && player) {
+  // Hard gate: club sides must match dated playing registration.
+  let validatedSide = playerSide || null;
+  if (validatedSide && player && teamType === "club") {
+    const resolved = resolveValidatedClubSide({ player, home, away, date, teamType });
+    if (resolved !== validatedSide) {
+      validatedSide = null;
+    }
+  }
+
+  if (validatedSide && player) {
     if (lastDate) advanceStateBetweenDates(player, lastDate, date);
     advanceHealth(player, date);
     refreshAbilityCaches(player);
 
-    const team = playerSide === "home" ? home : away;
+    const team = validatedSide === "home" ? home : away;
     const teamProfile = effectiveTeamStrength(team, { worldState: world }).profile;
     participation = resolvePlayerParticipation(player, {
       date,
@@ -86,29 +96,30 @@ export function processPlayerMatchDay({
   }
 
   let match = simulateMatch(home, away, {
-    playerSide,
-    player: playerSide ? player : null,
+    playerSide: validatedSide,
+    player: validatedSide ? player : null,
     competition,
     venue,
     worldState: world,
     rng,
     competitionId,
     fixtureId,
-    playerMinutes: playerSide ? minutes : null,
+    playerMinutes: validatedSide ? minutes : null,
     matchDuration,
     date,
   });
 
   if (typeof resolveKnockout === "function") {
-    match = resolveKnockout(match, { player: playerSide ? player : null, rng });
+    match = resolveKnockout(match, { player: validatedSide ? player : null, rng });
   }
 
   match.date = date;
   match.competitionType = competitionType;
+  match.playerSide = validatedSide;
   applyMatchFormUpdate(world, match);
 
   let ledgerRecord = null;
-  if (playerSide && player && participation) {
+  if (validatedSide && player && participation) {
     if (minutes > 0 && participation.available) {
       const inj = sampleInjuryFromExposure({
         hours: minutes / 60,
@@ -130,8 +141,8 @@ export function processPlayerMatchDay({
       }
       if (player.state) updateFatigue(player.state, { minutes });
       if (match.playerStats?.rating != null) {
-        const teamEff = playerSide === "home" ? match.effectiveStrength.home : match.effectiveStrength.away;
-        const oppEff = playerSide === "home" ? match.effectiveStrength.away : match.effectiveStrength.home;
+        const teamEff = validatedSide === "home" ? match.effectiveStrength.home : match.effectiveStrength.away;
+        const oppEff = validatedSide === "home" ? match.effectiveStrength.away : match.effectiveStrength.home;
         const expected = expectedRatingForContext(player, teamEff, oppEff);
         match.expectedRating = expected;
         const obsScale = 0.6;
@@ -150,25 +161,29 @@ export function processPlayerMatchDay({
       nonParticipationReason: participation.nonParticipationReason || null,
       position: player.position,
     };
-    const conceded = playerSide === "home" ? match.awayGoals : match.homeGoals;
+    const sideClub = validatedSide === "home" ? home : away;
+    const conceded = validatedSide === "home" ? match.awayGoals : match.homeGoals;
     const cleanSheet =
       (match.playerStats.minutes || 0) >= 60 && conceded === 0 && player.position === "GK";
     const nationTeamId =
-      playerSide === "home"
+      validatedSide === "home"
         ? home.nationId || home.name || player.nationality
         : away.nationId || away.name || player.nationality;
-    const opponent =
-      playerSide === "home" ? away : home;
+    const opponent = validatedSide === "home" ? away : home;
+    const stint = teamType === "club" ? resolvePlayingStintAt(player, date) : null;
+    const validatedTeamId =
+      teamType === "national"
+        ? nationTeamId
+        : sideClub.clubId || sideClub.name || null;
+    match.playerClubId = validatedTeamId;
     ledgerRecord = {
       matchId: fixtureId || match.fixtureId || `${competitionId}:${date}`,
       date,
       competitionId,
       competitionType,
       teamType,
-      teamId:
-        teamType === "national"
-          ? nationTeamId
-          : player.club?.clubId || player.club?.name || player.nationality,
+      teamId: validatedTeamId,
+      stintId: stint?.stintId || null,
       opponentId:
         teamType === "national"
           ? opponent.nationId || opponent.name
@@ -199,5 +214,5 @@ export function processPlayerMatchDay({
     };
   }
 
-  return { match, participation, ledgerRecord, date };
+  return { match, participation, ledgerRecord, date, playerSide: validatedSide };
 }

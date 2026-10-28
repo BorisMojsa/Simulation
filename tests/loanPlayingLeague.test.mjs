@@ -248,17 +248,34 @@ test("same-league loan retains origin table context", () => {
   const borrower = league.clubs.find((c) => c.clubId !== p.club.clubId);
   const parentId = p.club.clubId;
 
-  const paused = simulateChronologicalSeason({
+  let paused = simulateChronologicalSeason({
     player: p,
     league,
     seasonIndex: 0,
     pauseForDecisions: true,
     autoDecisionPolicy: null,
   });
-  if (paused.status !== "paused") {
-    console.log("SKIP same-league loan — no mid-season pause this seed");
-    return;
+  if (paused.status !== "awaiting_decision" && paused.status !== "awaiting_scenario") {
+    p.pendingDecision = {
+      kind: "development-loan",
+      headline: "test",
+      lead: "test",
+      choices: [{ id: "stay-compete", label: "Stay" }],
+      cooldownKind: "development-loan",
+      loanOffers: [],
+    };
+    paused = simulateChronologicalSeason({
+      player: p,
+      league,
+      seasonIndex: 0,
+      pauseForDecisions: true,
+      autoDecisionPolicy: null,
+    });
   }
+  assert.ok(
+    paused.status === "awaiting_decision" || paused.status === "awaiting_scenario",
+    `expected mid-season pause, got ${paused.status}`
+  );
 
   const offer = {
     clubId: borrower.clubId,
@@ -306,6 +323,12 @@ test("same-league loan retains origin table context", () => {
   assert.equal(done.table.length, league.clubs.length);
   assert.ok(done.playerRecord?.clubId === borrower.clubId);
   assert.ok(done.table.some((r) => r.clubId === parentId));
+  const borrowerOwned = (done.playerMatches || []).filter(
+    (m) =>
+      m.playerClubId === borrower.clubId ||
+      ((m.playerSide === "home" ? m.home?.clubId : m.away?.clubId) === borrower.clubId)
+  );
+  assert.ok(borrowerOwned.length > 0, "borrower must own post-loan player fixtures");
 });
 
 test("automatic acceptance path uses borrower league metadata", () => {

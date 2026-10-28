@@ -43,6 +43,7 @@ import {
   bumpContractRevision,
   completedSeasons,
 } from "./contractLifecycle.js";
+import { recordPlayingTransition, ensurePlayingStints } from "./playingRegistration.js";
 
 export const DEAL_PIPELINE_VERSION = "deal-pipeline-v2";
 
@@ -459,6 +460,7 @@ export function acceptPipelineOffer(player, offer, opts = {}) {
 
 export function applyOfferToPlayer(player, offer, transactionId) {
   ensureContractAuthority(player);
+  ensurePlayingStints(player);
   if (!player.completedDealIds) player.completedDealIds = [];
   if (transactionId && !player.completedDealIds.includes(transactionId)) {
     player.completedDealIds.push(transactionId);
@@ -513,6 +515,33 @@ export function applyOfferToPlayer(player, offer, transactionId) {
     player.contractStatus = "active";
     player.freeAgentReason = null;
     bumpContractRevision(player);
+
+    const departureDate = offer.effectiveDate || offer.reviewDate;
+    const reg =
+      offer.registration ||
+      (offer.leagueId && departureDate
+        ? resolveMoveRegistration({
+            destinationLeagueId: offer.leagueId,
+            departureDate,
+            originSeasonStartYear: player.startYear || 2026,
+          })
+        : null);
+    const stintFrom =
+      reg?.ok && !reg.immediate && reg.effectiveDate
+        ? reg.effectiveDate
+        : departureDate || offer.reviewDate;
+    if (stintFrom) {
+      recordPlayingTransition(player, {
+        effectiveDate: stintFrom,
+        closePriorAt: departureDate || stintFrom,
+        playingClubId: offer.clubId,
+        employmentClubId: offer.clubId,
+        leagueId: offer.leagueId,
+        clubName: offer.club,
+        kind: "permanent",
+        onLoan: false,
+      });
+    }
   }
 
   markOfferStatus(player, offer, "accepted", { transactionId });

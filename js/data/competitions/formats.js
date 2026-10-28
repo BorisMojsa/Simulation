@@ -14,6 +14,12 @@ export const COMPETITION_FORMATS = {
     ruleVersion: "2026/27-league-phase",
     openingPhase: "league",
     fieldSize: 36,
+    playerRegistration: {
+      subsequentAllowedFromStage: "playoff",
+      deadlineDayOfYear: 35,
+      newPlayerQuota: 3,
+      leaguePhaseImmediate: false,
+    },
     leaguePhase: {
       opponentsPerClub: 8,
       homeAway: { home: 4, away: 4 },
@@ -38,6 +44,12 @@ export const COMPETITION_FORMATS = {
     ruleVersion: "2026/27-league-phase",
     openingPhase: "league",
     fieldSize: 36,
+    playerRegistration: {
+      subsequentAllowedFromStage: "playoff",
+      deadlineDayOfYear: 35,
+      newPlayerQuota: 3,
+      leaguePhaseImmediate: false,
+    },
     leaguePhase: {
       opponentsPerClub: 8,
       homeAway: { home: 4, away: 4 },
@@ -62,6 +74,12 @@ export const COMPETITION_FORMATS = {
     ruleVersion: "2026/27-league-phase",
     openingPhase: "league",
     fieldSize: 36,
+    playerRegistration: {
+      subsequentAllowedFromStage: "playoff",
+      deadlineDayOfYear: 35,
+      newPlayerQuota: 3,
+      leaguePhaseImmediate: false,
+    },
     leaguePhase: {
       opponentsPerClub: 6,
       homeAway: { home: 3, away: 3 },

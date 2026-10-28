@@ -55,7 +55,9 @@ import {
   prepareDomesticCupBracket,
   simulateDomesticCupRound,
   finalizeDomesticCup,
+  rebindDomesticCupAttachment,
 } from "./domesticCup.js";
+import { resolveValidatedClubSide } from "./playingRegistration.js";
 import {
   leagueMatchCount,
   findSisterLeagues,
@@ -534,6 +536,7 @@ export function simulateChronologicalSeason({
           records = switched.records;
           historySegment = "destination";
         }
+        if (cupState) rebindDomesticCupAttachment(cupState, player);
       }
       if (pauseResult?.pause) {
         const ck = buildSeasonCheckpoint({
@@ -704,14 +707,14 @@ export function simulateChronologicalSeason({
     }
     if (ev.kind === "league") {
       const fx = ev;
-      const playingName = player.club?.name;
-      const playingId = player.playingClubId || player.club?.clubId;
       const competitionId = ev.destinationLeagueId || activeLeague.leagueId || league.leagueId;
-      const homeIsPlayer =
-        fx.home.name === playingName || (playingId && fx.home.clubId === playingId);
-      const awayIsPlayer =
-        fx.away.name === playingName || (playingId && fx.away.clubId === playingId);
-      let playerIn = homeIsPlayer ? "home" : awayIsPlayer ? "away" : null;
+      let playerIn = resolveValidatedClubSide({
+        player,
+        home: fx.home,
+        away: fx.away,
+        date: fx.date,
+        teamType: "club",
+      });
       if (playerIn && !playerEligibleForClubMatch(player, fx.date)) {
         playerIn = null;
       }
@@ -774,8 +777,15 @@ export function simulateChronologicalSeason({
       if (!cupState) cupState = prepareDomesticCupBracket(activeLeague, player);
 
       const playerStillIn =
+        cupState.playerAttached !== false &&
         !cupState.eliminatedRound &&
-        cupState.remaining.some((c) => c && !c.isBye && c.name === cupState.playerName);
+        cupState.remaining.some(
+          (c) =>
+            c &&
+            !c.isBye &&
+            ((cupState.playerClubId && c.clubId === cupState.playerClubId) ||
+              c.name === cupState.playerName)
+        );
 
       if (cupState.finished || cupState.remaining.length <= 1) {
         cupResult = finalizeDomesticCup(cupState);
@@ -1423,6 +1433,7 @@ export function resumeChronologicalSeason({
       records = switched.records;
       historySegment = "destination";
     }
+    if (cupState) rebindDomesticCupAttachment(cupState, player);
   }
 
   for (let eventIndex = startAt; eventIndex < ordered.length; eventIndex++) {
@@ -1475,6 +1486,7 @@ export function resumeChronologicalSeason({
           records = switched.records;
           historySegment = "destination";
         }
+        if (cupState) rebindDomesticCupAttachment(cupState, player);
       }
       if (pauseResult?.pause) {
         const ck = buildSeasonCheckpoint({
@@ -1645,14 +1657,14 @@ export function resumeChronologicalSeason({
 
     if (ev.kind === "league") {
       const fx = ev;
-      const playingName = player.club?.name;
-      const playingId = player.playingClubId || player.club?.clubId;
       const competitionId = ev.destinationLeagueId || activeLeague.leagueId || league.leagueId;
-      const homeIsPlayer =
-        fx.home.name === playingName || (playingId && fx.home.clubId === playingId);
-      const awayIsPlayer =
-        fx.away.name === playingName || (playingId && fx.away.clubId === playingId);
-      let playerIn = homeIsPlayer ? "home" : awayIsPlayer ? "away" : null;
+      let playerIn = resolveValidatedClubSide({
+        player,
+        home: fx.home,
+        away: fx.away,
+        date: fx.date,
+        teamType: "club",
+      });
       if (playerIn && !playerEligibleForClubMatch(player, fx.date)) {
         playerIn = null;
       }
@@ -1718,8 +1730,15 @@ export function resumeChronologicalSeason({
         continue;
       }
       const playerStillIn =
+        cupState.playerAttached !== false &&
         !cupState.eliminatedRound &&
-        cupState.remaining.some((c) => c && !c.isBye && c.name === cupState.playerName);
+        cupState.remaining.some(
+          (c) =>
+            c &&
+            !c.isBye &&
+            ((cupState.playerClubId && c.clubId === cupState.playerClubId) ||
+              c.name === cupState.playerName)
+        );
       simulateDomesticCupRound(cupState, {
         player,
         date: ev.date,

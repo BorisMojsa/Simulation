@@ -10,6 +10,7 @@ import {
   applyContractExpiryAtBoundary,
   CONTRACT_LIFECYCLE_VERSION,
 } from "./contractLifecycle.js";
+import { ensurePlayingStints } from "./playingRegistration.js";
 
 const DEAL_PIPELINE_VERSION = "deal-pipeline-v2";
 
@@ -75,6 +76,7 @@ export function migrateTransferSave(player, opts = {}) {
   if (!player.scoutingEvidence) player.scoutingEvidence = {};
 
   ensureContractAuthority(player);
+  ensurePlayingStints(player);
 
   // Expired legacy careers: release without granting extra years.
   if (
@@ -120,6 +122,9 @@ export function createDecisionCheckpoint(player, extra = {}) {
     activeLoan: player.activeLoan || null,
     employmentClubId: player.employmentClubId || null,
     playingClubId: player.playingClubId || null,
+    pendingRegistration: player.pendingRegistration || null,
+    parentClubSnapshot: player.parentClubSnapshot || null,
+    playingStints: player.playingStints || null,
     rngSeed: extra.rngSeed || null,
     processedEventIds: extra.processedEventIds || [],
   };
@@ -132,6 +137,16 @@ export function applyDecisionCheckpoint(player, checkpoint) {
   if (checkpoint.activeLoan) player.activeLoan = checkpoint.activeLoan;
   if (checkpoint.employmentClubId) player.employmentClubId = checkpoint.employmentClubId;
   if (checkpoint.playingClubId) player.playingClubId = checkpoint.playingClubId;
+  if (checkpoint.pendingRegistration !== undefined) {
+    player.pendingRegistration = checkpoint.pendingRegistration;
+  }
+  if (checkpoint.parentClubSnapshot !== undefined) {
+    player.parentClubSnapshot = checkpoint.parentClubSnapshot;
+  }
+  if (Array.isArray(checkpoint.playingStints)) {
+    player.playingStints = checkpoint.playingStints;
+  }
+  ensurePlayingStints(player);
   player.decisionCheckpoint = checkpoint;
   return player;
 }

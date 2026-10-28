@@ -77,6 +77,10 @@ export function recordMatchObservation(ledger, matchRecord) {
   const entry = {
     matchId: key,
     competitionType: matchRecord.competitionType || "league",
+    competitionId: matchRecord.competitionId ?? null,
+    teamId: matchRecord.teamId ?? null,
+    stintId: matchRecord.stintId ?? null,
+    editionId: matchRecord.editionId ?? null,
     international: isInternationalRecord(matchRecord),
     minutes: Math.min(minutes, 150),
     started: Boolean(matchRecord.started),

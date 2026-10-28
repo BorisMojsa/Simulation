@@ -299,14 +299,15 @@ test("accepted cross-league transfer mid-season yields destination appearances",
   assert.equal(done.status, "complete");
   assert.ok(p.destinationScheduleMeta?.futureFixtures > 0);
   assert.equal(p.destinationScheduleMeta.destLeagueId, "league:serbia-superliga");
-  const destMatchCount = (done.playerMatches || []).filter(
+  const destMatches = (done.playerMatches || []).filter(
     (m) => m.home?.clubId === dest.clubId || m.away?.clubId === dest.clubId || m.playerClubId === dest.clubId
-  ).length;
-  // Destination fixtures must be processed; appearances depend on selection but schedule must exist
-  assert.ok(
-    destMatchCount > 0 || (done.playerMatchStats?.played || 0) >= 0,
-    "resume must process destination schedule"
   );
+  assert.ok(destMatches.length > 0, "resume must process destination fixtures");
+  for (const m of destMatches) {
+    if (!m.playerSide) continue;
+    const sideId = m.playerSide === "home" ? m.home?.clubId : m.away?.clubId;
+    assert.equal(sideId, dest.clubId, "destination player side must match playing club");
+  }
   assert.equal(p.playingClubId, dest.clubId);
 });
 

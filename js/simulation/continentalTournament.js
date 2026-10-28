@@ -19,6 +19,8 @@ import {
   isUefaQualifyingLeague,
 } from "../data/competitions/qualification.js";
 import { formatForCompetitionName } from "../data/competitions/formats.js";
+import { canAttachToContinentalFixture } from "../data/competitions/registrationPolicy.js";
+import { resolveValidatedClubSide, resolvePlayingClubAt } from "./playingRegistration.js";
 import { CLUB_PROFILES } from "../data/identity/resolver.js";
 import {
   formatMatchScoreline,
@@ -426,8 +428,42 @@ function fixtureOrder(a, b) {
   );
 }
 
-function involvesPlayer(state, fixtureOrTie) {
+/** Edition focus club participates in this fixture (world campaign identity). */
+function involvesFocusClub(state, fixtureOrTie) {
   return fixtureOrTie.homeClubId === state.playerClubId || fixtureOrTie.awayClubId === state.playerClubId;
+}
+
+/**
+ * User attachment: dated playing registration must match a fixture participant,
+ * and destination continental policy must permit the attachment when leaving the focus club.
+ */
+function involvesAttachedPlayer(state, fixtureOrTie, player, date = null) {
+  if (!player) return involvesFocusClub(state, fixtureOrTie);
+  const d = date || fixtureOrTie.date;
+  const side = resolveValidatedClubSide({
+    player,
+    home: { clubId: fixtureOrTie.homeClubId },
+    away: { clubId: fixtureOrTie.awayClubId },
+    date: d,
+    teamType: "club",
+  });
+  if (!side) return false;
+  const playingId = side === "home" ? fixtureOrTie.homeClubId : fixtureOrTie.awayClubId;
+  if (playingId === state.playerClubId) return true;
+  const pendingFrom = player.pendingRegistration?.effectiveDate || null;
+  const stintFrom = resolvePlayingClubAt(player, d) === playingId ? d : pendingFrom;
+  const gate = canAttachToContinentalFixture({
+    edition: state,
+    playingClubId: playingId,
+    fixture: fixtureOrTie,
+    registrationEffectiveDate: player.playingStints?.slice(-1)?.[0]?.from || stintFrom,
+  });
+  return gate.ok;
+}
+
+/** @deprecated use involvesAttachedPlayer / involvesFocusClub — kept as attachment-aware default when player on ctx */
+function involvesPlayer(state, fixtureOrTie, player = null) {
+  return involvesAttachedPlayer(state, fixtureOrTie, player);
 }
 
 // ---------------------------------------------------------------------------
@@ -1358,8 +1394,17 @@ function playOneMatch(state, fixture, ctx, { finalize = null } = {}) {
   const home = clubFor(state, fixture.homeClubId);
   const away = clubFor(state, fixture.awayClubId);
   if (!home || !away) throw new Error(`Continental fixture ${fixture.matchId} references an unknown club`);
-  const playerSide =
-    fixture.homeClubId === state.playerClubId ? "home" : fixture.awayClubId === state.playerClubId ? "away" : null;
+  // Attachment requires a live player. Drain / background sims never invent user sides.
+  let playerSide = null;
+  if (ctx.player && involvesAttachedPlayer(state, fixture, ctx.player, fixture.date)) {
+    playerSide = resolveValidatedClubSide({
+      player: ctx.player,
+      home,
+      away,
+      date: fixture.date,
+      teamType: "club",
+    });
+  }
   const mustProduceWinner = fixture.stageType === "knockout" && !fixture.twoLegged;
 
   let processorResult = null;
@@ -1391,6 +1436,10 @@ function playOneMatch(state, fixture, ctx, { finalize = null } = {}) {
         knockout: mustProduceWinner,
       }) || null;
     match = processorResult?.match || null;
+    // Match-day hard gate may have cleared the side — treat as world-only.
+    if (processorResult?.playerSide === null || (match && match.playerSide === null && processorResult)) {
+      playerSide = match?.playerSide ?? null;
+    }
   }
   if (!match) {
     match = simulateMatch(home, away, {
@@ -1578,11 +1627,13 @@ function updateTieFromLegs(state, tie, ctx) {
 
 /** Bookkeeping for a committed fixture; safe to repeat. */
 function markPlayed(state, fixture, ctx) {
-  if (!playedMatch(fixture.matchId, ctx)) return;
+  const stored = playedMatch(fixture.matchId, ctx);
+  if (!stored) return;
   const idx = state.scheduledFixtureIds.indexOf(fixture.matchId);
   if (idx >= 0) state.scheduledFixtureIds.splice(idx, 1);
   pushUnique(state.playedFixtureIds, fixture.matchId);
-  if (involvesPlayer(state, fixture)) {
+  // Only user-attached appearances enter playerMatchIds (not every focus-club world fixture).
+  if (stored.isPlayerMatch || stored.playerSide) {
     pushUnique(state.playerMatchIds, fixture.matchId);
     const phaseList =
       fixture.stageType === "league"
@@ -1772,7 +1823,8 @@ function refreshProjections(state, ctx) {
   ko.stages.forEach((stage, si) => {
     stage.tieIds.forEach((tid, ti) => {
       const tie = ko.ties[tid];
-      if (!involvesPlayer(state, tie)) return;
+      // Focus-club path for campaign bracket narrative (not live user attachment).
+      if (!involvesFocusClub(state, tie)) return;
       const card = ko.allRounds[si].matches[ti];
       const fromPlayerSide = tie.homeClubId === state.playerClubId ? "home" : "away";
       const opponent = clubFor(state, fromPlayerSide === "home" ? tie.awayClubId : tie.homeClubId);
@@ -1815,12 +1867,14 @@ function assembleCampaignResult(state, ctx) {
   const lp = state.leaguePhase;
   const g = state.groups;
   const winner = ko.winnerClubId ? clubFor(state, ko.winnerClubId) : null;
-  const won = Boolean(winner) && ko.winnerClubId === state.playerClubId;
+  // `won` = edition focus club won the competition (world result). Career honors must
+  // separately check player entitlement against winningClubId.
+  const focusWon = Boolean(winner) && ko.winnerClubId === state.playerClubId;
   const openingLabel = lp ? STAGE_LABELS.league : g ? STAGE_LABELS.groups : null;
   const eliminatedRound = ko.eliminatedRound || (openingEliminated(state) ? openingLabel : null);
 
   let result;
-  if (won) result = "Winners";
+  if (focusWon) result = "Winners";
   else if (eliminatedRound === "Final") result = "Runner-up";
   else if (eliminatedRound) result = eliminatedRound;
   else if (state.status === "complete") result = openingLabel || STAGE_LABELS.R16;
@@ -1840,7 +1894,9 @@ function assembleCampaignResult(state, ctx) {
     status: state.status,
     stageId: state.stageId,
     result,
-    won,
+    won: focusWon,
+    winningClubId: ko.winnerClubId || null,
+    focusClubId: state.playerClubId || null,
     qualified: true,
     showcase: false,
     eliminatedRound,
@@ -2135,15 +2191,19 @@ export function simulatePlayoffRound(editionState, opts = {}) {
 }
 
 /** Scheduled / played fixture descriptors in calendar order (for chronology event planning). */
-export function listContinentalFixtures(editionState, { status = "all", playerOnly = false, stageId = null } = {}) {
+export function listContinentalFixtures(
+  editionState,
+  { status = "all", playerOnly = false, stageId = null, player = null } = {}
+) {
   if (!editionState?.fixtures) return [];
   const played = new Set(editionState.playedFixtureIds);
+  const attach = (f) => involvesAttachedPlayer(editionState, f, player, f.date);
   return Object.values(editionState.fixtures)
     .filter((f) => status === "all" || (status === "played" ? played.has(f.matchId) : !played.has(f.matchId)))
-    .filter((f) => !playerOnly || involvesPlayer(editionState, f))
+    .filter((f) => !playerOnly || attach(f))
     .filter((f) => !stageId || f.stageId === stageId)
     .sort(fixtureOrder)
-    .map((f) => ({ ...f, played: played.has(f.matchId), isPlayerFixture: involvesPlayer(editionState, f) }));
+    .map((f) => ({ ...f, played: played.has(f.matchId), isPlayerFixture: attach(f) }));
 }
 
 /**
