@@ -46,6 +46,7 @@ function continentalOpts({
         competition: "europe",
         competitionType: "continental",
         competitionId: req.competitionId || edition.competitionId,
+        editionId: req.editionId || edition.editionId,
         fixtureId: req.matchId || req.fixtureId,
         teamType: "club",
         competitionPriority: 1.05,
@@ -58,12 +59,23 @@ function continentalOpts({
         // League phase, first legs, and two-leg second legs are handled by the edition engine.
         resolveKnockout: req.knockout ? resolveKnockout : undefined,
       });
+      // Push the ledger object immediately (exact-once). playOneMatch syncs the
+      // same object after ET/pens so second-leg counters are not frozen early.
+      // Stats accumulation waits for onPlayerMatchFinalized (final minutes/goals).
       if (ledgerRecord && ledgerRecords) {
-        ledgerRecords.push(ledgerRecord);
-        if (accumulatePlayerStats) accumulatePlayerStats(playerMatchStats, match, participation);
+        if (!ledgerRecords.some((r) => r && r.matchId === ledgerRecord.matchId)) {
+          ledgerRecords.push(ledgerRecord);
+        }
       }
       lastDateRef.current = req.date;
       return { match, participation, ledgerRecord };
+    },
+    onPlayerMatchFinalized: (finalMatch, processorResult) => {
+      const ledgerRecord = processorResult?.ledgerRecord;
+      if (!ledgerRecord || !accumulatePlayerStats) return;
+      if (processorResult._statsAccumulated) return;
+      processorResult._statsAccumulated = true;
+      accumulatePlayerStats(playerMatchStats, finalMatch, processorResult.participation);
     },
   };
 }

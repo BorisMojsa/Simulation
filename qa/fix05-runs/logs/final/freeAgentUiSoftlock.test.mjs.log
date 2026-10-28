@@ -1,0 +1,126 @@
+TAP version 13
+# Subtest: free-agent UI soft-lock
+    # Subtest: explicit free-agent payload shows recap + Continue; completion fires once
+    ok 1 - explicit free-agent payload shows recap + Continue; completion fires once
+      ---
+      duration_ms: 29.518417
+      type: 'test'
+      ...
+    # Subtest: deterministic empty-result fixture: two periods stay empty and searchable
+    ok 2 - deterministic empty-result fixture: two periods stay empty and searchable
+      ---
+      duration_ms: 23.858375
+      type: 'test'
+      ...
+    # Subtest: two successive empty periods produce two history entries without trapping overlay
+    ok 3 - two successive empty periods produce two history entries without trapping overlay
+      ---
+      duration_ms: 22.930625
+      type: 'test'
+      ...
+    # Subtest: offers after a free-agent period block next simulation until resolved; decline restores search
+    ok 4 - offers after a free-agent period block next simulation until resolved; decline restores search
+      ---
+      duration_ms: 4.19625
+      type: 'test'
+      ...
+    # Subtest: accepting a suitable free-agent offer uses the deal pipeline once
+    ok 5 - accepting a suitable free-agent offer uses the deal pipeline once
+      ---
+      duration_ms: 3.098125
+      type: 'test'
+      ...
+Missing required season data: {
+  season: { seasonNumber: 1, matches: 10 },
+  league: undefined,
+  standings: undefined
+}
+Season presentation failed: Error: Missing required season data
+    at animateSeasonSequence (file:///Users/mojsa/Desktop/Simulation/js/ui/seasonAnimation.js:549:11)
+    at presentSeasonResult (file:///Users/mojsa/Desktop/Simulation/js/ui/seasonAnimation.js:250:9)
+    at showSeasonAnimation (file:///Users/mojsa/Desktop/Simulation/js/ui/seasonAnimation.js:159:10)
+    at file:///Users/mojsa/Desktop/Simulation/tests/freeAgentUiSoftlock.test.mjs:342:9
+    at waitForActual (node:assert:630:21)
+    at Function.rejects (node:assert:767:31)
+    at TestContext.<anonymous> (file:///Users/mojsa/Desktop/Simulation/tests/freeAgentUiSoftlock.test.mjs:340:18)
+    at async Test.run (node:internal/test_runner/test:1054:7)
+    at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)
+Season presentation failed: Error: Invalid free-agent result: not-free-agent
+    at presentSeasonResult (file:///Users/mojsa/Desktop/Simulation/js/ui/seasonAnimation.js:244:13)
+    at showSeasonAnimation (file:///Users/mojsa/Desktop/Simulation/js/ui/seasonAnimation.js:159:10)
+    at file:///Users/mojsa/Desktop/Simulation/tests/freeAgentUiSoftlock.test.mjs:364:9
+    at waitForActual (node:assert:630:21)
+    at Function.rejects (node:assert:767:31)
+    at TestContext.<anonymous> (file:///Users/mojsa/Desktop/Simulation/tests/freeAgentUiSoftlock.test.mjs:362:18)
+    at async Test.run (node:internal/test_runner/test:1054:7)
+    at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)
+    # Subtest: rapid repeated presentation completion does not duplicate history cards
+    ok 6 - rapid repeated presentation completion does not duplicate history cards
+      ---
+      duration_ms: 12.122542
+      type: 'test'
+      ...
+    # Subtest: final contracted season that expires still requires league data (not free-agent recap)
+    ok 7 - final contracted season that expires still requires league data (not free-agent recap)
+      ---
+      duration_ms: 0.255625
+      type: 'test'
+      ...
+    # Subtest: age-41 free-agent fixture reaches age-42 retirement without orphaned overlay requirement
+    ok 8 - age-41 free-agent fixture reaches age-42 retirement without orphaned overlay requirement
+      ---
+      duration_ms: 0.569667
+      type: 'test'
+      ...
+    # Subtest: invalid ordinary result rejects without calling success; recovery closes overlay
+    ok 9 - invalid ordinary result rejects without calling success; recovery closes overlay
+      ---
+      duration_ms: 2.07675
+      type: 'test'
+      ...
+    # Subtest: failed free-agent wait is not presented as a successful recap
+    ok 10 - failed free-agent wait is not presented as a successful recap
+      ---
+      duration_ms: 0.322792
+      type: 'test'
+      ...
+    # Subtest: older thin free-agent records render without undefined/NaN/fake rating or borrowed current age
+    ok 11 - older thin free-agent records render without undefined/NaN/fake rating or borrowed current age
+      ---
+      duration_ms: 0.324708
+      type: 'test'
+      ...
+    # Subtest: standings panel does not relabel prior club table as a free-agent campaign
+    ok 12 - standings panel does not relabel prior club table as a free-agent campaign
+      ---
+      duration_ms: 0.406583
+      type: 'test'
+      ...
+Season presentation failed: Error: injected-completion-failure
+    at file:///Users/mojsa/Desktop/Simulation/tests/freeAgentUiSoftlock.test.mjs:484:13
+    at FakeElement.<anonymous> (file:///Users/mojsa/Desktop/Simulation/js/ui/seasonAnimation.js:405:47)
+    at FakeElement.click (file:///Users/mojsa/Desktop/Simulation/tests/helpers/minimalDom.mjs:117:50)
+    at TestContext.<anonymous> (file:///Users/mojsa/Desktop/Simulation/tests/freeAgentUiSoftlock.test.mjs:487:32)
+    at async Test.run (node:internal/test_runner/test:1054:7)
+    at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)
+    # Subtest: injected async presentation failure recovers without unhandled rejection
+    ok 13 - injected async presentation failure recovers without unhandled rejection
+      ---
+      duration_ms: 12.519208
+      type: 'test'
+      ...
+    1..13
+ok 1 - free-agent UI soft-lock
+  ---
+  duration_ms: 112.894208
+  type: 'suite'
+  ...
+1..1
+# tests 13
+# suites 1
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 115.469625

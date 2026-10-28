@@ -3,14 +3,22 @@
  *
  * - Every match is recorded at most once, keyed by `matchId`.
  * - Non-participation (0 minutes: unused sub, injured, rested) is NOT an
- *   appearance; it is tracked separately as `nonParticipation`.
+ *   appearance; it is tracked separately as `nonParticipation` with structured
+ *   detail when known. Legacy boolean markers (`true`) remain readable.
  * - A match performance observation compares the rating with the expected
  *   rating: z = clamp((rating - expected) / scale, -3, 3); obs = tanh(z / 1.5).
+ * - Explicit null/undefined ratings stay unknown (no observation). `Number(null)`
+ *   must never become rating 0 / z=-3 evidence.
  *
- * matchRecord:
- *   { matchId, competitionType: "league"|"cup"|"european"|"international"|...,
- *     isInternational?, minutes, started?, goals?, assists?, rating?,
- *     expectedRating?, residualScale?, position?, date? }
+ * Normalized positive entry preserves fixture identity, represented side,
+ * participation, output (incl. cleanSheet), and evidence provenance.
+ *
+ * matchRecord (input):
+ *   { matchId, competitionType, competitionId?, editionId?, teamId?, stintId?,
+ *     teamType?, opponentId?, isInternational?, minutes, started?, selected?,
+ *     available?, nonParticipationReason?, goals?, assists?, yellowCards?,
+ *     redCards?, cleanSheet?, cleanSheetEligible?, rating?, expectedRating?,
+ *     residualScale?, position?, date?, injuryEventIds?, metricEvidence? }
  */
 import { clamp } from "../utils/helpers.js";
 import { PERFORMANCE } from "../config/playerDevelopmentConfig.js";
@@ -43,10 +51,12 @@ export function residualScaleFor(position) {
  * @returns {{z:number, observation:number}|null} null when the rating is unavailable
  */
 export function computePerformanceObservation(rating, expectedRating, scale) {
-  if (!Number.isFinite(rating)) return null;
+  // null/undefined/"" must stay unknown — Number(null)===0 is not a real rating.
+  if (rating === null || rating === undefined || rating === "") return null;
+  if (!Number.isFinite(Number(rating))) return null;
   const expected = Number.isFinite(expectedRating) ? expectedRating : PERFORMANCE.defaultExpectedRating;
   const s = scale > 0 ? scale : PERFORMANCE.residualScale.default;
-  const z = clamp((rating - expected) / s, -PERFORMANCE.zClamp, PERFORMANCE.zClamp);
+  const z = clamp((Number(rating) - expected) / s, -PERFORMANCE.zClamp, PERFORMANCE.zClamp);
   return { z, observation: Math.tanh(z / PERFORMANCE.tanhDivisor) };
 }
 
@@ -54,8 +64,37 @@ function isInternationalRecord(rec) {
   return Boolean(rec.isInternational) || PERFORMANCE.internationalTypes.includes(rec.competitionType);
 }
 
+function coerceFiniteOrNull(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function buildNonParticipationDetail(matchRecord) {
+  return {
+    matchId: String(matchRecord.matchId),
+    date: matchRecord.date ?? null,
+    competitionType: matchRecord.competitionType || null,
+    competitionId: matchRecord.competitionId ?? null,
+    editionId: matchRecord.editionId ?? matchRecord.competitionEditionId ?? null,
+    competitionEditionId: matchRecord.competitionEditionId ?? matchRecord.editionId ?? null,
+    teamType: matchRecord.teamType ?? null,
+    teamId: matchRecord.teamId ?? null,
+    stintId: matchRecord.stintId ?? null,
+    opponentId: matchRecord.opponentId ?? null,
+    selected: matchRecord.selected != null ? Boolean(matchRecord.selected) : null,
+    started: false,
+    available: matchRecord.available != null ? Boolean(matchRecord.available) : null,
+    minutes: 0,
+    reason: matchRecord.nonParticipationReason || matchRecord.reason || "unknown",
+    position: matchRecord.positionPlayed || matchRecord.position || null,
+    injuryEventIds: Array.isArray(matchRecord.injuryEventIds) ? [...matchRecord.injuryEventIds] : [],
+  };
+}
+
 /**
- * Record a match once. Duplicates (same matchId) are ignored.
+ * Record a match once. Duplicates (same matchId) are ignored — including when
+ * the first record was a zero-minute non-participation (and across snapshot RT).
  * @returns {{recorded:boolean, duplicate:boolean, reason?:string, entry?:object}}
  */
 export function recordMatchObservation(ledger, matchRecord) {
@@ -68,28 +107,50 @@ export function recordMatchObservation(ledger, matchRecord) {
   }
   const minutes = Number(matchRecord.minutes);
   if (!(minutes > 0)) {
-    ledger.nonParticipation[key] = true;
-    return { recorded: false, duplicate: false, reason: "no-participation" };
+    // Structured zero-minute record; legacy consumers still see a truthy marker.
+    ledger.nonParticipation[key] = buildNonParticipationDetail(matchRecord);
+    return { recorded: false, duplicate: false, reason: "no-participation", entry: ledger.nonParticipation[key] };
   }
 
   const scale = matchRecord.residualScale > 0 ? matchRecord.residualScale : residualScaleFor(matchRecord.position);
-  const perf = computePerformanceObservation(Number(matchRecord.rating), matchRecord.expectedRating, scale);
+  const rawRating = matchRecord.rating ?? matchRecord.matchRating;
+  const perf = computePerformanceObservation(rawRating, matchRecord.expectedRating, scale);
+  const cleanSheet =
+    typeof matchRecord.cleanSheet === "boolean" ? matchRecord.cleanSheet : null;
   const entry = {
     matchId: key,
     competitionType: matchRecord.competitionType || "league",
     competitionId: matchRecord.competitionId ?? null,
+    teamType: matchRecord.teamType ?? null,
     teamId: matchRecord.teamId ?? null,
     stintId: matchRecord.stintId ?? null,
-    editionId: matchRecord.editionId ?? null,
+    opponentId: matchRecord.opponentId ?? null,
+    editionId: matchRecord.editionId ?? matchRecord.competitionEditionId ?? null,
+    competitionEditionId: matchRecord.competitionEditionId ?? matchRecord.editionId ?? null,
     international: isInternationalRecord(matchRecord),
     minutes: Math.min(minutes, 150),
+    availableMinutes: coerceFiniteOrNull(matchRecord.availableMinutes ?? matchRecord.matchDuration),
+    selected: Boolean(matchRecord.selected ?? true),
     started: Boolean(matchRecord.started),
+    available: matchRecord.available != null ? Boolean(matchRecord.available) : true,
+    nonParticipationReason: null,
     goals: Math.max(0, Number(matchRecord.goals) || 0),
     assists: Math.max(0, Number(matchRecord.assists) || 0),
-    rating: perf ? Number(matchRecord.rating) : null,
+    yellowCards: Math.max(0, Number(matchRecord.yellowCards ?? matchRecord.yellow) || 0),
+    redCards: Math.max(0, Number(matchRecord.redCards ?? matchRecord.red) || 0),
+    cleanSheetEligible:
+      typeof matchRecord.cleanSheetEligible === "boolean" ? matchRecord.cleanSheetEligible : null,
+    cleanSheet,
+    rating: perf ? Number(rawRating) : null,
+    expectedRating: coerceFiniteOrNull(matchRecord.expectedRating),
+    residualScale: scale,
     z: perf ? perf.z : null,
     observation: perf ? perf.observation : null,
+    position: matchRecord.positionPlayed || matchRecord.position || null,
+    positionPlayed: matchRecord.positionPlayed || matchRecord.position || null,
     date: matchRecord.date ?? null,
+    injuryEventIds: Array.isArray(matchRecord.injuryEventIds) ? [...matchRecord.injuryEventIds] : [],
+    metricEvidence: matchRecord.metricEvidence ?? null,
   };
   ledger.matches.push(entry);
   ledger.recordedMatchIds[key] = true;
@@ -106,6 +167,44 @@ function addToBucket(b, e) {
   b.starts += e.started ? 1 : 0;
   b.goals += e.goals;
   b.assists += e.assists;
+}
+
+function summarizeNonParticipation(nonParticipation) {
+  const reasons = {
+    unused_substitute: 0,
+    unused: 0,
+    not_selected: 0,
+    injured: 0,
+    unavailable: 0,
+    suspended: 0,
+    rested: 0,
+    unknown: 0,
+    other: 0,
+  };
+  let total = 0;
+  for (const v of Object.values(nonParticipation || {})) {
+    total += 1;
+    if (v === true) {
+      reasons.unknown += 1;
+      continue;
+    }
+    const reason = String(v?.reason || "unknown");
+    if (reason === "unused_substitute" || reason === "unused" || reason === "bench") {
+      reasons.unused_substitute += 1;
+      reasons.unused += 1;
+    } else if (Object.prototype.hasOwnProperty.call(reasons, reason)) {
+      reasons[reason] += 1;
+    } else {
+      reasons.other += 1;
+    }
+  }
+  return {
+    total,
+    // Compat: previous shape exposed only `unused` (= total count). Keep total under
+    // unused for old consumers, and expose accurate reason breakdown alongside.
+    unused: total,
+    byReason: reasons,
+  };
 }
 
 /**
@@ -158,6 +257,8 @@ export function aggregateSeason(ledger) {
     avgMatchRating: ratedMinutes > 0 ? ratingMinutes / ratedMinutes : null,
   };
 
+  const np = summarizeNonParticipation(ledger.nonParticipation);
+
   return {
     seasonId: ledger.seasonId,
     ...total,
@@ -172,7 +273,7 @@ export function aggregateSeason(ledger) {
     seasonP,
     reliability,
     reliableSignal: (seasonP ?? 0) * reliability,
-    nonParticipationCount: Object.keys(ledger.nonParticipation).length,
-    nonParticipation: { unused: Object.keys(ledger.nonParticipation).length },
+    nonParticipationCount: np.total,
+    nonParticipation: np,
   };
 }

@@ -719,6 +719,7 @@ export function simulateChronologicalSeason({
                 competition: "cup",
                 competitionType: "domesticCup",
                 competitionId: cupState.config.name,
+                editionId: `${seasonStartYear}:${cupState.config.name}`,
                 fixtureId: `destcup:${cupState.config.name}:${ev.roundIndex}:${label}`,
                 teamType: "club",
                 competitionPriority: 0.85,
@@ -781,6 +782,7 @@ export function simulateChronologicalSeason({
         continue;
       }
 
+      const leagueEditionId = String(seasonStartYear);
       const { match, participation, ledgerRecord } = processPlayerMatchDay({
         home: fx.home,
         away: fx.away,
@@ -791,6 +793,7 @@ export function simulateChronologicalSeason({
         competition: "league",
         competitionType: "league",
         competitionId,
+        editionId: leagueEditionId,
         fixtureId,
         teamType: "club",
         competitionPriority: 1,
@@ -802,6 +805,11 @@ export function simulateChronologicalSeason({
       match.matchday = matchday;
       match.round = `Matchday ${match.matchday}`;
       tagLeagueMatch(match, { activeLeague, player, historySegment, seasonStartYear, world });
+      if (ledgerRecord) {
+        ledgerRecord.editionId = match.editionId || leagueEditionId;
+        ledgerRecord.competitionEditionId = match.editionId || leagueEditionId;
+        ledgerRecord.competitionId = match.competitionId || competitionId;
+      }
       leagueAllMatches.push(match);
       leaguePlayerMatches.push(match);
       ensureRecordClub(records, match.home, world);
@@ -848,6 +856,7 @@ export function simulateChronologicalSeason({
             competition: "cup",
             competitionType: "domesticCup",
             competitionId: cupState.config.name,
+            editionId: `${seasonStartYear}:${cupState.config.name}`,
             fixtureId: `cup:${cupState.config.name}:${ev.roundIndex}:${label}`,
             teamType: "club",
             competitionPriority: 0.9,
@@ -1727,6 +1736,7 @@ export function resumeChronologicalSeason({
                 competition: "cup",
                 competitionType: "domesticCup",
                 competitionId: cupState.config.name,
+                editionId: `${seasonStartYear}:${cupState.config.name}`,
                 fixtureId: `destcup:${cupState.config.name}:${ev.roundIndex}:${label}`,
                 teamType: "club",
                 competitionPriority: 0.85,
@@ -1790,6 +1800,7 @@ export function resumeChronologicalSeason({
         continue;
       }
 
+      const leagueEditionId = String(seasonStartYear);
       const { match, participation, ledgerRecord } = processPlayerMatchDay({
         home: fx.home,
         away: fx.away,
@@ -1800,6 +1811,7 @@ export function resumeChronologicalSeason({
         competition: "league",
         competitionType: "league",
         competitionId,
+        editionId: leagueEditionId,
         fixtureId,
         teamType: "club",
         competitionPriority: 1,
@@ -1811,6 +1823,11 @@ export function resumeChronologicalSeason({
       match.matchday = matchday;
       match.round = `Matchday ${match.matchday}`;
       tagLeagueMatch(match, { activeLeague, player, historySegment, seasonStartYear, world });
+      if (ledgerRecord) {
+        ledgerRecord.editionId = match.editionId || leagueEditionId;
+        ledgerRecord.competitionEditionId = match.editionId || leagueEditionId;
+        ledgerRecord.competitionId = match.competitionId || competitionId;
+      }
       leagueAllMatches.push(match);
       leaguePlayerMatches.push(match);
       ensureRecordClub(records, match.home, world);
@@ -1852,6 +1869,7 @@ export function resumeChronologicalSeason({
             competition: "cup",
             competitionType: "domesticCup",
             competitionId: cupState.config.name,
+            editionId: `${seasonStartYear}:${cupState.config.name}`,
             fixtureId: `cup:${cupState.config.name}:${ev.roundIndex}:${label}`,
             teamType: "club",
             competitionPriority: 0.9,

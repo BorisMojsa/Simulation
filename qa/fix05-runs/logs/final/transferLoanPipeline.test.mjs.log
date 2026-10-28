@@ -1,0 +1,16 @@
+OK  every club has exactly one finance profile; no elite fallback for missing
+OK  Serie B ordinary single-deal band rejects 100m and 8m vs 3m max
+OK  generation does not spend; acceptance books once; duplicate blocked
+OK  ordinary 55-60 OVR weak club: no elite SENIOR offers across seeds
+OK  small fees below 500k possible; free agent fee 0
+OK  under-18 contracts max 3 years
+OK  first pro path retains wage and uses pipeline
+OK  loan wage shares sum to 100%; decline keeps contract
+OK  loan start/end return registration once
+OK  international loan youth exemption needs age AND club-trained
+OK  save migration is idempotent and preserves contract
+OK  ledger survives export/import (reload)
+OK  Ecuador/Czechia/Croatia/Serbia not excluded by tier floor
+OK  finance profile version stamped
+
+All transfer/loan pipeline tests passed.

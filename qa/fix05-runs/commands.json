@@ -1,0 +1,16 @@
+{
+  "cwd": "/Users/mojsa/Desktop/Simulation",
+  "node": "v22.19.0",
+  "baseSha": "1a232dddc38626b89151bb572814de1caac9c522",
+  "commands": [
+    { "cmd": "node tests/matchParticipationEvidence.test.mjs", "exitCode": 0 },
+    { "cmd": "node scripts/qaMatchParticipationEvidence.mjs", "exitCode": 0, "pass": true },
+    { "cmd": "node tests/clubOwnershipTransfers.test.mjs", "exitCode": 0 },
+    { "cmd": "for f in tests/*.test.mjs; do node \"$f\"; done", "note": "26 PASS; playerAbility baseline 2 FAIL" },
+    {
+      "cmd": "BASE_URL=http://127.0.0.1:8000 node scripts/browserMatchParticipationChecklist.mjs",
+      "exitCode": 0,
+      "server": "python3 -m http.server 8000"
+    }
+  ]
+}

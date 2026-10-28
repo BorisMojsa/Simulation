@@ -151,6 +151,50 @@ function scorerLabel(club, rng) {
   return `${club.displayName ?? club.name} ${rng.pick(names)}`;
 }
 
+/**
+ * Normalize participation minutes.
+ * Explicit 0 stays 0 (not treated as omitted). Omitted null/undefined/"" uses
+ * omittedFallback. Non-finite or negative values become 0. Positive values are
+ * capped by durationMax (regulation or regulation+ET).
+ */
+export function normalizeParticipationMinutes(raw, { omittedFallback = 0, durationMax = 150 } = {}) {
+  const cap = Math.max(0, Number(durationMax) || 0);
+  if (raw === null || raw === undefined || raw === "") {
+    const fb = Number(omittedFallback);
+    return Math.max(0, Math.min(cap, Number.isFinite(fb) ? fb : 0));
+  }
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(n, cap);
+}
+
+function participationMinutesOf(player, { omittedFallback = 0, durationMax = 150 } = {}) {
+  return normalizeParticipationMinutes(player?.matchParticipation?.minutes, { omittedFallback, durationMax });
+}
+
+/**
+ * Whether the user is on the pitch at `minute` for event attribution.
+ * Starters cover kickoff→minutes; substitutes enter at (duration - minutes).
+ * Extra-time events require completed regulation duration (continued participation).
+ * Regulation stoppage labels (90+/92) stay regulation — not extra time.
+ */
+function playerOnPitchAt(player, playerSide, team, minute, phase, minuteMin = 3, minuteMax = 92) {
+  if (!player || playerSide !== team) return false;
+  const matchDuration = Number(player.matchParticipation?.matchDuration) || 90;
+  const minutes = participationMinutesOf(player, { omittedFallback: 0, durationMax: 150 });
+  if (!(minutes > 0)) return false;
+
+  if (phase === "extraTime") {
+    // Continued ET participation only after completing regulation duration.
+    return minutes >= matchDuration && minute >= 91 && minute <= 120;
+  }
+
+  // Regulation / stoppage (including 90+ labels): start-biased minute window used by
+  // the prior engine. Keeps positive-minute RNG/attribution close to historical
+  // behavior while still requiring minutes > 0.
+  return minute <= minuteMin + ((minuteMax - minuteMin) * minutes) / Math.max(minuteMax, 90);
+}
+
 function buildGoalEvents({
   home,
   away,
@@ -168,23 +212,57 @@ function buildGoalEvents({
   const schedule = [];
   for (let i = 0; i < homeGoals; i++) schedule.push("home");
   for (let i = 0; i < awayGoals; i++) schedule.push("away");
-  const minutes = Number(player?.matchParticipation?.minutes) || (player ? 90 : 0);
+  // Explicit zero must stay zero; only truly omitted minutes use the legacy 90 default.
+  const minutes = participationMinutesOf(player, {
+    omittedFallback: player ? Number(player.matchParticipation?.matchDuration) || 90 : 0,
+    durationMax: 150,
+  });
+  // Zero-minute fixtures still burn goal/assist RNG like the historical "treat 0 as 90"
+  // path so season-level streams stay aligned; attribution stays gated on real minutes.
+  const shareMinutes = minutes > 0 ? minutes : player ? 90 : 0;
   const playerTeamGoals = playerSide === "home" ? homeGoals : playerSide === "away" ? awayGoals : 0;
   // Approximate goals while player is on pitch by minute share (no on-pitch timestamps).
-  const goalsWhilePlaying = Math.max(0, Math.round(playerTeamGoals * clamp(minutes / Math.max(minuteMax, 90), 0, 1)));
-  const gShare = goalShareForPlayer(player, Math.max(goalsWhilePlaying, playerTeamGoals * 0.5), minutes, competition);
-  const aShare = assistShareForPlayer(player, Math.max(goalsWhilePlaying, playerTeamGoals * 0.5), minutes);
+  const goalsWhilePlaying = Math.max(
+    0,
+    Math.round(playerTeamGoals * clamp(shareMinutes / Math.max(minuteMax, 90), 0, 1))
+  );
+  const gShare = goalShareForPlayer(
+    player,
+    Math.max(goalsWhilePlaying, playerTeamGoals * 0.5),
+    shareMinutes,
+    competition
+  );
+  const aShare = assistShareForPlayer(
+    player,
+    Math.max(goalsWhilePlaying, playerTeamGoals * 0.5),
+    shareMinutes
+  );
 
   rng.shuffle(schedule).forEach((scoringSide) => {
     const minute = rng.int(minuteMin, minuteMax);
-    const onPitch =
-      player &&
-      playerSide === scoringSide &&
-      minutes > 0 &&
-      minute <= minuteMin + ((minuteMax - minuteMin) * minutes) / Math.max(minuteMax, 90);
-
-    const playerScores = Boolean(onPitch && player.position !== "GK" && rng.chance(gShare));
-    const playerAssists = Boolean(onPitch && !playerScores && rng.chance(aShare));
+    const onPitch = playerOnPitchAt(player, playerSide, scoringSide, minute, phase, minuteMin, minuteMax);
+    // For zero-minute rows, mirror the historical minute-window RNG (which treated 0 as
+    // 90 for shares/windows) so career streams stay aligned, but never attribute.
+    let playerScores = false;
+    let playerAssists = false;
+    if (player && playerSide === scoringSide) {
+      const rngOnPitch =
+        minutes > 0
+          ? onPitch
+          : playerOnPitchAt(
+              { ...player, matchParticipation: { ...(player.matchParticipation || {}), minutes: 90 } },
+              playerSide,
+              scoringSide,
+              minute,
+              phase,
+              minuteMin,
+              minuteMax
+            );
+      const gRoll = Boolean(rngOnPitch && player.position !== "GK" && rng.chance(gShare));
+      const aRoll = Boolean(rngOnPitch && !gRoll && rng.chance(aShare));
+      playerScores = Boolean(minutes > 0 && onPitch && gRoll);
+      playerAssists = Boolean(minutes > 0 && onPitch && aRoll);
+    }
 
     events.push({
       minute,
@@ -225,8 +303,13 @@ function buildCardEvents({ home, away, playerSide, player, rng, minuteMin = 10, 
     const minute = rng.int(minuteMin, minuteMax);
     const team = rng.chance(0.5) ? "home" : "away";
     const isRed = rng.chance(0.08);
-    const playerCard =
+    const minutes = participationMinutesOf(player, { omittedFallback: 0, durationMax: 150 });
+    const onPitch = playerOnPitchAt(player, playerSide, team, minute, "regulation");
+    // Mirror historical card-roll gating (which ignored minutes) for RNG, then
+    // require real on-pitch participation before attributing a user card.
+    const rolled =
       playerSide === team && player && rng.chance(isRed ? 0.04 : 0.12);
+    const playerCard = Boolean(rolled && minutes > 0 && onPitch);
     events.push({
       minute,
       type: isRed ? "red" : "yellow",
@@ -240,10 +323,60 @@ function buildCardEvents({ home, away, playerSide, player, rng, minuteMin = 10, 
 }
 
 /**
+ * Count open-play user events (regulation + extra time). Penalty shootout kicks
+ * are excluded from goals/assists/cards.
+ */
+export function countUserOpenPlayEvents(match) {
+  const events = (match?.events || []).filter(
+    (e) => e && e.playerInvolved && e.phase !== "penalties"
+  );
+  return {
+    goals: events.filter((e) => e.type === "goal").length,
+    assists: events.filter((e) => e.type === "assist").length,
+    yellow: events.filter((e) => e.type === "yellow").length,
+    red: events.filter((e) => e.type === "red").length,
+  };
+}
+
+/**
+ * Idempotent finalizer: playerStats goals/assists/cards equal counted open-play
+ * user events; rating only when minutes > 0. Safe to call repeatedly.
+ */
+export function finalizePlayerMatchStats(match, player = null, rng = null) {
+  if (!match) return match;
+  const prev = match.playerStats || {};
+  const minutes = normalizeParticipationMinutes(prev.minutes, {
+    omittedFallback: 0,
+    durationMax: 150,
+  });
+  const played = Boolean(match.playerSide && player && minutes > 0);
+  const counts = played ? countUserOpenPlayEvents(match) : { goals: 0, assists: 0, yellow: 0, red: 0 };
+  const playerStats = {
+    ...prev,
+    played,
+    minutes: played ? minutes : 0,
+    started: played ? Boolean(prev.started ?? player?.matchParticipation?.started) : Boolean(prev.started),
+    goals: counts.goals,
+    assists: counts.assists,
+    yellow: counts.yellow,
+    red: counts.red,
+    rating: null,
+  };
+  const next = { ...match, playerStats };
+  if (played) {
+    playerStats.rating = computeMatchRating(next, player, rng);
+  }
+  return next;
+}
+
+/**
  * WhoScored-style 0–10 rating: baseline 6.0, events push up/down.
+ * Requires positive played minutes — zero-minute / bench / injured stay unrated.
  */
 export function computeMatchRating(match, player, rng = null) {
   if (!match?.playerSide || !player) return null;
+  const mins = Number(match.playerStats?.minutes);
+  if (!(mins > 0) || match.playerStats?.played === false) return null;
   const r = rngOr(rng);
 
   let rating = 6.0;
@@ -319,14 +452,15 @@ export function simulateMatch(home, away, {
   date = null,
 } = {}) {
   const r = rngOr(rng);
-  const minutes =
+  const omittedFallback = playerSide && player ? matchDuration : 0;
+  const minutes = normalizeParticipationMinutes(
     playerMinutes != null
-      ? Number(playerMinutes)
+      ? playerMinutes
       : player?.matchParticipation?.minutes != null
-        ? Number(player.matchParticipation.minutes)
-        : playerSide && player
-          ? matchDuration
-          : 0;
+        ? player.matchParticipation.minutes
+        : null,
+    { omittedFallback, durationMax: Math.max(Number(matchDuration) || 90, 150) }
+  );
 
   if (player && playerSide) {
     player.matchParticipation = {
@@ -397,13 +531,6 @@ export function simulateMatch(home, away, {
     rating: null,
   };
 
-  if (played) {
-    playerStats.goals = events.filter((e) => e.type === "goal" && e.playerInvolved && e.phase === "regulation").length;
-    playerStats.assists = events.filter((e) => e.type === "assist" && e.playerInvolved).length;
-    playerStats.yellow = events.filter((e) => e.type === "yellow" && e.playerInvolved).length;
-    playerStats.red = events.filter((e) => e.type === "red" && e.playerInvolved).length;
-  }
-
   const result = {
     home: slimClub(home, homeEff),
     away: slimClub(away, awayEff),
@@ -432,11 +559,7 @@ export function simulateMatch(home, away, {
     effectiveStrength: { home: homeEff, away: awayEff },
   };
 
-  if (played) {
-    playerStats.rating = computeMatchRating(result, player, r);
-  }
-
-  return result;
+  return finalizePlayerMatchStats(result, player, r);
 }
 
 export function matchWinnerSide(match) {
@@ -456,13 +579,25 @@ function simulateExtraTime(match, { player, rng }) {
   const etHome = poissonSample(xg.home * XG_MODEL.ET_FRACTION, r);
   const etAway = poissonSample(xg.away * XG_MODEL.ET_FRACTION, r);
 
+  const matchDuration = Number(player?.matchParticipation?.matchDuration) || 90;
+  const regMinutes = Number(match.playerStats?.minutes) || 0;
+  // Only players who completed regulation continue into ET exposure/attribution.
+  const continuesIntoEt = Boolean(match.playerSide && player && regMinutes >= matchDuration);
+  if (player?.matchParticipation && continuesIntoEt) {
+    player.matchParticipation = {
+      ...player.matchParticipation,
+      minutes: matchDuration + 30,
+      matchDuration,
+    };
+  }
+
   const etEvents = buildGoalEvents({
     home: match.home,
     away: match.away,
     homeGoals: etHome,
     awayGoals: etAway,
     playerSide: match.playerSide,
-    player,
+    player: continuesIntoEt ? player : null,
     competition: match.competition,
     phase: "extraTime",
     minuteMin: 93,
@@ -472,6 +607,9 @@ function simulateExtraTime(match, { player, rng }) {
 
   const matchHome = match.regulationHomeGoals + etHome;
   const matchAway = match.regulationAwayGoals + etAway;
+  const nextStats = continuesIntoEt
+    ? { ...(match.playerStats || {}), minutes: matchDuration + 30, played: true }
+    : match.playerStats;
 
   return {
     ...match,
@@ -481,6 +619,7 @@ function simulateExtraTime(match, { player, rng }) {
     awayGoals: matchAway,
     matchHomeGoals: matchHome,
     matchAwayGoals: matchAway,
+    playerStats: nextStats,
     events: [...match.events, ...etEvents].sort((a, b) => a.minute - b.minute || a.type.localeCompare(b.type)),
     expectedGoals: {
       ...match.expectedGoals,
@@ -571,21 +710,9 @@ export function simulatePenaltyShootout(match, { player = null, rng = null } = {
     events,
   };
 
-  if (resolved.playerSide && player) {
-    resolved.playerStats = {
-      ...resolved.playerStats,
-      rating: computeMatchRating(resolved, player, r),
-    };
-  } else if (resolved.playerSide && resolved.playerStats) {
-    const won = resolved.winnerSide === resolved.playerSide;
-    const base = resolved.playerStats.rating ?? 6.5;
-    resolved.playerStats = {
-      ...resolved.playerStats,
-      rating: clamp(parseFloat((won ? base + 0.15 : base - 0.1).toFixed(1)), 4.5, 9.9),
-    };
-  }
-
-  return resolved;
+  // Finalize from open-play events only; shootout kicks never become goals/assists.
+  // Zero-minute players remain unrated even after pens.
+  return finalizePlayerMatchStats(resolved, player, r);
 }
 
 /**
@@ -620,18 +747,8 @@ export function resolveKnockout(match, {
       current.winnerSide = current.homeGoals > current.awayGoals ? "home" : "away";
       current.decidedBy = "extraTime";
       current.scoreline = `${current.homeGoals}-${current.awayGoals} (aet)`;
-      if (current.playerSide && player) {
-        current.playerStats = {
-          ...current.playerStats,
-          goals:
-            (current.playerStats?.goals || 0) +
-            current.events.filter(
-              (e) => e.type === "goal" && e.playerInvolved && e.phase === "extraTime"
-            ).length,
-          rating: computeMatchRating(current, player, rng),
-        };
-      }
-      return current;
+      // Goals and assists finalized together from regulation + ET events.
+      return finalizePlayerMatchStats(current, player, rng);
     }
   }
 
@@ -639,11 +756,15 @@ export function resolveKnockout(match, {
     return simulatePenaltyShootout(current, { player, rng });
   }
 
-  return {
-    ...current,
-    winnerSide: null,
-    decidedBy: null,
-  };
+  return finalizePlayerMatchStats(
+    {
+      ...current,
+      winnerSide: null,
+      decidedBy: null,
+    },
+    player,
+    rng
+  );
 }
 
 /**
@@ -740,6 +861,9 @@ export function resolveTwoLeggedTie(firstLeg, secondLeg, {
     decidedBy: afterKo.decidedBy,
     events: afterKo.events,
     scoreline: afterKo.scoreline || secondLeg.scoreline,
+    // Carry finalized KO playerStats (goals+assists+cards+minutes+rating) onto the second leg.
+    playerStats: afterKo.playerStats ?? secondLeg.playerStats,
+    winnerSide: afterKo.winnerSide ?? null,
   };
 
   // Map second-leg winner orientation → first-leg-home relative side.

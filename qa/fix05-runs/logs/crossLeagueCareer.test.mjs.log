@@ -1,0 +1,11 @@
+OK  10 Jan is review checkpoint for European leagues, not sole registration gate
+OK  destination schedule is deterministic and non-empty
+OK  cross-league reconcile attaches future destination fixtures only
+OK  Norway January move uses future registration / next calendar fixtures
+OK  accepted cross-league transfer mid-season yields destination appearances
+OK  loan accept/refuse/return and wage share conservation
+OK  pause/resume does not duplicate age or seasons
+OK  Serie B fixture still rejects 100m and 8m vs 3m
+OK  association windows exist for every playable league
+
+All cross-league / accepted-deal career tests passed.

@@ -1,0 +1,51 @@
+{
+  "careerId": "bug5-lw-1",
+  "position": "LW",
+  "seed": 3,
+  "rawRecords": 54,
+  "positiveMinutes": 24,
+  "zeroMinutes": 30,
+  "withEdition": 54,
+  "editionCoverage": 1,
+  "rawCleanSheets": 0,
+  "ledgerCleanSheets": 0,
+  "evidenceLeagueCleanSheets": null,
+  "evidenceTotalCleanSheets": null,
+  "duplicateMatchIds": 0,
+  "goalsAgree": true,
+  "goalsFromPositive": 1,
+  "goalsFromLedger": 1,
+  "apps": 24,
+  "samplePositive": [
+    {
+      "matchId": "league:england-premier-league:md:20",
+      "editionId": "2026",
+      "minutes": 10,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 6.5
+    },
+    {
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:wolverhampton-wanderers:club:england:arsenal",
+      "editionId": "2026-uefa-champions-league",
+      "minutes": 86,
+      "goals": 1,
+      "cleanSheet": null,
+      "rating": 7.5
+    }
+  ],
+  "sampleZero": [
+    {
+      "matchId": "league:england-premier-league:md:0",
+      "reason": "not_selected",
+      "editionId": "2026",
+      "teamId": "club:england:arsenal"
+    },
+    {
+      "matchId": "league:england-premier-league:md:10",
+      "reason": "not_selected",
+      "editionId": "2026",
+      "teamId": "club:england:arsenal"
+    }
+  ]
+}

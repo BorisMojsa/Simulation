@@ -1,0 +1,51 @@
+{
+  "careerId": "bug5-lw-2",
+  "position": "LW",
+  "seed": 808,
+  "rawRecords": 58,
+  "positiveMinutes": 23,
+  "zeroMinutes": 35,
+  "withEdition": 58,
+  "editionCoverage": 1,
+  "rawCleanSheets": 0,
+  "ledgerCleanSheets": 0,
+  "evidenceLeagueCleanSheets": null,
+  "evidenceTotalCleanSheets": null,
+  "duplicateMatchIds": 0,
+  "goalsAgree": true,
+  "goalsFromPositive": 0,
+  "goalsFromLedger": 0,
+  "apps": 23,
+  "samplePositive": [
+    {
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md2:club:england:arsenal:club:italy:bologna",
+      "editionId": "2026-uefa-champions-league",
+      "minutes": 19,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 6.1
+    },
+    {
+      "matchId": "league:england-premier-league:md:70",
+      "editionId": "2026",
+      "minutes": 35,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 6.4
+    }
+  ],
+  "sampleZero": [
+    {
+      "matchId": "league:england-premier-league:md:0",
+      "reason": "not_selected",
+      "editionId": "2026",
+      "teamId": "club:england:arsenal"
+    },
+    {
+      "matchId": "league:england-premier-league:md:10",
+      "reason": "not_selected",
+      "editionId": "2026",
+      "teamId": "club:england:arsenal"
+    }
+  ]
+}

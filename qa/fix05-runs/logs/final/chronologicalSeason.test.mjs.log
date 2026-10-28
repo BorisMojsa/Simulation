@@ -1,0 +1,25 @@
+OK  ensureAbilityBudgets: bare number normalizes; object record preserved
+No club profile for "Opp". {
+  name: 'Opp',
+  displayName: 'Opp',
+  clubId: 'opp',
+  overall: 72,
+  attack: 72,
+  midfield: 70,
+  defence: 70,
+  goalkeeper: 70
+}
+No club profile for "LeagueOpp". {
+  name: 'LeagueOpp',
+  displayName: 'Opp',
+  clubId: 'league-opp',
+  overall: 72,
+  attack: 72,
+  midfield: 70,
+  defence: 70,
+  goalkeeper: 70
+}
+OK  cup injury blocks later league minutes (dated match-day chain)
+OK  simulateChronologicalSeason returns interleaved competitions
+OK  exceptional age-20 fixture: high budget can reach world-class
+chronologicalSeason tests done

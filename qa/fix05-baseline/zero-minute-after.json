@@ -1,0 +1,19 @@
+{
+  "trials": 100,
+  "goalAssistMatches": 0,
+  "cardMatches": 0,
+  "zeroMinuteKnockout": {
+    "decidedBy": "extraTime",
+    "playerStats": {
+      "played": false,
+      "minutes": 0,
+      "started": false,
+      "goals": 0,
+      "assists": 0,
+      "yellow": 0,
+      "red": 0,
+      "rating": null
+    },
+    "userEvents": []
+  }
+}

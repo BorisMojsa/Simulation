@@ -1,0 +1,51 @@
+{
+  "careerId": "bug5-cm-3",
+  "position": "CM",
+  "seed": 707,
+  "rawRecords": 49,
+  "positiveMinutes": 22,
+  "zeroMinutes": 27,
+  "withEdition": 49,
+  "editionCoverage": 1,
+  "rawCleanSheets": 0,
+  "ledgerCleanSheets": 0,
+  "evidenceLeagueCleanSheets": null,
+  "evidenceTotalCleanSheets": null,
+  "duplicateMatchIds": 0,
+  "goalsAgree": true,
+  "goalsFromPositive": 0,
+  "goalsFromLedger": 0,
+  "apps": 22,
+  "samplePositive": [
+    {
+      "matchId": "league:england-premier-league:md:40",
+      "editionId": "2026",
+      "minutes": 86,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 6.8
+    },
+    {
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:spain:athletic-bilbao:club:england:arsenal",
+      "editionId": "2026-uefa-champions-league",
+      "minutes": 25,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 6.4
+    }
+  ],
+  "sampleZero": [
+    {
+      "matchId": "league:england-premier-league:md:0",
+      "reason": "unused_substitute",
+      "editionId": "2026",
+      "teamId": "club:england:arsenal"
+    },
+    {
+      "matchId": "league:england-premier-league:md:10",
+      "reason": "unused_substitute",
+      "editionId": "2026",
+      "teamId": "club:england:arsenal"
+    }
+  ]
+}

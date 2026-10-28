@@ -801,10 +801,23 @@ async function playSingleMatch(match, competitionLabel) {
   }
   if (feed) feed.innerHTML = "";
 
-  // Start empty — reveal contribution live with events
+  // Start empty — reveal contribution live with events.
+  // Zero-minute associated fixtures are not "playing".
   if (playerNote) {
-    if (match.playerSide) {
+    const mins = Number(match.playerStats?.minutes) || 0;
+    const reason = match.playerStats?.nonParticipationReason || null;
+    if (match.playerSide && mins > 0) {
       playerNote.textContent = "You are playing";
+      playerNote.classList.remove("hidden");
+    } else if (match.playerSide) {
+      playerNote.textContent =
+        reason === "injured"
+          ? "Injured"
+          : reason === "not_selected"
+            ? "Not selected"
+            : reason === "unused_substitute" || reason === "unused" || reason === "bench"
+              ? "Unused substitute"
+              : "Did not play";
       playerNote.classList.remove("hidden");
     } else {
       playerNote.textContent = "";
@@ -844,7 +857,7 @@ async function playSingleMatch(match, competitionLabel) {
         live.red += 1;
       }
       appendEvent(feed, ev);
-      if (playerNote && match.playerSide) {
+      if (playerNote && match.playerSide && (Number(match.playerStats?.minutes) || 0) > 0) {
         const text = liveContributionText(live);
         playerNote.textContent = text || "You are playing";
       }
@@ -867,10 +880,23 @@ async function playSingleMatch(match, competitionLabel) {
   }
 
   if (playerNote && match.playerSide) {
-    const rating = match.playerStats?.rating;
-    const contrib = liveContributionText(live);
-    const ratingBit = rating != null ? `Match rating ${rating.toFixed(1)}` : "";
-    playerNote.textContent = [contrib || "Featured", ratingBit].filter(Boolean).join(" · ");
+    const mins = Number(match.playerStats?.minutes) || 0;
+    const reason = match.playerStats?.nonParticipationReason || null;
+    if (mins > 0) {
+      const rating = match.playerStats?.rating;
+      const contrib = liveContributionText(live);
+      const ratingBit = rating != null ? `Match rating ${rating.toFixed(1)}` : "";
+      playerNote.textContent = [contrib || "Played", ratingBit].filter(Boolean).join(" · ");
+    } else {
+      playerNote.textContent =
+        reason === "injured"
+          ? "Injured"
+          : reason === "not_selected"
+            ? "Not selected"
+            : reason === "unused_substitute" || reason === "unused" || reason === "bench"
+              ? "Unused substitute"
+              : "Did not play";
+    }
     playerNote.classList.remove("hidden");
   }
 

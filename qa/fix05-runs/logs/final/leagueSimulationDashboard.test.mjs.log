@@ -1,0 +1,9 @@
+OK  rebuildTableFromMatches is idempotent by fixtureId
+OK  goal totals balance across the table
+OK  buildScoreRevealPath is monotonic and never exceeds finals
+OK  cosmetic reveal for missing events is deterministic
+OK  formatMatchContribution covers striker, GK, and unused
+OK  groupMatchesByMatchday separates player fixtures
+OK  ensureLeagueMatchId is stable
+OK  simulateSeason exposes leagueAllMatches on complete seasons
+OK  pause payload surfaces partial league matches

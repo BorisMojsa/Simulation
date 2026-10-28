@@ -46,6 +46,7 @@ function nationalOpts({
         competition: "international",
         competitionType: "international",
         competitionId: req.competitionId || edition.competitionId,
+        editionId: req.editionId || edition.editionId,
         fixtureId: req.matchId || req.fixtureId,
         teamType: "national",
         competitionPriority: 1.1,

@@ -352,7 +352,16 @@ function updateCardFinal(card, match) {
   if (scoreEl) scoreEl.textContent = `${h} – ${a}`;
   if (progress) progress.style.width = "100%";
   const contrib = formatMatchContribution(match, ctl.player || {});
-  if (contribEl) contribEl.textContent = contrib.text || (match.playerSide ? "Featured" : "");
+  if (contribEl) {
+    const mins = Number(match?.playerStats?.minutes) || 0;
+    const fallback =
+      match.playerSide && mins <= 0
+        ? contrib.text || "Did not play"
+        : match.playerSide
+          ? "Played"
+          : "";
+    contribEl.textContent = contrib.text || fallback;
+  }
   if (ratingEl) {
     ratingEl.textContent = contrib.ratingText;
     ratingEl.classList.toggle("is-empty", contrib.rating == null);

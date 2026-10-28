@@ -1,0 +1,15 @@
+OK  normalizeParticipationMinutes: explicit zero, omitted, invalid
+OK  explicit zero minutes: no user goal/assist/card events or rating (100 seeds)
+OK  omitted minutes still default to match duration for player fixtures
+OK  zero-minute knockout remains unrated with no user events
+OK  positive starter still produces user contributions under existing rates
+OK  GK never receives outfield goal attribution
+OK  knockout final events equal playerStats (1000 seeds, ET/pens exercised)
+OK  witness seeds 6/169/462: events agree with stats after KO
+OK  two-leg tie: second leg carries finalized KO stats; first leg regulation-only
+OK  finalizePlayerMatchStats is idempotent
+OK  ledger: null rating stays unrated; cleanSheet preserved; structured zero-minute
+OK  ledger known-false clean sheet distinct from unknown
+OK  pre-kickoff training injury zeros selected minutes
+OK  controlled pre-kickoff injury via applyInjury before simulate path
+matchParticipationEvidence tests complete

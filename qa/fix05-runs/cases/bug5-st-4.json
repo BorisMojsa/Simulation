@@ -1,0 +1,51 @@
+{
+  "careerId": "bug5-st-4",
+  "position": "ST",
+  "seed": 505,
+  "rawRecords": 55,
+  "positiveMinutes": 13,
+  "zeroMinutes": 42,
+  "withEdition": 55,
+  "editionCoverage": 1,
+  "rawCleanSheets": 0,
+  "ledgerCleanSheets": 0,
+  "evidenceLeagueCleanSheets": null,
+  "evidenceTotalCleanSheets": null,
+  "duplicateMatchIds": 0,
+  "goalsAgree": true,
+  "goalsFromPositive": 2,
+  "goalsFromLedger": 2,
+  "apps": 13,
+  "samplePositive": [
+    {
+      "matchId": "league:england-premier-league:md:20",
+      "editionId": "2026",
+      "minutes": 14,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 6.3
+    },
+    {
+      "matchId": "league:england-premier-league:md:40",
+      "editionId": "2026",
+      "minutes": 81,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 6.3
+    }
+  ],
+  "sampleZero": [
+    {
+      "matchId": "league:england-premier-league:md:0",
+      "reason": "not_selected",
+      "editionId": "2026",
+      "teamId": "club:england:arsenal"
+    },
+    {
+      "matchId": "league:england-premier-league:md:10",
+      "reason": "not_selected",
+      "editionId": "2026",
+      "teamId": "club:england:arsenal"
+    }
+  ]
+}

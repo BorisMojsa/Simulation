@@ -1,0 +1,51 @@
+{
+  "careerId": "bug5-rb-1",
+  "position": "RB",
+  "seed": 33,
+  "rawRecords": 66,
+  "positiveMinutes": 38,
+  "zeroMinutes": 28,
+  "withEdition": 66,
+  "editionCoverage": 1,
+  "rawCleanSheets": 2,
+  "ledgerCleanSheets": 2,
+  "evidenceLeagueCleanSheets": 1,
+  "evidenceTotalCleanSheets": 2,
+  "duplicateMatchIds": 0,
+  "goalsAgree": true,
+  "goalsFromPositive": 0,
+  "goalsFromLedger": 0,
+  "apps": 38,
+  "samplePositive": [
+    {
+      "matchId": "world-cup:2026:group:C:md3:slot0",
+      "editionId": "2026-world-cup",
+      "minutes": 85,
+      "goals": 0,
+      "cleanSheet": true,
+      "rating": 6.9
+    },
+    {
+      "matchId": "world-cup:2026:ko:m76",
+      "editionId": "2026-world-cup",
+      "minutes": 17,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 6.3
+    }
+  ],
+  "sampleZero": [
+    {
+      "matchId": "world-cup:2026:group:C:md1:slot0",
+      "reason": "not_selected",
+      "editionId": "2026-world-cup",
+      "teamId": "nation:england"
+    },
+    {
+      "matchId": "world-cup:2026:group:C:md2:slot0",
+      "reason": "not_selected",
+      "editionId": "2026-world-cup",
+      "teamId": "nation:england"
+    }
+  ]
+}

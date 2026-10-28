@@ -402,6 +402,18 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
           year: player.seasons[player.seasons.length - 1].year,
           age: player.seasons[player.seasons.length - 1].age,
           clubName: player.seasons[player.seasons.length - 1].clubName,
+          matches: player.seasons[player.seasons.length - 1].matches,
+          minutes: player.seasons[player.seasons.length - 1].minutes,
+          goals: player.seasons[player.seasons.length - 1].goals,
+          assists: player.seasons[player.seasons.length - 1].assists,
+          cleanSheets: player.seasons[player.seasons.length - 1].cleanSheets,
+          evidenceCleanSheets:
+            player.seasons[player.seasons.length - 1].seasonEvidence?.total?.cleanSheets ??
+            player.seasons[player.seasons.length - 1].seasonEvidence?.cleanSheets ??
+            null,
+          evidenceByScope: player.seasons[player.seasons.length - 1].seasonEvidence?.byScope || null,
+          nonParticipation:
+            player.seasons[player.seasons.length - 1].ledgerSummary?.nonParticipation || null,
         }
       : null,
     nextAction: selectNextCareerAction(player),

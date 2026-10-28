@@ -1,0 +1,8 @@
+OK  academy first contract → parent promotion → renewal path
+OK  winter pause → loan accept/refuse → resume → return → purchase option
+OK  empty offers do not deadlock; policy stay clears window
+OK  accept-transfer and accept-loan policies are deterministic
+OK  Stay-at-club mid-season control clears decision and resumes season
+OK  pause segment exposes partial league fixtures for the dashboard
+
+All browser-flow smoke tests passed.

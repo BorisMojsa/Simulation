@@ -1,0 +1,13 @@
+OK  model version is player-development-v3
+OK  signed performance and confidence: poor < neutral < good
+OK  negative performance is not clamped to neutral via reliableSignal
+OK  no inherited ceiling: archived budgets do not constrain growth
+OK  earned exceptional season can reach +6 raw under shared annual allowance
+OK  healthy training fraction uses season exposure, not only final injury flag
+OK  Golden Boot goes to actual top scorer regardless of OVR
+OK  high-OVR non-leader does not win Golden Boot
+OK  individualAwards.js contains no Math.random
+OK  migration preserves ability and deactivates ceilings
+OK  buildSeasonEvidence separates confidence from signed performance
+
+Done.

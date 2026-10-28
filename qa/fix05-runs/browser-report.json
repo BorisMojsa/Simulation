@@ -1,0 +1,100 @@
+{
+  "generatedAt": "2026-10-28T20:22:45.404Z",
+  "baseUrl": "http://127.0.0.1:8000",
+  "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "results": [
+    {
+      "name": "move-loan-ownership-transfer",
+      "status": "PASS",
+      "detail": {
+        "playing": "club:england:brentford",
+        "seasons": 1
+      }
+    },
+    {
+      "name": "live-loan-controls",
+      "status": "PASS",
+      "detail": {
+        "playing": "club:croatia:slaven-belupo",
+        "employment": "club:italy:atalanta"
+      }
+    },
+    {
+      "name": "free-agent-predecessor-smoke",
+      "status": "PASS",
+      "detail": {
+        "nextAction": {
+          "id": "resolve-offers",
+          "label": "Review offers",
+          "canSimulate": false
+        },
+        "offers": [
+          {
+            "club": "Eintracht Frankfurt",
+            "isLoan": false,
+            "wage": 120000
+          }
+        ]
+      }
+    },
+    {
+      "name": "academy-predecessor-smoke",
+      "status": "PASS",
+      "detail": {
+        "academy": {
+          "status": "pending-review",
+          "periodCount": 1,
+          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvsk9n3p",
+          "exitAge": 21
+        },
+        "nextAction": {
+          "id": "resolve-offers",
+          "label": "Review offers",
+          "canSimulate": false
+        }
+      }
+    },
+    {
+      "name": "skip-controls-and-match-cards",
+      "status": "PASS",
+      "detail": {
+        "cardsSample": [
+          {
+            "contrib": "…",
+            "rating": "—"
+          },
+          {
+            "contrib": "…",
+            "rating": "—"
+          },
+          {
+            "contrib": "Not selected",
+            "rating": "—"
+          },
+          {
+            "contrib": "Not selected",
+            "rating": "—"
+          },
+          {
+            "contrib": "Not selected",
+            "rating": "—"
+          },
+          {
+            "contrib": "Not selected",
+            "rating": "—"
+          },
+          {
+            "contrib": "0G / 0A · 25' · Sub",
+            "rating": "6.3"
+          },
+          {
+            "contrib": "0G / 0A · 25' · Sub",
+            "rating": "6.3"
+          }
+        ],
+        "zeroish": 26
+      }
+    }
+  ],
+  "pass": true
+}

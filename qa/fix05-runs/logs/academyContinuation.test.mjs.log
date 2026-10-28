@@ -1,0 +1,27 @@
+ok - Healthy Aston Villa Academy continuation — no senior fixtures
+ok - Second-division parent separation (Championship)
+ok - Non-English association academy separation
+ok - Real zero-offer review below 21 → continuation
+ok - Sole failed offer below 21 → enrolled continuation (finance validation)
+ok - Sole failed final offer → release without year
+ok - One failed offer preserves still-valid alternative
+ok - Declined final review rejects cloned offer replay; fresh FA offer can sign
+ok - Parent first-pro deal graduates with coherent IDs
+ok - Suitable non-parent first-pro deal
+ok - Missing parent — no bare senior-flag flip
+ok - Age 20→21 no offers → immediate release
+ok - Final review with offers at 21 — accept graduates; decline releases
+ok - Legacy academy at 21 and 35 — review/release without year
+ok - Released graduate: empty market then FA path
+ok - Repeated advance is exact-once for period id
+ok - Snapshot round-trip preserves academy lifecycle
+ok - Opening bootstrap produces valid continuation or graduate
+ok - GK youth record supported
+ok - Direct senior-generator guard + PL control 20/380/38
+ok - Migration clears suppress stuck state for over-age
+ok - Snapshot restore of pending review keeps offer identity
+ok - R4: rejected parent shortcut preserves non-parent final alternatives
+ok - R4: failed sole parent offer settles final release / below-21 continue
+ok - R4: successful parent offer from review graduates once
+
+25 passed, 0 failed

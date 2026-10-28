@@ -1,0 +1,51 @@
+{
+  "careerId": "bug5-gk-5",
+  "position": "GK",
+  "seed": 222,
+  "rawRecords": 59,
+  "positiveMinutes": 19,
+  "zeroMinutes": 40,
+  "withEdition": 59,
+  "editionCoverage": 1,
+  "rawCleanSheets": 0,
+  "ledgerCleanSheets": 0,
+  "evidenceLeagueCleanSheets": 0,
+  "evidenceTotalCleanSheets": 0,
+  "duplicateMatchIds": 0,
+  "goalsAgree": true,
+  "goalsFromPositive": 0,
+  "goalsFromLedger": 0,
+  "apps": 19,
+  "samplePositive": [
+    {
+      "matchId": "league:england-premier-league:md:0",
+      "editionId": "2026",
+      "minutes": 26,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 5.5
+    },
+    {
+      "matchId": "league:england-premier-league:md:20",
+      "editionId": "2026",
+      "minutes": 25,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 5.7
+    }
+  ],
+  "sampleZero": [
+    {
+      "matchId": "league:england-premier-league:md:10",
+      "reason": "unused_substitute",
+      "editionId": "2026",
+      "teamId": "club:england:arsenal"
+    },
+    {
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:spain:villarreal:club:england:arsenal",
+      "reason": "not_selected",
+      "editionId": "2026-uefa-champions-league",
+      "teamId": "club:england:arsenal"
+    }
+  ]
+}

@@ -510,9 +510,49 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     }
   }
 
+  // Prefer per-match cleanSheet flags on the normalized ledger for scoped evidence.
+  // Fall back to the season-level total only when no ledger flags exist (legacy).
+  const ledgerHasCleanSheetFlags = (ledger.matches || []).some((m) => typeof m.cleanSheet === "boolean");
+  const competitionEditions = [];
+  const leagueKey = playingLeague?.leagueId || playingLeague?.name || "";
+  competitionEditions.push({
+    editionId: String(seasonId),
+    scope: "league",
+    competitionKey: leagueKey,
+    name: playingLeague?.displayName || playingLeague?.name || null,
+  });
+  for (const cupCampaign of domesticCupCampaigns) {
+    const cupName = cupCampaign?.name;
+    if (!cupName) continue;
+    competitionEditions.push({
+      editionId: `${seasonId}:${cupName}`,
+      scope: "cup",
+      competitionKey: cupName,
+      name: cupName,
+    });
+  }
+  if (europeanCampaign?.editionId || europeanCampaign?.competitionId) {
+    competitionEditions.push({
+      editionId: europeanCampaign.editionId || `${seasonId}:continental`,
+      scope: "continental",
+      competitionKey: europeanCampaign.competitionId || europeanCampaign.competition,
+      name: europeanCampaign.competition || null,
+    });
+  }
+  if (internationalSeason?.primary?.editionId || internationalSeason?.primary?.name) {
+    competitionEditions.push({
+      editionId: internationalSeason.primary.editionId || `${seasonId}:international`,
+      scope: "international",
+      competitionKey:
+        internationalSeason.primary.competitionId || internationalSeason.primary.name,
+      name: internationalSeason.primary.name || null,
+    });
+  }
+
   const evidence = buildSeasonEvidence(player, {
     aggregate: agg,
     ledger,
+    ledgerMatches: ledger.matches,
     league: playingLeague,
     standing,
     table: chrono.table,
@@ -523,7 +563,9 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     assists,
     cleanSheets,
     leagueGoals: agg.byCompetitionType?.league?.goals ?? goals,
-    leagueCleanSheets: cleanSheets,
+    // Only attribute the aggregate CS total to league when ledger lacks per-match flags.
+    leagueCleanSheets: ledgerHasCleanSheetFlags ? undefined : cleanSheets,
+    competitionEditions,
     seasonDays: 300,
     playingStints: playingStintsForEvidence(player),
   });

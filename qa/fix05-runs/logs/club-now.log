@@ -1,0 +1,65 @@
+OK  Arsenal to Brentford: no post-move Arsenal player continental/cup sides
+OK  accepted-offer permanent move asserts destination fixture ownership
+OK  cross-country accepted loan detaches parent continental player fixtures
+OK  loan return and parent renewal preserve borrower then restore parent
+OK  delayed registration blocks destination side before effective date
+OK  snapshot round-trip preserves playing stints
+OK  continental format ownership policy covers all eight club formats
+OK  national team identity is unaffected by club side helper
+OK  F01: undated free-agent signing records destination stint and league fixtures
+FAIL F02: in-field continental destination fixtures match ledger after resume
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+2 !== 0
+
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:608:12
+    at test (file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:47:5)
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:543:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 2,
+  expected: 0,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+OK  F03: January cross-association move schedules winter destination cup rounds
+FAIL R1: direct R16 destination knockout fixtures match ledger in chrono order
+AssertionError [ERR_ASSERTION]: at least one positive-minute destination KO appearance
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:747:10
+    at test (file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:47:5)
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:688:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+FAIL R2: cross-association loan keeps pre-move cup fixture history
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ '2026-09-20'
+- '2026-10-28'
+        ^
+
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:779:12
+    at test (file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:47:5)
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:754:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '2026-09-20',
+  expected: '2026-10-28',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+OK  F04: empty trophies[] does not fall through to europeanCampaign.won

@@ -1,0 +1,76 @@
+FAIL Arsenal to Brentford: no post-move Arsenal player continental/cup sides
+AssertionError [ERR_ASSERTION]: Arsenal FA Cup win after departure must not be unlabeled current-club honor
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:206:12
+    at test (file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:47:5)
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:169:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+OK  accepted-offer permanent move asserts destination fixture ownership
+FAIL cross-country accepted loan detaches parent continental player fixtures
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'club:croatia:slaven-belupo'
+- 'club:croatia:rudes'
+                ^
+
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:282:10
+    at test (file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:47:5)
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:277:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'club:croatia:slaven-belupo',
+  expected: 'club:croatia:rudes',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+OK  loan return and parent renewal preserve borrower then restore parent
+OK  delayed registration blocks destination side before effective date
+OK  snapshot round-trip preserves playing stints
+OK  continental format ownership policy covers all eight club formats
+OK  national team identity is unaffected by club side helper
+OK  F01: undated free-agent signing records destination stint and league fixtures
+FAIL F02: in-field continental destination fixtures match ledger after resume
+AssertionError [ERR_ASSERTION]: continental player match uefa-champions-league:2026-uefa-champions-league:playoff:club:england:crystal-palace:club:italy:como must have ledger row
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:622:14
+    at test (file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:47:5)
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:543:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+OK  F03: January cross-association move schedules winter destination cup rounds
+FAIL R1: direct R16 destination knockout fixtures match ledger in chrono order
+AssertionError [ERR_ASSERTION]: R16/QF player match uefa-champions-league:2026-uefa-champions-league:playoff:club:italy:roma:club:england:brighton-and-hove-albion must have ledger row
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:744:12
+    at test (file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:47:5)
+    at file:///Users/mojsa/Desktop/Simulation/tests/clubOwnershipTransfers.test.mjs:688:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+OK  R2: cross-association loan keeps pre-move cup fixture history
+OK  F04: empty trophies[] does not fall through to europeanCampaign.won

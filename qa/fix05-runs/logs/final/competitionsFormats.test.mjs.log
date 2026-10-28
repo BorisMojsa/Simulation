@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: UEFA pre-season standing preserves Champions League qualification label
+ok 1 - UEFA pre-season standing preserves Champions League qualification label
+  ---
+  duration_ms: 0.551833
+  type: 'test'
+  ...
+# Subtest: UEFA position fallback grants CL when qualification label was null
+ok 2 - UEFA position fallback grants CL when qualification label was null
+  ---
+  duration_ms: 0.115959
+  type: 'test'
+  ...
+# Subtest: AFC/CAF club supplement and playable leagues are present
+ok 3 - AFC/CAF club supplement and playable leagues are present
+  ---
+  duration_ms: 0.105125
+  type: 'test'
+  ...
+# Subtest: Champions League campaign uses league phase with 36-team field when pool allows
+ok 4 - Champions League campaign uses league phase with 36-team field when pool allows
+  ---
+  duration_ms: 91.977916
+  type: 'test'
+  ...
+# Subtest: Libertadores uses group stage
+ok 5 - Libertadores uses group stage
+  ---
+  duration_ms: 31.065167
+  type: 'test'
+  ...
+# Subtest: World Cup 2026 config is 48 teams with best thirds; EURO is 24
+ok 6 - World Cup 2026 config is 48 teams with best thirds; EURO is 24
+  ---
+  duration_ms: 0.367083
+  type: 'test'
+  ...
+# Subtest: World Cup simulation builds power-of-two knockout without truncating qualifiers
+ok 7 - World Cup simulation builds power-of-two knockout without truncating qualifiers
+  ---
+  duration_ms: 38.659542
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 167.971666

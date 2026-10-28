@@ -1,0 +1,48 @@
+OK  weight tables sum to 1 and validateWeights passes
+OK  position aliases normalise
+OK  RW fixture overall is 80.10
+OK  overall is within attribute min/max and has no floor of 40
+OK  GK shooting is irrelevant to GK overall
+OK  potential is never 100 and has no +1 floor
+OK  rating cache refresh follows attributes
+OK  state delta: neutral = 0, clamped, morale bounded, adaptation decays
+OK  injury: exposure sampling, idempotent apply, recovery, restoration
+OK  ledger: exact-once, non-participation, aggregation, observation
+OK  development: determinism, bounds, idempotent season, budget respected
+FAIL development: annual cap, deconditioning is recoverable
+AssertionError [ERR_ASSERTION]: learning 8.693485869706887
+    at file:///Users/mojsa/Desktop/Simulation/tests/playerAbility.test.mjs:299:10
+    at test (file:///Users/mojsa/Desktop/Simulation/tests/playerAbility.test.mjs:41:5)
+    at file:///Users/mojsa/Desktop/Simulation/tests/playerAbility.test.mjs:286:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+OK  starting attributes hit target; GK uses GK keys
+FAIL academy growth mutates attributes and charges shared annual allowance
+AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+
+  assert.ok(big.realized <= 7 - r.realized + 1e-6)
+
+    at file:///Users/mojsa/Desktop/Simulation/tests/playerAbility.test.mjs:343:10
+    at test (file:///Users/mojsa/Desktop/Simulation/tests/playerAbility.test.mjs:41:5)
+    at file:///Users/mojsa/Desktop/Simulation/tests/playerAbility.test.mjs:334:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+OK  forecast: cached by signature, does not touch career rng
+OK  migration: idempotent, backs up legacy, GK proxy, no invented injuries
+OK  module sources do not use Math.random

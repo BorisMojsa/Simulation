@@ -232,9 +232,11 @@ export function formatMatchContribution(match, player = {}) {
             ? "Rested"
             : reason === "not_eligible" || reason === "ineligible"
               ? "Not eligible"
-              : reason === "unused" || reason === "bench"
-                ? "Unused substitute"
-                : "Did not play";
+              : reason === "not_selected"
+                ? "Not selected"
+                : reason === "unused" || reason === "unused_substitute" || reason === "bench"
+                  ? "Unused substitute"
+                  : "Did not play";
     return {
       kind: "no-appearance",
       text: label,

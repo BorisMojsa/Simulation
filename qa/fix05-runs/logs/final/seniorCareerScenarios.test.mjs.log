@@ -1,0 +1,19 @@
+OK  bank has at least 80 distinct scenario IDs with three choices
+OK  normalize is idempotent and weighted pick works
+OK  trigger keys are stable; false rolls stored; no reroll on reload
+OK  independent competition editions each get one roll
+OK  non-participant continental/international excluded from rolls
+OK  partner eligibility gates relationship scenes
+OK  resolve is idempotent; duplicate clicks do not stack effects
+OK  balanced policy does not always pick ambitious max-reward label
+OK  pause → choice → resume path preserves earlier results and applies once
+OK  headless season with auto policy completes; scenes use balanced not always-max
+OK  goalkeeper senior season path
+    league: drawn=2983/10000 rate=0.2983
+    cup: drawn=3020/10000 rate=0.3020
+    continental: drawn=2918/10000 rate=0.2918
+    international: drawn=2970/10000 rate=0.2970
+OK  10k trigger calibration per competition type stays near 30%
+OK  same trigger seed yields same scenario selection across interactive-shaped resolve
+
+Senior career scenario tests done.

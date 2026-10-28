@@ -1,0 +1,51 @@
+{
+  "careerId": "bug5-st-5",
+  "position": "ST",
+  "seed": 909,
+  "rawRecords": 65,
+  "positiveMinutes": 19,
+  "zeroMinutes": 46,
+  "withEdition": 65,
+  "editionCoverage": 1,
+  "rawCleanSheets": 0,
+  "ledgerCleanSheets": 0,
+  "evidenceLeagueCleanSheets": null,
+  "evidenceTotalCleanSheets": null,
+  "duplicateMatchIds": 0,
+  "goalsAgree": true,
+  "goalsFromPositive": 1,
+  "goalsFromLedger": 1,
+  "apps": 19,
+  "samplePositive": [
+    {
+      "matchId": "world-cup:2026:group:I:md3:slot0",
+      "editionId": "2026-world-cup",
+      "minutes": 28,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 6.2
+    },
+    {
+      "matchId": "world-cup:2026:ko:final",
+      "editionId": "2026-world-cup",
+      "minutes": 17,
+      "goals": 0,
+      "cleanSheet": null,
+      "rating": 6.2
+    }
+  ],
+  "sampleZero": [
+    {
+      "matchId": "world-cup:2026:group:I:md1:slot1",
+      "reason": "unused_substitute",
+      "editionId": "2026-world-cup",
+      "teamId": "nation:england"
+    },
+    {
+      "matchId": "world-cup:2026:group:I:md2:slot1",
+      "reason": "not_selected",
+      "editionId": "2026-world-cup",
+      "teamId": "nation:england"
+    }
+  ]
+}

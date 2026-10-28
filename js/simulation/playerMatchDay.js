@@ -2,12 +2,13 @@
  * Shared dated match-day processing for the user player.
  * Used by league / cup / continental / international chronological paths.
  */
-import { simulateMatch } from "./matchEngine.js";
+import { simulateMatch, finalizePlayerMatchStats } from "./matchEngine.js";
 import { resolvePlayerParticipation } from "./playerSelection.js";
 import {
   advanceHealth,
   applyInjury,
   computeRiskMultiplier,
+  isAvailable,
   sampleInjuryFromExposure,
 } from "./playerHealth.js";
 import { advanceStateBetweenDates, updateFormFromObservation, updateFatigue } from "./playerState.js";
@@ -15,6 +16,9 @@ import { refreshAbilityCaches } from "./playerAbility.js";
 import { effectiveTeamStrength } from "./teamStrength.js";
 import { applyMatchFormUpdate, getWorldState } from "./worldState.js";
 import { resolveValidatedClubSide, resolvePlayingStintAt } from "./playingRegistration.js";
+
+/** Season-level clean-sheet eligible roles (60-minute threshold). */
+const CLEAN_SHEET_ROLES = new Set(["GK", "CB", "RB", "LB", "CDM"]);
 
 function expectedRatingForContext(player, teamEff, oppEff) {
   const base = Number(player.baseOverallRaw ?? player.rating) || 70;
@@ -29,6 +33,7 @@ function expectedRatingForContext(player, teamEff, oppEff) {
  *
  * @param {object} opts
  * @param {string|null} opts.lastDate previous event date for state decay
+ * @param {string|null} opts.editionId competition edition identity when known
  */
 export function processPlayerMatchDay({
   home,
@@ -40,6 +45,7 @@ export function processPlayerMatchDay({
   competition = "league",
   competitionType = "league",
   competitionId = null,
+  editionId = null,
   fixtureId = null,
   teamType = "club",
   matchDuration = 90,
@@ -79,8 +85,10 @@ export function processPlayerMatchDay({
       rng: selRng,
     });
     minutes = participation.minutes;
-    player.matchParticipation = { ...participation, date };
+    player.matchParticipation = { ...participation, date, matchDuration };
 
+    // Pre-kickoff training injury must resolve BEFORE confirming played minutes.
+    // Do not assume eventMinuteFraction exists on the injury sampler.
     if (participation.available && !player.health?.activeInjury) {
       const trainInj = sampleInjuryFromExposure({
         hours: competitionType === "international" ? 2 : 4,
@@ -92,6 +100,20 @@ export function processPlayerMatchDay({
         position: player.position,
       });
       if (trainInj) applyInjury(player, trainInj);
+    }
+
+    // Reconcile availability after any same-date training injury.
+    if (!isAvailable(player.health, date)) {
+      minutes = 0;
+      participation = {
+        ...participation,
+        minutes: 0,
+        started: false,
+        available: false,
+        nonParticipationReason: player.health?.activeInjury ? "injured" : "unavailable",
+        role: "unavailable",
+      };
+      player.matchParticipation = { ...participation, date, matchDuration };
     }
   }
 
@@ -115,6 +137,8 @@ export function processPlayerMatchDay({
 
   match.date = date;
   match.competitionType = competitionType;
+  match.competitionId = match.competitionId ?? competitionId;
+  match.editionId = editionId ?? match.editionId ?? null;
   match.playerSide = validatedSide;
   applyMatchFormUpdate(world, match);
 
@@ -135,6 +159,21 @@ export function processPlayerMatchDay({
           const cut = Math.max(1, Math.floor(minutes * inj.eventMinuteFraction));
           match.playerStats.minutes = Math.min(match.playerStats.minutes || minutes, cut);
           minutes = match.playerStats.minutes;
+          // Reconcile user event attribution/stats with shortened participation
+          // without resimulating the team result: drop later user-involved events
+          // and recount. Keep team goals/scoreline intact.
+          if (Array.isArray(match.events)) {
+            const until = minutes + 2;
+            match.events = match.events.map((e) => {
+              if (!e?.playerInvolved) return e;
+              if ((e.minute || 0) > until) {
+                return { ...e, playerInvolved: false, label: e.label === player.name ? "Teammate" : e.label };
+              }
+              return e;
+            });
+          }
+          match.playerStats.played = minutes > 0;
+          match = finalizePlayerMatchStats(match, player, rng);
         }
         applyInjury(player, inj);
         match.injuryEventIds = [inj.eventId];
@@ -162,9 +201,15 @@ export function processPlayerMatchDay({
       position: player.position,
     };
     const sideClub = validatedSide === "home" ? home : away;
-    const conceded = validatedSide === "home" ? match.awayGoals : match.homeGoals;
-    const cleanSheet =
-      (match.playerStats.minutes || 0) >= 60 && conceded === 0 && player.position === "GK";
+    const conceded =
+      validatedSide === "home"
+        ? match.matchAwayGoals ?? match.awayGoals
+        : match.matchHomeGoals ?? match.homeGoals;
+    const playedMinutes = match.playerStats.minutes || 0;
+    // Season policy: GK/CB/RB/LB/CDM with ≥60 minutes. Known false ≠ unknown.
+    const cleanSheetEligible =
+      CLEAN_SHEET_ROLES.has(player.position) && playedMinutes >= 60;
+    const cleanSheet = cleanSheetEligible ? Number(conceded) === 0 : null;
     const nationTeamId =
       validatedSide === "home"
         ? home.nationId || home.name || player.nationality
@@ -181,6 +226,8 @@ export function processPlayerMatchDay({
       date,
       competitionId,
       competitionType,
+      editionId: editionId ?? match.editionId ?? null,
+      competitionEditionId: editionId ?? match.editionId ?? null,
       teamType,
       teamId: validatedTeamId,
       stintId: stint?.stintId || null,
@@ -192,13 +239,14 @@ export function processPlayerMatchDay({
       position: player.position,
       selected: Boolean(participation.selected),
       started: Boolean(participation.started),
-      minutes: match.playerStats.minutes || 0,
-      availableMinutes: matchDuration,
+      minutes: playedMinutes,
+      availableMinutes: match.playerStats.minutes > 90 ? match.playerStats.minutes : matchDuration,
+      matchDuration,
       available: Boolean(participation.available),
       nonParticipationReason: participation.nonParticipationReason || null,
       goals: ps.goals || 0,
       assists: ps.assists || 0,
-      cleanSheetEligible: (match.playerStats.minutes || 0) >= 60,
+      cleanSheetEligible,
       cleanSheet,
       yellowCards: match.playerStats.yellow || 0,
       redCards: match.playerStats.red || 0,

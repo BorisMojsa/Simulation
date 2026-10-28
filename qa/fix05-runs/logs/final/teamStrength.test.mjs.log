@@ -1,0 +1,44 @@
+OK  all 490 clubs resolve to profiles
+OK  alias resolution for renamed clubs
+OK  City and Hull are not identical strength
+OK  Bayern stronger than Paderborn; Serbia clubs not identical
+OK  provenance labels exist
+OK  financial tier alone does not change expected goals
+OK  player OVR raises attack for ST and is bounded; absent player no effect
+OK  GK quality lowers opposing xG more than adding striker quality
+OK  underqualified replacement can reduce quality
+OK  0-0 is possible and goal events reconcile
+OK  neutral fixtures are symmetric under team swap
+OK  penalties do not inflate match goals; ET is strength-sensitive
+OK  generateLeagueTable is retired
+OK  Serbia Croatia Czechia UEFA eligibility
+OK  scripted progression helpers removed from europeanCompetition source
+OK  world state round-trip
+OK  league season uses shared engine; standings from fixtures
+OK  Copa América eligible pool excludes Jordan
+OK  nation profiles cover selectable nations
+OK  international xG ordering uses published national points
+OK  national player OVR affects only when selected; venue metadata respected
+OK  confederation registry corrections and Copa América integrity
+  equal-neutral N=4000: home=0.366 away=0.376 draw=0.258
+OK  calibration: equal neutral teams ~even with draws
+  gap-neutral N=3000: strongWin=0.895 weakWin=0.030 (Arsenal vs Birmingham)
+  knockout-upset N=1200: weakerAdvances=0.131 (Lecce vs Roma)
+OK  calibration: large gap favours stronger; knockout upset possible
+  home-adv N=2500: homeVenue=0.670 neutral=0.627
+OK  calibration: home advantage raises home win rate
+  user-impact xG: lowST=1.339 highST=1.456 (vs Burnley)
+OK  calibration: high-OVR user improves xG vs low-OVR (same club)
+
+XG_MODEL coefficients: {
+  BASE_XG: 1.25,
+  SCALE: 18,
+  K_ATT: 0.55,
+  K_MID: 0.2,
+  K_GK: 0.25,
+  HOME_ADV: 0.12,
+  ET_FRACTION: 0.3333333333333333,
+  MAX_LAMBDA: 3.2,
+  MIN_LAMBDA: 0.15
+}
+Nation profiles: 79

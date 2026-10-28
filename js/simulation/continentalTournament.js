@@ -370,6 +370,9 @@ function resolveContext(state, opts = {}) {
     player: opts.player ?? null,
     playerName: opts.playerName || state?.playerClub?.name || null,
     matchProcessor: typeof opts.matchProcessor === "function" ? opts.matchProcessor : null,
+    // Deferred ledger commit after ET/pens finalization (continentalChronology).
+    onPlayerMatchFinalized:
+      typeof opts.onPlayerMatchFinalized === "function" ? opts.onPlayerMatchFinalized : null,
   };
 }
 
@@ -1335,16 +1338,33 @@ function regulationOnly(match) {
   return out;
 }
 
+/**
+ * Idempotent recount of open-play user stats from events.
+ * Prefer resolveKnockout/finalizePlayerMatchStats; this only guards against
+ * stale regulation-only counters after a second-leg ET/pens finalize.
+ * Does NOT add on top of already-finalized totals (avoids double-count).
+ */
 function withExtraTimePlayerStats(leg) {
   const stats = leg.playerStats;
   if (!stats?.played) return leg;
-  const extra = (leg.events || []).filter((e) => e.phase === "extraTime" && e.playerInvolved);
-  const goals = extra.filter((e) => e.type === "goal").length;
-  const assists = extra.filter((e) => e.type === "assist").length;
-  if (!goals && !assists) return leg;
+  const openPlay = (leg.events || []).filter(
+    (e) => e && e.playerInvolved && e.phase !== "penalties"
+  );
+  const goals = openPlay.filter((e) => e.type === "goal").length;
+  const assists = openPlay.filter((e) => e.type === "assist").length;
+  const yellow = openPlay.filter((e) => e.type === "yellow").length;
+  const red = openPlay.filter((e) => e.type === "red").length;
+  if (
+    goals === (stats.goals || 0) &&
+    assists === (stats.assists || 0) &&
+    yellow === (stats.yellow || 0) &&
+    red === (stats.red || 0)
+  ) {
+    return leg;
+  }
   return {
     ...leg,
-    playerStats: { ...stats, goals: (stats.goals || 0) + goals, assists: (stats.assists || 0) + assists },
+    playerStats: { ...stats, goals, assists, yellow, red },
   };
 }
 
@@ -1461,9 +1481,53 @@ function playOneMatch(state, fixture, ctx, { finalize = null } = {}) {
   if (!mustProduceWinner) match = regulationOnly(match);
   if (finalize) match = finalize(match);
 
+  // Sync deferred ledger/counters with the finalized match (ET/pens may land after
+  // processPlayerMatchDay). Must run before commit so store + ledger agree.
+  if (processorResult?.ledgerRecord && match) {
+    syncLedgerRecordFromMatch(processorResult.ledgerRecord, match);
+    if (typeof ctx.onPlayerMatchFinalized === "function") {
+      ctx.onPlayerMatchFinalized(match, processorResult);
+    }
+  }
+
   const committed = commitMatch(stampMatch(match, state, fixture, playerSide), ctx.store);
   if (ctx.formWorld) applyMatchFormUpdate(ctx.formWorld, committed);
   return { match: committed, alreadyPlayed: false, playerIn: Boolean(playerSide), playerSide, processorResult };
+}
+
+/** Patch a match-day ledger record from a finalized match's playerStats. */
+function syncLedgerRecordFromMatch(ledgerRecord, match) {
+  if (!ledgerRecord || !match) return ledgerRecord;
+  const ps = match.playerStats || {};
+  const minutes = Number(ps.minutes) || 0;
+  ledgerRecord.minutes = minutes;
+  ledgerRecord.goals = ps.goals || 0;
+  ledgerRecord.assists = ps.assists || 0;
+  ledgerRecord.yellowCards = ps.yellow || 0;
+  ledgerRecord.redCards = ps.red || 0;
+  ledgerRecord.rating = ps.rating ?? null;
+  ledgerRecord.matchRating = ps.rating ?? null;
+  ledgerRecord.started = Boolean(ps.started);
+  ledgerRecord.selected = Boolean(ps.selected ?? ledgerRecord.selected);
+  ledgerRecord.available = Boolean(ps.available ?? ledgerRecord.available);
+  ledgerRecord.nonParticipationReason = ps.nonParticipationReason ?? ledgerRecord.nonParticipationReason ?? null;
+  if (match.editionId != null && ledgerRecord.editionId == null) {
+    ledgerRecord.editionId = match.editionId;
+  }
+  if (match.competitionId != null && ledgerRecord.competitionId == null) {
+    ledgerRecord.competitionId = match.competitionId;
+  }
+  const conceded =
+    match.playerSide === "home"
+      ? match.matchAwayGoals ?? match.awayGoals
+      : match.matchHomeGoals ?? match.homeGoals;
+  const pos = ledgerRecord.positionPlayed || ledgerRecord.position;
+  const csEligible = ["GK", "CB", "RB", "LB", "CDM"].includes(pos) && minutes >= 60;
+  ledgerRecord.cleanSheetEligible = csEligible;
+  if (csEligible && Number.isFinite(Number(conceded))) {
+    ledgerRecord.cleanSheet = Number(conceded) === 0;
+  }
+  return ledgerRecord;
 }
 
 function resolveSingleLeg(state, fixture, match, ctx) {

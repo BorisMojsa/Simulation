@@ -1,0 +1,88 @@
+TAP version 13
+# Subtest: undefined review does not produce definitive non-renewal notice
+ok 1 - undefined review does not produce definitive non-renewal notice
+  ---
+  duration_ms: 8.351084
+  type: 'test'
+  ...
+# Subtest: will-renew fixture: renewal exists for employer; no contradictory notice
+ok 2 - will-renew fixture: renewal exists for employer; no contradictory notice
+  ---
+  duration_ms: 4.303333
+  type: 'test'
+  ...
+# Subtest: will-not-renew fixture: non-renewal reason exists; no same-review renewal
+ok 3 - will-not-renew fixture: non-renewal reason exists; no same-review renewal
+  ---
+  duration_ms: 1.989
+  type: 'test'
+  ...
+# Subtest: temporary finance rejection does not become firm non-renewal
+ok 4 - temporary finance rejection does not become firm non-renewal
+  ---
+  duration_ms: 2.086667
+  type: 'test'
+  ...
+# Subtest: audit reproduction: no renewal+non-renewal contradiction; expiry releases
+ok 5 - audit reproduction: no renewal+non-renewal contradiction; expiry releases
+  ---
+  duration_ms: 145.376917
+  type: 'test'
+  ...
+# Subtest: invalid decision choice does not mutate
+ok 6 - invalid decision choice does not mutate
+  ---
+  duration_ms: 0.571583
+  type: 'test'
+  ...
+# Subtest: cloned/replayed offer cannot extend twice or restore old employer
+ok 7 - cloned/replayed offer cannot extend twice or restore old employer
+  ---
+  duration_ms: 1.715833
+  type: 'test'
+  ...
+# Subtest: stale employer renewal cannot switch transferred player back
+ok 8 - stale employer renewal cannot switch transferred player back
+  ---
+  duration_ms: 0.411708
+  type: 'test'
+  ...
+# Subtest: free agent / no offers: no crash, no old wage, useful next action
+ok 9 - free agent / no offers: no crash, no old wage, useful next action
+  ---
+  duration_ms: 0.684042
+  type: 'test'
+  ...
+# Subtest: league fixtures: no club/date double-booking
+ok 10 - league fixtures: no club/date double-booking
+  ---
+  duration_ms: 0.843292
+  type: 'test'
+  ...
+# Subtest: duplicate loan acceptance is rejected without mutating slots twice
+ok 11 - duplicate loan acceptance is rejected without mutating slots twice
+  ---
+  duration_ms: 0.601292
+  type: 'test'
+  ...
+# Subtest: unaffordable purchase stress case leaves loan intact
+ok 12 - unaffordable purchase stress case leaves loan intact
+  ---
+  duration_ms: 0.4525
+  type: 'test'
+  ...
+# Subtest: lifecycle version exported
+ok 13 - lifecycle version exported
+  ---
+  duration_ms: 0.024458
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 172.137834

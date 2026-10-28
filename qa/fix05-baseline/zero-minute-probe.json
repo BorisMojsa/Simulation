@@ -1,0 +1,28 @@
+{
+  "trials": 100,
+  "goalAssistMatches": 45,
+  "cardMatches": 15,
+  "zeroMinuteKnockout": {
+    "decidedBy": "extraTime",
+    "playerStats": {
+      "played": false,
+      "minutes": 0,
+      "started": false,
+      "goals": 0,
+      "assists": 0,
+      "yellow": 0,
+      "red": 0,
+      "rating": 5.8
+    },
+    "userEvents": [
+      {
+        "minute": 8,
+        "type": "goal",
+        "team": "home",
+        "phase": "regulation",
+        "playerInvolved": true,
+        "label": "Bug 5 Probe"
+      }
+    ]
+  }
+}

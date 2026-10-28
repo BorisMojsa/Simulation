@@ -1,0 +1,10 @@
+OK  healthy 18yo improves with variation
+OK  low minutes grow much less than full minutes under matched performance
+OK  high current ability grows slower than mid ability under matched inputs
+OK  elite age-20 allowed when attributes support it
+OK  no forced cliff at 34
+OK  injury blocks availability across year boundary
+OK  transfer to weaker context does not instantly strip base attrs
+OK  forecast panel RNG does not alter development stream outcome
+OK  lost call-up has no base OVR deduction helper path
+behavior tests done

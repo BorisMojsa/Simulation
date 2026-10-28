@@ -1,0 +1,108 @@
+{
+  "debug": {
+    "name": "Ownership Transfer",
+    "age": 20,
+    "club": "Arsenal",
+    "clubId": "club:england:arsenal",
+    "employmentClubId": "club:england:arsenal",
+    "playingClubId": "club:england:arsenal",
+    "playingStints": [
+      {
+        "stintId": "stint:seed:ownership-transfer-fixture-v1:club:england:arsenal",
+        "from": "2026-07-01",
+        "to": null,
+        "playingClubId": "club:england:arsenal",
+        "employmentClubId": "club:england:arsenal",
+        "leagueId": "league:england-premier-league",
+        "clubName": "Arsenal",
+        "kind": "seed",
+        "onLoan": false
+      }
+    ],
+    "seasonsCount": 1,
+    "careerHonors": {
+      "leagueTitles": 1,
+      "europeanTitles": 0,
+      "domesticCups": 0,
+      "individualAwards": 0,
+      "internationalTitles": 0
+    },
+    "lastSeasonHonors": "Premier League Champions",
+    "lastSeasonTrophies": [
+      {
+        "kind": "league",
+        "label": "Premier League Champions",
+        "competition": "Premier League",
+        "simKey": "England - Premier League",
+        "winningClubId": "club:england:arsenal",
+        "editionId": "season-1"
+      }
+    ],
+    "lastSeasonClubApps": 17,
+    "openPlayingStintClubId": "club:england:arsenal",
+    "weeklyWage": 4000,
+    "contractEndSeason": 4,
+    "rating": 76,
+    "ovrDisplay": 76,
+    "isRetired": false,
+    "freeAgent": false,
+    "careerTotals": {
+      "matches": 17,
+      "goals": 0,
+      "assists": 1,
+      "cleanSheets": 0
+    },
+    "activeLoan": null,
+    "pendingDecision": "injury-recovery",
+    "pendingOffers": [],
+    "seasonCheckpoint": null,
+    "seasons": 1,
+    "lastSeason": {
+      "freeAgent": false,
+      "age": 20,
+      "matches": 17,
+      "minutes": 559,
+      "goals": 0,
+      "assists": 1,
+      "cleanSheets": 0,
+      "evidenceCleanSheets": null,
+      "evidenceByScope": null,
+      "nonParticipation": {
+        "total": 37,
+        "unused": 37,
+        "byReason": {
+          "unused_substitute": 14,
+          "unused": 14,
+          "not_selected": 22,
+          "injured": 1,
+          "unavailable": 0,
+          "suspended": 0,
+          "rested": 0,
+          "unknown": 0,
+          "other": 0
+        }
+      }
+    },
+    "nextAction": {
+      "id": "resolve-decision",
+      "label": "Resolve squad discussion",
+      "canSimulate": false
+    },
+    "seasonActionInFlight": false,
+    "dealBookingGuard": null,
+    "isAcademy": false,
+    "academyLifecycle": {
+      "status": "inactive",
+      "periodCount": 0,
+      "pendingReviewId": null,
+      "exitAge": 21
+    },
+    "academyCareerTotals": null
+  },
+  "cards": [
+    {
+      "contrib": "…",
+      "rating": "—"
+    }
+  ]
+}
