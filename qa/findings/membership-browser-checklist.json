@@ -1,10 +1,10 @@
 {
-  "commit": "8ddc8685a7e3e2b1ef53bdf25276aa95727422d2",
+  "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
   "dirtyWorkingTree": true,
   "testedSource": "working-tree-uncommitted",
   "baseUrl": "http://127.0.0.1:8000",
   "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-  "generatedAt": "2026-10-28T16:03:15.753Z",
+  "generatedAt": "2026-10-28T16:04:44.222Z",
   "results": [
     {
       "name": "promotion-ui-simulate",
@@ -246,7 +246,7 @@
           "seasonsCount": 1
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/01-promotion-next-pl.png",
-        "commit": "8ddc8685a7e3e2b1ef53bdf25276aa95727422d2",
+        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
         "dirty": true,
         "consoleErrors": []
       }
@@ -377,7 +377,7 @@
           "seasonsCount": 1
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/02-relegation-next-ch.png",
-        "commit": "8ddc8685a7e3e2b1ef53bdf25276aa95727422d2",
+        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
         "dirty": true,
         "consoleErrors": []
       }
@@ -473,7 +473,7 @@
           "clubLeagueId": "league:england-championship"
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/03-midtable-zones.png",
-        "commit": "8ddc8685a7e3e2b1ef53bdf25276aa95727422d2",
+        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
         "dirty": true,
         "consoleErrors": []
       }
@@ -1087,7 +1087,7 @@
           "clubLeagueId": "league:england-premier-league"
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/04-offer-loan.png",
-        "commit": "8ddc8685a7e3e2b1ef53bdf25276aa95727422d2",
+        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
         "dirty": true,
         "consoleErrors": []
       }
@@ -362501,7 +362501,7 @@
         },
         "skip": "Skip remaining",
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/05-pause-skip-continue.png",
-        "commit": "8ddc8685a7e3e2b1ef53bdf25276aa95727422d2",
+        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
         "dirty": true,
         "consoleErrors": []
       }
@@ -363137,7 +363137,7 @@
           "clubLeagueId": "league:england-premier-league"
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/06-snapshot-history.png",
-        "commit": "8ddc8685a7e3e2b1ef53bdf25276aa95727422d2",
+        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
         "dirty": true,
         "consoleErrors": []
       }
@@ -363553,7 +363553,7 @@
           "dealBookingGuard": null
         },
         "shotPath": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/07-moved-parent-loan-return.png",
-        "commit": "8ddc8685a7e3e2b1ef53bdf25276aa95727422d2",
+        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
         "dirty": true,
         "consoleErrors": []
       }
@@ -363929,7 +363929,7 @@
         },
         "faShot": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/08-fix01-free-agent-continue.png",
         "ownShot": "/Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-membership/09-fix02-ownership-continue.png",
-        "commit": "8ddc8685a7e3e2b1ef53bdf25276aa95727422d2",
+        "commit": "bf5632cf93f1d3df999a490c2f42ea3cca32e83a",
         "dirty": true,
         "consoleErrors": []
       }
