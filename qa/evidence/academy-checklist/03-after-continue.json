@@ -1,0 +1,61 @@
+{
+  "name": "Academy Fixture",
+  "age": 18,
+  "club": "Aston Villa Academy",
+  "playingStints": [],
+  "seasonsCount": 2,
+  "careerHonors": {
+    "leagueTitles": 0,
+    "europeanTitles": 0,
+    "domesticCups": 0,
+    "individualAwards": 0,
+    "internationalTitles": 0
+  },
+  "lastSeasonHonors": "Academy programme",
+  "lastSeasonTrophies": [],
+  "lastSeasonClubApps": null,
+  "openPlayingStintClubId": null,
+  "contractEndSeason": null,
+  "rating": 74,
+  "ovrDisplay": 74,
+  "isRetired": false,
+  "freeAgent": false,
+  "careerTotals": {
+    "matches": 44,
+    "goals": 9,
+    "assists": 10,
+    "cleanSheets": 2
+  },
+  "activeLoan": null,
+  "pendingDecision": null,
+  "pendingOffers": [],
+  "seasonCheckpoint": null,
+  "seasons": 2,
+  "lastSeason": {
+    "seasonId": "season-2",
+    "freeAgent": false,
+    "year": 2027,
+    "age": 18
+  },
+  "nextAction": {
+    "id": "academy-season",
+    "label": "Continue academy training",
+    "canSimulate": true,
+    "mode": "academy"
+  },
+  "seasonActionInFlight": false,
+  "dealBookingGuard": null,
+  "isAcademy": true,
+  "academyLifecycle": {
+    "status": "enrolled",
+    "periodCount": 2,
+    "pendingReviewId": null,
+    "exitAge": 21
+  },
+  "academyCareerTotals": {
+    "matches": 44,
+    "goals": 9,
+    "assists": 10,
+    "cleanSheets": 2
+  }
+}

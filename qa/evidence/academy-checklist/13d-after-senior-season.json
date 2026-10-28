@@ -1,0 +1,80 @@
+{
+  "name": "Browser Academy Grad",
+  "age": 18,
+  "club": "Hull City",
+  "clubId": "club:england:hull-city",
+  "employmentClubId": "club:england:hull-city",
+  "playingClubId": "club:england:hull-city",
+  "playingStints": [
+    {
+      "stintId": "stint:seed:cid_eeee04fb:club:england:hull-city",
+      "from": "2027-07-01",
+      "to": "2027-07-01",
+      "playingClubId": "club:england:hull-city",
+      "employmentClubId": "club:england:hull-city",
+      "leagueId": "league:england-premier-league",
+      "clubName": "Hull City",
+      "kind": "seed",
+      "onLoan": false
+    },
+    {
+      "stintId": "stint:permanent:cid_eeee04fb:club:england:hull-city:2027-07-01:1",
+      "from": "2027-07-01",
+      "to": null,
+      "playingClubId": "club:england:hull-city",
+      "employmentClubId": "club:england:hull-city",
+      "leagueId": "league:england-premier-league",
+      "clubName": "Hull City",
+      "kind": "permanent",
+      "onLoan": false
+    }
+  ],
+  "seasonsCount": 2,
+  "careerHonors": {
+    "leagueTitles": 0,
+    "europeanTitles": 0,
+    "domesticCups": 0,
+    "individualAwards": 0,
+    "internationalTitles": 0
+  },
+  "lastSeasonHonors": null,
+  "lastSeasonTrophies": [],
+  "lastSeasonClubApps": 16,
+  "openPlayingStintClubId": "club:england:hull-city",
+  "weeklyWage": 5700,
+  "contractEndSeason": 3,
+  "rating": 61,
+  "ovrDisplay": 61,
+  "isRetired": false,
+  "freeAgent": false,
+  "careerTotals": {
+    "matches": 41,
+    "goals": 3,
+    "assists": 3,
+    "cleanSheets": 1
+  },
+  "activeLoan": null,
+  "pendingDecision": null,
+  "pendingOffers": [],
+  "seasonCheckpoint": null,
+  "seasons": 2,
+  "lastSeason": {
+    "freeAgent": false,
+    "age": 18
+  },
+  "nextAction": {
+    "id": "start-season",
+    "label": "Simulate next season",
+    "canSimulate": true
+  },
+  "seasonActionInFlight": false,
+  "dealBookingGuard": null,
+  "isAcademy": false,
+  "academyLifecycle": {
+    "status": "inactive",
+    "periodCount": 1,
+    "pendingReviewId": null,
+    "exitAge": 21
+  },
+  "academyCareerTotals": null
+}

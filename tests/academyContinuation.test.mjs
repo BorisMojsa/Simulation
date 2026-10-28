@@ -37,12 +37,20 @@ import {
 } from "../js/simulation/academyLifecycle.js";
 import { buildFirstProContractDecision, signFirstProfessionalContract } from "../js/simulation/proContractOffers.js";
 import { buildValidatedOffer, acceptPipelineOffer } from "../js/simulation/dealPipeline.js";
+import {
+  getOrInitClubSeasonFinance,
+  exportClubFinanceState,
+} from "../js/simulation/clubFinance.js";
 import { roundTripCareerSnapshot } from "../js/simulation/careerSnapshot.js";
 import { ensureTransferSave } from "../js/simulation/transferMigration.js";
-import { emptyOfferProvider } from "../js/simulation/academyBrowserFixture.js";
+import {
+  emptyOfferProvider,
+  buildAcademyBrowserFixture,
+} from "../js/simulation/academyBrowserFixture.js";
 import { skipCareerIntroBootstrap } from "../js/ui/careerStartFlow.js";
 import { findSeniorClubById } from "../js/simulation/seniorClubs.js";
 import { refreshAbilityCaches } from "../js/simulation/playerAbility.js";
+import { generateTransferOffers } from "../js/simulation/transferMarket.js";
 
 let passed = 0;
 let failed = 0;
@@ -78,12 +86,51 @@ function villaAcademy() {
 }
 
 function secondDivAcademy() {
-  // Prefer a Championship / second-tier parent when present.
-  const a =
-    ACADEMY_POOL.find((x) => /championship/i.test(x.league || x.parentClub?.league || "")) ||
-    ACADEMY_POOL.find((x) => x.parentClub?.clubId && x.parentClub.clubId !== "club:england:aston-villa");
-  assert(a, "second association academy missing");
+  const a = ACADEMY_POOL.find((x) => /championship/i.test(x.league || x.parentClub?.league || ""));
+  assert(a, "English Championship academy missing");
   return a;
+}
+
+function nonEnglishAcademy() {
+  const a = ACADEMY_POOL.find(
+    (x) =>
+      x.parentClub?.clubId &&
+      x.nation &&
+      x.nation !== "England" &&
+      !/england/i.test(x.league || "")
+  );
+  assert(a, "non-English academy missing");
+  return a;
+}
+
+/** Deterministic review with exactly `count` real first-pro offers. */
+function persistReviewWithOfferCount(player, { isFinal = false, count = 1 } = {}) {
+  const review = buildAndPersistAcademyReview(player, {
+    isFinal,
+    offerProvider(p) {
+      const d = buildFirstProContractDecision(p);
+      assert(d.offers.length > 0, "builder produced no offers for controlled count");
+      // If fewer than needed, pad by reusing validated rebuilds is not allowed —
+      // require enough natural offers or boost once.
+      if (d.offers.length < count) {
+        for (const k of Object.keys(p.attributes || {})) p.attributes[k] = Math.max(p.attributes[k], 78);
+        refreshAbilityCaches(p);
+        const again = buildFirstProContractDecision(p);
+        assert(again.offers.length >= count, "need enough offers for fixture", {
+          have: again.offers.length,
+          need: count,
+        });
+        return { ...again, offers: again.offers.slice(0, count) };
+      }
+      return { ...d, offers: d.offers.slice(0, count) };
+    },
+  });
+  assert(review.offers.length === count, "review offer count", {
+    got: review.offers.length,
+    count,
+  });
+  assert((player.pendingOffers || []).length === count, "tray offer count");
+  return review;
 }
 
 function makeAcademyPlayer({
@@ -197,22 +244,40 @@ test("Healthy Aston Villa Academy continuation — no senior fixtures", () => {
   assert(check.ok, "usable academy result", check);
 });
 
-test("Second-division / other association parent separation", () => {
+test("Second-division parent separation (Championship)", () => {
   const academy = secondDivAcademy();
   const p = makeAcademyPlayer({
     academy,
-    nationality: academy.nation || "England",
+    nationality: "England",
     emptyOffers: true,
-    name: "Other Assoc Academy",
+    name: "Championship Academy",
   });
   const data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: false,
     autoDecisionPolicy: "stay",
   });
   assert(data.academyPeriod, "academy period");
-  assert((data.leagueAllMatches || []).length === 0, "no senior fixtures other assoc");
-  assert(p.club?.isAcademy, "still academy other assoc");
+  assert((data.leagueAllMatches || []).length === 0, "no senior fixtures championship");
+  assert(p.club?.isAcademy, "still academy");
   assert(!p.employmentClubId, "no employment id");
+});
+
+test("Non-English association academy separation", () => {
+  const academy = nonEnglishAcademy();
+  const p = makeAcademyPlayer({
+    academy,
+    nationality: academy.nation || "Spain",
+    emptyOffers: true,
+    name: "Non-English Academy",
+  });
+  const data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: false,
+    autoDecisionPolicy: "stay",
+  });
+  assert(data.academyPeriod, "non-English academy period");
+  assert((data.leagueAllMatches || []).length === 0, "no senior fixtures non-English");
+  assert(p.club?.isAcademy, "still academy non-English");
+  assert(academy.nation !== "England", "fixture is non-English", { nation: academy.nation });
 });
 
 test("Real zero-offer review below 21 → continuation", () => {
@@ -235,47 +300,125 @@ test("Real zero-offer review below 21 → continuation", () => {
   assert(p.seasons.length === 3, "three history records");
 });
 
-test("Failed signing preserves other valid offers", () => {
-  const p = makeAcademyPlayer({ age: 18, emptyOffers: false });
-  p.rating = 70;
-  // Force a review with at least one offer via production builder.
-  const review = buildAndPersistAcademyReview(p, { isFinal: false });
-  if (review.emptyOffers || review.offers.length < 1) {
-    // Boost and retry once.
-    p.rating = 74;
-    for (const k of Object.keys(p.attributes || {})) p.attributes[k] = Math.max(p.attributes[k], 70);
-    const retry = buildAndPersistAcademyReview(p, { isFinal: false });
-    assert(!retry.emptyOffers && retry.offers.length >= 1, "need executable offers for fail test", retry);
+test("Sole failed offer below 21 → enrolled continuation (finance validation)", () => {
+  const p = makeAcademyPlayer({ age: 18 });
+  for (const k of Object.keys(p.attributes || {})) p.attributes[k] = Math.max(p.attributes[k], 76);
+  refreshAbilityCaches(p);
+  const review = persistReviewWithOfferCount(p, { isFinal: false, count: 1 });
+  const deal = review.offers[0];
+  const beforeAge = p.age;
+  const beforeSeasons = p.seasons.length;
+  const ledger = getOrInitClubSeasonFinance(
+    deal.offer.clubId,
+    String((p.startYear || 2026) + p.seasons.length)
+  );
+  ledger.remainingWageHeadroom = 0;
+  const financeBefore = JSON.stringify(exportClubFinanceState());
+  const result = acceptAcademyGraduationOffer(p, deal);
+  assert(!result.ok, "accept fails");
+  assert(result.action === "continue-academy", "continue academy", result);
+  assert(p.club?.isAcademy === true, "still academy");
+  assert((p.pendingOffers || []).length === 0, "no pending after sole fail");
+  assert(selectNextCareerAction(p).canSimulate === true, "continuation enabled");
+  assert(p.age === beforeAge, "no birthday on failed accept");
+  assert(p.seasons.length === beforeSeasons, "no period on failed accept");
+  assert(financeBefore === JSON.stringify(exportClubFinanceState()), "finances unchanged");
+});
+
+test("Sole failed final offer → release without year", () => {
+  const built = buildAcademyBrowserFixture({ mode: "age21-final-offers" });
+  assert(built.ok, "fixture", built.reason);
+  const p = built.player;
+  const review = persistReviewWithOfferCount(p, { isFinal: true, count: 1 });
+  const deal = review.offers[0];
+  const beforeAge = p.age;
+  const beforeSeasons = p.seasons.length;
+  const ledger = getOrInitClubSeasonFinance(
+    deal.offer.clubId,
+    String((p.startYear || 2026) + p.seasons.length)
+  );
+  ledger.remainingWageHeadroom = 0;
+  const financeBefore = JSON.stringify(exportClubFinanceState());
+  const result = acceptAcademyGraduationOffer(p, deal);
+  assert(!result.ok, "accept fails");
+  assert(result.released === true, "released", result);
+  assert(isFreeAgent(p), "free agent");
+  assert((p.pendingOffers || []).length === 0, "tray empty");
+  assert(p.age === beforeAge, "no birthday");
+  assert(p.seasons.length === beforeSeasons, "no period");
+  assert(financeBefore === JSON.stringify(exportClubFinanceState()), "finances unchanged");
+  assert(selectNextCareerAction(p).id === "free-agent", "FA next action");
+});
+
+test("One failed offer preserves still-valid alternative", () => {
+  const p = makeAcademyPlayer({ age: 18 });
+  for (const k of Object.keys(p.attributes || {})) p.attributes[k] = Math.max(p.attributes[k], 78);
+  refreshAbilityCaches(p);
+  const review = persistReviewWithOfferCount(p, { isFinal: false, count: 2 });
+  const badDeal = review.offers[0];
+  const goodId = review.offers[1].offer.offerId;
+  const ledger = getOrInitClubSeasonFinance(
+    badDeal.offer.clubId,
+    String((p.startYear || 2026) + p.seasons.length)
+  );
+  ledger.remainingWageHeadroom = 0;
+  const result = acceptAcademyGraduationOffer(p, badDeal);
+  assert(!result.ok, "first fails");
+  assert(result.action === "remaining-offers", "remaining action", result);
+  assert(p.club?.isAcademy === true, "still academy");
+  assert((p.pendingOffers || []).length === 1, "one remaining", {
+    n: p.pendingOffers?.length,
+    ids: p.pendingOffers?.map((o) => o.offerId),
+  });
+  assert(p.pendingOffers[0].offerId === goodId, "preserved other offer id");
+  assert(p.academyLifecycle.status === "pending-review", "review still pending");
+});
+
+test("Declined final review rejects cloned offer replay; fresh FA offer can sign", () => {
+  const built = buildAcademyBrowserFixture({ mode: "age21-final-offers" });
+  assert(built.ok, "fixture", built.reason);
+  const p = built.player;
+  const clone = structuredClone(p.pendingOffers[0]);
+  const reviewId = p.academyLifecycle.pendingReviewId;
+  const declined = declineAcademyReview(p);
+  assert(declined.released === true, "released on decline");
+  assert(isFreeAgent(p), "FA");
+  assert(p.academyLifecycle.consumedReviewIds.includes(reviewId), "review consumed");
+  const dealsBefore = (p.completedDealIds || []).length;
+  const financeBefore = JSON.stringify(exportClubFinanceState());
+  const replay = acceptPipelineOffer(p, clone);
+  assert(!replay.ok, "replay rejected", replay);
+  assert(
+    replay.reason === "journal-declined" || replay.reason === "closed-academy-review",
+    "closed reason",
+    replay
+  );
+  assert(isFreeAgent(p), "still FA after replay");
+  assert((p.completedDealIds || []).length === dealsBefore, "no new deals");
+  assert(financeBefore === JSON.stringify(exportClubFinanceState()), "no finance change");
+  // Fresh free-agent interest must still be allowed.
+  for (const k of Object.keys(p.attributes || {})) p.attributes[k] = Math.max(p.attributes[k], 78);
+  refreshAbilityCaches(p);
+  const fresh = generateTransferOffers(70, p, LEAGUES, LEAGUE_LOOKUP, 7.0);
+  // If market empty, build a validated free_agent offer directly.
+  let offer = fresh?.[0];
+  if (!offer) {
+    const club = LEAGUES.flatMap((l) => l.clubs || []).find((c) => c.clubId && !c.isAcademy);
+    const builtOffer = buildValidatedOffer({
+      player: p,
+      club,
+      dealType: "free_agent",
+      performanceScore: 80,
+    });
+    assert(builtOffer.ok, "fresh FA offer validates", builtOffer.reasons);
+    offer = builtOffer.offer;
   }
-  const offersBefore = [...(p.pendingOffers || [])];
-  assert(offersBefore.length >= 1, "offers present");
-  // Stale terms: corrupt wage affordability by wiping club finance mid-flight via bad offer shape.
-  const bad = {
-    ...offersBefore[0],
-    offerId: offersBefore[0].offerId,
-    wage: 1e12,
-    weeklyWage: 1e12,
-    needsPipelineRevalidation: true,
-    clubId: offersBefore[0].clubId,
-  };
-  // Attempt accept through pipeline — expect failure without graduation.
-  const result = acceptPipelineOffer(p, bad);
-  assert(!result.ok, "accept should fail", result);
-  assert(p.club?.isAcademy === true, "still academy after fail");
-  assert(!p.employmentClubId, "no employment after fail");
-  // Re-surface remaining offers (fixture: keep others).
-  p.pendingOffers = offersBefore.filter((o) => o.offerId !== bad.offerId);
-  if (p.pendingOffers.length === 0 && offersBefore.length > 1) {
-    p.pendingOffers = offersBefore.slice(1);
-  }
-  // If only one offer existed, continuation path remains valid.
-  if (p.pendingOffers.length === 0) {
-    p.academyLifecycle.status = "enrolled";
-    p.academyLifecycle.pendingReview = null;
-    assert(selectNextCareerAction(p).canSimulate, "can continue after sole failed offer");
-  } else {
-    assert(p.pendingOffers.length >= 1, "preserved other offers");
-  }
+  // Ensure no academy review tag on the fresh offer.
+  delete offer.academyReviewId;
+  const signed = acceptPipelineOffer(p, offer);
+  assert(signed.ok, "fresh offer signs", signed);
+  assert(!isFreeAgent(p), "no longer FA");
+  assert(p.club && !p.club.isAcademy, "senior club");
 });
 
 test("Parent first-pro deal graduates with coherent IDs", () => {
@@ -513,18 +656,23 @@ test("Direct senior-generator guard + PL control 20/380/38", () => {
   }
   assert(threw, "legacy league sim throws for academy");
 
-  const { chrono, clubs } = seniorPlControl();
+  const { chrono, clubs, player: senior } = seniorPlControl();
   assert(clubs.length === 20, "20 clubs");
-  assert((chrono.leagueAllMatches || chrono.allMatches || []).length === 380 || chrono.status === "complete" || chrono.leaguePlayerMatches, "chrono ran");
-  // Count fixtures from dated league matches when present.
-  const all = chrono.leagueAllMatches || chrono.allLeagueMatches || [];
-  if (all.length) {
-    assert(all.length === 380, "380 fixtures", { n: all.length });
-    const perClub = all.filter(
-      (m) => m.home?.name === clubs[0].name || m.away?.name === clubs[0].name
-    ).length;
-    assert(perClub === 38, "38 per club", { perClub });
-  }
+  const all = chrono.allMatches;
+  assert(Array.isArray(all), "allMatches present", { keys: Object.keys(chrono || {}) });
+  assert(all.length === 380, "380 fixtures", { n: all.length });
+  const perClub = all.filter(
+    (m) => m.home?.name === clubs[0].name || m.away?.name === clubs[0].name
+  ).length;
+  assert(perClub === 38, "38 per club", { perClub });
+  // Positive player minutes on a healthy selected senior season.
+  const playerMatches = chrono.playerMatches || chrono.leaguePlayerMatches || [];
+  const minutes = playerMatches.reduce((s, m) => s + (Number(m.minutes) || 0), 0);
+  assert(minutes > 0 || (chrono.playerMatchStats && Object.keys(chrono.playerMatchStats).length > 0), "senior participation recorded", {
+    playerMatchCount: playerMatches.length,
+    minutes,
+    club: senior.club?.name,
+  });
 });
 
 test("Migration clears suppress stuck state for over-age", () => {
@@ -536,23 +684,25 @@ test("Migration clears suppress stuck state for over-age", () => {
   assert(p.transferSaveVersion >= 3, "save version bumped");
 });
 
-test("Failed offer does not discard remaining valid offers (lifecycle accept)", () => {
+test("Snapshot restore of pending review keeps offer identity", () => {
   const p = makeAcademyPlayer({ age: 18 });
-  p.rating = 74;
-  for (const k of Object.keys(p.attributes || {})) p.attributes[k] = Math.max(p.attributes[k], 70);
-  const review = buildAndPersistAcademyReview(p, { isFinal: false });
-  if (review.offers.length < 2) {
-    console.log("skip-detail - fewer than 2 offers; single-offer fail path covered elsewhere");
-    return;
-  }
-  const badDeal = {
-    ...review.offers[0],
-    offer: { ...review.offers[0].offer, wage: 1e12, weeklyWage: 1e12 },
-  };
-  const fail = acceptAcademyGraduationOffer(p, badDeal);
-  assert(!fail.ok, "lifecycle accept fails");
-  assert(p.club?.isAcademy, "still academy");
-  assert((p.pendingOffers || []).length >= 1 || (fail.remainingOffers || []).length >= 1, "remaining");
+  for (const k of Object.keys(p.attributes || {})) p.attributes[k] = Math.max(p.attributes[k], 76);
+  refreshAbilityCaches(p);
+  const review = persistReviewWithOfferCount(p, { isFinal: false, count: 1 });
+  const reviewId = review.reviewId;
+  const offerId = review.offers[0].offer.offerId;
+  delete p.academyOfferProvider;
+  const snap = roundTripCareerSnapshot({ player: p, world: getWorldState() });
+  const restored = snap.player;
+  migrateAcademyLifecycle(restored);
+  assert(restored.academyLifecycle?.pendingReviewId === reviewId, "review id restored");
+  assert(
+    (restored.pendingOffers || []).some((o) => o.offerId === offerId),
+    "offer id restored"
+  );
+  const declined = declineAcademyReview(restored);
+  assert(declined.action === "continue-academy", "decline continues below 21", declined);
+  assert(restored.academyLifecycle.status === "enrolled", "enrolled after restore decline");
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

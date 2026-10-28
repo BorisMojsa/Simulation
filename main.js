@@ -8,7 +8,12 @@ import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=81";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=81";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=81";
 import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=89";
-import { createWorldState, setWorldState } from "./js/simulation/worldState.js";
+import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
+import {
+  serializeCareerSnapshot,
+  deserializeCareerSnapshot,
+} from "./js/simulation/careerSnapshot.js";
+import { getOrInitClubSeasonFinance } from "./js/simulation/clubFinance.js";
 import {
   ensureContractAuthority,
   selectNextCareerAction,
@@ -17,6 +22,7 @@ import {
 } from "./js/simulation/contractLifecycle.js?v=81";
 import {
   declineAcademyReview,
+  acceptAcademyGraduationOffer,
   ensureAcademyLifecycle,
   migrateAcademyLifecycle,
 } from "./js/simulation/academyLifecycle.js";
@@ -286,6 +292,61 @@ window.__loadOwnershipTransferBrowserFixture = function loadOwnershipTransferBro
     playingClubId: player.playingClubId,
     employmentClubId: player.employmentClubId,
     checkpointDate: player.seasonCheckpoint?.lastDate,
+  };
+};
+
+/** QA: export a restorable in-memory session snapshot (JSON-safe). */
+window.__exportCareerSnapshot = function exportCareerSnapshot() {
+  if (!player) return null;
+  return serializeCareerSnapshot({ player, world: getWorldState() });
+};
+
+/** QA: restore a previously exported session snapshot onto the desk. */
+window.__restoreCareerSnapshot = function restoreCareerSnapshot(data) {
+  const restored = deserializeCareerSnapshot(data);
+  if (!restored?.player) return { ok: false, reason: "invalid-snapshot" };
+  if (restored.world) setWorldState(restored.world);
+  player = restored.player;
+  dealBookingGuard = null;
+  seasonActionInFlight = false;
+  lastFinishedSeasonKey = null;
+  ensureContractAuthority(player);
+  if (player.club?.isAcademy) {
+    ensureAcademyLifecycle(player);
+    migrateAcademyLifecycle(player);
+  }
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  syncSimulateButton();
+  return {
+    ok: true,
+    age: player.age,
+    pendingOffers: player.pendingOffers?.length ?? 0,
+    reviewId: player.academyLifecycle?.pendingReviewId || null,
+    nextAction: selectNextCareerAction(player),
+  };
+};
+
+/**
+ * QA: zero current wage headroom for a pending offer's club so Accept fails
+ * production revalidation. Does not invent offer terms.
+ */
+window.__zeroPendingOfferWageHeadroom = function zeroPendingOfferWageHeadroom(offerId = null) {
+  if (!player?.pendingOffers?.length) return { ok: false, reason: "no-pending-offers" };
+  const offer =
+    (offerId && player.pendingOffers.find((o) => o.offerId === offerId)) || player.pendingOffers[0];
+  if (!offer?.clubId) return { ok: false, reason: "missing-club" };
+  const seasonKey = String((player.startYear || 2026) + (player.seasons?.length ?? 0));
+  const ledger = getOrInitClubSeasonFinance(offer.clubId, seasonKey);
+  ledger.remainingWageHeadroom = 0;
+  return {
+    ok: true,
+    clubId: offer.clubId,
+    offerId: offer.offerId,
+    seasonKey,
+    remainingWageHeadroom: ledger.remainingWageHeadroom,
   };
 };
 
@@ -823,12 +884,54 @@ function applyTransfer(offer) {
     return loanResult;
   }
 
+  // Academy first-pro / review offers settle through the academy lifecycle so
+  // exhausted final reviews release and remaining valid offers persist.
+  const isAcademyReviewOffer =
+    Boolean(player.club?.isAcademy) &&
+    (offer.academyReviewId ||
+      offer.isFirstPro ||
+      offer.dealType === "first_pro" ||
+      player.academyLifecycle?.pendingReview);
+
+  if (isAcademyReviewOffer) {
+    const result = acceptAcademyGraduationOffer(player, {
+      offer,
+      kind: offer.isParentOffer ? "parent" : "counter",
+      club: null,
+    });
+    if (!result.ok) {
+      dealBookingGuard = null;
+      const reasonText = (result.reasons || [result.reason]).filter(Boolean).join(", ");
+      let message = `Deal could not be completed: ${reasonText}.`;
+      if (result.released) {
+        message += " No executable academy offers remain — you are now a free agent.";
+      } else if (result.action === "continue-academy") {
+        message += " You remain at the academy and can continue training.";
+      } else if ((result.remainingOffers || []).length > 0) {
+        message += ` ${result.remainingOffers.length} other offer(s) remain available.`;
+      }
+      window.alert(message);
+      refreshOverview();
+      refreshTransferOffers();
+      syncSimulateButton();
+      return result;
+    }
+    player.nationality = playerNationality;
+    if (player.attributes) refreshAbilityCaches(player);
+    finishOfferWindow(true, offer);
+    maybeResumeAfterWindowChoice();
+    dealBookingGuard = null;
+    return result;
+  }
+
   const result = acceptPipelineOffer(player, offer);
   if (!result.ok) {
     dealBookingGuard = null;
     window.alert(
       `Deal could not be completed: ${(result.reasons || [result.reason]).join(", ")}.`
     );
+    refreshTransferOffers();
+    syncSimulateButton();
     return result;
   }
 

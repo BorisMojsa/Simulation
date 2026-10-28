@@ -1,0 +1,63 @@
+{
+  "name": "Academy Fixture",
+  "age": 21,
+  "employmentClubId": null,
+  "playingClubId": null,
+  "playingStints": [],
+  "seasonsCount": 1,
+  "careerHonors": {
+    "leagueTitles": 0,
+    "europeanTitles": 0,
+    "domesticCups": 0,
+    "individualAwards": 0,
+    "internationalTitles": 0
+  },
+  "lastSeasonHonors": "Academy programme",
+  "lastSeasonTrophies": [],
+  "lastSeasonClubApps": null,
+  "openPlayingStintClubId": null,
+  "weeklyWage": 0,
+  "contractEndSeason": null,
+  "rating": 70,
+  "ovrDisplay": 70,
+  "isRetired": false,
+  "freeAgent": true,
+  "careerTotals": {
+    "matches": 23,
+    "goals": 5,
+    "assists": 5,
+    "cleanSheets": 1
+  },
+  "activeLoan": null,
+  "pendingDecision": null,
+  "pendingOffers": [],
+  "seasonCheckpoint": null,
+  "seasons": 1,
+  "lastSeason": {
+    "seasonId": "academy-narrative-1",
+    "freeAgent": false,
+    "year": 2026,
+    "age": 21
+  },
+  "nextAction": {
+    "id": "free-agent",
+    "label": "Search / train as free agent",
+    "canSimulate": true,
+    "mode": "free-agent"
+  },
+  "seasonActionInFlight": false,
+  "dealBookingGuard": null,
+  "isAcademy": false,
+  "academyLifecycle": {
+    "status": "released",
+    "periodCount": 1,
+    "pendingReviewId": null,
+    "exitAge": 21
+  },
+  "academyCareerTotals": {
+    "matches": 23,
+    "goals": 5,
+    "assists": 5,
+    "cleanSheets": 1
+  }
+}

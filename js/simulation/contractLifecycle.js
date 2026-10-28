@@ -294,6 +294,23 @@ export function isOfferExecutable(player, offer) {
   if (id && player.consumedTransitionIds?.includes(`offer:${id}`)) {
     return { ok: false, reason: "consumed-offer" };
   }
+  // Closed / mismatched academy review — durable even for cloned payloads.
+  if (offer.academyReviewId) {
+    const life = player.academyLifecycle;
+    if (life?.consumedReviewIds?.includes(offer.academyReviewId)) {
+      return { ok: false, reason: "closed-academy-review" };
+    }
+    if (life?.pendingReviewId && offer.academyReviewId !== life.pendingReviewId) {
+      return { ok: false, reason: "stale-academy-review" };
+    }
+    // Review closed without a pending id (released/graduated) — reject old tag.
+    if (
+      !life?.pendingReviewId &&
+      (life?.status === "released" || life?.status === "graduated" || !player.club?.isAcademy)
+    ) {
+      return { ok: false, reason: "closed-academy-review" };
+    }
+  }
   // Stale employer renewal after a move.
   if (offer.isRenewal) {
     const emp = employmentClubId(player);

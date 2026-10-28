@@ -1149,10 +1149,27 @@ export function renderTransferOffers({
     const acceptBtn = document.createElement("button");
     acceptBtn.className = "accept";
     acceptBtn.textContent = offer.isLoan ? "Accept Loan" : "Accept Offer";
-    acceptBtn.addEventListener("click", () => {
+    if (offer.status === "expired" || offer.status === "declined" || offer.status === "superseded") {
       acceptBtn.disabled = true;
-      applyTransfer(offer);
-    });
+      acceptBtn.textContent =
+        offer.status === "expired" ? "Unavailable" : offer.status === "declined" ? "Declined" : "Superseded";
+      if (offer.status === "expired") {
+        const reason = document.createElement("span");
+        reason.className = "offer-failure-reason";
+        reason.textContent = "This offer failed validation and is no longer executable.";
+        details.appendChild(reason);
+      }
+    } else {
+      acceptBtn.addEventListener("click", () => {
+        acceptBtn.disabled = true;
+        const outcome = applyTransfer(offer);
+        // On failure, applyTransfer refreshes the tray (remaining / released / continue).
+        // Re-enable only if the same card is somehow still shown without a redraw.
+        if (outcome && outcome.ok === false && acceptBtn.isConnected && !acceptBtn.dataset.settled) {
+          acceptBtn.disabled = false;
+        }
+      });
+    }
 
     actions.appendChild(acceptBtn);
 

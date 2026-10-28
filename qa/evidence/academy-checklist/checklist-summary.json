@@ -1,0 +1,198 @@
+{
+  "base": "http://127.0.0.1:8000",
+  "results": [
+    {
+      "name": "continue-empty",
+      "status": "PASS",
+      "age": 18,
+      "history": 2
+    },
+    {
+      "name": "reject-offer",
+      "status": "PASS",
+      "midStillAcademy": true,
+      "finalReleased": true
+    },
+    {
+      "name": "final-empty-release",
+      "status": "PASS",
+      "age": 22,
+      "offers": 2
+    },
+    {
+      "name": "final-offers",
+      "status": "PASS",
+      "accepted": "Accept Offer"
+    },
+    {
+      "name": "double-continue",
+      "status": "PASS",
+      "age": 18
+    },
+    {
+      "name": "pending-review-restore",
+      "status": "PASS",
+      "reviewId": "academy-review:academy-ui-fixture-v1:1:mvsfr5ql",
+      "restoreMethod": "window.__exportCareerSnapshot → __restoreCareerSnapshot",
+      "declineLabel": "Decline offers and continue academy training"
+    },
+    {
+      "name": "ordinary-career-graduate",
+      "status": "PASS",
+      "club": "Hull City",
+      "seasons": 2,
+      "age": 18
+    }
+  ],
+  "failed": 0,
+  "passed": 7,
+  "blocked": 0,
+  "log": [
+    {
+      "t": "2026-10-28T18:15:37.014Z",
+      "msg": "FLOW: unsigned AVA empty continuation"
+    },
+    {
+      "t": "2026-10-28T18:15:39.162Z",
+      "msg": "PASS: continue-empty",
+      "age": 18,
+      "history": 2
+    },
+    {
+      "t": "2026-10-28T18:15:39.162Z",
+      "msg": "FLOW: rejected Accept via finance revalidation (R1 remaining + final)"
+    },
+    {
+      "t": "2026-10-28T18:15:40.118Z",
+      "alert": "Deal could not be completed: exceeds-wage-headroom. 1 other offer(s) remain available."
+    },
+    {
+      "t": "2026-10-28T18:15:41.392Z",
+      "alert": "Deal could not be completed: exceeds-wage-headroom. 1 other offer(s) remain available."
+    },
+    {
+      "t": "2026-10-28T18:15:41.773Z",
+      "alert": "Deal could not be completed: exceeds-wage-headroom. No executable academy offers remain — you are now a free agent."
+    },
+    {
+      "t": "2026-10-28T18:15:42.280Z",
+      "msg": "PASS: reject-offer",
+      "midStillAcademy": true,
+      "finalReleased": true
+    },
+    {
+      "t": "2026-10-28T18:15:42.280Z",
+      "msg": "FLOW: age 20→21 empty → release + FA train"
+    },
+    {
+      "t": "2026-10-28T18:15:43.569Z",
+      "msg": "PASS: final-empty-release",
+      "age": 22,
+      "offers": 2
+    },
+    {
+      "t": "2026-10-28T18:15:43.569Z",
+      "msg": "FLOW: final review accept + decline-all"
+    },
+    {
+      "t": "2026-10-28T18:15:45.833Z",
+      "msg": "PASS: final-offers",
+      "accepted": "Accept Offer"
+    },
+    {
+      "t": "2026-10-28T18:15:45.833Z",
+      "msg": "FLOW: rapid double Continue / simulate"
+    },
+    {
+      "t": "2026-10-28T18:16:16.804Z",
+      "msg": "PASS: double-continue",
+      "age": 18
+    },
+    {
+      "t": "2026-10-28T18:16:16.805Z",
+      "msg": "FLOW: pending review serialize → restore → complete"
+    },
+    {
+      "t": "2026-10-28T18:16:19.197Z",
+      "msg": "PASS: pending-review-restore",
+      "reviewId": "academy-review:academy-ui-fixture-v1:1:mvsfr5ql",
+      "restoreMethod": "window.__exportCareerSnapshot → __restoreCareerSnapshot",
+      "declineLabel": "Decline offers and continue academy training"
+    },
+    {
+      "t": "2026-10-28T18:16:19.198Z",
+      "msg": "FLOW: ordinary setup → opening → sign → senior season"
+    },
+    {
+      "t": "2026-10-28T18:16:20.248Z",
+      "msg": "ordinary:after-backstory",
+      "step": "career-step-academy",
+      "choiceHidden": true,
+      "nextOfferHidden": true,
+      "nextOfferDisabled": false,
+      "scenarioChoices": 0,
+      "ratingNextHidden": true,
+      "proCards": 0,
+      "yearEndHidden": true,
+      "careerHidden": true
+    },
+    {
+      "t": "2026-10-28T18:16:20.317Z",
+      "msg": "ordinary:after-academy-intro",
+      "step": "career-step-academy",
+      "choiceHidden": true,
+      "nextOfferHidden": true,
+      "nextOfferDisabled": true,
+      "scenarioChoices": 0,
+      "ratingNextHidden": true,
+      "proCards": 0,
+      "yearEndHidden": true,
+      "careerHidden": true
+    },
+    {
+      "t": "2026-10-28T18:16:28.291Z",
+      "msg": "ordinary:before-academy-choice",
+      "step": "career-step-academy",
+      "choiceHidden": false,
+      "nextOfferHidden": false,
+      "nextOfferDisabled": false,
+      "scenarioChoices": 0,
+      "ratingNextHidden": true,
+      "proCards": 0,
+      "yearEndHidden": true,
+      "careerHidden": true
+    },
+    {
+      "t": "2026-10-28T18:16:29.851Z",
+      "msg": "ordinary:after-moments",
+      "step": "career-step-rating",
+      "choiceHidden": false,
+      "nextOfferHidden": false,
+      "nextOfferDisabled": false,
+      "scenarioChoices": 0,
+      "ratingNextHidden": true,
+      "proCards": 0,
+      "yearEndHidden": true,
+      "careerHidden": true
+    },
+    {
+      "t": "2026-10-28T18:16:35.844Z",
+      "msg": "ordinary:after-senior-loop",
+      "seasons": 2,
+      "seasonsBefore": 1,
+      "inFlight": false,
+      "overlayHidden": true,
+      "continueVisible": false,
+      "simulateDisabled": false,
+      "label": "Simulate Next Season",
+      "pendingDecision": null
+    },
+    {
+      "t": "2026-10-28T18:16:35.962Z",
+      "msg": "PASS: ordinary-career-graduate",
+      "club": "Hull City",
+      "seasons": 2,
+      "age": 18
+    }
+  ]
+}

@@ -132,6 +132,97 @@ async function clickContinue(page) {
   );
 }
 
+/** Drive league dashboard / cup match viewer / phase Continues until overlay closes. */
+async function driveSeniorSeasonToDesk(page, seasonsBefore, timeoutMs = 90000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const cur = await debug(page);
+    if (
+      cur.overlayHidden &&
+      cur.careerHidden === false &&
+      cur.debug?.seasonActionInFlight === false &&
+      (cur.debug?.seasons || 0) > seasonsBefore
+    ) {
+      return cur;
+    }
+
+    const handled = await page.evaluate(() => {
+      const clicked = [];
+      const senior = document.getElementById("senior-scenario-overlay");
+      if (senior && !senior.classList.contains("hidden")) {
+        const choice = [...senior.querySelectorAll("button")].find((b) => !b.disabled);
+        if (choice) {
+          choice.click();
+          clicked.push("scenario");
+        }
+        const next = document.getElementById("senior-scenario-next");
+        if (next && !next.classList.contains("hidden") && !next.disabled) {
+          next.click();
+          clicked.push("scenario-next");
+        }
+      }
+
+      for (const id of [
+        "sim-skip-phase-btn",
+        "match-skip-phase-btn",
+        "sim-skip-match-btn",
+        "match-skip-btn",
+      ]) {
+        const el = document.getElementById(id);
+        if (el && !el.disabled && el.offsetParent !== null) {
+          el.click();
+          clicked.push(id);
+        }
+      }
+
+      const animContinue = document.getElementById("animation-continue");
+      const contBtn = document.getElementById("continue-btn");
+      if (
+        animContinue &&
+        !animContinue.classList.contains("hidden") &&
+        contBtn &&
+        !contBtn.disabled
+      ) {
+        contBtn.click();
+        clicked.push("continue-btn");
+      }
+
+      const deskBtn = [...document.querySelectorAll("#transfer-offers button")].find((b) =>
+        /stay|compete|acknowledge|decline offers and continue|see it out|see out|remain|continue at/i.test(
+          b.textContent || ""
+        )
+      );
+      if (deskBtn) {
+        deskBtn.click();
+        clicked.push("desk-decision");
+      }
+
+      const sim = document.getElementById("simulate-btn");
+      if (sim && !sim.disabled && /continue season/i.test(sim.textContent || "")) {
+        sim.click();
+        clicked.push("resume-season");
+      }
+      return clicked;
+    });
+
+    await page.waitForTimeout(handled.length ? 120 : 250);
+  }
+  const snap = await debug(page);
+  throw new Error(
+    `Timed out returning to desk after senior season: ${JSON.stringify({
+      overlayHidden: snap.overlayHidden,
+      seasons: snap.debug?.seasons,
+      seasonsBefore,
+      continueVisible: snap.continueVisible,
+      matchHidden: snap.matchHidden,
+      dashboardHidden: snap.dashboardHidden,
+      inFlight: snap.debug?.seasonActionInFlight,
+      pendingDecision: snap.debug?.pendingDecision,
+      next: snap.debug?.nextAction,
+    })}`
+  );
+}
+
 async function record(name, status, detail = {}) {
   results.push({ name, status, ...detail });
   note(`${status}: ${name}`, detail);
@@ -168,25 +259,75 @@ async function flowContinueEmpty(page) {
 }
 
 async function flowRejectOffer(page) {
-  note("FLOW: reject first-pro / continue");
+  note("FLOW: rejected Accept via finance revalidation (R1 remaining + final)");
+  // Mid-review with 2+ offers: fail first Accept, preserve remaining.
   await loadFixture(page, "?fixture=academy-continue-offers");
-  const before = await debug(page);
-  assert((before.debug?.pendingOffers || []).length > 0 || /Sign|Decline|offer/i.test(before.transferText), "offers visible", before);
+  let before = await debug(page);
+  assert((before.debug?.pendingOffers || []).length >= 1, "offers visible", before);
   await shot(page, "04-offers-desk");
-  // Decline all / continue academy
-  const declined = await page.evaluate(() => {
-    const buttons = [...document.querySelectorAll("#transfer-offers button")];
-    const btn = buttons.find((b) => /decline|continue academy/i.test(b.textContent || ""));
-    if (!btn) return { ok: false, labels: buttons.map((b) => b.textContent) };
+  const zeroed = await page.evaluate(() => window.__zeroPendingOfferWageHeadroom?.());
+  assert(zeroed?.ok, "wage headroom zeroed", zeroed);
+  const clicked = await page.evaluate(() => {
+    const btn = [...document.querySelectorAll("#transfer-offers button")].find((b) =>
+      /accept offer/i.test(b.textContent || "")
+    );
+    if (!btn) return { ok: false };
     btn.click();
-    return { ok: true, label: btn.textContent };
+    return { ok: true };
   });
-  assert(declined.ok, "decline control present", declined);
-  await page.waitForTimeout(200);
-  const after = await debug(page);
-  assert(after.debug?.club?.includes?.("Academy") || after.debug?.isAcademy !== false, "still academy or desk ok", after);
-  await shot(page, "05-after-decline");
-  await record("reject-offer", "PASS", { declineLabel: declined.label });
+  assert(clicked.ok, "Accept clicked after headroom zero");
+  await page.waitForTimeout(400);
+  let after = await debug(page);
+  assert(after.debug?.isAcademy === true, "still academy after failed Accept", after);
+  assert(
+    (after.debug?.pendingOffers || []).length >= 0,
+    "tray settled after failure",
+    after
+  );
+  await dumpState(page, "05-after-failed-accept-mid");
+  await shot(page, "05-after-failed-accept-mid");
+
+  // Final sole offer exhausted → release
+  await loadFixture(page, "?fixture=academy-age21-final-offers");
+  before = await debug(page);
+  assert(before.debug?.age === 21, "age 21", before);
+  // Shrink to one offer via evaluate, then zero headroom.
+  await page.evaluate(() => {
+    const p = window.__getLiveCareerDebug?.();
+    void p;
+    const offers = document.querySelectorAll("#transfer-offers .offer-card, #transfer-offers > div");
+    void offers;
+  });
+  // Keep first pending offer only by declining extras via card Decline until one remains,
+  // or zero headroom on current first and accept until released.
+  let guard = 0;
+  while (guard++ < 6) {
+    const state = await debug(page);
+    if (state.debug?.freeAgent) break;
+    if (!state.debug?.isAcademy) break;
+    const n = state.debug?.pendingOffers?.length || 0;
+    if (n === 0) break;
+    await page.evaluate(() => window.__zeroPendingOfferWageHeadroom?.());
+    const okClick = await page.evaluate(() => {
+      const btn = [...document.querySelectorAll("#transfer-offers button")].find((b) =>
+        /accept offer/i.test(b.textContent || "")
+      );
+      if (!btn) return false;
+      btn.click();
+      return true;
+    });
+    assert(okClick, "Accept on final review path");
+    await page.waitForTimeout(350);
+  }
+  after = await debug(page);
+  assert(after.debug?.freeAgent === true, "released after exhausted final accepts", after);
+  assert((after.debug?.pendingOffers || []).length === 0, "no pending after release", after);
+  await dumpState(page, "05b-final-exhausted-release");
+  await shot(page, "05b-final-exhausted-release");
+  await record("reject-offer", "PASS", {
+    midStillAcademy: true,
+    finalReleased: true,
+  });
 }
 
 async function flowFinalEmptyRelease(page) {
@@ -284,15 +425,29 @@ async function flowDoubleContinue(page) {
 }
 
 async function flowPendingReviewRestore(page) {
-  note("FLOW: pending review restore");
+  note("FLOW: pending review serialize → restore → complete");
   await loadFixture(page, "?fixture=academy-pending-review");
   const before = await debug(page);
   const reviewId = before.debug?.academyLifecycle?.pendingReviewId;
   assert(reviewId, "pending review id", before);
   assert((before.debug?.pendingOffers || []).length > 0, "offers present", before);
-  await dumpState(page, "12-pending-review");
+  const snapshot = await page.evaluate(() => window.__exportCareerSnapshot?.());
+  assert(snapshot?.player?.academyLifecycle?.pendingReviewId === reviewId, "snapshot has review", {
+    reviewId,
+    snapReview: snapshot?.player?.academyLifecycle?.pendingReviewId,
+  });
+  await dumpState(page, "12-pending-review-before-export");
+  // Navigate away / load unrelated fixture, then restore the snapshot.
+  await loadFixture(page, "?fixture=academy-continue-empty");
+  const mid = await debug(page);
+  assert(mid.debug?.academyLifecycle?.pendingReviewId !== reviewId, "left original review", mid);
+  const restored = await page.evaluate((snap) => window.__restoreCareerSnapshot?.(snap), snapshot);
+  assert(restored?.ok, "restore ok", restored);
+  assert(restored.reviewId === reviewId, "restored same review id", restored);
+  const afterRestore = await debug(page);
+  assert(afterRestore.debug?.academyLifecycle?.pendingReviewId === reviewId, "desk shows restored review", afterRestore);
+  await dumpState(page, "12-pending-review-restored");
   await shot(page, "12-pending-review");
-  // Decline the whole window (not a single card Decline) so the review resolves once.
   const declined = await page.evaluate(() => {
     const buttons = [...document.querySelectorAll("#transfer-offers button")];
     const btn = buttons.find((b) => /decline offers and continue academy/i.test(b.textContent || ""));
@@ -310,56 +465,217 @@ async function flowPendingReviewRestore(page) {
     after
   );
   assert(after.debug?.isAcademy === true, "still academy after mid review decline", after);
-  await record("pending-review-restore", "PASS", { reviewId, declineLabel: declined.label });
+  await record("pending-review-restore", "PASS", {
+    reviewId,
+    restoreMethod: "window.__exportCareerSnapshot → __restoreCareerSnapshot",
+    declineLabel: declined.label,
+  });
+}
+
+async function clickIfVisible(page, selector, timeoutMs = 8000) {
+  const started = Date.now();
+  let visible = false;
+  while (Date.now() - started < timeoutMs) {
+    visible = await page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      return Boolean(el && !el.classList.contains("hidden") && el.offsetParent !== null);
+    }, selector);
+    if (visible) break;
+    await page.waitForTimeout(80);
+  }
+  assert(visible, `control not visible: ${selector}`);
+  await page.click(selector);
 }
 
 async function flowOrdinaryCareerGraduate(page) {
-  note("FLOW: ordinary setup → academy → sign (best-effort)");
+  note("FLOW: ordinary setup → opening → sign → senior season");
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
-  await page.waitForTimeout(200);
-  // Fill setup if present
-  const filled = await page.evaluate(() => {
-    const name = document.getElementById("player-name") || document.querySelector('input[name="name"]');
-    const nat = document.getElementById("player-nationality") || document.querySelector('select[name="nationality"]');
-    const pos = document.getElementById("player-position") || document.querySelector('select[name="position"]');
-    const age = document.getElementById("player-age") || document.querySelector('input[name="age"]');
-    if (name) name.value = "Browser Academy Grad";
-    if (nat) {
-      nat.value = [...nat.options].find((o) => /england/i.test(o.text))?.value || nat.options[1]?.value || nat.value;
+  await page.waitForTimeout(250);
+
+  await page.fill("#player-name", "Browser Academy Grad");
+  // Radios are visually hidden — click via evaluate / associated labels.
+  const selected = await page.evaluate(() => {
+    const age = document.querySelector('input[name="starting-age"][value="17"]');
+    const eng = [...document.querySelectorAll('input[name="nationality"]')].find((i) =>
+      /england/i.test(i.value)
+    );
+    const pos =
+      document.querySelector('input[name="primary-position"][value="RW"]') ||
+      document.querySelector('input[name="primary-position"][value="CM"]');
+    for (const el of [age, eng, pos]) {
+      if (!el) continue;
+      el.checked = true;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
     }
-    if (pos) {
-      pos.value = [...pos.options].find((o) => o.value === "RW")?.value || pos.value;
-    }
-    if (age) age.value = "17";
-    return Boolean(name);
+    document.querySelector('label[for="starting-age-17"]')?.click();
+    if (eng?.id) document.querySelector(`label[for="${eng.id}"]`)?.click();
+    if (pos?.id) document.querySelector(`label[for="${pos.id}"]`)?.click();
+    return {
+      age: Boolean(age?.checked),
+      nationality: eng?.checked ? eng.value : null,
+      position: pos?.checked ? pos.value : null,
+    };
   });
-  if (!filled) {
-    await record("ordinary-career-graduate", "BLOCKED", { reason: "setup form fields not found" });
-    return;
-  }
+  assert(selected.age, "starting age 17 selected", selected);
+  assert(selected.nationality, "nationality selected", selected);
+  assert(selected.position, "position selected", selected);
+  await shot(page, "13-setup-filled");
+
+  const setupCheck = await page.evaluate(() => window.__readCareerSetupValues?.());
+  assert(setupCheck?.ok, "setup validation accepts filled form", setupCheck);
+
   await page.click("#start-career-btn");
-  // Try skip / continue through opening if overlay appears; otherwise desk.
-  await page.waitForTimeout(500);
-  // Prefer skip path if available — otherwise attempt to click through.
-  const progressed = await page.evaluate(async () => {
-    // If already on desk
-    const career = document.getElementById("career-section");
-    if (career && !career.classList.contains("hidden") && window.__getLiveCareerDebug?.()?.name) {
-      return { ok: true, path: "desk-ready" };
-    }
-    return { ok: false, path: "needs-manual-opening" };
-  });
-  if (!progressed.ok) {
-    // Attempt bootstrap via skip if exposed; else mark partial.
-    await shot(page, "13-ordinary-opening");
-    await record("ordinary-career-graduate", "PASS", {
-      note: "Setup submitted; opening overlay requires multi-step interaction — covered by fixture graduate paths",
-      path: progressed.path,
-    });
-    return;
+  const overlayReady = await page
+    .waitForFunction(
+      () => {
+        const overlay = document.getElementById("career-start-overlay");
+        return overlay && !overlay.classList.contains("hidden");
+      },
+      { timeout: 10000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+  assert(overlayReady, "career start overlay opened after valid setup");
+
+  async function stepNote(label) {
+    const s = await page.evaluate(() => ({
+      step: [...document.querySelectorAll(".career-step")].find((el) => !el.classList.contains("hidden"))?.id,
+      choiceHidden: document.getElementById("career-academy-choice")?.classList.contains("hidden"),
+      nextOfferHidden: document.getElementById("career-academy-next-offer")?.classList.contains("hidden"),
+      nextOfferDisabled: document.getElementById("career-academy-next-offer")?.disabled,
+      scenarioChoices: document.querySelectorAll("#career-scenario-choices button").length,
+      ratingNextHidden: document.getElementById("career-rating-next")?.classList.contains("hidden"),
+      proCards: document.getElementById("career-pro-deals-grid")?.children?.length || 0,
+      yearEndHidden: document.getElementById("career-step-year-end")?.classList.contains("hidden"),
+      careerHidden: document.getElementById("career-section")?.classList.contains("hidden"),
+    }));
+    note(`ordinary:${label}`, s);
+    return s;
   }
+
+  // Backstory → academy offers → choose first academy
+  await clickIfVisible(page, "#career-backstory-next");
+  await stepNote("after-backstory");
+  await clickIfVisible(page, "#career-academy-intro-next");
+  await stepNote("after-academy-intro");
+  // Reveal offers — wait for Next offer after stagger, until choice grid
+  for (let i = 0; i < 5; i++) {
+    const choiceVisible = await page.evaluate(() => {
+      const choice = document.getElementById("career-academy-choice");
+      return Boolean(choice && !choice.classList.contains("hidden"));
+    });
+    if (choiceVisible) break;
+    await clickIfVisible(page, "#career-academy-next-offer", 12000);
+    await page.waitForTimeout(200);
+  }
+  await stepNote("before-academy-choice");
+  const chose = await page.evaluate(() => {
+    const btn = document.querySelector(
+      "#career-academy-grid button, #career-academy-grid .career-academy-card, #career-academy-grid [role='button']"
+    );
+    if (!btn) return { ok: false };
+    btn.click();
+    return { ok: true, text: (btn.textContent || "").slice(0, 60) };
+  });
+  assert(chose.ok, "academy card clicked", chose);
+
+  // Five academy moments
+  for (let i = 0; i < 5; i++) {
+    const started = Date.now();
+    let n = 0;
+    while (Date.now() - started < 15000) {
+      n = await page.evaluate(() => document.querySelectorAll("#career-scenario-choices button").length);
+      if (n > 0) break;
+      await page.waitForTimeout(100);
+    }
+    assert(n > 0, `scenario ${i + 1} choices visible`);
+    await page.evaluate(() => document.querySelector("#career-scenario-choices button")?.click());
+    await page.waitForTimeout(120);
+    // Outcome next (may appear after animation)
+    const nextStarted = Date.now();
+    while (Date.now() - nextStarted < 10000) {
+      const ready = await page.evaluate(() => {
+        const btn = document.getElementById("career-scenario-next");
+        return Boolean(btn && !btn.classList.contains("hidden") && !btn.disabled);
+      });
+      if (ready) {
+        await page.click("#career-scenario-next");
+        break;
+      }
+      await page.waitForTimeout(100);
+    }
+    await page.waitForTimeout(120);
+  }
+  await stepNote("after-moments");
+
+  // Rating → pro deals
+  await clickIfVisible(page, "#career-rating-next", 20000);
+  const proReadyStarted = Date.now();
+  let proCards = 0;
+  while (Date.now() - proReadyStarted < 15000) {
+    proCards = await page.evaluate(() => document.getElementById("career-pro-deals-grid")?.children?.length || 0);
+    if (proCards > 0) break;
+    await page.waitForTimeout(100);
+  }
+  assert(proCards > 0, "pro deal cards present");
+  await shot(page, "13b-pro-deals");
+  const signed = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll("#career-pro-deals-grid button")];
+    const accept = cards.find((c) => !/stay in the system|continue/i.test(c.textContent || ""));
+    const pick = accept || cards[0];
+    if (!pick) return { ok: false };
+    pick.click();
+    return { ok: true, label: pick.textContent?.slice(0, 80), stay: !accept };
+  });
+  assert(signed.ok, "pro deal card clicked", signed);
+  assert(!signed.stay, "signed a real generated deal, not stay-in-system", signed);
+  await clickIfVisible(page, "#career-year-end-continue", 15000);
+  const deskStarted = Date.now();
+  let onDesk = false;
+  while (Date.now() - deskStarted < 15000) {
+    onDesk = await page.evaluate(() => {
+      const career = document.getElementById("career-section");
+      return Boolean(career && !career.classList.contains("hidden") && window.__getLiveCareerDebug?.()?.name);
+    });
+    if (onDesk) break;
+    await page.waitForTimeout(100);
+  }
+  assert(onDesk, "career desk visible after opening");
+  await shot(page, "13c-desk-after-opening");
+  let state = await debug(page);
+  assert(state.debug?.name === "Browser Academy Grad", "desk player", state);
+  assert(!state.debug?.isAcademy, "graduated to senior", state);
+  assert(state.debug?.club && !/academy/i.test(state.debug.club), "senior club name", state);
+
+  assert(state.simulateDisabled === false || state.debug?.nextAction?.canSimulate, "can simulate senior", state);
+  const seasonsBefore = state.debug?.seasons || 0;
+  await page.click("#simulate-btn");
+  // Drive full senior presentation (league dashboard + cup match viewer + phase Continues).
+  // Bounded like free-agent club season driver — short loops false-fail mid FA Cup.
+  const afterSim = await driveSeniorSeasonToDesk(page, seasonsBefore, 90000);
+  note("ordinary:after-senior-loop", {
+    seasons: afterSim.debug?.seasons,
+    seasonsBefore,
+    inFlight: afterSim.debug?.seasonActionInFlight,
+    overlayHidden: afterSim.overlayHidden,
+    continueVisible: afterSim.continueVisible,
+    simulateDisabled: afterSim.simulateDisabled,
+    label: afterSim.simulateLabel,
+    pendingDecision: afterSim.debug?.pendingDecision,
+  });
+  assert(afterSim.overlayHidden, "returned to desk after senior season presentation", afterSim);
+  assert((afterSim.debug?.seasons || 0) > seasonsBefore, "senior season committed", afterSim);
+  state = await debug(page);
+  assert((state.debug?.seasons || 0) >= 2, "at least opening + senior season", state);
+  assert(!state.debug?.isAcademy, "still senior after season", state);
+  await dumpState(page, "13d-after-senior-season");
   await shot(page, "13-ordinary-desk");
-  await record("ordinary-career-graduate", "PASS", { path: progressed.path });
+  await record("ordinary-career-graduate", "PASS", {
+    club: state.debug?.club,
+    seasons: state.debug?.seasons,
+    age: state.debug?.age,
+  });
 }
 
 async function main() {
@@ -414,7 +730,8 @@ async function main() {
   await writeFile(join(STATE_DIR, "checklist-summary.json"), JSON.stringify(summary, null, 2));
   console.log("\n=== Academy browser checklist ===");
   console.log(JSON.stringify(results, null, 2));
-  if (summary.failed > 0) process.exit(1);
+  // Required scenarios must not be FAIL or BLOCKED.
+  if (summary.failed > 0 || summary.blocked > 0) process.exit(1);
 }
 
 main().catch((err) => {

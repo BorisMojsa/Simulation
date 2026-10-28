@@ -24,6 +24,8 @@ import {
   selectNextCareerAction,
   completedSeasons,
   consumeRelatedDecisionAfterDeal,
+  markOfferStatus,
+  isOfferExecutable,
 } from "./contractLifecycle.js";
 import {
   applyAcademyGrowth,
@@ -210,8 +212,11 @@ export function buildAndPersistAcademyReview(player, { isFinal = false, offerPro
   player.academyLifecycle.pendingReview = review;
   player.academyLifecycle.status = isFinal ? "pending-final-review" : "pending-review";
 
-  // Surface offers on the shared desk tray.
+  // Surface offers on the shared desk tray and journal them as pending.
   player.pendingOffers = executableOffers.map((d) => d.offer);
+  for (const o of player.pendingOffers) {
+    markOfferStatus(player, o, "pending", { academyReviewId: reviewId });
+  }
 
   return review;
 }
@@ -426,6 +431,101 @@ export function releaseAcademyToFreeAgency(player, reason = "academy-exit") {
 }
 
 /**
+ * After a failed academy acceptance: journal the failed offer, persist remaining
+ * executable offers, and release (final) or continue enrolled (below exit).
+ * Does not advance age, add a period, or grant development.
+ */
+export function settleAcademyOfferFailure(player, failedOffer, failure = {}) {
+  ensureAcademyLifecycle(player);
+  ensureContractAuthority(player);
+  const life = player.academyLifecycle;
+  const review = life.pendingReview;
+  const failedId = failedOffer?.offerId;
+
+  if (failedOffer) {
+    markOfferStatus(player, failedOffer, "expired", {
+      reason: failure.reason || "validation-failed",
+      academyReviewId: failedOffer.academyReviewId || review?.reviewId || null,
+    });
+  }
+
+  const stillExecutable = (o) => {
+    if (!o) return false;
+    if (failedId && o.offerId === failedId) return false;
+    if (o === failedOffer) return false;
+    return isOfferExecutable(player, o).ok;
+  };
+
+  const remainingFromTray = (player.pendingOffers || []).filter(stillExecutable);
+  let remainingDeals = [];
+  if (review) {
+    if (failedId && !review.consumedOfferIds.includes(failedId)) {
+      review.consumedOfferIds.push(failedId);
+    }
+    remainingDeals = (review.offers || []).filter((d) => stillExecutable(d.offer || d));
+    review.offers = remainingDeals;
+    review.offerCount = remainingDeals.length;
+    review.emptyOffers = remainingDeals.length === 0;
+    player.pendingOffers = remainingDeals.map((d) => d.offer).filter(Boolean);
+  } else {
+    player.pendingOffers = remainingFromTray;
+  }
+
+  const remaining = player.pendingOffers || [];
+  if (remaining.length > 0) {
+    return {
+      ok: false,
+      reason: failure.reason || "sign-failed",
+      reasons: failure.reasons,
+      action: "remaining-offers",
+      remainingOffers: remaining,
+      released: false,
+      graduated: false,
+      isFinal: Boolean(review?.isFinal),
+    };
+  }
+
+  // Exhausted executable set.
+  const isFinal =
+    Boolean(review?.isFinal) ||
+    life.status === "pending-final-review" ||
+    (Number(player.age) || 0) >= academyExitAge(player);
+
+  clearAcademyReview(player, { markConsumed: true });
+  player.pendingOffers = [];
+
+  if (isFinal) {
+    const released = releaseAcademyToFreeAgency(
+      player,
+      failure.releaseReason || "academy-exit-offers-exhausted"
+    );
+    return {
+      ok: false,
+      reason: failure.reason || "sign-failed",
+      reasons: failure.reasons,
+      action: "released",
+      remainingOffers: [],
+      released: true,
+      graduated: false,
+      isFinal: true,
+      release: released,
+    };
+  }
+
+  life.status = "enrolled";
+  return {
+    ok: false,
+    reason: failure.reason || "sign-failed",
+    reasons: failure.reasons,
+    action: "continue-academy",
+    remainingOffers: [],
+    released: false,
+    graduated: false,
+    isFinal: false,
+  };
+}
+
+/**
  * Accept a first-pro offer from an academy review / desk.
  */
 export function acceptAcademyGraduationOffer(player, dealOrOffer) {
@@ -441,9 +541,24 @@ export function acceptAcademyGraduationOffer(player, dealOrOffer) {
   const offer = dealOrOffer?.offer || dealOrOffer;
   if (!offer) return { ok: false, reason: "missing-offer" };
 
-  // If a review is pending, the offer must belong to it (or be revalidated fresh).
+  // Durable closed-review / journal gate (also enforced in isOfferExecutable).
+  const executable = isOfferExecutable(player, offer);
+  if (!executable.ok) {
+    return settleAcademyOfferFailure(player, offer, {
+      reason: executable.reason,
+      reasons: [executable.reason],
+    });
+  }
+
+  // If a review is pending, the offer must belong to it.
   if (review && offer.academyReviewId && offer.academyReviewId !== review.reviewId) {
     return { ok: false, reason: "stale-review-offer" };
+  }
+  if (
+    offer.academyReviewId &&
+    life.consumedReviewIds?.includes(offer.academyReviewId)
+  ) {
+    return { ok: false, reason: "closed-academy-review" };
   }
 
   const deal =
@@ -453,15 +568,10 @@ export function acceptAcademyGraduationOffer(player, dealOrOffer) {
 
   const signed = signFirstProfessionalContract(player, deal);
   if (!signed.ok) {
-    // Preserve other executable offers.
-    return {
-      ok: false,
+    return settleAcademyOfferFailure(player, offer, {
       reason: signed.reason || "sign-failed",
       reasons: signed.reasons,
-      remainingOffers: (player.pendingOffers || []).filter(
-        (o) => o !== offer && o.offerId !== offer.offerId
-      ),
-    };
+    });
   }
 
   // Mark review offer consumed; clear academy review state.
@@ -471,6 +581,14 @@ export function acceptAcademyGraduationOffer(player, dealOrOffer) {
     }
     if (!life.consumedReviewIds.includes(review.reviewId)) {
       life.consumedReviewIds.push(review.reviewId);
+    }
+  }
+  // Supersede sibling offers in the closed review.
+  for (const o of player.pendingOffers || []) {
+    if (o !== offer && o.offerId !== offer.offerId) {
+      markOfferStatus(player, o, "superseded", {
+        academyReviewId: o.academyReviewId || review?.reviewId || null,
+      });
     }
   }
   clearAcademyReview(player);
@@ -504,9 +622,14 @@ export function declineAcademyReview(player, opts = {}) {
   const life = player.academyLifecycle;
   const review = life.pendingReview;
   const isFinal = Boolean(review?.isFinal || life.status === "pending-final-review");
+  const reviewId = review?.reviewId || life.pendingReviewId;
 
   for (const o of player.pendingOffers || []) {
-    o.status = "declined";
+    markOfferStatus(player, o, "declined", { academyReviewId: reviewId });
+  }
+  for (const d of review?.offers || []) {
+    const o = d.offer || d;
+    if (o) markOfferStatus(player, o, "declined", { academyReviewId: reviewId });
   }
   player.pendingOffers = [];
   clearAcademyReview(player, { markConsumed: true });
