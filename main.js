@@ -21,7 +21,7 @@ import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipT
 import {
   buildMembershipBrowserFixture,
   inspectMembershipDebug,
-} from "./js/simulation/membershipBrowserFixture.js?v=92";
+} from "./js/simulation/membershipBrowserFixture.js?v=94";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -268,6 +268,7 @@ window.__loadMembershipBrowserFixture = function loadMembershipBrowserFixture(op
     ok: true,
     mode: result.mode,
     clubId: result.clubId,
+    borrowerId: result.borrowerId || null,
     evidence: result.evidence,
     next: result.next || null,
     destination: result.destination || null,
@@ -275,6 +276,10 @@ window.__loadMembershipBrowserFixture = function loadMembershipBrowserFixture(op
     zones: result.zones || null,
     offerMeta: result.offerMeta || null,
     snapshotOk: result.snapshotOk,
+    snapshotCompare: result.snapshotCompare || null,
+    checkpoint: result.checkpoint || null,
+    loan: result.loan || null,
+    expect: result.expect || null,
     season: result.season || null,
     membership: inspectMembershipDebug(player, getWorldState()),
     playingClubId: player.playingClubId,
@@ -299,6 +304,8 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
     employmentClubId: player.employmentClubId,
     playingClubId: player.playingClubId,
     membership,
+    clubLeagueId: player.club?.leagueId || membership?.clubLeagueId || null,
+    parentClubSnapshotLeagueId: player.parentClubSnapshot?.leagueId || null,
     playingStints: player.playingStints || [],
     seasonsCount: player.seasons?.length ?? 0,
     careerHonors: player.careerHonors ? { ...player.careerHonors } : null,

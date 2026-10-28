@@ -1,0 +1,82 @@
+{
+  "reviewedCommit": "e9f1623d964f57789f61d2e00a97033e470b1fc3",
+  "note": "Re-run against working tree after R1–R4 fixes",
+  "partialTable": {
+    "returnedOk": true,
+    "source": "world-completed",
+    "committedBefore": 190,
+    "committedAfter": 380,
+    "minPlayed": 38,
+    "maxPlayed": 38,
+    "expectedFinalPlayed": 38
+  },
+  "staleTable": {
+    "returnedOk": true,
+    "source": "world-completed",
+    "requestedSeason": 2027,
+    "fixturesInRequestedEdition": 380
+  },
+  "movedParentLoanReturn": {
+    "loanAccepted": true,
+    "parentMoved": true,
+    "beforeReturn": {
+      "parentWorldLeague": "league:england-championship",
+      "parentSnapshotLeague": "league:england-premier-league",
+      "playerClub": "club:england:birmingham-city",
+      "completedSeasons": 1
+    },
+    "afterReturnLeague": "league:england-championship",
+    "parentWorldLeague": "league:england-championship",
+    "nextStatus": "complete",
+    "nextError": null
+  },
+  "crossCountrySourcePair": {
+    "sourceLeague": "league:italy-serie-a",
+    "destinationLeague": "league:croatia-hnl",
+    "completed": true,
+    "sourceCommittedMatches": 380,
+    "transitions": [
+      "italy::2026"
+    ],
+    "recordedTransition": {
+      "alreadyApplied": false,
+      "skipped": false,
+      "key": "italy::2026",
+      "keys": [
+        "italy::2026"
+      ],
+      "promoted": [
+        "club:italy:cremonese",
+        "club:italy:mantova"
+      ],
+      "relegated": [
+        "club:italy:genoa",
+        "club:italy:monza"
+      ],
+      "pairs": [
+        {
+          "pairId": "italy",
+          "key": "italy::2026",
+          "skipped": false
+        }
+      ]
+    },
+    "seasonSegmentLeagueIds": [
+      "league:italy-serie-a",
+      "league:croatia-hnl"
+    ]
+  },
+  "threeBoundaryTestCoverage": {
+    "claimedIterations": 3,
+    "actualTransitionKeys": [
+      "england::2026",
+      "england::2027",
+      "england::2028"
+    ],
+    "expectedKeys": [
+      "england::2026",
+      "england::2027",
+      "england::2028"
+    ]
+  }
+}

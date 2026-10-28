@@ -18,7 +18,7 @@ import {
   findSisterLeagues,
   qualificationForPosition,
 } from "./leaguePhase.js";
-import { finalizeMembershipAfterSeason } from "./leagueMembership.js";
+import { finalizeMembershipForSeasonSegments } from "./leagueMembership.js";
 import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=89";
 import { findLeagueById } from "./destinationSchedule.js?v=81";
 import { evaluateSeasonAwards } from "./individualAwards.js?v=85";
@@ -693,29 +693,47 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   const expiry = applyContractExpiryAtBoundary(player);
   season.contractExpiry = expiry;
 
-  // Balanced pair transition for the completed edition — independent of contract state.
+  // Balanced pair transitions for every supported pair touched this season.
   const completedSeasonYear = (player.startYear || 2026) + seasonIndex;
-  const membershipResult = finalizeMembershipAfterSeason({
+  const segmentLeagueIds = [
+    ...(chrono.leagueMatchSegments || []).map((s) => s.leagueId || s.key),
+    playingLeague?.leagueId,
+    league?.leagueId,
+    chrono.activeLeague?.leagueId,
+    chrono.checkpoint?.leagueId,
+  ].filter(Boolean);
+  const membershipResult = finalizeMembershipForSeasonSegments({
     player,
-    completedLeague: playingLeague,
-    completedTable: chrono.table,
+    segmentLeagueIds,
+    primaryLeague: playingLeague,
+    primaryTable: chrono.table,
     completedSeasonYear,
+    completedClubId,
     allLeagues: leagues,
     world: getWorldState(),
-    completedClubId,
   });
   const divisionMove = membershipResult?.ok ? membershipResult.playerMove || null : null;
   if (divisionMove) {
     season.divisionMove = divisionMove;
     if (standing) standing.divisionMove = divisionMove.type;
   }
+  const primaryTransition =
+    membershipResult?.results?.find((r) => r.transition?.key) ||
+    membershipResult?.results?.[0] ||
+    null;
   season.membershipTransition = membershipResult?.ok
     ? {
-        alreadyApplied: Boolean(membershipResult.alreadyApplied),
+        alreadyApplied: Boolean(primaryTransition?.alreadyApplied),
         skipped: Boolean(membershipResult.skipped),
-        key: membershipResult.transition?.key || null,
-        promoted: membershipResult.transition?.promoted || null,
-        relegated: membershipResult.transition?.relegated || null,
+        key: primaryTransition?.transition?.key || null,
+        keys: membershipResult.transitionKeys || [],
+        promoted: primaryTransition?.transition?.promoted || null,
+        relegated: primaryTransition?.transition?.relegated || null,
+        pairs: (membershipResult.results || []).map((r) => ({
+          pairId: r.pairId,
+          key: r.transition?.key || null,
+          skipped: Boolean(r.skipped),
+        })),
       }
     : { ok: false, reason: membershipResult?.reason || "failed" };
 

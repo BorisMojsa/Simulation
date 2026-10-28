@@ -22,12 +22,13 @@ import {
 } from "../js/simulation/proContractOffers.js";
 import { rivalsForClub } from "../js/data/clubRivals.js";
 import {
-  applyDivisionMovement,
   findSisterLeagues,
   qualificationForPosition,
 } from "../js/simulation/leaguePhase.js";
 import { createWorldState, setWorldState } from "../js/simulation/worldState.js";
 import { resetClubFinanceLedgers } from "../js/simulation/clubFinance.js";
+import { finalizeMembershipAfterSeason } from "../js/simulation/leagueMembership.js";
+import { controlledPairFinalize } from "./helpers/membershipTestUtils.mjs";
 
 function test(name, fn) {
   try {
@@ -277,12 +278,26 @@ test("2. Bundesliga 2nd place promotes; bottom does not relegate", () => {
     playingClubId: club.clubId,
     employmentClubId: club.clubId,
   };
-  const move = applyDivisionMovement(player, { position: 2 }, second, LEAGUES);
-  assert.equal(move?.type, "promoted");
+  const result = controlledPairFinalize({
+    player,
+    league: second,
+    position: 2,
+    world,
+    seasonYear: 2026,
+  });
+  assert.equal(result.ok, true, String(result.reason));
+  assert.equal(result.playerMove?.type, "promoted");
   assert.equal(player.club.league, top.name);
   assert.equal(world.leagueMemberships.get(top.leagueId).length, 18);
   assert.equal(world.leagueMemberships.get(second.leagueId).length, 18);
-  assert.equal(applyDivisionMovement(player, { position: 2 }, second, LEAGUES), null);
+  const again = finalizeMembershipAfterSeason({
+    player,
+    completedLeague: second,
+    completedSeasonYear: 2026,
+    world,
+    completedClubId: club.clubId,
+  });
+  assert.equal(again.alreadyApplied, true);
 });
 
 test("Bundesliga bottom places relegate to 2. Bundesliga", () => {
@@ -301,8 +316,15 @@ test("Bundesliga bottom places relegate to 2. Bundesliga", () => {
     playingClubId: club.clubId,
     employmentClubId: club.clubId,
   };
-  const move = applyDivisionMovement(player, { position: 17 }, top, LEAGUES);
-  assert.equal(move?.type, "relegated");
+  const result = controlledPairFinalize({
+    player,
+    league: top,
+    position: 17,
+    world,
+    seasonYear: 2026,
+  });
+  assert.equal(result.ok, true, String(result.reason));
+  assert.equal(result.playerMove?.type, "relegated");
   assert.equal(player.club.league, second.name);
   assert.equal(world.leagueMemberships.get(top.leagueId).length, 18);
   assert.equal(world.leagueMemberships.get(second.leagueId).length, 18);

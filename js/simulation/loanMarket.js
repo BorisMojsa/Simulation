@@ -3,6 +3,8 @@
  */
 import { createStreamRng } from "./rng.js";
 import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js";
+import { resolveClubLeagueMetadata } from "./leagueMembership.js";
+import { getWorldState } from "./worldState.js";
 import { findEligibleClubs, pickWeighted } from "./recruitmentModel.js";
 import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js";
 import {
@@ -508,10 +510,37 @@ export function endLoan(player, resolution = "return", opts = {}) {
 
   settleLoanSlotsAndWages(player, loan, sk, "return");
 
-  // Return to parent
-  player.club = { ...parent, isLoanSpell: false };
-  player.employmentClubId = loan.parentClubId;
-  player.playingClubId = loan.parentClubId;
+  // Return to parent — resolve current career division by stable club ID.
+  // parentClubSnapshot preserves contract/identity but may carry a stale league
+  // after the parent was promoted/relegated while the player was away.
+  const parentId = loan.parentClubId || parent?.clubId;
+  const liveMeta = resolveClubLeagueMetadata(parentId, getWorldState()) || findSeniorClubById(parentId);
+  const restoredParent = {
+    ...parent,
+    ...(liveMeta || {}),
+    clubId: parentId,
+    name: parent?.name || liveMeta?.name,
+    displayName: parent?.displayName || liveMeta?.displayName || parent?.name,
+    badge: parent?.badge || liveMeta?.badge,
+    // Preserve parent sporting/finance baselines from the snapshot when live meta omits them.
+    overall: parent?.overall ?? liveMeta?.overall,
+    attack: parent?.attack ?? liveMeta?.attack,
+    midfield: parent?.midfield ?? liveMeta?.midfield,
+    defence: parent?.defence ?? liveMeta?.defence,
+    goalkeeper: parent?.goalkeeper ?? liveMeta?.goalkeeper,
+    financialTier: parent?.financialTier ?? liveMeta?.financialTier,
+    reputation: parent?.reputation ?? liveMeta?.reputation,
+    league: liveMeta?.league || parent?.league,
+    leagueDisplay: liveMeta?.leagueDisplay || parent?.leagueDisplay,
+    leagueId: liveMeta?.leagueId || parent?.leagueId,
+    tier: liveMeta?.tier ?? parent?.tier,
+    divisionLevel: liveMeta?.divisionLevel ?? parent?.divisionLevel,
+    nation: liveMeta?.nation || parent?.nation,
+    isLoanSpell: false,
+  };
+  player.club = restoredParent;
+  player.employmentClubId = parentId;
+  player.playingClubId = parentId;
   if (Number.isFinite(loan.previousWeeklyWage)) {
     player.weeklyWage = loan.previousWeeklyWage;
     player.wage = loan.previousWeeklyWage;
@@ -525,10 +554,10 @@ export function endLoan(player, resolution = "return", opts = {}) {
   ensurePlayingStints(player, { asOfDate: returnDate });
   recordPlayingTransition(player, {
     effectiveDate: returnDate,
-    playingClubId: loan.parentClubId,
-    employmentClubId: loan.parentClubId,
-    leagueId: parent?.leagueId || null,
-    clubName: parent?.name || null,
+    playingClubId: parentId,
+    employmentClubId: parentId,
+    leagueId: restoredParent.leagueId || null,
+    clubName: restoredParent.name || null,
     kind: opts.recall ? "loan_recall" : "loan_return",
     onLoan: false,
   });

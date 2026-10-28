@@ -289,7 +289,15 @@ function tableClubIds(table) {
   return (table || []).map((r) => r.clubId).filter(Boolean);
 }
 
-function validateTableAgainstRoster(table, clubIds, label) {
+function expectedRegularFixtures(clubCount) {
+  return clubCount * Math.max(0, clubCount - 1);
+}
+
+function expectedPlayedPerClub(clubCount) {
+  return 2 * Math.max(0, clubCount - 1);
+}
+
+function validateTableAgainstRoster(table, clubIds, label, { requireFullPlayed = false } = {}) {
   if (!Array.isArray(table) || !table.length) {
     return { ok: false, reason: `missing-table:${label}` };
   }
@@ -322,7 +330,103 @@ function validateTableAgainstRoster(table, clubIds, label) {
       }
     }
   }
+  if (requireFullPlayed) {
+    const need = expectedPlayedPerClub(ids.length);
+    for (const row of table) {
+      if ((row.played || 0) !== need) {
+        return {
+          ok: false,
+          reason: `table-incomplete-played:${label}`,
+          clubId: row.clubId,
+          played: row.played || 0,
+          expected: need,
+        };
+      }
+    }
+  }
   return { ok: true };
+}
+
+/**
+ * Collect unique played regular-season fixtures for a league edition.
+ * Rejects duplicates and foreign participants.
+ */
+export function collectEditionFixtures(leagueId, seasonYear, clubIds, world = getWorldState()) {
+  const w = ensureMembershipMaps(world);
+  if (!w || !leagueId || seasonYear == null) {
+    return { ok: false, reason: "missing-args", matches: [], uniqueIds: [] };
+  }
+  const roster = new Set(clubIds || []);
+  const byId = new Map();
+  const byPair = new Map();
+  for (const m of w.matches?.values?.() || []) {
+    if ((m.competitionId || m.leagueContextId) !== leagueId) continue;
+    const editionMatch =
+      String(m.editionId) === String(seasonYear) || m.seasonYear === seasonYear;
+    if (!editionMatch) continue;
+    if (m.status && m.status !== "played") continue;
+    if (m.homeGoals == null && m.matchHomeGoals == null) continue;
+    const homeId = m.home?.clubId || m.homeParticipantId;
+    const awayId = m.away?.clubId || m.awayParticipantId;
+    if (!homeId || !awayId || homeId === awayId) {
+      return { ok: false, reason: "invalid-participants", matchId: m.matchId || m.fixtureId };
+    }
+    if (!roster.has(homeId) || !roster.has(awayId)) {
+      return {
+        ok: false,
+        reason: "foreign-fixture-participant",
+        matchId: m.matchId || m.fixtureId,
+        homeId,
+        awayId,
+      };
+    }
+    const id = m.matchId || m.fixtureId;
+    if (!id) return { ok: false, reason: "missing-fixture-id" };
+    const nh = m.matchHomeGoals ?? m.homeGoals;
+    const na = m.matchAwayGoals ?? m.awayGoals;
+    if (byId.has(id)) {
+      const prev = byId.get(id);
+      const ph = prev.matchHomeGoals ?? prev.homeGoals;
+      const pa = prev.matchAwayGoals ?? prev.awayGoals;
+      if (ph !== nh || pa !== na) {
+        return { ok: false, reason: "duplicate-fixture-conflict", matchId: id };
+      }
+      continue;
+    }
+    const oriented = `${homeId}>${awayId}`;
+    if (byPair.has(oriented)) {
+      const prev = byPair.get(oriented);
+      const ph = prev.matchHomeGoals ?? prev.homeGoals;
+      const pa = prev.matchAwayGoals ?? prev.awayGoals;
+      if (ph !== nh || pa !== na) {
+        return { ok: false, reason: "duplicate-home-away-conflict", pair: oriented };
+      }
+      // Same pair/score under another id — keep the first, ignore the duplicate.
+      continue;
+    }
+    byPair.set(oriented, m);
+    byId.set(id, m);
+  }
+  const matches = [...byId.values()];
+  const expected = expectedRegularFixtures(roster.size);
+  const playedByClub = new Map([...roster].map((id) => [id, 0]));
+  for (const m of matches) {
+    const homeId = m.home?.clubId || m.homeParticipantId;
+    const awayId = m.away?.clubId || m.awayParticipantId;
+    playedByClub.set(homeId, (playedByClub.get(homeId) || 0) + 1);
+    playedByClub.set(awayId, (playedByClub.get(awayId) || 0) + 1);
+  }
+  const needPlayed = expectedPlayedPerClub(roster.size);
+  const incomplete = [...playedByClub.entries()].filter(([, n]) => n !== needPlayed);
+  return {
+    ok: matches.length === expected && incomplete.length === 0,
+    matches,
+    uniqueIds: [...byId.keys()],
+    expectedFixtures: expected,
+    expectedPlayedPerClub: needPlayed,
+    playedByClub: Object.fromEntries(playedByClub),
+    incompleteClubs: incomplete.map(([id, n]) => ({ clubId: id, played: n })),
+  };
 }
 
 function sortTableRows(table) {
@@ -340,23 +444,10 @@ export function tableFromCommittedEdition(league, seasonYear, world = getWorldSt
   const leagueId = leagueIdOf(league);
   const clubs = resolveLeagueClubs(league, { world: w, seasonYear });
   if (!clubs.length) return null;
-
-  const matches = [];
-  for (const m of w.matches?.values?.() || []) {
-    if ((m.competitionId || m.leagueContextId) !== leagueId) continue;
-    if (String(m.editionId) !== String(seasonYear) && m.seasonYear !== seasonYear) continue;
-    if (m.status && m.status !== "played") continue;
-    if (m.homeGoals == null && m.matchHomeGoals == null) continue;
-    matches.push(m);
-  }
-
-  const expectedFixtures = clubs.length * (clubs.length - 1);
-  if (matches.length < expectedFixtures) {
-    // Also accept standings snapshot only when fixture coverage matches via ledger.
-    return null;
-  }
-
-  const { table } = rebuildTableFromMatches(clubs, matches);
+  const clubIds = clubs.map((c) => c.clubId);
+  const coverage = collectEditionFixtures(leagueId, seasonYear, clubIds, w);
+  if (!coverage.ok) return null;
+  const { table } = rebuildTableFromMatches(clubs, coverage.matches);
   return sortTableRows(table);
 }
 
@@ -381,23 +472,38 @@ export function completeWorldLeagueEdition({
   }
   const clubs = resolveLeagueClubs(league, { world: w, seasonYear });
   const leagueId = leagueIdOf(league);
-  const expectedFixtures = clubs.length * (clubs.length - 1);
-
-  const existing = [];
-  const existingIds = new Set();
-  for (const m of w.matches?.values?.() || []) {
-    if ((m.competitionId || m.leagueContextId) !== leagueId) continue;
-    if (String(m.editionId) !== String(seasonYear) && m.seasonYear !== seasonYear) continue;
-    if (m.homeGoals == null && m.matchHomeGoals == null) continue;
-    existing.push(m);
-    if (m.matchId || m.fixtureId) existingIds.add(m.matchId || m.fixtureId);
+  const clubIds = clubs.map((c) => c.clubId);
+  const coverage = collectEditionFixtures(leagueId, seasonYear, clubIds, w);
+  if (!coverage.ok && coverage.reason && coverage.reason !== "missing-args") {
+    // Conflicting/foreign fixtures must not be papered over.
+    if (
+      coverage.reason === "duplicate-fixture-conflict" ||
+      coverage.reason === "foreign-fixture-participant" ||
+      coverage.reason === "duplicate-home-away-pair" ||
+      coverage.reason === "duplicate-home-away-conflict" ||
+      coverage.reason === "invalid-participants"
+    ) {
+      return { ok: false, reason: coverage.reason, detail: coverage };
+    }
+  }
+  if (coverage.ok) {
+    const { table } = rebuildTableFromMatches(clubs, coverage.matches);
+    const sorted = sortTableRows(table);
+    w.standings.set(leagueId, sorted);
+    if (!w.standingsEdition) w.standingsEdition = {};
+    w.standingsEdition[leagueId] = String(seasonYear);
+    return { ok: true, reused: true, table: sorted, simulated: 0 };
   }
 
-  if (existing.length >= expectedFixtures) {
-    const { table } = rebuildTableFromMatches(clubs, existing);
-    w.standings.set(leagueId, sortTableRows(table));
-    return { ok: true, reused: true, table: sortTableRows(table), simulated: 0 };
-  }
+  const existingIds = new Set(coverage.uniqueIds || []);
+  const existingPairs = new Set(
+    (coverage.matches || []).map((m) => {
+      const homeId = m.home?.clubId || m.homeParticipantId;
+      const awayId = m.away?.clubId || m.awayParticipantId;
+      return `${homeId}>${awayId}`;
+    })
+  );
+  const existing = coverage.matches || [];
 
   const seedLabel = `world-league:${careerSeed ?? w.rngSeed ?? "w"}:${leagueId}:${seasonYear}`;
   const rng = createStreamRng(seedLabel, "world-only-results");
@@ -417,7 +523,8 @@ export function completeWorldLeagueEdition({
     const fixtureId =
       fx.fixtureId ||
       `lg:${leagueId}:${seasonYear}:md${fx.matchday}:${fx.home.clubId}:${fx.away.clubId}`;
-    if (existingIds.has(fixtureId)) continue;
+    const pairKey = `${fx.home.clubId}>${fx.away.clubId}`;
+    if (existingIds.has(fixtureId) || existingPairs.has(pairKey)) continue;
 
     const match = simulateMatch(fx.home, fx.away, {
       competition: "league",
@@ -427,6 +534,7 @@ export function completeWorldLeagueEdition({
       fixtureId,
       date: fx.date,
     });
+    match.matchId = fixtureId;
     match.matchday = fx.matchday;
     match.round = `Matchday ${fx.matchday}`;
     match.editionId = String(seasonYear);
@@ -437,18 +545,29 @@ export function completeWorldLeagueEdition({
     applyMatchFormUpdate(w, match);
     try {
       commitLeagueMatchResult(match, { ...league, clubs }, seasonYear, w);
-    } catch {
-      // Store optional; table still built from local array.
+    } catch (err) {
+      return {
+        ok: false,
+        reason: err?.code || "commit-failed",
+        detail: { message: err?.message, existing: err?.existing, incoming: err?.incoming },
+      };
     }
     allMatches.push(match);
     existingIds.add(fixtureId);
+    existingPairs.add(pairKey);
     simulated += 1;
   }
 
   w.worldLeagueRng[seedLabel] = rng.seed();
-  const { table } = rebuildTableFromMatches(clubs, allMatches);
+  const finalCoverage = collectEditionFixtures(leagueId, seasonYear, clubIds, w);
+  if (!finalCoverage.ok) {
+    return { ok: false, reason: "incomplete-after-completion", detail: finalCoverage, simulated };
+  }
+  const { table } = rebuildTableFromMatches(clubs, finalCoverage.matches);
   const sorted = sortTableRows(table);
   w.standings.set(leagueId, sorted);
+  if (!w.standingsEdition) w.standingsEdition = {};
+  w.standingsEdition[leagueId] = String(seasonYear);
   return { ok: true, reused: false, table: sorted, simulated };
 }
 
@@ -470,30 +589,41 @@ export function ensureFinalTableForEdition({
   }
   const clubIds = resolveLeagueClubIds(leagueId, { world: w, seasonYear });
 
+  // Preferred tables are hints only when the same edition already has full
+  // unique fixture coverage in the competition store. Partial/stale standings
+  // or played-count claims without fixtures are never accepted alone.
   if (preferredTable) {
-    const sorted = sortTableRows(preferredTable);
-    const v = validateTableAgainstRoster(sorted, clubIds, leagueId);
-    if (v.ok) return { ok: true, table: sorted, source: "preferred" };
+    const coverage = collectEditionFixtures(leagueId, seasonYear, clubIds, w);
+    if (
+      coverage.reason === "duplicate-fixture-conflict" ||
+      coverage.reason === "foreign-fixture-participant" ||
+      coverage.reason === "duplicate-home-away-pair" ||
+      coverage.reason === "duplicate-home-away-conflict" ||
+      coverage.reason === "invalid-participants"
+    ) {
+      return { ok: false, reason: coverage.reason, detail: coverage };
+    }
+    if (coverage.ok) {
+      const fromStore = rebuildTableFromMatches(
+        resolveLeagueClubs(league, { world: w, seasonYear }),
+        coverage.matches
+      ).table;
+      const committed = sortTableRows(fromStore);
+      const cv = validateTableAgainstRoster(committed, clubIds, leagueId, { requireFullPlayed: true });
+      if (cv.ok) return { ok: true, table: committed, source: "committed" };
+    }
   }
 
   const fromStore = tableFromCommittedEdition(league, seasonYear, w);
   if (fromStore) {
-    const v = validateTableAgainstRoster(fromStore, clubIds, leagueId);
+    const v = validateTableAgainstRoster(fromStore, clubIds, leagueId, { requireFullPlayed: true });
     if (v.ok) return { ok: true, table: fromStore, source: "committed" };
   }
 
-  const standings = w.standings?.get(leagueId);
-  if (standings?.length) {
-    const sorted = sortTableRows(standings);
-    const v = validateTableAgainstRoster(sorted, clubIds, leagueId);
-    if (v.ok && sorted.every((r) => (r.played || 0) >= clubIds.length - 1)) {
-      return { ok: true, table: sorted, source: "standings" };
-    }
-  }
-
+  // Never accept world.standings without same-edition full fixture coverage.
   const completed = completeWorldLeagueEdition({ league, seasonYear, world: w, careerSeed });
   if (!completed.ok) return completed;
-  const v = validateTableAgainstRoster(completed.table, clubIds, leagueId);
+  const v = validateTableAgainstRoster(completed.table, clubIds, leagueId, { requireFullPlayed: true });
   if (!v.ok) return { ok: false, reason: v.reason, detail: v };
   return { ok: true, table: completed.table, source: "world-completed", simulated: completed.simulated };
 }
@@ -790,7 +920,6 @@ export function finalizeMembershipAfterSeason({
   const upperTable = policy.role === "upper" ? completed.table : counterpart.table;
   const lowerTable = policy.role === "lower" ? completed.table : counterpart.table;
 
-  // Snapshot player for world-only counterpart side-effect check is caller's job.
   const result = commitDivisionPairTransition({
     world: w,
     upperLeague,
@@ -801,7 +930,6 @@ export function finalizeMembershipAfterSeason({
     player,
   });
 
-  // If player no longer has a club but completed a club that moved, still report move.
   if (result.ok && !result.playerMove && completedClubId) {
     const t = result.transition;
     if (t.promoted.includes(completedClubId)) {
@@ -829,38 +957,167 @@ export function finalizeMembershipAfterSeason({
 }
 
 /**
- * Compatibility wrapper used by older smoke tests.
- * Requires an active world. Without validated tables it refuses to mutate.
+ * Finalize every supported pair touched by the season's league segments.
+ * Unpaired destination leagues are skipped without blocking source pairs.
+ */
+export function finalizeMembershipForSeasonSegments({
+  player = null,
+  segmentLeagueIds = [],
+  primaryLeague = null,
+  primaryTable = null,
+  completedSeasonYear,
+  completedClubId = null,
+  allLeagues = LEAGUES,
+  world = getWorldState(),
+} = {}) {
+  const w = ensureMembershipMaps(world);
+  if (!w || completedSeasonYear == null) return { ok: false, reason: "missing-args" };
+
+  const ids = new Set();
+  for (const id of segmentLeagueIds || []) if (id) ids.add(id);
+  if (primaryLeague) ids.add(leagueIdOf(primaryLeague));
+
+  const pairIds = new Set();
+  const pairLeagues = [];
+  for (const leagueId of ids) {
+    const policy = pairPolicyForLeague(leagueId);
+    if (!policy) continue;
+    if (pairIds.has(policy.pairId)) continue;
+    pairIds.add(policy.pairId);
+    pairLeagues.push({
+      policy,
+      focusLeagueId: leagueId,
+      upperLeague: LEAGUE_BY_ID.get(policy.upperId),
+      lowerLeague: LEAGUE_BY_ID.get(policy.lowerId),
+    });
+  }
+
+  if (!pairLeagues.length) {
+    return { ok: true, skipped: true, reason: "no-modeled-pairs", results: [] };
+  }
+
+  const primaryId = primaryLeague ? leagueIdOf(primaryLeague) : null;
+  const results = [];
+  let playerMove = null;
+  for (const entry of pairLeagues) {
+    const isPrimaryPair =
+      primaryId &&
+      (entry.policy.upperId === primaryId || entry.policy.lowerId === primaryId);
+    const focus = isPrimaryPair
+      ? primaryLeague
+      : LEAGUE_BY_ID.get(entry.focusLeagueId) || entry.upperLeague;
+    const preferred = isPrimaryPair ? primaryTable : null;
+    // Player division-move labeling follows the primary/playing club only.
+    // Source pairs still transition the world without relabeling a borrower.
+    const one = finalizeMembershipAfterSeason({
+      player: isPrimaryPair ? player : null,
+      completedLeague: focus,
+      completedTable: preferred,
+      completedSeasonYear,
+      allLeagues,
+      world: w,
+      completedClubId: isPrimaryPair ? completedClubId : null,
+    });
+    results.push({ pairId: entry.policy.pairId, ...one });
+    if (!one.ok) {
+      return { ok: false, reason: one.reason || "pair-failed", results, failedPair: entry.policy.pairId };
+    }
+    if (isPrimaryPair && one.playerMove) playerMove = one.playerMove;
+  }
+
+  return {
+    ok: true,
+    skipped: false,
+    results,
+    playerMove,
+    transitionKeys: results.map((r) => r.transition?.key).filter(Boolean),
+  };
+}
+
+/**
+ * Commit a complete forced double-round-robin for tests: orderedClubIds[0] finishes 1st.
+ * Does not invent standings without fixtures — every home/away pair is written.
+ */
+export function commitForcedEditionResults(league, seasonYear, orderedClubIds, world = getWorldState()) {
+  const w = ensureMembershipMaps(world);
+  if (!w || !league || seasonYear == null || !orderedClubIds?.length) {
+    return { ok: false, reason: "missing-args" };
+  }
+  freezeEditionRoster(league, seasonYear, w);
+  const clubs = resolveLeagueClubs(league, { world: w, seasonYear });
+  const byId = new Map(clubs.map((c) => [c.clubId, c]));
+  if (orderedClubIds.length !== clubs.length) {
+    return { ok: false, reason: "order-size-mismatch" };
+  }
+  for (const id of orderedClubIds) {
+    if (!byId.has(id)) return { ok: false, reason: "unknown-club", clubId: id };
+  }
+  const rank = new Map(orderedClubIds.map((id, i) => [id, i]));
+  const leagueId = leagueIdOf(league);
+  const fixtures = flattenRoundRobinFixtures(
+    orderedClubIds.map((id) => byId.get(id)),
+    { idPrefix: `lg:${leagueId}:${seasonYear}` }
+  );
+  const dated = dateLeagueFixtures(fixtures, seasonYear);
+  ensureLeagueEdition({ ...league, clubs }, seasonYear, w);
+  for (const fx of dated) {
+    const homeRank = rank.get(fx.home.clubId);
+    const awayRank = rank.get(fx.away.clubId);
+    const homeWins = homeRank < awayRank;
+    const fixtureId =
+      fx.fixtureId ||
+      `lg:${leagueId}:${seasonYear}:md${fx.matchday}:${fx.home.clubId}:${fx.away.clubId}`;
+    const match = {
+      home: fx.home,
+      away: fx.away,
+      homeGoals: homeWins ? 2 : 0,
+      awayGoals: homeWins ? 0 : 2,
+      matchHomeGoals: homeWins ? 2 : 0,
+      matchAwayGoals: homeWins ? 0 : 2,
+      winnerSide: homeWins ? "home" : "away",
+      competition: "league",
+      competitionId: leagueId,
+      fixtureId,
+      matchId: fixtureId,
+      date: fx.date,
+      matchday: fx.matchday,
+      editionId: String(seasonYear),
+      seasonYear,
+      leagueContextId: leagueId,
+      status: "played",
+      worldOnly: true,
+    };
+    try {
+      commitLeagueMatchResult(match, { ...league, clubs }, seasonYear, w);
+    } catch (err) {
+      return { ok: false, reason: err?.code || "commit-failed", detail: err?.message };
+    }
+  }
+  const table = tableFromCommittedEdition(league, seasonYear, w);
+  if (!table) return { ok: false, reason: "table-incomplete-after-force" };
+  w.standings.set(leagueId, table);
+  if (!w.standingsEdition) w.standingsEdition = {};
+  w.standingsEdition[leagueId] = String(seasonYear);
+  return { ok: true, table };
+}
+
+/**
+ * Compatibility wrapper. Requires an active world and a fully-played preferred
+ * table or already-committed edition results — never fabricates finishes.
  */
 export function applyDivisionMovement(player, playerRecord, currentLeague, allLeagues = LEAGUES) {
   const world = getWorldState();
   if (!player || !playerRecord || !currentLeague) return null;
-  if (!world) {
-    // No world: refuse silent relabel.
-    return null;
-  }
+  if (!world) return null;
   if (!player.club?.clubId && !player.playingClubId) return null;
 
   const priorClub = player.club ? { ...player.club } : null;
   const seasonYear =
     (player.startYear || 2026) + Math.max(0, (player.seasons?.length || 1) - 1);
-  // Build a synthetic preferred table only when caller supplies a controlled
-  // full table via playerRecord.table; otherwise require production finalization.
-  let preferredTable = playerRecord.table || null;
-  if (!preferredTable && Number.isFinite(playerRecord.position)) {
-    // Controlled helper path: fabricate ordered table from frozen/live roster
-    // with the player's club forced to the requested finish — for tests/probes.
-    try {
-      preferredTable = fabricateControlledTable(
-        currentLeague,
-        world,
-        seasonYear,
-        player,
-        playerRecord.position
-      );
-    } catch {
-      return null;
-    }
+  const preferredTable = playerRecord.table || null;
+  if (!preferredTable) {
+    // Position-only probes are not a production API.
+    return null;
   }
 
   let result;
@@ -883,39 +1140,8 @@ export function applyDivisionMovement(player, playerRecord, currentLeague, allLe
     if (priorClub) player.club = priorClub;
     return null;
   }
-  // Idempotent restore: do not claim a fresh promotion/relegation again.
   if (result.alreadyApplied) return null;
   return result.playerMove || null;
-}
-
-function fabricateControlledTable(league, world, seasonYear, player, position) {
-  const clubs = resolveLeagueClubs(league, { world, seasonYear: null });
-  const clubId = player.club?.clubId || player.playingClubId;
-  const others = clubs.filter((c) => c.clubId !== clubId);
-  const target = clubs.find((c) => c.clubId === clubId);
-  if (!target || !Number.isFinite(position) || position < 1 || position > clubs.length) {
-    return null;
-  }
-  const ordered = [];
-  let oi = 0;
-  for (let pos = 1; pos <= clubs.length; pos++) {
-    if (pos === position) ordered.push(target);
-    else ordered.push(others[oi++]);
-  }
-  return ordered.map((c, i) => ({
-    name: c.name,
-    displayName: c.displayName,
-    badge: c.badge,
-    clubId: c.clubId,
-    position: i + 1,
-    played: clubs.length - 1,
-    wins: clubs.length - 1 - i,
-    draws: 0,
-    losses: i,
-    goalsFor: Math.max(0, 60 - i),
-    goalsAgainst: i,
-    points: Math.max(0, (clubs.length - 1 - i) * 3),
-  }));
 }
 
 /**
