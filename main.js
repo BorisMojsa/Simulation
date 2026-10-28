@@ -15,9 +15,15 @@ import {
   isFreeAgent,
   declineWindowAndContinue,
 } from "./js/simulation/contractLifecycle.js?v=81";
+import {
+  declineAcademyReview,
+  ensureAcademyLifecycle,
+  migrateAcademyLifecycle,
+} from "./js/simulation/academyLifecycle.js";
 import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=81";
 import { buildFreeAgentBrowserFixture } from "./js/simulation/freeAgentBrowserFixture.js?v=90";
 import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipTransferBrowserFixture.js?v=91";
+import { buildAcademyBrowserFixture } from "./js/simulation/academyBrowserFixture.js";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -214,6 +220,44 @@ window.__loadFreeAgentBrowserFixture = function loadFreeAgentBrowserFixture(opts
   };
 };
 
+window.__loadAcademyBrowserFixture = function loadAcademyBrowserFixture(opts = {}) {
+  const result = buildAcademyBrowserFixture(opts);
+  if (!result.ok) {
+    console.error("Academy fixture failed:", result.reason, result);
+    return result;
+  }
+  player = result.player;
+  dealBookingGuard = null;
+  seasonActionInFlight = false;
+  lastFinishedSeasonKey = null;
+  ensureContractAuthority(player);
+  ensureAcademyLifecycle(player);
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  syncSimulateButton();
+  return {
+    ok: true,
+    mode: result.mode,
+    age: player.age,
+    seasons: player.seasons?.length ?? 0,
+    isAcademy: Boolean(player.club?.isAcademy),
+    club: player.club?.displayName || player.club?.name || null,
+    pendingOffers: player.pendingOffers?.length ?? 0,
+    nextAction: selectNextCareerAction(player),
+    academyLifecycle: player.academyLifecycle
+      ? {
+          status: player.academyLifecycle.status,
+          periodCount: player.academyLifecycle.periodCount,
+          pendingReviewId: player.academyLifecycle.pendingReviewId,
+        }
+      : null,
+    simulateLabel: simulateBtn?.textContent || null,
+    simulateDisabled: Boolean(simulateBtn?.disabled),
+  };
+};
+
 window.__loadOwnershipTransferBrowserFixture = function loadOwnershipTransferBrowserFixture(opts = {}) {
   const result = buildOwnershipTransferBrowserFixture(opts);
   if (!result.ok) {
@@ -302,6 +346,18 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
     nextAction: selectNextCareerAction(player),
     seasonActionInFlight,
     dealBookingGuard,
+    isAcademy: Boolean(player.club?.isAcademy),
+    academyLifecycle: player.academyLifecycle
+      ? {
+          status: player.academyLifecycle.status,
+          periodCount: player.academyLifecycle.periodCount,
+          pendingReviewId: player.academyLifecycle.pendingReviewId,
+          exitAge: player.academyLifecycle.exitAge,
+        }
+      : null,
+    academyCareerTotals: player.academyCareerTotals
+      ? { ...player.academyCareerTotals }
+      : null,
   };
 };
 
@@ -403,6 +459,12 @@ function syncSimulateButton() {
     simulateBtn.textContent = "Train / search as free agent";
   } else if (next.id === "resume-season") {
     simulateBtn.textContent = "Continue season";
+  } else if (next.id === "academy-season") {
+    simulateBtn.textContent = "Continue academy training";
+  } else if (next.id === "academy-exit") {
+    simulateBtn.textContent = "Resolve academy exit";
+  } else if (next.id === "academy-review" || next.id === "academy-final-review") {
+    simulateBtn.textContent = next.label;
   } else {
     simulateBtn.textContent = "Simulate Next Season";
   }
@@ -578,20 +640,36 @@ async function finalizeCompletedSeasonUi(seasonData) {
     }
   }
 
-  const offers = generateTransferOffers(
-    seasonData.performanceScore,
-    player,
-    LEAGUES,
-    LEAGUE_LOOKUP,
-    seasonData.season?.avgMatchRating ?? null
-  );
-  player.pendingOffers = offers;
+  const isAcademyResult =
+    seasonData.academyPeriod ||
+    seasonData.reviewOnly ||
+    Boolean(seasonData.season?.isNarrativeAcademyYear) ||
+    Boolean(seasonData.season?.academyPeriod) ||
+    Boolean(seasonData.resultKind?.startsWith?.("academy"));
 
-  if (!player.pendingDecision && !player.club?.isAcademy) {
-    queueSquadDecision(player, "pre-season", {
-      seasonIndex: player.seasons.length,
-      performanceScore: seasonData.performanceScore,
-    });
+  if (isAcademyResult) {
+    // Academy lifecycle already produced the boundary review (or release).
+    // Do not generate a second generic transfer window or reroll offers.
+    if (player.club?.isAcademy) {
+      ensureAcademyLifecycle(player);
+      migrateAcademyLifecycle(player);
+    }
+  } else {
+    const offers = generateTransferOffers(
+      seasonData.performanceScore,
+      player,
+      LEAGUES,
+      LEAGUE_LOOKUP,
+      seasonData.season?.avgMatchRating ?? null
+    );
+    player.pendingOffers = offers;
+
+    if (!player.pendingDecision && !player.club?.isAcademy) {
+      queueSquadDecision(player, "pre-season", {
+        seasonIndex: player.seasons.length,
+        performanceScore: seasonData.performanceScore,
+      });
+    }
   }
 
   ensureTransferSave(player);
@@ -772,12 +850,21 @@ function maybeResumeAfterWindowChoice() {
 
 function finishOfferWindow(accepted, offer) {
   if (!accepted) {
-    declineWindowAndContinue(player, { choiceId: "decline-window" });
+    if (player?.club?.isAcademy && player.academyLifecycle?.pendingReview) {
+      declineAcademyReview(player, { reason: "academy-review-declined" });
+    } else {
+      declineWindowAndContinue(player, { choiceId: "decline-window" });
+    }
   } else {
     player.pendingOffers = [];
     // Successful accept already consumes related decision via pipeline.
     if (player.pendingDecision && (offer?.isRenewal || offer?.isLoan || offer?.clubId)) {
       player.pendingDecision = null;
+    }
+    if (player.academyLifecycle?.pendingReview) {
+      player.academyLifecycle.pendingReview = null;
+      player.academyLifecycle.pendingReviewId = null;
+      player.academyLifecycle.status = player.club?.isAcademy ? "enrolled" : "graduated";
     }
   }
   transferContainer.innerHTML = "";
@@ -852,6 +939,9 @@ function finishOfferWindow(accepted, offer) {
       queueMicrotask(() => window.__loadLiveLoanBrowserFixture?.());
     } else if (fixture === "ownership-transfer") {
       queueMicrotask(() => window.__loadOwnershipTransferBrowserFixture?.());
+    } else if (fixture === "academy" || fixture.startsWith("academy-")) {
+      const mode = params.get("mode") || fixture.replace(/^academy-?/, "") || "continue-empty";
+      queueMicrotask(() => window.__loadAcademyBrowserFixture?.({ mode: mode || "continue-empty" }));
     }
   } catch (err) {
     console.warn("Fixture boot skipped:", err);

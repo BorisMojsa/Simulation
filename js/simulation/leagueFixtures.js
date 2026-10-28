@@ -10,10 +10,16 @@ import { advanceStateBetweenDates, updateFormFromObservation, updateFatigue } fr
 import { refreshAbilityCaches } from "./playerAbility.js";
 import { performanceObservationFromMatch } from "./playerSeasonLedger.js";
 import { stableCareerId } from "./playerDevelopmentModel.js";
+import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js";
 
 function ensurePlayerInClubs(league, player) {
   const clubs = [...(league.clubs || [])].map(attachClubIdentity);
   if (!player?.club?.name) return clubs;
+  if (player.club.isAcademy) {
+    throw new Error(
+      "ensurePlayerInClubs: academy club cannot be appended to a senior league roster"
+    );
+  }
   if (clubs.some((c) => c.name === player.club.name || c.clubId === player.club.clubId)) {
     return clubs;
   }
@@ -46,6 +52,10 @@ function clampRating(v) {
  * Player selection/minutes/injuries applied chronologically.
  */
 export function simulateLeagueSeason(league, player, performanceScore) {
+  const academyGate = assertNotAcademyForSeniorSimulation(player);
+  if (!academyGate.ok) {
+    throw new Error(academyGate.message || academyGate.reason);
+  }
   const rng = getSimRng();
   const selRng = createStreamRng(stableCareerId(player), `selection:league:${player.seasons?.length || 0}`);
   const injuryRng = createStreamRng(stableCareerId(player), `injury:league:${player.seasons?.length || 0}`);

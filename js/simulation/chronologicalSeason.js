@@ -6,6 +6,7 @@
 import { attachClubIdentity, getWorldState } from "./worldState.js";
 import { effectiveTeamStrength } from "./teamStrength.js";
 import { getSimRng, createStreamRng } from "./rng.js";
+import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js";
 import {
   dateLeagueFixtures,
   flattenRoundRobinFixtures,
@@ -79,6 +80,12 @@ import { commitLeagueMatchResult } from "./leagueEditionAdapter.js";
 function ensurePlayerInClubs(league, player) {
   const clubs = [...(league.clubs || [])].map(attachClubIdentity);
   if (!player?.club?.name) return clubs;
+  // Academy identities are never senior competition participants.
+  if (player.club.isAcademy) {
+    throw new Error(
+      "ensurePlayerInClubs: academy club cannot be appended to a senior league roster"
+    );
+  }
   if (clubs.some((c) => c.name === player.club.name || c.clubId === player.club.clubId)) return clubs;
   clubs.push(
     attachClubIdentity({
@@ -352,6 +359,11 @@ export function simulateChronologicalSeason({
   pauseForDecisions = false,
   autoDecisionPolicy = null,
 }) {
+  const academyGate = assertNotAcademyForSeniorSimulation(player);
+  if (!academyGate.ok) {
+    throw new Error(academyGate.message || academyGate.reason);
+  }
+
   const rng = getSimRng();
   const careerId = stableCareerId(player);
   const selRng = createStreamRng(careerId, `selection:chrono:${seasonIndex}`);

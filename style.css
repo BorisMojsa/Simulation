@@ -3124,6 +3124,54 @@ button.bracket-toggle {
   font-family: var(--font-display);
 }
 
+.academy-recap-body {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 36rem;
+}
+
+.academy-recap-status,
+.academy-recap-copy,
+.academy-recap-note {
+  margin: 0;
+  color: var(--bone-dim);
+  line-height: 1.55;
+}
+
+.academy-recap-status strong,
+.academy-recap-note strong {
+  color: var(--bone);
+}
+
+.academy-recap-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.academy-recap-stats div {
+  background: color-mix(in srgb, var(--panel) 80%, #000 20%);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0.75rem 0.85rem;
+}
+
+.academy-recap-stats dt {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+
+.academy-recap-stats dd {
+  margin: 0.25rem 0 0;
+  font-size: 1.25rem;
+  color: var(--bone);
+  font-family: var(--font-display);
+}
+
 /* Career start */
 .career-start-wrap {
   max-width: 760px;

@@ -11,10 +11,11 @@ import {
   CONTRACT_LIFECYCLE_VERSION,
 } from "./contractLifecycle.js";
 import { ensurePlayingStints } from "./playingRegistration.js";
+import { migrateAcademyLifecycle, ensureAcademyLifecycle } from "./academyLifecycle.js";
 
 const DEAL_PIPELINE_VERSION = "deal-pipeline-v2";
 
-export const TRANSFER_SAVE_VERSION = 2;
+export const TRANSFER_SAVE_VERSION = 3;
 
 /**
  * Migrate player transfer/loan/contract fields in place (idempotent).
@@ -23,6 +24,7 @@ export function migrateTransferSave(player, opts = {}) {
   if (!player || typeof player !== "object") return { migrated: false, reason: "no-player" };
   if (player.transferSaveVersion >= TRANSFER_SAVE_VERSION) {
     ensureContractAuthority(player);
+    migrateAcademyLifecycle(player);
     return { migrated: false, reason: "already-current", player };
   }
 
@@ -88,6 +90,10 @@ export function migrateTransferSave(player, opts = {}) {
     applyContractExpiryAtBoundary(player);
   }
 
+  // Fix 04: academy lifecycle fields, clear incompatible senior pending on academy.
+  ensureAcademyLifecycle(player);
+  migrateAcademyLifecycle(player);
+
   player.transferSaveVersion = TRANSFER_SAVE_VERSION;
   player.transferMigration = {
     version: TRANSFER_SAVE_VERSION,
@@ -95,6 +101,7 @@ export function migrateTransferSave(player, opts = {}) {
     dealPipelineVersion: DEAL_PIPELINE_VERSION,
     recruitmentConfigVersion: RECRUITMENT_CONFIG_VERSION,
     contractLifecycleVersion: CONTRACT_LIFECYCLE_VERSION,
+    academyLifecycleVersion: player.academyLifecycle?.version ?? null,
     migratedAtSeason: seasonIndex,
     ...opts.meta,
   };
@@ -106,6 +113,10 @@ export function ensureTransferSave(player, opts = {}) {
   if (!player) return player;
   migrateTransferSave(player, opts);
   ensureContractAuthority(player);
+  if (player.club?.isAcademy) {
+    ensureAcademyLifecycle(player);
+    migrateAcademyLifecycle(player);
+  }
   return player;
 }
 

@@ -243,10 +243,34 @@ export function skipCareerIntroBootstrap(player, academyPool) {
   const decision = buildFirstProContractDecision(player);
   if (decision.offers[0]) {
     signFirstProfessionalContract(player, decision.offers[0]);
+    if (player.academyLifecycle) {
+      player.academyLifecycle.status = "graduated";
+      player.academyLifecycle.pendingReview = null;
+      player.academyLifecycle.pendingReviewId = null;
+    }
   } else {
     // Deterministic continuation: remain on academy pathway without inventing eligibility.
     player.suppressParentContractOffer = true;
     player.pendingOffers = [];
+    // Lifecycle enrollment — suppression must not block later boundary reviews.
+    if (!player.academyLifecycle) {
+      player.academyLifecycle = {
+        version: 1,
+        exitAge: 21,
+        status: "enrolled",
+        periodCount: player.seasons?.length || 1,
+        lastPeriodId: null,
+        pendingReviewId: null,
+        pendingReview: null,
+        consumedPeriodIds: [],
+        consumedReviewIds: [],
+        seq: 0,
+        originClubName: player.club?.name || null,
+        originParentClubId: player.club?.parentClub?.clubId || null,
+      };
+    } else {
+      player.academyLifecycle.status = "enrolled";
+    }
   }
 }
 
@@ -559,6 +583,24 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
           // Keep academy registration; usable continuation.
           player.suppressParentContractOffer = true;
           player.pendingOffers = [];
+          if (!player.academyLifecycle) {
+            player.academyLifecycle = {
+              version: 1,
+              exitAge: 21,
+              status: "enrolled",
+              periodCount: player.seasons?.length || 1,
+              lastPeriodId: null,
+              pendingReviewId: null,
+              pendingReview: null,
+              consumedPeriodIds: [],
+              consumedReviewIds: [],
+              seq: 0,
+              originClubName: player.club?.name || null,
+              originParentClubId: player.club?.parentClub?.clubId || null,
+            };
+          } else {
+            player.academyLifecycle.status = "enrolled";
+          }
           const titleEl = document.getElementById("career-year-end-title");
           const bodyEl = document.getElementById("career-year-end-body");
           if (titleEl) titleEl.textContent = "Patience in the academy";

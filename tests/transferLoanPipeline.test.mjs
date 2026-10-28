@@ -28,7 +28,7 @@ import { generateTransferOffers } from "../js/simulation/transferMarket.js";
 import { buildFirstProContractDecision, signFirstProfessionalContract, allSeniorClubs } from "../js/simulation/proContractOffers.js";
 import { generateLoanOffers, startLoan, endLoan, normalizeWageShares, canRegisterInternationalLoan } from "../js/simulation/loanMarket.js";
 import { resolveSquadDecision, evaluateSquadDecision } from "../js/simulation/squadDecisions.js";
-import { migrateTransferSave } from "../js/simulation/transferMigration.js";
+import { migrateTransferSave, TRANSFER_SAVE_VERSION } from "../js/simulation/transferMigration.js";
 import { createStreamRng, reseedCareerRng } from "../js/simulation/rng.js";
 import { createPlayerIdentity, finalizeAcademyPlayer } from "../js/simulation/playerDevelopment.js";
 import { pickThreeAcademies } from "../js/simulation/narrativeAcademySeason.js";
@@ -255,7 +255,7 @@ test("save migration is idempotent and preserves contract", () => {
   const r1 = migrateTransferSave(p);
   assert.equal(r1.migrated, true);
   assert.equal(p.weeklyWage, 3000);
-  assert.equal(p.transferSaveVersion, 2);
+  assert.equal(p.transferSaveVersion, TRANSFER_SAVE_VERSION);
   const end = p.contractEndSeason;
   const r2 = migrateTransferSave(p);
   assert.equal(r2.migrated, false);

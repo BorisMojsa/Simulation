@@ -37,6 +37,13 @@ import {
   isFreeAgent,
   selectNextCareerAction,
 } from "./contractLifecycle.js";
+import {
+  advanceAcademyPeriod,
+  toAcademySeasonResult,
+  ensureAcademyLifecycle,
+  migrateAcademyLifecycle,
+  isAcademyEnrolled,
+} from "./academyLifecycle.js";
 import { endLoan } from "./loanMarket.js";
 import {
   playerEntitledToClubHonor,
@@ -186,6 +193,17 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       nextAction: selectNextCareerAction(player),
       wait,
     };
+  }
+
+  // Academy enrollment: narrative youth period / final review — never senior fixtures.
+  if ((playable.mode === "academy" || isAcademyEnrolled(player)) && !opts.checkpoint) {
+    migrateAcademyLifecycle(player);
+    ensureAcademyLifecycle(player);
+    const advance = advanceAcademyPeriod(player, opts);
+    if (!advance.ok) {
+      throw new Error(`simulateSeason: academy advance failed (${advance.reason || "unknown"})`);
+    }
+    return toAcademySeasonResult(advance);
   }
 
   if (player.club && !player.club.isAcademy) {

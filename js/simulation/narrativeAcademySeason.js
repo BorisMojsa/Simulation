@@ -141,8 +141,13 @@ export function pickThreeAcademies(pool, nationality = null, playerName = "") {
 
 /**
  * Lightweight academy year record — no league/cup/Europe simulation.
+ * @param {object} [opts]
+ * @param {number} [opts.seasonNumber] — sequence in career history (default 1 for opening)
+ * @param {number} [opts.year] — calendar year label
+ * @param {string} [opts.periodId]
+ * @param {boolean} [opts.academyPeriod] — continuation marker (opening also sets narrative flag)
  */
-export function buildNarrativeAcademySeason(player, ratingBeforeDecisions, ratingAfterDecisions) {
+export function buildNarrativeAcademySeason(player, ratingBeforeDecisions, ratingAfterDecisions, opts = {}) {
   const profile = POSITION_PROFILES[player.position] || POSITION_PROFILES.DEFAULT;
   const matches = randInt(18, 28);
   const ri = clamp(ratingAfterDecisions / 100, 0.5, 0.95);
@@ -167,9 +172,15 @@ export function buildNarrativeAcademySeason(player, ratingBeforeDecisions, ratin
   );
 
   const ratingChange = ratingAfterDecisions - ratingBeforeDecisions;
+  const seasonNumber =
+    Number.isFinite(opts.seasonNumber) && opts.seasonNumber > 0
+      ? opts.seasonNumber
+      : 1;
 
   return {
-    seasonNumber: 1,
+    seasonNumber,
+    seasonId: opts.periodId || `academy-narrative-${seasonNumber}`,
+    year: Number.isFinite(opts.year) ? opts.year : undefined,
     age: player.age,
     club: player.club.name,
     clubDisplay: clubNameForDisplay(player.club),
@@ -183,6 +194,7 @@ export function buildNarrativeAcademySeason(player, ratingBeforeDecisions, ratin
     avgMatchRating,
     ratingChange,
     ratingAfter: ratingAfterDecisions,
+    ratingBefore: ratingBeforeDecisions,
     standing: null,
     honors: "Academy programme",
     europeanCampaign: null,
@@ -190,5 +202,10 @@ export function buildNarrativeAcademySeason(player, ratingBeforeDecisions, ratin
     individualAwards: [],
     trophies: [],
     isNarrativeAcademyYear: true,
+    academyPeriod: Boolean(opts.academyPeriod) || seasonNumber > 1,
+    activityKind: "academy-narrative",
+    // Explicit: these are not Premier League / senior match-ledger observations.
+    seniorAppearances: 0,
+    seniorMinutes: 0,
   };
 }

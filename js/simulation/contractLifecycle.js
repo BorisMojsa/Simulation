@@ -596,7 +596,38 @@ export function selectNextCareerAction(player) {
     };
   }
   if (player.club?.isAcademy) {
-    return { id: "academy-season", label: "Simulate next season", canSimulate: true };
+    const life = player.academyLifecycle;
+    const exitAge = Number(life?.exitAge) || 21;
+    if (life?.status === "pending-final-review" || (life?.pendingReview?.isFinal && life?.pendingReviewId)) {
+      return {
+        id: "academy-final-review",
+        label: "Review final academy offers",
+        canSimulate: false,
+        mode: "academy",
+      };
+    }
+    if (life?.status === "pending-review" && (player.pendingOffers?.length || 0) > 0) {
+      return {
+        id: "academy-review",
+        label: "Review academy contract offers",
+        canSimulate: false,
+        mode: "academy",
+      };
+    }
+    if ((Number(player.age) || 0) >= exitAge) {
+      return {
+        id: "academy-exit",
+        label: "Resolve academy exit",
+        canSimulate: true,
+        mode: "academy",
+      };
+    }
+    return {
+      id: "academy-season",
+      label: "Continue academy training",
+      canSimulate: true,
+      mode: "academy",
+    };
   }
   return { id: "start-season", label: "Simulate next season", canSimulate: true };
 }

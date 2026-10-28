@@ -120,12 +120,19 @@ export function promoteAcademyGraduateToFirstTeam(player, performanceHint = 72) 
   }
   const parent = player.club.parentClub;
   if (!parent) {
-    player.club = { ...player.club, isAcademy: false, parentClub: null };
+    // Unresolvable parent is not a signed club — do not flip isAcademy.
+    // Caller should route through academy continuation / other-club review.
+    player.suppressParentContractOffer = true;
     return null;
   }
 
   const club =
-    findSeniorClub(parent.name) || findSeniorClubById(parent.clubId) || parent;
+    findSeniorClubById(parent.clubId) || findSeniorClub(parent.name) || null;
+  if (!club) {
+    // Parent metadata exists but no senior club resolves — keep academy enrollment.
+    player.suppressParentContractOffer = true;
+    return null;
+  }
   const built = buildValidatedOffer({
     player,
     club,
@@ -152,7 +159,12 @@ export function promoteAcademyGraduateToFirstTeam(player, performanceHint = 72) 
     player.state.roleFit = clamp((player.state.roleFit ?? 1) - 0.05, 0.6, 1);
   }
   refreshAbilityCaches(player);
-  player.suppressParentContractOffer = true;
+  player.suppressParentContractOffer = false;
+  if (player.academyLifecycle) {
+    player.academyLifecycle.status = "graduated";
+    player.academyLifecycle.pendingReview = null;
+    player.academyLifecycle.pendingReviewId = null;
+  }
   return player.club?.displayName ?? player.club?.name ?? null;
 }
 

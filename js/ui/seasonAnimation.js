@@ -16,6 +16,10 @@ import {
 } from "./simulationDashboard.js";
 import { renderLeagueTable } from "./rendering.js";
 import { playerEntitledToClubHonor } from "../simulation/playingRegistration.js";
+import {
+  assertUsableAcademyResult,
+  ACADEMY_RESULT_KIND,
+} from "../simulation/academyLifecycle.js";
 
 let animationCtl = {
   skipMatch: false,
@@ -202,9 +206,36 @@ function closeSeasonOverlayForRecovery() {
   overlay?.classList.add("hidden");
 }
 
+function isMarkedAcademyResult(seasonData) {
+  if (!seasonData) return false;
+  if (seasonData.academyPeriod || seasonData.reviewOnly) return true;
+  const kind = seasonData.resultKind || seasonData.season?.resultKind;
+  if (
+    kind === ACADEMY_RESULT_KIND.PERIOD ||
+    kind === ACADEMY_RESULT_KIND.REVIEW_ONLY ||
+    kind === ACADEMY_RESULT_KIND.RELEASED ||
+    kind === ACADEMY_RESULT_KIND.GRADUATED
+  ) {
+    return true;
+  }
+  return Boolean(
+    seasonData.season?.isNarrativeAcademyYear || seasonData.season?.academyPeriod
+  );
+}
+
 async function presentSeasonResult(seasonData, player, statsKeys, onContinue) {
   if (!seasonData) {
     throw new Error("No season data provided to animation");
+  }
+
+  // Academy before free-agent: a final youth year may also set freeAgent after release.
+  if (isMarkedAcademyResult(seasonData)) {
+    const check = assertUsableAcademyResult(seasonData);
+    if (!check.ok) {
+      throw new Error(`Invalid academy result: ${check.reason}`);
+    }
+    await presentAcademyRecap(seasonData, player, onContinue);
+    return { kind: "academy" };
   }
 
   if (isMarkedFreeAgentResult(seasonData)) {
@@ -218,6 +249,91 @@ async function presentSeasonResult(seasonData, player, statsKeys, onContinue) {
 
   await animateSeasonSequence(seasonData, player, statsKeys, onContinue);
   return { kind: "club-season" };
+}
+
+async function presentAcademyRecap(seasonData, player, onContinue) {
+  setSkipBarVisible(false);
+  hideSimulationDashboard();
+
+  const season = seasonData.season;
+  const section = document.getElementById("academy-recap");
+  const info = document.getElementById("academy-recap-info");
+  const body = document.getElementById("academy-recap-body");
+
+  const periodNumber = season
+    ? Number.isFinite(season.seasonNumber)
+      ? season.seasonNumber
+      : player?.seasons?.length || null
+    : null;
+  const age = season && Number.isFinite(season.age) ? season.age : player?.age;
+  const yearBit = season && Number.isFinite(season.year) ? ` · ${season.year}` : "";
+  const ageBit = Number.isFinite(age) ? ` · Age ${age}` : "";
+  const periodLabel = seasonData.reviewOnly
+    ? "Academy exit review"
+    : periodNumber != null
+      ? `Academy period ${periodNumber}`
+      : "Academy period";
+
+  if (info) {
+    info.textContent = `${periodLabel}${yearBit}${ageBit}`;
+  }
+
+  const matches = Number(season?.matches) || 0;
+  const goals = Number(season?.goals) || 0;
+  const assists = Number(season?.assists) || 0;
+  const ratingChange = Number(season?.ratingChange);
+  const ratingLine = Number.isFinite(ratingChange)
+    ? `${ratingChange >= 0 ? "+" : ""}${ratingChange.toFixed(1)} OVR`
+    : "—";
+
+  const boundary = seasonData.boundary || {};
+  const pendingCount = Array.isArray(player?.pendingOffers) ? player.pendingOffers.length : 0;
+  let outcomeCopy;
+  if (boundary.released || seasonData.freeAgent || season?.academyReleased) {
+    outcomeCopy =
+      "You left the academy without a senior contract and are now a free agent. Search the market from the career desk.";
+  } else if (pendingCount > 0) {
+    outcomeCopy =
+      pendingCount === 1
+        ? "A senior contract offer is ready to review on the career desk."
+        : `${pendingCount} senior contract offers are ready to review on the career desk.`;
+  } else if (seasonData.reviewOnly) {
+    outcomeCopy = "Academy exit review — no further youth year was simulated.";
+  } else {
+    outcomeCopy =
+      "You remain enrolled at the academy. Youth matches are narrative training activity, not senior league appearances.";
+  }
+
+  if (body) {
+    body.innerHTML = `
+      <p class="academy-recap-status">Status: <strong>${
+        boundary.released || seasonData.freeAgent
+          ? "Free agent"
+          : pendingCount > 0
+            ? "Academy — contract review"
+            : "Academy"
+      }</strong></p>
+      <p class="academy-recap-copy">${outcomeCopy}</p>
+      ${
+        season
+          ? `<dl class="academy-recap-stats">
+        <div><dt>Youth matches</dt><dd>${matches}</dd></div>
+        <div><dt>Goals / assists</dt><dd>${goals} / ${assists}</dd></div>
+        <div><dt>Development</dt><dd>${ratingLine}</dd></div>
+      </dl>
+      <p class="academy-recap-note">Senior league appearances this period: <strong>0</strong></p>`
+          : `<p class="academy-recap-note">No academy year was added for this exit review.</p>`
+      }
+    `;
+  }
+
+  if (section) {
+    section.classList.remove("hidden");
+    section.classList.add("active");
+  }
+
+  await waitForFinalContinue(onContinue);
+  hideSection("academy-recap");
 }
 
 async function presentFreeAgentRecap(seasonData, player, onContinue) {
@@ -353,6 +469,7 @@ function clearAnimationContent() {
     "summary-animation",
     "overall-reveal",
     "free-agent-recap",
+    "academy-recap",
     "animation-continue",
   ];
 

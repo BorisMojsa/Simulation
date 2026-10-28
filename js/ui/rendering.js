@@ -405,8 +405,8 @@ export function appendSeasonCard(season, seasonLogEl, player) {
     statItems.push(`Trophies: ${labels.join(", ")}`);
   }
 
-  if (season.isNarrativeAcademyYear) {
-    statItems.push("Academy narrative year. no senior league / cups yet");
+  if (season.isNarrativeAcademyYear || season.academyPeriod) {
+    statItems.push("Academy youth activity — not senior league appearances");
   }
 
   const trophyRow = (season.trophies || [])
@@ -1188,29 +1188,45 @@ export function renderTransferOffers({
         (offer.clubId === player.employmentClubId || offer.club === player.club?.name)
     );
 
-    if (player.club?.isAcademy && player.club.parentClub && !player.suppressParentContractOffer) {
-      const stayBtn = document.createElement("button");
-      stayBtn.className = "secondary";
-      const parentDisplay = clubNameForDisplay(player.club.parentClub);
-      stayBtn.textContent = `Sign with ${parentDisplay}`;
-      stayBtn.addEventListener("click", () => {
-        const signed = promoteToParentClub("manual");
-        if (!signed) {
-          window.alert(
-            "Professional contract could not be completed under the club's current limits. You remain at the academy."
-          );
-          return;
-        }
-        finishOfferWindow(true, {
-          isParentOffer: true,
-          club: player.club.name,
-          clubDisplay: clubNameForDisplay(player.club),
-          league: player.club.league,
-          leagueDisplay: player.club.leagueDisplay ?? player.club.league,
-          transferFee: 0,
+    if (player.club?.isAcademy) {
+      const review = player.academyLifecycle?.pendingReview;
+      const isFinalReview =
+        player.academyLifecycle?.status === "pending-final-review" || Boolean(review?.isFinal);
+
+      if (player.club.parentClub && !player.suppressParentContractOffer) {
+        const parentBtn = document.createElement("button");
+        parentBtn.className = "secondary";
+        const parentDisplay = clubNameForDisplay(player.club.parentClub);
+        parentBtn.textContent = `Sign with ${parentDisplay}`;
+        parentBtn.addEventListener("click", () => {
+          const signed = promoteToParentClub("manual");
+          if (!signed) {
+            window.alert(
+              "Professional contract could not be completed under the club's current limits. You remain at the academy."
+            );
+            return;
+          }
+          finishOfferWindow(true, {
+            isParentOffer: true,
+            club: player.club.name,
+            clubDisplay: clubNameForDisplay(player.club),
+            league: player.club.league,
+            leagueDisplay: player.club.leagueDisplay ?? player.club.league,
+            transferFee: 0,
+          });
         });
+        transferContainer.appendChild(parentBtn);
+      }
+
+      const declineBtn = document.createElement("button");
+      declineBtn.className = "secondary";
+      declineBtn.textContent = isFinalReview
+        ? "Decline all and leave academy"
+        : "Decline offers and continue academy training";
+      declineBtn.addEventListener("click", () => {
+        finishOfferWindow(false);
       });
-      transferContainer.appendChild(stayBtn);
+      transferContainer.appendChild(declineBtn);
     } else if (contractValid || hasRenewalOffer) {
       const stayBtn = document.createElement("button");
       stayBtn.className = "secondary";
