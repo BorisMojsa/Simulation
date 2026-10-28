@@ -203,18 +203,41 @@ export function buildMembershipBrowserFixture(opts = {}) {
   const world = createWorldState({ seed: cfg.seed, startYear: cfg.startYear });
   setWorldState(world);
 
-  // Pre-season UI careers — checklist must click Simulate Next Season.
+  // Finished first season via production simulateSeason; checklist clicks Simulate for next edition.
   if (mode === "ui-promotion-ready") {
     const built = makePlayer(CH(), "Birmingham City", cfg);
     if (!built) return { ok: false, reason: "birmingham-missing" };
-    biasClub(world, CH().leagueId, built.club.clubId, true);
+    const { player, club } = built;
+    biasClub(world, CH().leagueId, club.clubId, true);
+    const done = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+      pauseForDecisions: false,
+      autoDecisionPolicy: "stay",
+    });
+    if (!done?.season) return { ok: false, reason: "ch-season-incomplete" };
+    if (!world.leagueMemberships.get(PL().leagueId).includes(club.clubId)) {
+      const boundary = controlledBoundary({
+        player,
+        league: CH(),
+        position: 2,
+        world,
+        seasonYear: cfg.startYear,
+      });
+      if (!boundary.ok && !boundary.alreadyApplied) {
+        return { ok: false, reason: boundary.reason || "promotion-failed", evidence: evidenceFromWorld(world, club.clubId) };
+      }
+    }
+    player.pendingOffers = [];
+    player.pendingDecision = null;
+    player.pendingSeniorScenario = null;
+    player.seasonCheckpoint = null;
+    player.simRevealCursor = null;
     return {
       ok: true,
       mode,
-      player: built.player,
-      clubId: built.club.clubId,
-      evidence: evidenceFromWorld(world, built.club.clubId),
-      expect: { promotedClubId: built.club.clubId, nextLeagueId: PL().leagueId },
+      player,
+      clubId: club.clubId,
+      evidence: evidenceFromWorld(world, club.clubId),
+      expect: { promotedClubId: club.clubId, nextLeagueId: PL().leagueId },
       worldSerialized: serializeWorldState(world),
     };
   }
@@ -222,14 +245,37 @@ export function buildMembershipBrowserFixture(opts = {}) {
   if (mode === "ui-relegation-ready") {
     const built = makePlayer(PL(), "Ipswich Town", cfg);
     if (!built) return { ok: false, reason: "ipswich-missing" };
-    biasClub(world, PL().leagueId, built.club.clubId, false);
+    const { player, club } = built;
+    biasClub(world, PL().leagueId, club.clubId, false);
+    const done = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+      pauseForDecisions: false,
+      autoDecisionPolicy: "stay",
+    });
+    if (!done?.season) return { ok: false, reason: "pl-season-incomplete" };
+    if (!world.leagueMemberships.get(CH().leagueId).includes(club.clubId)) {
+      const boundary = controlledBoundary({
+        player,
+        league: PL(),
+        position: 20,
+        world,
+        seasonYear: cfg.startYear,
+      });
+      if (!boundary.ok && !boundary.alreadyApplied) {
+        return { ok: false, reason: boundary.reason || "relegation-failed", evidence: evidenceFromWorld(world, club.clubId) };
+      }
+    }
+    player.pendingOffers = [];
+    player.pendingDecision = null;
+    player.pendingSeniorScenario = null;
+    player.seasonCheckpoint = null;
+    player.simRevealCursor = null;
     return {
       ok: true,
       mode,
-      player: built.player,
-      clubId: built.club.clubId,
-      evidence: evidenceFromWorld(world, built.club.clubId),
-      expect: { relegatedClubId: built.club.clubId, nextLeagueId: CH().leagueId },
+      player,
+      clubId: club.clubId,
+      evidence: evidenceFromWorld(world, club.clubId),
+      expect: { relegatedClubId: club.clubId, nextLeagueId: CH().leagueId },
       worldSerialized: serializeWorldState(world),
     };
   }

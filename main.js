@@ -21,7 +21,7 @@ import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipT
 import {
   buildMembershipBrowserFixture,
   inspectMembershipDebug,
-} from "./js/simulation/membershipBrowserFixture.js?v=94";
+} from "./js/simulation/membershipBrowserFixture.js?v=95";
 import {
   appendSeasonCard,
   renderPlayerOverview,
