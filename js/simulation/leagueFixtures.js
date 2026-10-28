@@ -10,22 +10,39 @@ import { advanceStateBetweenDates, updateFormFromObservation, updateFatigue } fr
 import { refreshAbilityCaches } from "./playerAbility.js";
 import { performanceObservationFromMatch } from "./playerSeasonLedger.js";
 import { stableCareerId } from "./playerDevelopmentModel.js";
+import {
+  freezeEditionRoster,
+  leagueViewForEdition,
+  pairPolicyForLeague,
+  resolveLeagueClubs,
+} from "./leagueMembership.js";
 
-function ensurePlayerInClubs(league, player) {
-  const clubs = [...(league.clubs || [])].map(attachClubIdentity);
-  if (!player?.club?.name) return clubs;
-  if (clubs.some((c) => c.name === player.club.name || c.clubId === player.club.clubId)) {
-    return clubs;
+function ensurePlayerInClubs(league, player, { world = null, seasonYear = null } = {}) {
+  const clubs = resolveLeagueClubs(league, { world, seasonYear });
+  if (!player?.club?.name && !player?.club?.clubId) return clubs;
+  const present = clubs.some(
+    (c) =>
+      (player.club.clubId && c.clubId === player.club.clubId) ||
+      (player.club.name && c.name === player.club.name)
+  );
+  if (present) return clubs;
+  const leagueId = league.leagueId || league.name;
+  if (pairPolicyForLeague(leagueId) || (league.clubs || []).length >= 10) {
+    throw new Error(
+      `leagueMembership: player club ${player.club.clubId || player.club.name} missing from ${leagueId} edition roster`
+    );
   }
-  clubs.push(attachClubIdentity({
-    name: player.club.name,
-    displayName: player.club.displayName ?? player.club.name,
-    badge: player.club.badge,
-    clubId: player.club.clubId,
-    financialTier: player.club.financialTier ?? league.financialPower ?? 2,
-    tier: league.tier,
-    overall: player.club.overall,
-  }));
+  clubs.push(
+    attachClubIdentity({
+      name: player.club.name,
+      displayName: player.club.displayName ?? player.club.name,
+      badge: player.club.badge,
+      clubId: player.club.clubId,
+      financialTier: player.club.financialTier ?? league.financialPower ?? 2,
+      tier: league.tier,
+      overall: player.club.overall,
+    })
+  );
   return clubs;
 }
 
@@ -50,19 +67,16 @@ export function simulateLeagueSeason(league, player, performanceScore) {
   const selRng = createStreamRng(stableCareerId(player), `selection:league:${player.seasons?.length || 0}`);
   const injuryRng = createStreamRng(stableCareerId(player), `injury:league:${player.seasons?.length || 0}`);
   const world = getWorldState();
-  const clubs = ensurePlayerInClubs(league, player).map((c) =>
-    attachClubIdentity({
-      ...c,
-      tier: league.tier,
-      league: league.name,
-      leagueId: league.leagueId,
-      nation: league.nation,
-    })
-  );
-
   const seasonStartYear = (player.startYear || 2026) + (player.seasons?.length || 0);
+  freezeEditionRoster(league, seasonStartYear, world);
+  const editionLeague = leagueViewForEdition(league, { world, seasonYear: seasonStartYear });
+  const clubs = ensurePlayerInClubs(editionLeague, player, {
+    world,
+    seasonYear: seasonStartYear,
+  });
+
   const fixtures = flattenRoundRobinFixtures(clubs, {
-    idPrefix: `lg:${league.leagueId || league.name}:${seasonStartYear}`,
+    idPrefix: `lg:${editionLeague.leagueId || editionLeague.name}:${seasonStartYear}`,
   });
   // Keep matchday order; do not shuffle across dates (avoids club/date double-booking).
   void rng;
@@ -302,7 +316,7 @@ export function simulateLeagueSeason(league, player, performanceScore) {
     allMatches,
     playerMatchStats,
     ledgerRecords,
-    expectedMatches: leagueMatchCount(league),
+    expectedMatches: leagueMatchCount(editionLeague),
     performanceScore,
   };
 }

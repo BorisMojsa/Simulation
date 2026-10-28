@@ -693,10 +693,33 @@ export async function runSimulationDashboard(opts) {
       strength: c.overall,
       overall: c.overall,
     }));
-  // Also seed from any match clubs not in league list
-  for (const m of ctl.allMatches) {
-    if (m.home && !ctl.seedClubs.some((c) => c.name === m.home.name)) ctl.seedClubs.push(m.home);
-    if (m.away && !ctl.seedClubs.some((c) => c.name === m.away.name)) ctl.seedClubs.push(m.away);
+  // Prefer participants already present in fixtures; do not invent ghost rows
+  // from stale static league.clubs when matches define the edition roster.
+  if (ctl.allMatches?.length) {
+    const fromMatches = [];
+    const seen = new Set();
+    for (const m of ctl.allMatches) {
+      for (const side of [m.home, m.away]) {
+        if (!side?.name) continue;
+        const key = side.clubId || side.name;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        fromMatches.push({
+          name: side.name,
+          displayName: side.displayName ?? side.name,
+          badge: side.badge,
+          clubId: side.clubId,
+          strength: side.overall ?? side.strength,
+          overall: side.overall ?? side.strength,
+        });
+      }
+    }
+    if (fromMatches.length) ctl.seedClubs = fromMatches;
+  } else {
+    for (const m of ctl.allMatches || []) {
+      if (m.home && !ctl.seedClubs.some((c) => c.name === m.home.name)) ctl.seedClubs.push(m.home);
+      if (m.away && !ctl.seedClubs.some((c) => c.name === m.away.name)) ctl.seedClubs.push(m.away);
+    }
   }
 
   showDashboardShell();

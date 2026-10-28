@@ -1,4 +1,3 @@
-import { clamp } from "../utils/helpers.js";
 import {
   isUefaQualifyingLeague,
   uefaSlotsForLeague,
@@ -9,7 +8,7 @@ import {
   CAF_ASSOCIATION_SLOTS,
   associationIdForNation,
 } from "../data/competitions/qualification.js";
-import { attachClubIdentity, exchangeLeagueMembership, getWorldState } from "./worldState.js";
+import { sharedMoveSlots, applyDivisionMovement as applyDivisionMovementImpl } from "./leagueMembership.js";
 
 export function leagueMatchCount(league) {
   const teamCount = league?.clubs?.length ?? 20;
@@ -55,11 +54,10 @@ export function findSisterLeagues(league, allLeagues = []) {
 }
 
 export function divisionMoveSlots(league, sisters) {
-  const size = league?.clubs?.length ?? 20;
-  const band = size >= 22 ? 3 : 2;
+  const slots = sharedMoveSlots(league, sisters);
   return {
-    promoteSlots: sisters?.higher ? band : 0,
-    relegateSlots: sisters?.lower ? band : 0,
+    promoteSlots: slots.promoteSlots,
+    relegateSlots: slots.relegateSlots,
   };
 }
 
@@ -121,56 +119,10 @@ export function generateLeagueTable() {
   );
 }
 
-/** Move the player's club registration into a sister division after the season. */
+/**
+ * Season-boundary promotion/relegation via balanced pair transition.
+ * Requires an active world; refuses to silently relabel the player on failure.
+ */
 export function applyDivisionMovement(player, playerRecord, currentLeague, allLeagues = []) {
-  if (!player?.club || !playerRecord || !currentLeague) return null;
-  const sisters = findSisterLeagues(currentLeague, allLeagues);
-  const { promoteSlots, relegateSlots } = divisionMoveSlots(currentLeague, sisters);
-  const totalTeams = currentLeague.clubs?.length ?? playerRecord.position;
-
-  let target = null;
-  let type = null;
-
-  if (sisters.higher && playerRecord.position <= promoteSlots) {
-    target = sisters.higher;
-    type = "promoted";
-  } else if (sisters.lower && playerRecord.position > totalTeams - relegateSlots) {
-    target = sisters.lower;
-    type = "relegated";
-  }
-
-  if (!target || !type) return null;
-
-  const club = attachClubIdentity(player.club);
-  const fromId = currentLeague.leagueId || leagueIdFromName(currentLeague.name);
-  const toId = target.leagueId || leagueIdFromName(target.name);
-  const world = getWorldState();
-  if (world && club.clubId) {
-    exchangeLeagueMembership(world, fromId, toId, club.clubId);
-  }
-
-  player.club = {
-    ...club,
-    league: target.name,
-    leagueDisplay: target.displayName ?? target.name,
-    leagueId: toId,
-    tier: target.tier,
-    divisionLevel: target.divisionLevel ?? club.divisionLevel,
-    // Keep sporting quality; finance may drift slightly toward new league environment for wages only.
-    financialTier: clamp(
-      Math.round(
-        ((club.financialTier ?? target.financialPower ?? 2) + (target.financialPower ?? 2)) / 2
-      ),
-      1,
-      5
-    ),
-  };
-
-  return {
-    type,
-    from: currentLeague.displayName ?? currentLeague.name,
-    to: target.displayName ?? target.name,
-    league: target,
-    clubId: club.clubId,
-  };
+  return applyDivisionMovementImpl(player, playerRecord, currentLeague, allLeagues);
 }

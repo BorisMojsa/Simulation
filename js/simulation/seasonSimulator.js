@@ -14,11 +14,11 @@ import { createStreamRng } from "./rng.js";
 import { refreshAbilityCaches } from "./playerAbility.js?v=88";
 import { periodSceneContribution } from "./seniorCareerScenarios.js?v=88";
 import {
-  applyDivisionMovement,
   divisionMoveSlots,
   findSisterLeagues,
   qualificationForPosition,
 } from "./leaguePhase.js";
+import { finalizeMembershipAfterSeason } from "./leagueMembership.js";
 import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=89";
 import { findLeagueById } from "./destinationSchedule.js?v=81";
 import { evaluateSeasonAwards } from "./individualAwards.js?v=85";
@@ -684,16 +684,40 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
 
   // History written under the clubs actually represented; then enforce expiry once.
   player.seasonCheckpoint = null;
+  const completedClubId =
+    playerRow?.clubId ||
+    player.playingClubId ||
+    player.employmentClubId ||
+    player.club?.clubId ||
+    null;
   const expiry = applyContractExpiryAtBoundary(player);
   season.contractExpiry = expiry;
 
-  const divisionMove = player.club
-    ? applyDivisionMovement(player, playerRow, playingLeague, leagues)
-    : null;
+  // Balanced pair transition for the completed edition — independent of contract state.
+  const completedSeasonYear = (player.startYear || 2026) + seasonIndex;
+  const membershipResult = finalizeMembershipAfterSeason({
+    player,
+    completedLeague: playingLeague,
+    completedTable: chrono.table,
+    completedSeasonYear,
+    allLeagues: leagues,
+    world: getWorldState(),
+    completedClubId,
+  });
+  const divisionMove = membershipResult?.ok ? membershipResult.playerMove || null : null;
   if (divisionMove) {
     season.divisionMove = divisionMove;
     if (standing) standing.divisionMove = divisionMove.type;
   }
+  season.membershipTransition = membershipResult?.ok
+    ? {
+        alreadyApplied: Boolean(membershipResult.alreadyApplied),
+        skipped: Boolean(membershipResult.skipped),
+        key: membershipResult.transition?.key || null,
+        promoted: membershipResult.transition?.promoted || null,
+        relegated: membershipResult.transition?.relegated || null,
+      }
+    : { ok: false, reason: membershipResult?.reason || "failed" };
 
   applySeasonDevelopment(getWorldState());
 

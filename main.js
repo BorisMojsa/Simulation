@@ -8,7 +8,7 @@ import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=81";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=81";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=81";
 import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=89";
-import { createWorldState, setWorldState } from "./js/simulation/worldState.js";
+import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
 import {
   ensureContractAuthority,
   selectNextCareerAction,
@@ -18,6 +18,10 @@ import {
 import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=81";
 import { buildFreeAgentBrowserFixture } from "./js/simulation/freeAgentBrowserFixture.js?v=90";
 import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipTransferBrowserFixture.js?v=91";
+import {
+  buildMembershipBrowserFixture,
+  inspectMembershipDebug,
+} from "./js/simulation/membershipBrowserFixture.js?v=92";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -245,9 +249,48 @@ window.__loadOwnershipTransferBrowserFixture = function loadOwnershipTransferBro
   };
 };
 
+window.__loadMembershipBrowserFixture = function loadMembershipBrowserFixture(opts = {}) {
+  const result = buildMembershipBrowserFixture(opts);
+  if (!result.ok) {
+    console.error("Membership fixture failed:", result.reason, result);
+    return result;
+  }
+  player = result.player;
+  dealBookingGuard = null;
+  seasonActionInFlight = false;
+  ensureContractAuthority(player);
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  syncSimulateButton();
+  return {
+    ok: true,
+    mode: result.mode,
+    clubId: result.clubId,
+    evidence: result.evidence,
+    next: result.next || null,
+    destination: result.destination || null,
+    move: result.move || null,
+    zones: result.zones || null,
+    offerMeta: result.offerMeta || null,
+    snapshotOk: result.snapshotOk,
+    season: result.season || null,
+    membership: inspectMembershipDebug(player, getWorldState()),
+    playingClubId: player.playingClubId,
+    employmentClubId: player.employmentClubId,
+    clubLeagueId: player.club?.leagueId || null,
+  };
+};
+
+window.__getMembershipDebug = function getMembershipDebug() {
+  return inspectMembershipDebug(player, getWorldState());
+};
+
 window.__getLiveCareerDebug = function getLiveCareerDebug() {
   if (!player) return null;
   const last = player.seasons?.[player.seasons.length - 1] || null;
+  const membership = inspectMembershipDebug(player, getWorldState());
   return {
     name: player.name,
     age: player.age,
@@ -255,6 +298,7 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
     clubId: player.club?.clubId,
     employmentClubId: player.employmentClubId,
     playingClubId: player.playingClubId,
+    membership,
     playingStints: player.playingStints || [],
     seasonsCount: player.seasons?.length ?? 0,
     careerHonors: player.careerHonors ? { ...player.careerHonors } : null,
@@ -852,6 +896,9 @@ function finishOfferWindow(accepted, offer) {
       queueMicrotask(() => window.__loadLiveLoanBrowserFixture?.());
     } else if (fixture === "ownership-transfer") {
       queueMicrotask(() => window.__loadOwnershipTransferBrowserFixture?.());
+    } else if (fixture === "membership" || fixture.startsWith("membership-")) {
+      const mode = params.get("mode") || fixture.replace(/^membership-?/, "") || "promotion";
+      queueMicrotask(() => window.__loadMembershipBrowserFixture?.({ mode: mode || "promotion" }));
     }
   } catch (err) {
     console.warn("Fixture boot skipped:", err);

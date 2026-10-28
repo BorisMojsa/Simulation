@@ -21,6 +21,11 @@ import {
   REGISTRATION_RULE_VERSION,
 } from "../data/registrationWindows.js";
 import { resolvePlayingClubAt, isPendingRegistrationBlocking } from "./playingRegistration.js";
+import {
+  freezeEditionRoster,
+  resolveLeagueClubs,
+  pairPolicyForLeague,
+} from "./leagueMembership.js";
 
 function isContinentalChronoEvent(ev) {
   return (
@@ -88,17 +93,10 @@ function addDaysSafe(iso, days) {
 /**
  * Build a full deterministic destination league schedule for a season.
  */
-export function buildDestinationLeagueSchedule(league, seasonStartYear) {
+export function buildDestinationLeagueSchedule(league, seasonStartYear, world = getWorldState()) {
   if (!league) return { clubs: [], dated: [], seasonStartYear };
-  const clubs = (league.clubs || []).map((c) =>
-    attachClubIdentity({
-      ...c,
-      tier: league.tier,
-      league: league.name,
-      leagueId: league.leagueId,
-      nation: league.nation,
-    })
-  );
+  freezeEditionRoster(league, seasonStartYear, world);
+  const clubs = resolveLeagueClubs(league, { world, seasonYear: seasonStartYear });
   const seed = `dest-sched:${league.leagueId}:${seasonStartYear}`;
   const fixtures = seededShuffle(roundRobinFixtures(clubs), seed);
   const dated = dateFixturesForLeague(fixtures, league.leagueId, seasonStartYear);
@@ -244,9 +242,18 @@ export function reconcileAfterClubChange({
     };
   }
 
-  const schedule = buildDestinationLeagueSchedule(destLeague, destSeasonYear);
-  // Ensure destination club is in the club list
+  const w = world || getWorldState();
+  const schedule = buildDestinationLeagueSchedule(destLeague, destSeasonYear, w);
+  // Modeled senior leagues must already include the destination club.
   if (!schedule.clubs.some((c) => c.clubId === destClubId || c.name === player.club?.name)) {
+    if (pairPolicyForLeague(destLeagueId) || (destLeague.clubs || []).length >= 10) {
+      return {
+        ordered,
+        destinationMeta: null,
+        pastSimulated: 0,
+        error: "destination-club-missing-from-edition",
+      };
+    }
     schedule.clubs.push(
       attachClubIdentity({
         ...player.club,
@@ -263,7 +270,7 @@ export function reconcileAfterClubChange({
   if (!future.length && !registration.futureStart) {
     // Calendar gap until next season's fixtures — rebuild next season if empty
     const nextYear = destSeasonYear + 1;
-    const nextSched = buildDestinationLeagueSchedule(destLeague, nextYear);
+    const nextSched = buildDestinationLeagueSchedule(destLeague, nextYear, w);
     const nextFuture = nextSched.dated.filter((fx) => fx.date >= effectiveDate);
     if (nextFuture.length) {
       future.push(...nextFuture);
@@ -284,7 +291,6 @@ export function reconcileAfterClubChange({
   // Do not attribute appearances or stats to the player.
   let pastSimulated = 0;
   const pastMatches = [];
-  const w = world || getWorldState();
   const pastRng =
     rng || createStreamRng(`dest-past:${destLeagueId}:${destSeasonYear}`, "seed-standings");
   if (initialisePastDestination && past.length && pastRng) {
