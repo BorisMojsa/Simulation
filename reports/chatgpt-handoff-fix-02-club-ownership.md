@@ -1,4 +1,4 @@
-# ChatGPT handoff — Fix 02 done (paste this)
+# ChatGPT handoff — Fix 02 follow-up (paste this)
 
 Copy everything below this line into ChatGPT.
 
@@ -7,56 +7,49 @@ Copy everything below this line into ChatGPT.
 ## Context for ChatGPT
 
 Repo: https://github.com/BorisMojsa/Simulation  
-Branch: `main`  
-Issue: **Fix 02 — Club ownership after transfers and loans** (from Prioritize Bug Fixes). Fixes 03 and 04 are **not** done and must stay separate.
+Branch: `main` (local follow-up not necessarily pushed yet)  
+Issue: **Fix 02 — Club ownership** follow-up after review of commit `8fc7060`.  
+Review file used: `02-Club-Ownership-Review-8fc7060.md` (verdict: not complete; F01–F04 required).  
+Fixes 03 and 04 must stay separate.
 
-Cursor implemented Fix 02 on top of Fix 01 (free-agent soft-lock). Full write-up in-repo:
+Full write-up: `reports/club-ownership-transfers-completion.md`
 
-https://github.com/BorisMojsa/Simulation/blob/main/reports/club-ownership-transfers-completion.md
+## What the review found on `8fc7060`
 
-Base audited commit before this work: `9f87dee4303075517f0795a96d8a2a65a05f3801`.
+| ID | Severity | Gap |
+| --- | --- | --- |
+| F01 | P1 | Undated free-agent / post-season accepts recorded no destination playing stint → 0 league fixtures |
+| F02 | P1 | In-field continental destination fixtures bypassed match-day/ledger (tagged without ledger IDs) |
+| F03 | P2 | Destination cup used only three Sep–Dec anchors → January moves got 0 cup events |
+| F04 | P2 | Empty `season.trophies: []` fell through to `europeanCampaign.won` as a personal trophy |
 
-## What was wrong
+Original Arsenal/Brentford and Atalanta/Rudeš detachment probes on that commit were already green; the review gaps were additional.
 
-After a permanent move or loan, the engine kept attaching the user to the **former club** in cup and continental football (frozen `europeEdition.playerClubId` / `cupState.playerName`). Ledger `teamId` could disagree with the side simulated. Campaign `won` alone could credit career trophies.
+## What Cursor fixed in this follow-up
 
-Verified before fix (seed probes):
+- **F01:** `resolveDealSimulationDate` (career calendar / next July 1); permanent accept always `recordPlayingTransition`.
+- **F02:** Background/finalize never attach without `matchProcessor`; `eventsForAttachedPendingFixtures` merged after club-change on initial + resume paths; eligible destination KO goes through ledger once.
+- **F03:** Cross-association uses all six cup anchors; `prepareDestinationCupContinuation` world-advances prior rounds once then rebinds (no fresh January bracket).
+- **F04:** `collectSeasonTrophyWins` treats array (including empty) as authoritative; Europe path celebrates only on entitlement, else attributed world winner.
 
-- Arsenal → Brentford: 11 post-move Arsenal Champions League `playerMatches` while playing at Brentford.
-- Atalanta → Rudeš loan (seed 42 first offer): 4 post-move Atalanta continental `playerMatches` while playing at Rudeš.
+## Evidence
 
-## What Cursor built
+Failing-before / passing-after:
 
-**Authority:** dated `player.playingStints` in `js/simulation/playingRegistration.js`  
-(`recordPlayingTransition`, `resolvePlayingClubAt`, `resolveValidatedClubSide`).  
-Employment (`employmentClubId`) stays separate; only playing registration authorizes club appearances.
+- F01 free-agent signed season: `8fc7060` → 0 league fixtures / 0 apps; follow-up → 34 fixtures, apps restored.
+- F02 Crystal Palace (etc.) in-field playoff: ledger IDs match player match IDs; includes +minutes and 0-minute legs.
+- F03 Jan move: `destinationCupEvents` dates `2027-01-22`, `2027-03-08`, `2027-05-12`.
+- F04 counterexample `trophies: []` + `won: true` → 0 personal trophy wins.
 
-**Wired at:** permanent accept, loan start/return/recall, free-agency release; match-day hard gate; continental `playOneMatch` (edition focus club kept for world draw; attachment is registration-based); domestic cup rebind/detach; chrono league loops; reconcile keeps `continental_md`, drops obsolete player-only continental fixtures; UEFA format `playerRegistration` policy stub; honors need `winningClubId` + contribution, store `editionId`, credit once; ledger keeps `teamId` / competition identity; evidence gets `playingStints`.
+Suites:
 
-## After fix (same probes)
-
-- Arsenal → Brentford: **0** post-move Arsenal continental playerMatches.
-- Atalanta → Rudeš: **0** post-move Atalanta continental playerMatches; playing=Rudeš, employment=Atalanta.
-
-Former-club world campaigns continue (no redraw). Contribution-based medals for a former club that wins after you left are still possible if you had positive minutes for that winning club; trophies now carry `winningClubId`.
-
-## Tests / browser
-
-- New: `tests/clubOwnershipTransfers.test.mjs` (8 OK)
-- Repaired false coverage: `tests/loanPlayingLeague.test.mjs`, `tests/crossLeagueCareer.test.mjs`
-- Required suites listed in the completion report: green
-- Full repo: 24 pass; **1 pre-existing fail** `tests/playerAbility.test.mjs` (growth cap — not this fix)
-- Browser: `scripts/browserOwnershipChecklist.mjs` — loan, Brentford transfer, Fix 01 free-agent smoke OK  
-  Screenshots: `qa/screenshots/checklist-ownership/`
-
-## Limitations / next
-
-- Destination continental path only if already in the **same edition field** and format policy allows (UEFA: no immediate league-phase eligibility). Arsenal→Brentford / Atalanta→Rudeš correctly get none.
-- Browser did not separately drive delayed-registration UI or loan-return UI (covered in engine tests).
-- **Do not start Fix 03/04 in the same change.** Next issue is Fix 03 (league membership after promotion/relegation / 21-team Premier League report).
+- `node tests/clubOwnershipTransfers.test.mjs` → **12 OK**
+- `node --test tests/*.test.mjs` → **70 pass, 1 fail** (`playerAbility` growth-cap, pre-existing on base)
+- `node scripts/probeOwnershipBaseline.mjs` → 0 post-move Arsenal / Atalanta continental playerMatches
+- Browser checklist passed (loan both IDs, Brentford trophies with `winningClubId`, signed FA open stint)
 
 ## Ask of ChatGPT
 
-1. Review whether Fix 02 meets the ownership prompt invariants.
-2. Call out any remaining gaps before Fix 03.
-3. If drafting Fix 03, keep it isolated from this ownership work.
+1. Re-review Fix 02 against the original brief + F01–F04.
+2. Confirm whether Fix 02 can be marked complete, or list remaining gaps.
+3. Do **not** start Fix 03/04 in the same change.

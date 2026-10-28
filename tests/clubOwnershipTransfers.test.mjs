@@ -29,6 +29,18 @@ import {
 } from "../js/simulation/playingRegistration.js";
 import { evaluateSportingFit } from "../js/simulation/recruitmentModel.js";
 import { applyRenewalTerms } from "../js/simulation/contractLifecycle.js";
+import { buildFreeAgentBrowserFixture } from "../js/simulation/freeAgentBrowserFixture.js";
+import { buildOwnershipTransferBrowserFixture } from "../js/simulation/ownershipTransferBrowserFixture.js";
+import { dateCupRounds } from "../js/simulation/seasonCalendar.js";
+import { reconcileAfterClubChange } from "../js/simulation/destinationSchedule.js";
+import {
+  prepareDestinationCupContinuation,
+  prepareDomesticCupBracket,
+} from "../js/simulation/domesticCup.js";
+import {
+  collectSeasonTrophyWins,
+  playerEntitledToEuropeTrophy,
+} from "../js/ui/seasonAnimation.js";
 
 function test(name, fn) {
   try {
@@ -507,5 +519,200 @@ test("national team identity is unaffected by club side helper", () => {
       teamType: "national",
     }),
     null
+  );
+});
+
+test("F01: undated free-agent signing records destination stint and league fixtures", () => {
+  const fixture = buildFreeAgentBrowserFixture({ mode: "signed" });
+  assert.equal(fixture.ok, true, fixture.reason);
+  const player = fixture.player;
+  const tip = player.playingClubId || player.club?.clubId;
+  assert.ok(tip, "signed club id");
+  assert.ok(
+    (player.playingStints || []).some((s) => s.playingClubId === tip && s.to == null),
+    "open stint for signed club"
+  );
+  const result = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: false,
+    autoDecisionPolicy: "stay",
+  });
+  assert.ok((result.season?.leagueMatches?.length || 0) > 0, "destination league player fixtures");
+  assert.ok((result.season?.ledgerSummary?.club?.appearances || 0) > 0, "club appearances");
+});
+
+test("F02: in-field continental destination fixtures match ledger after resume", () => {
+  // Prefer a field club that still reaches the UEFA playoff under this fixture's RNG
+  // after a January permanent move (league-phase subsequent attach remains blocked).
+  const preferredDestIds = [
+    "club:england:crystal-palace",
+    "club:england:everton",
+    "club:england:leeds-united",
+    "club:england:liverpool",
+  ];
+  let best = null;
+  for (const destId of preferredDestIds) {
+    const fixture = buildOwnershipTransferBrowserFixture();
+    assert.equal(fixture.ok, true, fixture.reason);
+    const { player, checkpoint } = fixture;
+    const league = LEAGUE_BY_ID.get("league:england-premier-league");
+    const dest = league.clubs.find((c) => c.clubId === destId);
+    assert.ok(dest, destId);
+    const moveDate = checkpoint.lastDate || "2027-01-10";
+    applyOfferToPlayer(
+      player,
+      {
+        club: dest.name,
+        clubDisplay: dest.displayName,
+        clubId: dest.clubId,
+        league: league.name,
+        leagueDisplay: league.displayName,
+        leagueId: league.leagueId,
+        nation: league.nation,
+        tier: league.tier,
+        divisionLevel: league.divisionLevel,
+        badge: dest.badge,
+        financialTier: dest.financialTier,
+        reputation: dest.reputation,
+        overall: dest.overall,
+        attack: dest.attack,
+        midfield: dest.midfield,
+        defence: dest.defence,
+        goalkeeper: dest.goalkeeper,
+        strengthTier: dest.strengthTier,
+        isLoan: false,
+        isRenewal: false,
+        wage: 7000,
+        contractYears: 3,
+        expectedRole: "starter",
+        reviewDate: moveDate,
+        effectiveDate: moveDate,
+        registration: resolveMoveRegistration({
+          destinationLeagueId: league.leagueId,
+          departureDate: moveDate,
+          originSeasonStartYear: 2026,
+        }),
+      },
+      `f02-infield-${destId}`
+    );
+    player.pendingOffers = [];
+    player.pendingDecision = null;
+    checkpoint.playingClubIdAtPause = "club:england:arsenal";
+    const done = resumeChronologicalSeason({
+      player,
+      league,
+      seasonIndex: 0,
+      checkpoint,
+    });
+    assert.equal(done.status, "complete");
+    const europe = done.europeanCampaign;
+    assert.equal(postMoveArsenalContinental(europe).length, 0);
+    const postMove = (europe?.playerMatches || []).filter((m) => String(m.date || "") >= String(moveDate));
+    const destTagged = postMove.filter(
+      (m) => m.home?.clubId === dest.clubId || m.away?.clubId === dest.clubId
+    );
+    if (destTagged.length < 2) continue;
+    const ledgerIds = new Set(
+      (done.ledgerRecords || [])
+        .filter((r) => r && String(r.date || "") >= String(moveDate))
+        .map((r) => r.matchId || r.fixtureId)
+        .filter(Boolean)
+    );
+    for (const m of destTagged) {
+      const id = m.matchId || m.fixtureId;
+      assert.ok(id && ledgerIds.has(id), `continental player match ${id} must have ledger row`);
+    }
+    const minutes = destTagged.map((m) => Number(m.playerStats?.minutes ?? m.minutes ?? 0));
+    assert.ok(
+      minutes.some((n) => n > 0) && minutes.some((n) => n === 0),
+      "two-leg path should include both positive-minute and zero-minute cases"
+    );
+    best = { destId, destTagged: destTagged.length };
+    break;
+  }
+  assert.ok(best, "at least one in-field destination must complete a two-leg knockout with ledger rows");
+});
+
+test("F03: January cross-association move schedules winter destination cup rounds", () => {
+  const anchors = dateCupRounds([{}, {}, {}, {}, {}, {}], 2026).map((r) => r.date);
+  assert.deepEqual(anchors.slice(0, 3), ["2026-09-20", "2026-10-28", "2026-12-10"]);
+  assert.ok(anchors.some((d) => d >= "2027-01-10"), "winter anchors present");
+
+  resetClubFinanceLedgers();
+  reseedCareerRng(42);
+  setWorldState(createWorldState({ startYear: 2026 }));
+  const { player } = makeArsenalPlayer();
+  const rudes = allSeniorClubs().find((c) => c.clubId === "club:croatia:rudes");
+  assert.ok(rudes);
+  player.club = {
+    ...rudes,
+    league: rudes.league,
+    leagueId: rudes.leagueId,
+    nation: rudes.nation,
+    isAcademy: false,
+  };
+  player.playingClubId = rudes.clubId;
+  player.employmentClubId = rudes.clubId;
+  const ordered = [
+    { kind: "window_decision", date: "2027-01-10", sortKey: "2027-01-10:W:0" },
+    { kind: "cup_round", date: "2027-01-22", sortKey: "2027-01-22:C:3", roundIndex: 3 },
+    { kind: "league", date: "2027-02-01", sortKey: "2027-02-01:L:0", home: {}, away: {} },
+  ];
+  const recon = reconcileAfterClubChange({
+    player,
+    previousClubId: "club:england:arsenal",
+    previousLeagueId: "league:england-premier-league",
+    departureDate: "2027-01-10",
+    ordered,
+    eventIndex: 0,
+    originSeasonStartYear: 2026,
+    initialisePastDestination: false,
+  });
+  const destCups = (recon.ordered || []).filter((e) => e.kind === "dest_cup_round");
+  assert.ok(destCups.length > 0, "winter destination cup events after January move");
+  assert.ok(destCups.every((e) => e.date >= "2027-01-10"));
+  assert.ok(!(recon.ordered || []).some((e) => e.kind === "cup_round"), "origin cup rounds dropped");
+
+  const destLeague = LEAGUE_BY_ID.get(rudes.leagueId);
+  const cont = prepareDestinationCupContinuation(destLeague, player, {
+    asOfDate: "2027-01-22",
+    seasonStartYear: 2026,
+  });
+  assert.equal(cont._destBound, true);
+  const fresh = prepareDomesticCupBracket(destLeague, player);
+  assert.ok(
+    (cont.remaining || []).length < (fresh.remaining || []).length || cont.allRounds?.length > 0,
+    "continuation advances past world rounds instead of a fresh full bracket"
+  );
+});
+
+test("F04: empty trophies[] does not fall through to europeanCampaign.won", () => {
+  const season = { trophies: [], standing: { position: 10 } };
+  const europeanCampaign = {
+    competition: "Champions League",
+    qualified: true,
+    won: true,
+    winningClubId: "club:england:arsenal",
+    focusClubId: "club:england:arsenal",
+  };
+  const wins = collectSeasonTrophyWins(season, { name: "Premier League", displayName: "Premier League" }, null, europeanCampaign, null);
+  assert.equal(wins.length, 0, "authoritative empty trophies must not invent personal honors");
+  assert.equal(
+    playerEntitledToEuropeTrophy(europeanCampaign, {
+      playingClubId: "club:england:brentford",
+      club: { clubId: "club:england:brentford" },
+      playingStints: [
+        { from: "2026-07-01", to: "2027-01-10", playingClubId: "club:england:arsenal" },
+        { from: "2027-01-10", to: null, playingClubId: "club:england:brentford" },
+      ],
+    }),
+    false,
+    "former-club world win without contribution is not a personal trophy"
+  );
+  assert.equal(
+    playerEntitledToEuropeTrophy(
+      { ...europeanCampaign, playerEntitled: true },
+      { playingClubId: "club:england:brentford" }
+    ),
+    true
   );
 });

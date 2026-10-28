@@ -368,15 +368,27 @@ export function reconcileAfterClubChange({
     });
   }
 
-  // Destination cup remaining rounds (same association only, after effective date)
-  const cupAnchors = dateCupRounds([{}, {}, {}], destSeasonYear).filter((r) => r.date >= effectiveDate);
-  const destCupEvents = cupAnchors.map((r, i) => ({
-    kind: "dest_cup_round",
-    date: r.date,
-    sortKey: `${r.date}:DC:${i}`,
-    roundIndex: i,
-    destinationLeagueId: destLeagueId,
-  }));
+  // Cross-association only: schedule remaining destination-cup anchors (full Sep–May set).
+  // Same-association moves keep origin `cup_round` events and rebind attachment.
+  const prevAssoc = calendarForLeague(previousLeagueId).association;
+  const destAssoc = calendarForLeague(destLeagueId).association;
+  const destCupEvents = [];
+  if (prevAssoc !== destAssoc) {
+    const cupAnchors = dateCupRounds([{}, {}, {}, {}, {}, {}], destSeasonYear).filter(
+      (r) => r.date >= effectiveDate
+    );
+    for (let i = 0; i < cupAnchors.length; i++) {
+      const r = cupAnchors[i];
+      destCupEvents.push({
+        kind: "dest_cup_round",
+        date: r.date,
+        sortKey: `${r.date}:DC:${i}`,
+        roundIndex: i,
+        destinationLeagueId: destLeagueId,
+        destinationSeasonStartYear: destSeasonYear,
+      });
+    }
+  }
 
   const newTail = sortChronological([...gateEvents, ...destEvents, ...destCupEvents, ...filteredTail]);
   // Prevent same-day incompatible double appearances: if intl + league same day, keep both

@@ -4,6 +4,7 @@ import { LEAGUES } from "../data/leagues.js";
 import { getSimRng } from "./rng.js";
 import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./worldState.js";
 import { resolveValidatedClubSide } from "./playingRegistration.js";
+import { dateCupRounds } from "./seasonCalendar.js?v=89";
 
 function nextPowerOfTwo(n) {
   let p = 1;
@@ -168,6 +169,34 @@ export function rebindDomesticCupAttachment(state, player) {
   } else {
     state.playerAttached = false;
   }
+  return state;
+}
+
+/**
+ * Mid-season destination cup: build the national bracket once, advance already-
+ * dated rounds as world-only (no player appearances), then attach only if the
+ * destination club is still alive. Does not invent a fresh January field.
+ */
+export function prepareDestinationCupContinuation(league, player, { asOfDate, seasonStartYear } = {}) {
+  const year =
+    Number.isFinite(seasonStartYear) && seasonStartYear > 0
+      ? seasonStartYear
+      : Number(String(asOfDate || "").slice(0, 4)) || 2026;
+  const state = prepareDomesticCupBracket(league, player);
+  state.playerAttached = false;
+  state.playerMatches = [];
+  state.rounds = [];
+  state.eliminatedRound = null;
+  const anchors = dateCupRounds([{}, {}, {}, {}, {}, {}], year);
+  for (const round of anchors) {
+    if (asOfDate && String(round.date) >= String(asOfDate)) break;
+    if (state.finished || (state.remaining || []).length <= 1) break;
+    simulateDomesticCupRound(state, { player: null, date: round.date, matchProcessor: null });
+  }
+  rebindDomesticCupAttachment(state, player);
+  state._destBound = true;
+  state._destInitializedAsOf = asOfDate || null;
+  state._destSeasonStartYear = year;
   return state;
 }
 

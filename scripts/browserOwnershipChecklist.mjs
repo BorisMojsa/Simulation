@@ -197,12 +197,14 @@ async function flowLoan() {
     await shot(page, "02-loan-after-accept");
     await skipScenesAndFinishSeason(page);
     d = await debug(page);
-    assert(d.playingClubId === "club:croatia:rudes" || d.employmentClubId === "club:italy:atalanta", "loan ids stable", d);
+    assert(d.playingClubId === "club:croatia:rudes", "playing remains Rudeš after resume", d);
+    assert(d.employmentClubId === "club:italy:atalanta", "employment remains Atalanta after resume", d);
     await shot(page, "03-loan-after-resume");
     console.log("  OK loan ownership", {
       playing: d.playingClubId,
       employment: d.employmentClubId,
       honors: d.careerHonors,
+      trophies: d.lastSeasonTrophies,
     });
   } finally {
     await browser.close();
@@ -231,13 +233,23 @@ async function flowTransfer() {
     await skipScenesAndFinishSeason(page);
     d = await debug(page);
     assert(d.playingClubId === "club:england:brentford", "still Brentford after season", d);
-    // FA Cup must not be an automatic unlabeled honor solely from Arsenal focus win.
-    const cups = d.careerHonors?.domesticCups || 0;
+    const trophies = d.lastSeasonTrophies || d.seasonTrophies || [];
+    if (Array.isArray(trophies)) {
+      for (const t of trophies) {
+        if (t?.kind === "continental" || /champions league/i.test(t?.label || t?.competition || "")) {
+          assert(
+            t.winningClubId,
+            "continental honor must carry winningClubId (no unlabeled world-won trophy)",
+            t
+          );
+        }
+      }
+    }
     console.log("  OK transfer ownership", {
       playing: d.playingClubId,
       honors: d.careerHonors,
       lastSeasonHonors: d.lastSeasonHonors,
-      domesticCups: cups,
+      trophies,
     });
     await shot(page, "06-transfer-after-resume");
   } finally {
@@ -246,7 +258,7 @@ async function flowTransfer() {
 }
 
 async function flowFreeAgentSmoke() {
-  console.log("\nFLOW 3: Fix 01 free-agent smoke (empty-result searchable)");
+  console.log("\nFLOW 3: free-agent signed → playable club season");
   const { chromium } = await loadPlaywright();
   const browser = await chromium.launch({
     executablePath: CHROME,
@@ -254,11 +266,25 @@ async function flowFreeAgentSmoke() {
   });
   const page = await browser.newPage();
   try {
-    await loadFixture(page, "?fixture=free-agent-empty-result");
-    const d = await debug(page);
-    assert(d?.freeAgent || !d?.clubId, "free agent loaded", d);
-    await shot(page, "07-free-agent-smoke");
-    console.log("  OK free-agent fixture loads", { age: d.age, freeAgent: d.freeAgent });
+    await loadFixture(page, "?fixture=free-agent-signed");
+    let d = await debug(page);
+    assert(d?.playingClubId || d?.clubId, "signed free-agent fixture has a club", d);
+    await shot(page, "07-free-agent-signed");
+    // Drive one season so undated acceptance still yields destination club football.
+    if (!d.simDisabled) {
+      await page.click("#simulate-btn").catch(() => {});
+      await skipScenesAndFinishSeason(page);
+      d = await debug(page);
+    }
+    assert(d?.playingClubId || d?.clubId, "still registered after season", d);
+    const apps = d.lastSeasonClubApps ?? d.clubAppearances ?? null;
+    console.log("  OK free-agent signed season", {
+      playing: d.playingClubId || d.clubId,
+      seasons: d.seasonsCount,
+      clubApps: apps,
+      openStint: d.openPlayingStintClubId,
+    });
+    await shot(page, "08-free-agent-after-season");
   } finally {
     await browser.close();
   }

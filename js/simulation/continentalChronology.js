@@ -148,6 +148,30 @@ export function eventsForNewFixtures(edition, previousScheduledIds, afterIndex =
 }
 
 /**
+ * After a mid-season move, schedule any already-open fixtures that now attach to the
+ * destination registration (without redrawing the edition).
+ */
+export function eventsForAttachedPendingFixtures(edition, player, { onOrAfterDate = null } = {}) {
+  if (!edition || !player) return [];
+  return listContinentalFixtures(edition, {
+    status: "scheduled",
+    playerOnly: true,
+    player,
+  })
+    .filter((f) => !onOrAfterDate || String(f.date || "") >= String(onOrAfterDate))
+    .map((f, i) => ({
+      kind: "continental_fixture",
+      eventId: `continental_fixture:${f.matchId}`,
+      date: f.date,
+      sortKey: `${f.date}:E:fx:${f.matchId}`,
+      matchId: f.matchId,
+      competitionId: edition.competitionId,
+      editionId: edition.editionId,
+      _seq: i,
+    }));
+}
+
+/**
  * Merge newly unlocked fixtures into the pending calendar only.
  * Preserves the processed prefix so earlier league/cup dates cannot run after a
  * later knockout that was just injected.
@@ -158,14 +182,23 @@ function injectEvents(ordered, eventIndex, newEvents) {
 
 /** Play background (non-player) fixtures that are due so stage gates can open. */
 function playDueBackgroundFixtures(edition, opts, { onOrBeforeDate = null, stageId = null } = {}) {
-  const due = listContinentalFixtures(edition, { status: "scheduled" }).filter((f) => {
+  // Classify attachment with the live player so eligible destination fixtures are not
+  // drained as world-only before their continental_fixture / matchday tick.
+  const due = listContinentalFixtures(edition, {
+    status: "scheduled",
+    player: opts.player || null,
+  }).filter((f) => {
     if (f.isPlayerFixture) return false;
     if (stageId && f.stageId === stageId) return true;
     if (!onOrBeforeDate) return true;
     return String(f.date || "") <= String(onOrBeforeDate);
   });
   for (const f of due) {
-    processContinentalFixture(edition, f.matchId, { ...opts, matchProcessor: null });
+    processContinentalFixture(edition, f.matchId, {
+      ...opts,
+      matchProcessor: null,
+      player: null,
+    });
   }
 }
 
@@ -261,11 +294,31 @@ export function finalizeSeasonContinental({
       world,
     });
   }
-  // Background-only drain so leftover KO legs cannot append earlier-dated ledger rows
-  // after the season calendar has already finished.
-  const opts = continentalOpts({
+  // Process any still-scheduled fixtures that attach to the live player through the
+  // normal match-day path once, then drain the rest as true world-only.
+  const playerOpts = continentalOpts({
     edition,
     player,
+    rng,
+    selRng,
+    injuryRng,
+    world,
+    lastDateRef,
+    ledgerRecords,
+    playerMatchStats,
+    accumulatePlayerStats,
+  });
+  const attachedPending = listContinentalFixtures(edition, {
+    status: "scheduled",
+    playerOnly: true,
+    player,
+  });
+  for (const f of attachedPending) {
+    processContinentalFixture(edition, f.matchId, playerOpts);
+  }
+  const drainOpts = continentalOpts({
+    edition,
+    player: null,
     rng,
     selRng,
     injuryRng,
@@ -275,9 +328,9 @@ export function finalizeSeasonContinental({
     playerMatchStats: null,
     accumulatePlayerStats: null,
   });
-  opts.matchProcessor = null;
-  drainContinentalEdition(edition, opts);
-  return buildContinentalCampaignView(edition, opts);
+  drainOpts.matchProcessor = null;
+  drainContinentalEdition(edition, drainOpts);
+  return buildContinentalCampaignView(edition, { player, playerName: edition.playerClub?.name, world });
 }
 
 export function reloadEditionFromWorld(edition, world) {

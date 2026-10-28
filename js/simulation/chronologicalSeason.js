@@ -13,6 +13,7 @@ import {
   sortChronological,
   simDate,
   daysBetween,
+  mergePendingEvents,
 } from "./seasonCalendar.js?v=89";
 import { rivalsForClub } from "../data/clubRivals.js";
 import { createRng } from "./rng.js";
@@ -42,6 +43,7 @@ import {
   finalizeSeasonContinental,
   buildContinentalCampaignView,
   reloadEditionFromWorld,
+  eventsForAttachedPendingFixtures,
 } from "./continentalChronology.js";
 import {
   prepareSeasonInternational,
@@ -53,6 +55,7 @@ import {
 } from "./nationalChronology.js";
 import {
   prepareDomesticCupBracket,
+  prepareDestinationCupContinuation,
   simulateDomesticCupRound,
   finalizeDomesticCup,
   rebindDomesticCupAttachment,
@@ -487,6 +490,7 @@ export function simulateChronologicalSeason({
   const playerMatchStats = { played: 0, goals: 0, assists: 0, yellow: 0, red: 0, minutes: 0, starts: 0 };
   let lastDate = null;
   const processedEventIds = [];
+  let destinationMeta = player.destinationScheduleMeta || null;
 
   for (let eventIndex = 0; eventIndex < ordered.length; eventIndex++) {
     const ev = ordered[eventIndex];
@@ -528,7 +532,8 @@ export function simulateChronologicalSeason({
           );
         }
         if (recon.ordered) ordered = recon.ordered;
-        player.destinationScheduleMeta = recon.destinationMeta;
+        destinationMeta = recon.destinationMeta;
+        player.destinationScheduleMeta = destinationMeta;
         const switched = applyDestinationLeagueContext(recon, world);
         if (switched) {
           activeLeague = switched.activeLeague;
@@ -537,6 +542,13 @@ export function simulateChronologicalSeason({
           historySegment = "destination";
         }
         if (cupState) rebindDomesticCupAttachment(cupState, player);
+        if (europeEdition) {
+          ordered = mergePendingEvents(
+            ordered,
+            eventIndex,
+            eventsForAttachedPendingFixtures(europeEdition, player, { onOrAfterDate: ev.date })
+          );
+        }
       }
       if (pauseResult?.pause) {
         const ck = buildSeasonCheckpoint({
@@ -662,11 +674,19 @@ export function simulateChronologicalSeason({
       if (player.playingClubId || ev.destinationLeagueId) {
         const destLeague = findLeagueById(ev.destinationLeagueId) || activeLeague;
         if (destLeague && (!cupState || !cupState._destBound)) {
-          cupState = prepareDomesticCupBracket(destLeague, player);
-          cupState._destBound = true;
-          cupResult = null;
+          if (cupState && !cupState._destBound && !cupResult) {
+            cupState.playerAttached = false;
+            cupResult = finalizeDomesticCup(cupState);
+          }
+          cupState = prepareDestinationCupContinuation(destLeague, player, {
+            asOfDate: ev.date,
+            seasonStartYear:
+              ev.destinationSeasonStartYear ||
+              destinationMeta?.scheduleSeasonStartYear ||
+              seasonStartYear,
+          });
         }
-        if (cupState && !cupState.finished && !cupResult) {
+        if (cupState && cupState._destBound && !cupState.finished) {
           simulateDomesticCupRound(cupState, {
             player,
             date: ev.date,
@@ -1434,6 +1454,15 @@ export function resumeChronologicalSeason({
       historySegment = "destination";
     }
     if (cupState) rebindDomesticCupAttachment(cupState, player);
+    if (europeEdition) {
+      ordered = mergePendingEvents(
+        ordered,
+        checkpoint.eventIndex ?? 0,
+        eventsForAttachedPendingFixtures(europeEdition, player, {
+          onOrAfterDate: checkpoint.lastDate,
+        })
+      );
+    }
   }
 
   for (let eventIndex = startAt; eventIndex < ordered.length; eventIndex++) {
@@ -1478,7 +1507,8 @@ export function resumeChronologicalSeason({
           );
         }
         if (recon.ordered) ordered = recon.ordered;
-        player.destinationScheduleMeta = recon.destinationMeta;
+        destinationMeta = recon.destinationMeta;
+        player.destinationScheduleMeta = destinationMeta;
         const switched = applyDestinationLeagueContext(recon, world);
         if (switched) {
           activeLeague = switched.activeLeague;
@@ -1487,6 +1517,13 @@ export function resumeChronologicalSeason({
           historySegment = "destination";
         }
         if (cupState) rebindDomesticCupAttachment(cupState, player);
+        if (europeEdition) {
+          ordered = mergePendingEvents(
+            ordered,
+            eventIndex,
+            eventsForAttachedPendingFixtures(europeEdition, player, { onOrAfterDate: ev.date })
+          );
+        }
       }
       if (pauseResult?.pause) {
         const ck = buildSeasonCheckpoint({
@@ -1611,11 +1648,19 @@ export function resumeChronologicalSeason({
       if (player.playingClubId || ev.destinationLeagueId) {
         const destLeague = findLeagueById(ev.destinationLeagueId) || activeLeague;
         if (destLeague && (!cupState || !cupState._destBound)) {
-          cupState = prepareDomesticCupBracket(destLeague, player);
-          cupState._destBound = true;
-          cupResult = null;
+          if (cupState && !cupState._destBound && !cupResult) {
+            cupState.playerAttached = false;
+            cupResult = finalizeDomesticCup(cupState);
+          }
+          cupState = prepareDestinationCupContinuation(destLeague, player, {
+            asOfDate: ev.date,
+            seasonStartYear:
+              ev.destinationSeasonStartYear ||
+              destinationMeta?.scheduleSeasonStartYear ||
+              seasonStartYear,
+          });
         }
-        if (cupState && !cupState.finished && !cupResult) {
+        if (cupState && cupState._destBound && !cupState.finished) {
           simulateDomesticCupRound(cupState, {
             player,
             date: ev.date,

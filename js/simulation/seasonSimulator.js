@@ -439,17 +439,19 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     }
   }
   const europeWinnerId = europeanCampaign?.winningClubId || null;
-  if (
-    europeanCampaign?.qualified !== false &&
-    europeWinnerId &&
+  const europeEntitled =
+    Boolean(europeanCampaign?.qualified !== false && europeWinnerId) &&
     playerEntitledToClubHonor(player, {
       winningClubId: europeWinnerId,
       competitionId: europeanCampaign.competitionId || europeanCampaign.competition,
       ledgerRecords: chrono.ledgerRecords,
       playerMatches: europeanCampaign.playerMatches,
       requireContribution: true,
-    })
-  ) {
+    });
+  if (europeanCampaign && typeof europeanCampaign === "object") {
+    europeanCampaign.playerEntitled = europeEntitled;
+  }
+  if (europeEntitled) {
     const contHonorKey = `continental:${europeanCampaign.editionId || seasonId}:${europeWinnerId}`;
     if (!creditedHonorKeys.includes(contHonorKey)) {
       player.careerHonors.europeanTitles += 1;

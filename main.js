@@ -260,6 +260,9 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
     careerHonors: player.careerHonors ? { ...player.careerHonors } : null,
     lastSeasonHonors: last?.honors || null,
     lastSeasonTrophies: last?.trophies || null,
+    lastSeasonClubApps: last?.ledgerSummary?.club?.appearances ?? last?.appearances ?? null,
+    openPlayingStintClubId:
+      (player.playingStints || []).find((s) => s && s.to == null)?.playingClubId || null,
     weeklyWage: player.weeklyWage,
     contractEndSeason: player.contractEndSeason,
     rating: player.rating,

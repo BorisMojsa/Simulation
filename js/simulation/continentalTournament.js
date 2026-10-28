@@ -1394,9 +1394,12 @@ function playOneMatch(state, fixture, ctx, { finalize = null } = {}) {
   const home = clubFor(state, fixture.homeClubId);
   const away = clubFor(state, fixture.awayClubId);
   if (!home || !away) throw new Error(`Continental fixture ${fixture.matchId} references an unknown club`);
-  // Attachment requires a live player. Drain / background sims never invent user sides.
+  // Attachment requires a live player AND the dated match-day processor. Background /
+  // drain paths (matchProcessor null) must simulate world-only — never invent playerMatches
+  // without ledger/selection/fatigue processing.
   let playerSide = null;
-  if (ctx.player && involvesAttachedPlayer(state, fixture, ctx.player, fixture.date)) {
+  const canProcessPlayer = Boolean(ctx.player && ctx.matchProcessor);
+  if (canProcessPlayer && involvesAttachedPlayer(state, fixture, ctx.player, fixture.date)) {
     playerSide = resolveValidatedClubSide({
       player: ctx.player,
       home,
@@ -1443,8 +1446,8 @@ function playOneMatch(state, fixture, ctx, { finalize = null } = {}) {
   }
   if (!match) {
     match = simulateMatch(home, away, {
-      playerSide,
-      player: playerSide ? ctx.player : null,
+      playerSide: null,
+      player: null,
       competition: "europe",
       venue: fixture.venue,
       worldState: ctx.world,
@@ -1453,6 +1456,7 @@ function playOneMatch(state, fixture, ctx, { finalize = null } = {}) {
       fixtureId: fixture.matchId,
       date: fixture.date,
     });
+    playerSide = null;
   }
   if (!mustProduceWinner) match = regulationOnly(match);
   if (finalize) match = finalize(match);

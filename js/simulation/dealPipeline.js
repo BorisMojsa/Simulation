@@ -45,6 +45,24 @@ import {
 } from "./contractLifecycle.js";
 import { recordPlayingTransition, ensurePlayingStints } from "./playingRegistration.js";
 
+/**
+ * Career/league calendar date for an accepted deal when the offer omits dates.
+ * Never uses the wall-clock; prefers checkpoint / season boundary.
+ */
+export function resolveDealSimulationDate(player, offer = {}) {
+  return (
+    offer.effectiveDate ||
+    offer.reviewDate ||
+    offer.acceptedAt ||
+    offer.loanTerms?.startDate ||
+    player?.seasonCheckpoint?.lastDate ||
+    player?.pendingDecision?.date ||
+    player?.decisionCheckpoint?.simulationDate ||
+    // Next campaign start after completed seasons (typical free-agent / post-season signing).
+    `${(player?.startYear || 2026) + (player?.seasons?.length ?? 0)}-07-01`
+  );
+}
+
 export const DEAL_PIPELINE_VERSION = "deal-pipeline-v2";
 
 function financialSeasonKey(player) {
@@ -433,11 +451,15 @@ export function acceptPipelineOffer(player, offer, opts = {}) {
     }
   }
 
+  // Stamp acceptance date onto the offer so applyOfferToPlayer always records a stint.
+  if (!offer.effectiveDate && !offer.reviewDate) {
+    offer.effectiveDate = resolveDealSimulationDate(player, offer);
+  }
   applyOfferToPlayer(player, offer, txId);
   consumeRelatedDecisionAfterDeal(player, offer);
 
-  const departureDate = offer.effectiveDate || offer.reviewDate;
-  if (departureDate && offer.leagueId && !offer.isRenewal) {
+  const departureDate = offer.effectiveDate || offer.reviewDate || resolveDealSimulationDate(player, offer);
+  if (departureDate && offer.leagueId && !offer.isRenewal && !offer.isLoan) {
     const reg =
       offer.registration ||
       resolveMoveRegistration({
@@ -516,7 +538,7 @@ export function applyOfferToPlayer(player, offer, transactionId) {
     player.freeAgentReason = null;
     bumpContractRevision(player);
 
-    const departureDate = offer.effectiveDate || offer.reviewDate;
+    const departureDate = resolveDealSimulationDate(player, offer);
     const reg =
       offer.registration ||
       (offer.leagueId && departureDate
@@ -527,21 +549,17 @@ export function applyOfferToPlayer(player, offer, transactionId) {
           })
         : null);
     const stintFrom =
-      reg?.ok && !reg.immediate && reg.effectiveDate
-        ? reg.effectiveDate
-        : departureDate || offer.reviewDate;
-    if (stintFrom) {
-      recordPlayingTransition(player, {
-        effectiveDate: stintFrom,
-        closePriorAt: departureDate || stintFrom,
-        playingClubId: offer.clubId,
-        employmentClubId: offer.clubId,
-        leagueId: offer.leagueId,
-        clubName: offer.club,
-        kind: "permanent",
-        onLoan: false,
-      });
-    }
+      reg?.ok && !reg.immediate && reg.effectiveDate ? reg.effectiveDate : departureDate;
+    recordPlayingTransition(player, {
+      effectiveDate: stintFrom,
+      closePriorAt: departureDate,
+      playingClubId: offer.clubId,
+      employmentClubId: offer.clubId,
+      leagueId: offer.leagueId,
+      clubName: offer.club,
+      kind: "permanent",
+      onLoan: false,
+    });
   }
 
   markOfferStatus(player, offer, "accepted", { transactionId });

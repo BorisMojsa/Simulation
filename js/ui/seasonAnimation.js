@@ -15,6 +15,7 @@ import {
   setCompetitionMenuVisible,
 } from "./simulationDashboard.js";
 import { renderLeagueTable } from "./rendering.js";
+import { playerEntitledToClubHonor } from "../simulation/playingRegistration.js";
 
 let animationCtl = {
   skipMatch: false,
@@ -842,6 +843,19 @@ function showCupBracket(domesticCupResult, player) {
   });
 }
 
+export function playerEntitledToEuropeTrophy(europeanCampaign, player) {
+  if (!europeanCampaign?.won || !europeanCampaign?.winningClubId) return false;
+  if (europeanCampaign.playerEntitled === true) return true;
+  if (europeanCampaign.playerEntitled === false) return false;
+  if (!player) return false;
+  return playerEntitledToClubHonor(player, {
+    winningClubId: europeanCampaign.winningClubId,
+    competitionId: europeanCampaign.competitionId || europeanCampaign.competition,
+    playerMatches: europeanCampaign.playerMatches,
+    requireContribution: true,
+  });
+}
+
 function showEuropePath(europeanCampaign, player) {
   showSection("european-animation");
   const info = document.getElementById("european-info");
@@ -852,7 +866,8 @@ function showEuropePath(europeanCampaign, player) {
   if (!rounds) return;
   rounds.innerHTML = "";
 
-  if (europeanCampaign.won) {
+  const personalWin = playerEntitledToEuropeTrophy(europeanCampaign, player);
+  if (personalWin) {
     const asset = resolveTrophyAsset({
       kind: "continental",
       simKey: europeanCampaign.competition,
@@ -873,6 +888,19 @@ function showEuropePath(europeanCampaign, player) {
           <p>${asset?.trophyName || "Continental trophy"}</p>
         </div>
       </div>
+    `;
+    rounds.appendChild(winEl);
+  } else if (europeanCampaign.won && europeanCampaign.winningClubId) {
+    // World focus-club win without player entitlement — show attributed result, not a personal trophy.
+    const clubLabel =
+      europeanCampaign.winner?.displayName ||
+      europeanCampaign.winner?.name ||
+      europeanCampaign.winningClubId;
+    const winEl = document.createElement("div");
+    winEl.className = "european-round animate-in";
+    winEl.innerHTML = `
+      <div class="round-name">Champions</div>
+      <div class="round-result"><strong>${clubLabel}</strong> won the ${europeanCampaign.competition}</div>
     `;
     rounds.appendChild(winEl);
   }
@@ -1476,12 +1504,14 @@ function buildIntlDetailHtml(tournament, player) {
   return parts.join("") || '<div class="empty-state">No bracket data</div>';
 }
 
-function collectSeasonTrophyWins(season, league, domesticCupResult, europeanCampaign, intl) {
-  const fromSeason = (season?.trophies || [])
-    .map((t) => (typeof t === "string" ? { label: t, competition: t, kind: null } : t))
-    .map((t) => enrichTrophyWin(t))
-    .filter(Boolean);
-  if (fromSeason.length) return fromSeason;
+export function collectSeasonTrophyWins(season, league, domesticCupResult, europeanCampaign, intl) {
+  // Authoritative season.trophies (including empty) must not fall through to world `won` flags.
+  if (Array.isArray(season?.trophies)) {
+    return season.trophies
+      .map((t) => (typeof t === "string" ? { label: t, competition: t, kind: null } : t))
+      .map((t) => enrichTrophyWin(t))
+      .filter(Boolean);
+  }
 
   const wins = [];
   if (season?.standing?.position === 1) {
@@ -1505,13 +1535,19 @@ function collectSeasonTrophyWins(season, league, domesticCupResult, europeanCamp
       })
     );
   }
-  if (europeanCampaign?.won && europeanCampaign?.qualified !== false) {
+  if (
+    europeanCampaign?.won &&
+    europeanCampaign?.qualified !== false &&
+    playerEntitledToEuropeTrophy(europeanCampaign, null)
+  ) {
+    // Legacy seasons without trophies[]: only celebrate when playerEntitled is explicit.
     wins.push(
       enrichTrophyWin({
         kind: "continental",
         label: `${europeanCampaign.competition} Winners`,
         competition: europeanCampaign.competition,
         simKey: europeanCampaign.competition,
+        winningClubId: europeanCampaign.winningClubId || null,
       })
     );
   }
