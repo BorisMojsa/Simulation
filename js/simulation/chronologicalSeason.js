@@ -34,6 +34,7 @@ import { resolveKnockout } from "./matchEngine.js";
 import { simulateMatch } from "./matchEngine.js";
 import { applyMatchFormUpdate } from "./worldState.js";
 import { stableCareerId } from "./playerDevelopmentModel.js";
+import { resolveDevelopmentPeriod } from "./seasonEvidence.js";
 import {
   simulateEuropeanFinalsShowcase,
 } from "./europeanCompetition.js?v=81";
@@ -1171,6 +1172,12 @@ function rememberCupCampaign(campaigns, result) {
 }
 
 function buildSeasonCheckpoint(parts) {
+  const developmentPeriod =
+    parts.developmentPeriod ||
+    resolveDevelopmentPeriod(null, {
+      seasonIndex: parts.seasonIndex ?? 0,
+      seasonStartYear: parts.seasonStartYear,
+    });
   return {
     status: parts.status || "awaiting_decision",
     version: 3,
@@ -1179,6 +1186,17 @@ function buildSeasonCheckpoint(parts) {
     eventIndex: parts.eventIndex,
     seasonStartYear: parts.seasonStartYear,
     calendarYear: parts.calendarYear,
+    developmentPeriod: {
+      periodId: developmentPeriod.periodId,
+      seasonId: developmentPeriod.seasonId,
+      seasonIndex: developmentPeriod.seasonIndex,
+      seasonStartYear: developmentPeriod.seasonStartYear,
+      startDate: developmentPeriod.periodStartDate,
+      endExclusiveDate: developmentPeriod.periodEndExclusiveDate,
+      startDay: developmentPeriod.periodStartDay,
+      endDay: developmentPeriod.periodEndDay,
+      days: developmentPeriod.periodDays,
+    },
     lastDate: parts.lastDate,
     rngState: parts.rngState,
     selRngState: parts.selRngState,

@@ -65,6 +65,10 @@ export function markEventApplied(player, key) {
   return true;
 }
 
+function finiteOrNull(v) {
+  return v === null || v === undefined || v === "" || !Number.isFinite(Number(v)) ? null : Number(v);
+}
+
 /** True when the player is not in an unexpired injury on `date`. */
 export function isAvailable(health, date) {
   const inj = health?.activeInjury;
@@ -220,7 +224,20 @@ export function advanceHealth(player, date) {
   const progress = clamp((day - inj.startDay) / Math.max(1, inj.durationDays), 0, 1);
   inj.progress = Math.max(inj.progress || 0, progress);
   if (inj.progress >= 1) {
-    health.injuryHistory.push({ ...inj, recoveredDay: day });
+    const availabilityReturnDay =
+      finiteOrNull(inj.availabilityReturnDay) ??
+      finiteOrNull(inj.expectedReturnDay) ??
+      (inj.startDay != null && finiteOrNull(inj.durationDays) != null
+        ? inj.startDay + Number(inj.durationDays)
+        : null);
+    health.injuryHistory.push({
+      ...inj,
+      // Observation timestamp (may be later than availability).
+      recoveredDay: day,
+      // Availability boundary used by development exposure accounting.
+      availabilityReturnDay:
+        availabilityReturnDay != null ? availabilityReturnDay : inj.expectedReturnDay ?? null,
+    });
     health.activeInjury = null;
     if (player.state) {
       player.state.readiness = Math.min(player.state.readiness ?? 1, inj.returnReadiness ?? 0.8);

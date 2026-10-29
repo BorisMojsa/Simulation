@@ -28,7 +28,8 @@ import {
   attachRecognitionToEvidence,
   evidenceEditionKey,
   competitionScopeOf,
-} from "./seasonEvidence.js?v=85";
+  resolveDevelopmentPeriod,
+} from "./seasonEvidence.js?v=86";
 import { clubNameForDisplay, clamp, pickRandom, randFloat } from "../utils/helpers.js";
 import { applySeasonDevelopment, attachClubIdentity, ensureWorldState, getWorldState } from "./worldState.js";
 import {
@@ -213,7 +214,31 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   }
   const profile = POSITION_PROFILES[player.position] || POSITION_PROFILES.DEFAULT;
   const seasonIndex = player.seasons.length;
-  const seasonId = `season-${seasonIndex + 1}`;
+  const storedCheckpointEarly = opts.checkpoint || player.seasonCheckpoint || null;
+  const developmentPeriod = resolveDevelopmentPeriod(player, {
+    seasonIndex,
+    seasonStartYear: storedCheckpointEarly?.seasonStartYear,
+    periodId: storedCheckpointEarly?.developmentPeriod?.periodId,
+  });
+  const seasonId = developmentPeriod.seasonId;
+  const periodId = developmentPeriod.periodId;
+  // Persist period identity before the first pause so resume/moves reuse it.
+  if (!player.development.developmentPeriodById || typeof player.development.developmentPeriodById !== "object") {
+    player.development.developmentPeriodById = {};
+  }
+  if (!player.development.developmentPeriodById[periodId]) {
+    player.development.developmentPeriodById[periodId] = {
+      periodId,
+      seasonId,
+      seasonIndex: developmentPeriod.seasonIndex,
+      seasonStartYear: developmentPeriod.seasonStartYear,
+      startDate: developmentPeriod.periodStartDate,
+      endExclusiveDate: developmentPeriod.periodEndExclusiveDate,
+      startDay: developmentPeriod.periodStartDay,
+      endDay: developmentPeriod.periodEndDay,
+      days: developmentPeriod.periodDays,
+    };
+  }
   const storedStatus = opts.checkpoint?.status || player.seasonCheckpoint?.status;
   const resuming = Boolean(
     opts.checkpoint || storedStatus === "awaiting_decision" || storedStatus === "awaiting_scenario"
@@ -221,7 +246,6 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   if (!resuming && player.development?.lastProcessedSeasonId === seasonId) {
     throw new Error(`simulateSeason: season ${seasonId} already applied`);
   }
-  const periodId = developmentPeriodId(player, { seasonIndex });
   // Preserve the original season-start baseline across pause/resume.
   if (!resuming || !player.development?.seasonStartBaseline?.[periodId]) {
     if (!player.development.seasonStartBaseline || typeof player.development.seasonStartBaseline !== "object") {
@@ -666,7 +690,13 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     // Only attribute the aggregate CS total to league when ledger lacks per-match flags.
     leagueCleanSheets: ledgerHasCleanSheetFlags ? undefined : cleanSheets,
     competitionEditions,
-    seasonDays: 300,
+    developmentPeriod,
+    seasonStartDate: developmentPeriod.periodStartDate,
+    seasonEndDate: developmentPeriod.periodEndExclusiveDate,
+    seasonStartDay: developmentPeriod.periodStartDay,
+    seasonEndDay: developmentPeriod.periodEndDay,
+    seasonDays: developmentPeriod.periodDays,
+    requireDatedHealthWindow: true,
     playingStints: playingStintsForEvidence(player),
   });
 
@@ -805,6 +835,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       assists: evidence.assists,
       cleanSheets: evidence.cleanSheets,
       healthyTrainingFraction: evidence.healthyTrainingFraction,
+      rawHealthyTrainingFraction: evidence.rawHealthyTrainingFraction,
       competitionStrength: evidence.competitionStrength,
       // Bounded canonical slices for debug/QA reconciliation (not a public UI export).
       byScope: evidence.byScope,
@@ -812,7 +843,11 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       editions: evidence.editions,
       total: evidence.total,
       trophies: evidence.trophies,
+      developmentPeriod: evidence.developmentPeriod,
+      season: evidence.season,
+      health: evidence.health,
     },
+    developmentPeriod: evidence.developmentPeriod,
     ledgerRecords: chrono.ledgerRecords || [],
     ledgerSummary: {
       club: agg.club,
@@ -852,6 +887,9 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
         seasonId: season.seasonId || seasonId,
       }
     : null;
+
+  // Exact-once guard for this period id (next seasonIndex advances the id).
+  player.development.lastProcessedSeasonId = seasonId;
 
   // History written under the clubs actually represented; then enforce expiry once.
   player.seasonCheckpoint = null;

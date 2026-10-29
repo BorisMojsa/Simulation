@@ -517,6 +517,18 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
           evidenceByScope: player.seasons[player.seasons.length - 1].seasonEvidence?.byScope || null,
           nonParticipation:
             player.seasons[player.seasons.length - 1].ledgerSummary?.nonParticipation || null,
+          healthyTrainingFraction:
+            player.seasons[player.seasons.length - 1].seasonEvidence?.healthyTrainingFraction ?? null,
+          rawHealthyTrainingFraction:
+            player.seasons[player.seasons.length - 1].seasonEvidence?.rawHealthyTrainingFraction ?? null,
+          developmentPeriod:
+            player.seasons[player.seasons.length - 1].developmentPeriod ||
+            player.seasons[player.seasons.length - 1].seasonEvidence?.developmentPeriod ||
+            null,
+          healthEvidence: player.seasons[player.seasons.length - 1].seasonEvidence?.health || null,
+          developmentBreakdownHealthy:
+            player.seasons[player.seasons.length - 1].developmentBreakdown?.healthyTrainingFraction ??
+            null,
         }
       : null,
     position: player.position || null,

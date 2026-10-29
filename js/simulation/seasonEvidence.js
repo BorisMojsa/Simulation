@@ -30,6 +30,8 @@ import { PERFORMANCE } from "../config/playerDevelopmentConfig.js";
 import { aggregateSeason } from "./playerSeasonLedger.js";
 import { normalizePosition } from "./playerAbility.js";
 import { toDay } from "./playerState.js";
+import { simDate } from "./seasonCalendar.js";
+import { developmentPeriodId } from "./playerDevelopmentModel.js";
 
 function careerKey(player) {
   const explicit = player?.development?.careerId ?? player?.careerId;
@@ -43,9 +45,61 @@ export const COMPETITION_SCOPES = Object.freeze(["league", "cup", "continental",
 /** Typical simulated season length in days when no calendar window is supplied. */
 const DEFAULT_SEASON_DAYS = 300;
 /** Lower bound for the number handed to development (fully injured seasons still train a little). */
-const HEALTHY_FRACTION_FLOOR = 0.15;
+export const HEALTHY_FRACTION_FLOOR = 0.15;
 /** Minutes that count as "a lot" of evidence when describing shrinkage. */
 const SHRINKAGE_PRIOR_MINUTES = 900;
+
+/**
+ * Authoritative June→June senior development period.
+ *
+ * Y = (player.startYear || 2026) + seasonIndex
+ * [Y-06-01, (Y+1)-06-01)
+ *
+ * Covers summer internationals through May club football without overlapping
+ * the next annual development window. Does not reschedule fixtures.
+ *
+ * @param {object} player
+ * @param {{seasonIndex?:number, seasonStartYear?:number, periodId?:string}} [opts]
+ * @returns {{
+ *   seasonIndex:number, periodId:string, seasonId:string, seasonStartYear:number,
+ *   periodStartDate:string, periodEndExclusiveDate:string,
+ *   periodStartDay:number, periodEndDay:number, periodDays:number
+ * }}
+ */
+export function resolveDevelopmentPeriod(player, opts = {}) {
+  const seasonIndex = Number.isFinite(opts.seasonIndex)
+    ? Number(opts.seasonIndex)
+    : Number.isFinite(player?.seasons?.length)
+      ? player.seasons.length
+      : 0;
+  const seasonStartYear = Number.isFinite(opts.seasonStartYear)
+    ? Number(opts.seasonStartYear)
+    : (Number(player?.startYear) || 2026) + seasonIndex;
+  const periodId = developmentPeriodId(player, {
+    seasonIndex,
+    periodId: opts.periodId,
+  });
+  const periodStartDate = simDate(seasonStartYear, 6, 1);
+  const periodEndExclusiveDate = simDate(seasonStartYear + 1, 6, 1);
+  const periodStartDay = toDay(periodStartDate);
+  const periodEndDay = toDay(periodEndExclusiveDate);
+  if (periodStartDay == null || periodEndDay == null || !(periodEndDay > periodStartDay)) {
+    throw new Error(
+      `resolveDevelopmentPeriod: invalid window for year ${seasonStartYear} (${periodStartDate} → ${periodEndExclusiveDate})`
+    );
+  }
+  return {
+    seasonIndex,
+    periodId,
+    seasonId: periodId,
+    seasonStartYear,
+    periodStartDate,
+    periodEndExclusiveDate,
+    periodStartDay,
+    periodEndDay,
+    periodDays: periodEndDay - periodStartDay,
+  };
+}
 
 /* ------------------------------------------------------------------ */
 /* Small helpers                                                       */
@@ -144,7 +198,9 @@ function normalizeEditions(raw, seasonId, league) {
 /* ------------------------------------------------------------------ */
 
 function mergeIntervals(intervals) {
-  const sorted = intervals.filter(([a, b]) => b > a).sort((x, y) => x[0] - y[0]);
+  const sorted = intervals
+    .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b) && b > a)
+    .sort((x, y) => x[0] - y[0]);
   const out = [];
   for (const [a, b] of sorted) {
     const last = out[out.length - 1];
@@ -154,37 +210,95 @@ function mergeIntervals(intervals) {
   return out;
 }
 
+/** Prefer active / richer copies when the same eventId appears twice. */
+function recordCompleteness(rec, active) {
+  let score = active ? 1000 : 0;
+  if (rec == null || typeof rec !== "object") return score;
+  if (rec.startDay != null || rec.onsetDay != null || rec.date != null) score += 40;
+  if (rec.expectedReturnDay != null || rec.availabilityReturnDay != null) score += 40;
+  if (rec.durationDays != null) score += 20;
+  if (rec.recoveredDay != null) score += 5;
+  if (!rec.superseded) score += 2;
+  return score;
+}
+
 function injuryRecords(health) {
-  const seen = new Set();
-  const list = [];
-  const push = (rec, active) => {
+  const byId = new Map();
+  const anonymous = [];
+  const consider = (rec, active) => {
     if (!rec || typeof rec !== "object") return;
-    // Same eventId can appear as active and (later) history; keep one copy.
     const idKey = rec.eventId != null ? String(rec.eventId) : null;
-    if (idKey && seen.has(idKey)) return;
-    if (idKey) seen.add(idKey);
-    list.push({ rec, active });
+    const entry = { rec, active: Boolean(active) };
+    if (!idKey) {
+      anonymous.push(entry);
+      return;
+    }
+    const prev = byId.get(idKey);
+    if (!prev || recordCompleteness(rec, active) >= recordCompleteness(prev.rec, prev.active)) {
+      byId.set(idKey, entry);
+    }
   };
-  for (const r of health?.injuryHistory || []) push(r, false);
-  if (health?.activeInjury) push(health.activeInjury, true);
-  return list;
+  // History first, then active so equal-score active wins via >=.
+  for (const r of health?.injuryHistory || []) consider(r, false);
+  if (health?.activeInjury) consider(health.activeInjury, true);
+  return [...byId.values(), ...anonymous];
 }
 
 /**
- * Detailed healthy-training estimate (0..1, no floor).
+ * Availability return boundary — same semantics as `isAvailable`.
+ * Prefer explicit availability / expected return / onset+duration.
+ * A late `recoveredDay` observation must not extend unavailable time.
+ */
+export function availabilityReturnDayOf(rec) {
+  if (!rec || typeof rec !== "object") return null;
+  const explicit = numOrNull(rec.availabilityReturnDay);
+  if (explicit != null) return explicit;
+  const expected = numOrNull(rec.expectedReturnDay);
+  if (expected != null) return expected;
+  const start = numOrNull(rec.startDay ?? rec.onsetDay) ?? toDay(rec.date);
+  const duration = numOrNull(rec.durationDays);
+  if (start != null && duration != null) return start + duration;
+  // Last-resort legacy: observation day only when no return boundary exists.
+  return numOrNull(rec.recoveredDay);
+}
+
+function injuryOnsetDay(rec) {
+  if (!rec || typeof rec !== "object") return null;
+  return numOrNull(rec.startDay ?? rec.onsetDay) ?? toDay(rec.date);
+}
+
+function emptyHealthDetail(days, method, partial, extras = {}) {
+  return {
+    fraction: extras.fraction ?? 1,
+    rawHealthyTrainingFraction: extras.fraction ?? 1,
+    appliedHealthyTrainingFraction: clamp(extras.fraction ?? 1, HEALTHY_FRACTION_FLOOR, 1),
+    injuredDays: extras.injuredDays ?? 0,
+    seasonDays: days,
+    method,
+    partial,
+    injuryCount: extras.injuryCount ?? 0,
+    overlappingInjuryCount: extras.overlappingInjuryCount ?? 0,
+    contributingEventIds: extras.contributingEventIds ?? [],
+    excludedUnknownCount: extras.excludedUnknownCount ?? 0,
+    excludedUnknownEventIds: extras.excludedUnknownEventIds ?? [],
+    clippedIntervals: extras.clippedIntervals ?? [],
+    windowStartDay: extras.windowStartDay ?? null,
+    windowEndDay: extras.windowEndDay ?? null,
+    hasDatedWindow: Boolean(extras.hasDatedWindow),
+  };
+}
+
+/**
+ * Detailed healthy-training estimate (0..1 raw fraction, no floor).
  *
- * 1. With a known season window: union of injury intervals overlapping
- *    [start, end] divided by the window length (overlaps are not double counted).
- * 2. Injuries without usable dates fall back to their `durationDays`
- *    (flagged `partial`).
- * 3. Without a window: sum of durations / `seasonDays` (default 300), `partial`.
- * 4. The end-of-season `activeInjury` flag on its own only produces a partial
- *    estimate (its duration, or 30 days) - it is never treated as complete data.
+ * With a dated window [S,E):
+ *   - union clipped unavailable intervals using availability return boundaries
+ *   - unscoped historical duration-only rows are excluded (partial/unknown)
+ *   - undated active injuries keep a bounded duration-or-30 compatibility charge
  *
- * Window can be given as dates (`seasonStartDate`/`seasonEndDate`) or day numbers
- * (`seasonStartDay`/`seasonEndDay`).
+ * Without a window: legacy duration sum / seasonDays (always partial).
  *
- * @returns {{fraction:number, injuredDays:number, seasonDays:number, method:string, partial:boolean, injuryCount:number}}
+ * @returns {object} diagnostics including raw/applied fractions and attribution
  */
 export function estimateHealthyTrainingDetail({
   health,
@@ -201,64 +315,136 @@ export function estimateHealthyTrainingDetail({
   const declaredDays = numOrNull(seasonDays);
   if (windowStart != null && windowEnd == null && declaredDays > 0) windowEnd = windowStart + declaredDays;
   if (windowEnd != null && windowStart == null && declaredDays > 0) windowStart = windowEnd - declaredDays;
-  const hasWindow = windowStart != null && windowEnd != null && windowEnd > windowStart;
+  const hasWindow = windowStart != null && windowEnd != null && Number.isFinite(windowStart) && Number.isFinite(windowEnd) && windowEnd > windowStart;
   const days = hasWindow ? windowEnd - windowStart : declaredDays > 0 ? declaredDays : DEFAULT_SEASON_DAYS;
 
   if (!health || typeof health !== "object") {
-    return { fraction: 0.9, injuredDays: 0, seasonDays: days, method: "default-no-health-data", partial: true, injuryCount: 0 };
+    return emptyHealthDetail(days, "default-no-health-data", true, {
+      fraction: 0.9,
+      hasDatedWindow: hasWindow,
+      windowStartDay: hasWindow ? windowStart : null,
+      windowEndDay: hasWindow ? windowEnd : null,
+    });
   }
 
   const records = injuryRecords(health);
   if (!records.length) {
-    return { fraction: 1, injuredDays: 0, seasonDays: days, method: "no-injury-records", partial: false, injuryCount: 0 };
+    return emptyHealthDetail(days, "no-injury-records", false, {
+      hasDatedWindow: hasWindow,
+      windowStartDay: hasWindow ? windowStart : null,
+      windowEndDay: hasWindow ? windowEnd : null,
+    });
   }
 
   const dated = [];
-  let undatedDays = 0;
+  const clippedIntervals = [];
+  const contributingEventIds = [];
+  const excludedUnknownEventIds = [];
+  let undatedActiveDays = 0;
   let partial = false;
   let anyDated = false;
+  let excludedUnknownCount = 0;
+  let usedActiveUndatedFallback = false;
   const onlyActiveFlag = records.every((r) => r.active);
 
   for (const { rec, active } of records) {
     const duration = numOrNull(rec.durationDays);
-    const start = numOrNull(rec.startDay ?? rec.onsetDay) ?? toDay(rec.date);
-    let end = null;
-    if (numOrNull(rec.recoveredDay) != null) end = Number(rec.recoveredDay);
-    else if (numOrNull(rec.expectedReturnDay) != null) end = Number(rec.expectedReturnDay);
-    else if (start != null && duration != null) end = start + duration;
+    const start = injuryOnsetDay(rec);
+    const end = availabilityReturnDayOf(rec);
+    const eventId = rec.eventId != null ? String(rec.eventId) : null;
+    const hasEndpoints =
+      start != null && end != null && Number.isFinite(start) && Number.isFinite(end);
+    const usableDated = hasEndpoints && end > start;
 
-    if (start != null && end != null && hasWindow) {
-      anyDated = true;
-      // An injury that outlives the window only counts up to the window end.
-      dated.push([Math.max(start, windowStart), Math.min(end, windowEnd)]);
-    } else if (start != null && end != null) {
-      anyDated = true;
-      undatedDays += Math.max(0, end - start);
-      partial = true;
-    } else {
-      undatedDays += duration != null ? duration : active ? 30 : 0;
-      partial = true;
+    // Invalid/reversed dated endpoints: contribute nothing, do not invent unknown charges.
+    if (hasEndpoints && !usableDated) {
+      continue;
     }
+
+    if (hasWindow && usableDated) {
+      anyDated = true;
+      const clipStart = Math.max(start, windowStart);
+      const clipEnd = Math.min(end, windowEnd);
+      if (clipEnd > clipStart) {
+        dated.push([clipStart, clipEnd]);
+        clippedIntervals.push({
+          eventId,
+          active,
+          startDay: start,
+          returnDay: end,
+          clippedStartDay: clipStart,
+          clippedEndDay: clipEnd,
+          clippedDays: clipEnd - clipStart,
+        });
+        if (eventId) contributingEventIds.push(eventId);
+      }
+      continue;
+    }
+
+    if (!hasWindow && usableDated) {
+      anyDated = true;
+      undatedActiveDays += Math.max(0, end - start);
+      partial = true;
+      continue;
+    }
+
+    // Incomplete / undated record.
+    if (hasWindow) {
+      if (active) {
+        // Bounded compatibility for undated active injury — not exact dated overlap.
+        undatedActiveDays += duration != null ? duration : 30;
+        usedActiveUndatedFallback = true;
+        partial = true;
+      } else {
+        // Unscoped historical duration must not charge every subsequent year.
+        excludedUnknownCount += 1;
+        if (eventId) excludedUnknownEventIds.push(eventId);
+        partial = true;
+      }
+      continue;
+    }
+
+    undatedActiveDays += duration != null ? duration : active ? 30 : 0;
+    if (active && duration == null && !(start != null && end != null)) usedActiveUndatedFallback = true;
+    partial = true;
   }
 
-  const overlapDays = mergeIntervals(dated).reduce((s, [a, b]) => s + (b - a), 0);
-  const injuredDays = clamp(overlapDays + undatedDays, 0, days);
+  const merged = mergeIntervals(dated);
+  const overlapDays = merged.reduce((s, [a, b]) => s + (b - a), 0);
+  const injuredDays = clamp(overlapDays + undatedActiveDays, 0, days);
+  const fraction = clamp(1 - injuredDays / days, 0, 1);
   const method =
-    hasWindow && anyDated && undatedDays === 0
+    hasWindow && anyDated && undatedActiveDays === 0 && excludedUnknownCount === 0
       ? "dated-overlap"
-      : hasWindow && anyDated
-        ? "dated-overlap+duration-fallback"
-        : onlyActiveFlag
-          ? "active-flag-partial"
-          : "history-durations";
-  return {
-    fraction: clamp(1 - injuredDays / days, 0, 1),
+      : hasWindow && anyDated && undatedActiveDays > 0
+        ? "dated-overlap+active-undated"
+        : hasWindow && anyDated && excludedUnknownCount > 0
+          ? "dated-overlap+unknown-excluded"
+          : hasWindow && !anyDated && undatedActiveDays > 0
+            ? "active-undated-partial"
+            : hasWindow && !anyDated && excludedUnknownCount > 0
+              ? "unknown-historical-excluded"
+              : onlyActiveFlag && usedActiveUndatedFallback
+                ? "active-flag-partial"
+                : onlyActiveFlag && !hasWindow
+                  ? "active-flag-partial"
+                  : "history-durations";
+
+  // Dated active injuries with valid endpoints are complete; only undated/unknown paths stay partial.
+  const isPartial = partial || excludedUnknownCount > 0 || (onlyActiveFlag && !hasWindow && !anyDated);
+  return emptyHealthDetail(days, method, isPartial, {
+    fraction,
     injuredDays,
-    seasonDays: days,
-    method,
-    partial: partial || onlyActiveFlag,
     injuryCount: records.length,
-  };
+    overlappingInjuryCount: clippedIntervals.length,
+    contributingEventIds: [...new Set(contributingEventIds)],
+    excludedUnknownCount,
+    excludedUnknownEventIds: [...new Set(excludedUnknownEventIds)],
+    clippedIntervals,
+    hasDatedWindow: hasWindow,
+    windowStartDay: hasWindow ? windowStart : null,
+    windowEndDay: hasWindow ? windowEnd : null,
+  });
 }
 
 /**
@@ -629,6 +815,8 @@ function scopeLinesFromAggregate(aggregate) {
  * @param {object[]}[context.competitionEditions] [{editionId, scope, name, teamMatches}]
  * @param {object}  [context.health]          defaults to player.health
  * @param {string|Date|number} [context.seasonStartDate], [context.seasonEndDate]  (or seasonStartDay / seasonEndDay), [context.seasonDays]
+ * @param {object}  [context.developmentPeriod] from resolveDevelopmentPeriod
+ * @param {boolean} [context.requireDatedHealthWindow] senior completion must supply a real window
  * @param {number}  [context.healthyTrainingFraction] explicit override (e.g. tests)
  * @param {object[]}[context.stints]          playing stints (club/loan)
  * @param {object}  [context.loan]
@@ -639,7 +827,13 @@ function scopeLinesFromAggregate(aggregate) {
  */
 export function buildSeasonEvidence(player, context = {}) {
   const ctx = context || {};
-  const seasonId = ctx.seasonId ?? ctx.ledger?.seasonId ?? ctx.aggregate?.seasonId ?? null;
+  const developmentPeriod = ctx.developmentPeriod || null;
+  const seasonId =
+    ctx.seasonId ??
+    developmentPeriod?.seasonId ??
+    ctx.ledger?.seasonId ??
+    ctx.aggregate?.seasonId ??
+    null;
   const matches = Array.isArray(ctx.ledgerMatches) ? ctx.ledgerMatches : ctx.ledger?.matches || [];
   const aggregate =
     ctx.aggregate ||
@@ -703,17 +897,33 @@ export function buildSeasonEvidence(player, context = {}) {
   const health = ctx.health ?? player?.health ?? null;
   const healthWindow = {
     health,
-    seasonStartDate: ctx.seasonStartDate ?? ctx.seasonWindow?.start ?? ctx.calendar?.startDate ?? null,
-    seasonEndDate: ctx.seasonEndDate ?? ctx.seasonWindow?.end ?? ctx.calendar?.endDate ?? null,
-    seasonStartDay: ctx.seasonStartDay,
-    seasonEndDay: ctx.seasonEndDay,
-    seasonDays: ctx.seasonDays ?? ctx.calendar?.seasonDays,
+    seasonStartDate:
+      ctx.seasonStartDate ??
+      developmentPeriod?.periodStartDate ??
+      ctx.seasonWindow?.start ??
+      ctx.calendar?.startDate ??
+      null,
+    seasonEndDate:
+      ctx.seasonEndDate ??
+      developmentPeriod?.periodEndExclusiveDate ??
+      ctx.seasonWindow?.end ??
+      ctx.calendar?.endDate ??
+      null,
+    seasonStartDay: ctx.seasonStartDay ?? developmentPeriod?.periodStartDay ?? null,
+    seasonEndDay: ctx.seasonEndDay ?? developmentPeriod?.periodEndDay ?? null,
+    seasonDays: ctx.seasonDays ?? developmentPeriod?.periodDays ?? ctx.calendar?.seasonDays,
   };
   const healthy = estimateHealthyTrainingDetail(healthWindow);
+  if (ctx.requireDatedHealthWindow && !healthy.hasDatedWindow) {
+    throw new Error(
+      "buildSeasonEvidence: complete senior development requires a dated health window (seasonStart/End day or date)"
+    );
+  }
+  const rawHealthyTrainingFraction = healthy.fraction;
   const healthyTrainingFraction =
     ctx.healthyTrainingFraction != null
       ? clamp(Number(ctx.healthyTrainingFraction), 0, 1)
-      : clamp(healthy.fraction, HEALTHY_FRACTION_FLOOR, 1);
+      : clamp(rawHealthyTrainingFraction, HEALTHY_FRACTION_FLOOR, 1);
 
   const strength = competitionStrengthBlock(player, ctx);
   const clubFinish = clubFinishBlock(player, ctx);
@@ -783,15 +993,47 @@ export function buildSeasonEvidence(player, context = {}) {
 
     // Availability
     healthyTrainingFraction,
+    rawHealthyTrainingFraction:
+      ctx.healthyTrainingFraction != null ? healthyTrainingFraction : rawHealthyTrainingFraction,
     health: {
       method: ctx.healthyTrainingFraction != null ? "explicit-override" : healthy.method,
       partial: healthy.partial,
       injuredDays: healthy.injuredDays,
       seasonDays: healthy.seasonDays,
       injuryCount: healthy.injuryCount,
+      overlappingInjuryCount: healthy.overlappingInjuryCount ?? 0,
+      contributingEventIds: healthy.contributingEventIds || [],
+      excludedUnknownCount: healthy.excludedUnknownCount ?? 0,
+      excludedUnknownEventIds: healthy.excludedUnknownEventIds || [],
+      clippedIntervals: healthy.clippedIntervals || [],
+      rawHealthyTrainingFraction:
+        ctx.healthyTrainingFraction != null ? healthyTrainingFraction : rawHealthyTrainingFraction,
+      appliedHealthyTrainingFraction: healthyTrainingFraction,
+      hasDatedWindow: Boolean(healthy.hasDatedWindow),
+      windowStartDay: healthy.windowStartDay ?? null,
+      windowEndDay: healthy.windowEndDay ?? null,
       activeInjuryAtSeasonEnd: Boolean(health?.activeInjury),
     },
-    season: { startDate: healthWindow.seasonStartDate ?? null, endDate: healthWindow.seasonEndDate ?? null, days: healthy.seasonDays },
+    developmentPeriod: developmentPeriod
+      ? {
+          periodId: developmentPeriod.periodId,
+          seasonId: developmentPeriod.seasonId,
+          seasonIndex: developmentPeriod.seasonIndex,
+          seasonStartYear: developmentPeriod.seasonStartYear,
+          startDate: developmentPeriod.periodStartDate,
+          endExclusiveDate: developmentPeriod.periodEndExclusiveDate,
+          startDay: developmentPeriod.periodStartDay,
+          endDay: developmentPeriod.periodEndDay,
+          days: developmentPeriod.periodDays,
+        }
+      : null,
+    season: {
+      startDate: healthWindow.seasonStartDate ?? developmentPeriod?.periodStartDate ?? null,
+      endDate: healthWindow.seasonEndDate ?? developmentPeriod?.periodEndExclusiveDate ?? null,
+      startDay: healthy.windowStartDay ?? null,
+      endDay: healthy.windowEndDay ?? null,
+      days: healthy.seasonDays,
+    },
 
     // Team context
     clubFinish,
