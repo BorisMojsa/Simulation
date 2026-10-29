@@ -2,10 +2,10 @@
   "careerId": "bug5-st-4",
   "position": "ST",
   "seed": 505,
-  "rawRecords": 58,
-  "positiveMinutes": 14,
-  "zeroMinutes": 44,
-  "withEdition": 58,
+  "rawRecords": 50,
+  "positiveMinutes": 13,
+  "zeroMinutes": 37,
+  "withEdition": 50,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -21,9 +21,9 @@
   "goalsAgree": true,
   "goalsFromPositive": 0,
   "goalsFromLedger": 0,
-  "matchesWithEvents": 8,
+  "matchesWithEvents": 10,
   "eventGoalDisagree": 0,
-  "apps": 14,
+  "apps": 13,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:20",
@@ -33,7 +33,7 @@
       "minutes": 14,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.3
+      "rating": 6
     },
     {
       "matchId": "league:england-premier-league:md:40",
@@ -43,7 +43,7 @@
       "minutes": 81,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.4
+      "rating": 6
     }
   ],
   "sampleZero": [
@@ -62,15 +62,15 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 203,
-      "appearances": 8,
+      "minutes": 279,
+      "appearances": 10,
       "starts": 1,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "cup": {
-      "minutes": 25,
+      "minutes": 12,
       "appearances": 1,
       "starts": 0,
       "goals": 0,
@@ -78,8 +78,8 @@
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 147,
-      "appearances": 5,
+      "minutes": 52,
+      "appearances": 2,
       "starts": 0,
       "goals": 0,
       "assists": 0,

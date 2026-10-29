@@ -2,10 +2,10 @@
   "careerId": "bug5-st-3",
   "position": "ST",
   "seed": 101,
-  "rawRecords": 56,
+  "rawRecords": 59,
   "positiveMinutes": 19,
-  "zeroMinutes": 37,
-  "withEdition": 56,
+  "zeroMinutes": 40,
+  "withEdition": 59,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -19,8 +19,8 @@
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 1,
-  "goalsFromLedger": 1,
+  "goalsFromPositive": 0,
+  "goalsFromLedger": 0,
   "matchesWithEvents": 14,
   "eventGoalDisagree": 0,
   "apps": 19,
@@ -33,7 +33,7 @@
       "minutes": 78,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6
+      "rating": 6.5
     },
     {
       "matchId": "league:england-premier-league:md:20",
@@ -41,9 +41,9 @@
       "competitionId": "league:england-premier-league",
       "teamId": "club:england:arsenal",
       "minutes": 33,
-      "goals": 1,
+      "goals": 0,
       "cleanSheet": null,
-      "rating": 7.6
+      "rating": 6.4
     }
   ],
   "sampleZero": [
@@ -65,7 +65,7 @@
       "minutes": 501,
       "appearances": 14,
       "starts": 3,
-      "goals": 1,
+      "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },

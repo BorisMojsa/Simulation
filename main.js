@@ -274,11 +274,15 @@ window.__loadMatchParticipationKoBrowserFixture = async function loadMatchPartic
   }
   player = result.player;
   dealBookingGuard = null;
+  seasonActionInFlight = false;
+  lastFinishedSeasonKey = null;
   ensureContractAuthority(player);
   document.getElementById("career-start-overlay")?.classList.add("hidden");
   setupSection?.classList.add("hidden");
   careerSection?.classList.remove("hidden");
   refreshAll();
+  syncSimulateButton();
+  // Segment-only playback: live dashboard slate without the completed-season Continue path.
   const seasonData = {
     league: result.league,
     seasonIndex: 0,
@@ -289,8 +293,56 @@ window.__loadMatchParticipationKoBrowserFixture = async function loadMatchPartic
   await presentDashboardSegment(seasonData, { continueDashboard: false });
   return {
     ok: true,
+    mode: "segment",
     ...player.__qaKoFixture,
     playingClubId: player.playingClubId,
+  };
+};
+
+/**
+ * Completed-season presentation for Fix 05 KO: production showSeasonAnimation
+ * through final #continue-btn → finishSeasonAnimation desk return.
+ */
+window.__loadMatchParticipationKoCompleteBrowserFixture = async function loadMatchParticipationKoCompleteBrowserFixture(
+  opts = {}
+) {
+  const result = buildMatchParticipationKoBrowserFixture(opts);
+  if (!result.ok) {
+    console.error("Fix05 KO complete fixture failed:", result.reason, result);
+    return result;
+  }
+  player = result.player;
+  dealBookingGuard = null;
+  seasonActionInFlight = true;
+  lastFinishedSeasonKey = null;
+  ensureContractAuthority(player);
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  try {
+    await showSeasonAnimation(
+      result.seasonData,
+      player,
+      getDisplayAttributeKeys(player.position),
+      () => {
+        finishSeasonAnimation();
+        seasonActionInFlight = false;
+      }
+    );
+  } catch (err) {
+    seasonActionInFlight = false;
+    recoverSeasonPresentationFailure(err, { alert: false, committed: true });
+    throw err;
+  }
+  seasonActionInFlight = false;
+  syncSimulateButton();
+  return {
+    ok: true,
+    mode: "complete",
+    ...player.__qaKoFixture,
+    playingClubId: player.playingClubId,
+    seasonsCount: player.seasons?.length ?? 0,
   };
 };
 

@@ -1,0 +1,231 @@
+{
+  "name": "live-et-pens-season-continue",
+  "before": {
+    "age": 20,
+    "seasonsCount": 1,
+    "rating": 83,
+    "minutes": 240,
+    "goals": 1,
+    "assists": 0,
+    "cleanSheets": 0,
+    "evidenceByScope": {
+      "cup": {
+        "minutes": 240,
+        "appearances": 2,
+        "goals": 1,
+        "assists": 0,
+        "cleanSheets": 0
+      },
+      "league": {
+        "minutes": 0,
+        "appearances": 0,
+        "goals": 0,
+        "assists": 0,
+        "cleanSheets": 0
+      }
+    },
+    "qaKo": {
+      "etFixtureId": "fix05-ko-extraTime-2",
+      "pensFixtureId": "fix05-ko-penalties-3",
+      "zeroFixtureId": "fix05-ko-zero-11",
+      "etMinutes": 120,
+      "pensMinutes": 120,
+      "etRating": 7.4,
+      "pensRating": 6.4,
+      "etGoals": 1,
+      "pensGoals": 0,
+      "savedMatches": [
+        {
+          "fixtureId": "fix05-ko-zero-11",
+          "decidedBy": "regulation",
+          "minutes": 0,
+          "rating": null,
+          "goals": 0,
+          "assists": 0,
+          "homeGoals": 3,
+          "awayGoals": 2,
+          "winnerSide": "home"
+        },
+        {
+          "fixtureId": "fix05-ko-extraTime-2",
+          "decidedBy": "extraTime",
+          "minutes": 120,
+          "rating": 7.4,
+          "goals": 1,
+          "assists": 0,
+          "homeGoals": 3,
+          "awayGoals": 2,
+          "winnerSide": "home"
+        },
+        {
+          "fixtureId": "fix05-ko-penalties-3",
+          "decidedBy": "penalties",
+          "minutes": 120,
+          "rating": 6.4,
+          "goals": 0,
+          "assists": 0,
+          "homeGoals": 1,
+          "awayGoals": 1,
+          "winnerSide": "home"
+        }
+      ]
+    }
+  },
+  "after": {
+    "age": 20,
+    "seasonsCount": 1,
+    "rating": 83,
+    "minutes": 240,
+    "goals": 1,
+    "assists": 0,
+    "cleanSheets": 0,
+    "evidenceByScope": {
+      "cup": {
+        "minutes": 240,
+        "appearances": 2,
+        "goals": 1,
+        "assists": 0,
+        "cleanSheets": 0
+      },
+      "league": {
+        "minutes": 0,
+        "appearances": 0,
+        "goals": 0,
+        "assists": 0,
+        "cleanSheets": 0
+      }
+    },
+    "qaKo": {
+      "etFixtureId": "fix05-ko-extraTime-2",
+      "pensFixtureId": "fix05-ko-penalties-3",
+      "zeroFixtureId": "fix05-ko-zero-11",
+      "etMinutes": 120,
+      "pensMinutes": 120,
+      "etRating": 7.4,
+      "pensRating": 6.4,
+      "etGoals": 1,
+      "pensGoals": 0,
+      "savedMatches": [
+        {
+          "fixtureId": "fix05-ko-zero-11",
+          "decidedBy": "regulation",
+          "minutes": 0,
+          "rating": null,
+          "goals": 0,
+          "assists": 0,
+          "homeGoals": 3,
+          "awayGoals": 2,
+          "winnerSide": "home"
+        },
+        {
+          "fixtureId": "fix05-ko-extraTime-2",
+          "decidedBy": "extraTime",
+          "minutes": 120,
+          "rating": 7.4,
+          "goals": 1,
+          "assists": 0,
+          "homeGoals": 3,
+          "awayGoals": 2,
+          "winnerSide": "home"
+        },
+        {
+          "fixtureId": "fix05-ko-penalties-3",
+          "decidedBy": "penalties",
+          "minutes": 120,
+          "rating": 6.4,
+          "goals": 0,
+          "assists": 0,
+          "homeGoals": 1,
+          "awayGoals": 1,
+          "winnerSide": "home"
+        }
+      ]
+    }
+  },
+  "reachedContinue": true,
+  "continueClicks": 5,
+  "skipClicks": 1,
+  "overlayHidden": true,
+  "dashboardHidden": true,
+  "seasonActionInFlight": false,
+  "nextAction": {
+    "id": "start-season",
+    "label": "Simulate next season",
+    "canSimulate": true
+  },
+  "cardsSample": [
+    {
+      "fixtureId": "fix05-ko-penalties-3",
+      "contrib": "0G / 0A · 120' · Started",
+      "rating": "6.4",
+      "text": "LEAGUE\nArsenal\n1 – 1\nBrentford\n0G / 0A · 120' · Started\n6.4"
+    },
+    {
+      "fixtureId": "fix05-ko-penalties-3",
+      "contrib": "0G / 0A · 120' · Started",
+      "rating": "6.4",
+      "text": "LEAGUE\nArsenal\n1 – 1\nBrentford\n0G / 0A · 120' · Started\n6.4"
+    },
+    {
+      "fixtureId": "fix05-ko-extraTime-2",
+      "contrib": "1G / 0A · 120' · Started",
+      "rating": "7.4",
+      "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\n1G / 0A · 120' · Started\n7.4"
+    },
+    {
+      "fixtureId": "fix05-ko-extraTime-2",
+      "contrib": "1G / 0A · 120' · Started",
+      "rating": "7.4",
+      "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\n1G / 0A · 120' · Started\n7.4"
+    },
+    {
+      "fixtureId": "fix05-ko-zero-11",
+      "contrib": "Unused substitute",
+      "rating": "—",
+      "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\nUnused substitute\n—"
+    },
+    {
+      "fixtureId": "fix05-ko-zero-11",
+      "contrib": "Unused substitute",
+      "rating": "—",
+      "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\nUnused substitute\n—"
+    }
+  ],
+  "zeroish": 2,
+  "savedMatches": [
+    {
+      "fixtureId": "fix05-ko-zero-11",
+      "decidedBy": "regulation",
+      "minutes": 0,
+      "rating": null,
+      "goals": 0,
+      "assists": 0,
+      "homeGoals": 3,
+      "awayGoals": 2,
+      "winnerSide": "home"
+    },
+    {
+      "fixtureId": "fix05-ko-extraTime-2",
+      "decidedBy": "extraTime",
+      "minutes": 120,
+      "rating": 7.4,
+      "goals": 1,
+      "assists": 0,
+      "homeGoals": 3,
+      "awayGoals": 2,
+      "winnerSide": "home"
+    },
+    {
+      "fixtureId": "fix05-ko-penalties-3",
+      "decidedBy": "penalties",
+      "minutes": 120,
+      "rating": 6.4,
+      "goals": 0,
+      "assists": 0,
+      "homeGoals": 1,
+      "awayGoals": 1,
+      "winnerSide": "home"
+    }
+  ],
+  "runtimeErrors": []
+}

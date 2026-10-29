@@ -2,10 +2,10 @@
   "careerId": "bug5-lw-1",
   "position": "LW",
   "seed": 3,
-  "rawRecords": 55,
-  "positiveMinutes": 23,
-  "zeroMinutes": 32,
-  "withEdition": 55,
+  "rawRecords": 56,
+  "positiveMinutes": 25,
+  "zeroMinutes": 31,
+  "withEdition": 56,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -13,16 +13,17 @@
   "evidenceTotalCleanSheets": null,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
-    "uefa-champions-league::2026-uefa-champions-league"
+    "uefa-champions-league::2026-uefa-champions-league",
+    "FA Cup::2026:FA Cup"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 0,
-  "goalsFromLedger": 0,
+  "goalsFromPositive": 2,
+  "goalsFromLedger": 2,
   "matchesWithEvents": 17,
   "eventGoalDisagree": 0,
-  "apps": 23,
+  "apps": 25,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:20",
@@ -32,17 +33,17 @@
       "minutes": 10,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.3
+      "rating": 6.5
     },
     {
-      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:spain:osasuna:club:england:arsenal",
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:italy:lazio",
       "editionId": "2026-uefa-champions-league",
       "competitionId": "uefa-champions-league",
       "teamId": "club:england:arsenal",
       "minutes": 86,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.7
+      "rating": 6.4
     }
   ],
   "sampleZero": [
@@ -61,27 +62,27 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 588,
+      "minutes": 599,
       "appearances": 17,
       "starts": 3,
-      "goals": 0,
-      "assists": 4,
-      "cleanSheets": null
-    },
-    "cup": {
-      "minutes": 0,
-      "appearances": 0,
-      "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
+    "cup": {
+      "minutes": 88,
+      "appearances": 1,
+      "starts": 1,
+      "goals": 2,
+      "assists": 0,
+      "cleanSheets": null
+    },
     "continental": {
-      "minutes": 257,
-      "appearances": 6,
-      "starts": 2,
+      "minutes": 205,
+      "appearances": 7,
+      "starts": 1,
       "goals": 0,
-      "assists": 1,
+      "assists": 0,
       "cleanSheets": null
     },
     "international": {

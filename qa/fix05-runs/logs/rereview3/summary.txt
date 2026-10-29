@@ -1,0 +1,19 @@
+NODE v22.19.0
+START 2026-10-29T11:38:41Z
+=== tests/matchParticipationEvidence.test.mjs ===
+EXIT:0
+=== tests/individualAwards.test.mjs ===
+EXIT:0
+=== tests/clubOwnershipTransfers.test.mjs ===
+EXIT:0
+=== tests/careerFlowSmoke.test.mjs ===
+EXIT:0
+=== tests/chronologicalSeason.test.mjs ===
+EXIT:0
+=== tests/continentalIntegrity.test.mjs ===
+EXIT:0
+=== tests/freeAgentUiSoftlock.test.mjs ===
+EXIT:0
+=== FULL ===
+FULL_EXIT:1
+END 2026-10-29T11:38:58Z

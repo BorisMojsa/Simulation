@@ -1,0 +1,51 @@
+
+CASE: move-loan-ownership-transfer
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/01-transfer-desk.png
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/02-transfer-accepted.png
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/03-transfer-season.png
+  PASS move-loan-ownership-transfer
+
+CASE: live-loan-controls
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/04-loan-desk.png
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/05-loan-accepted.png
+  PASS live-loan-controls
+
+CASE: free-agent-predecessor-smoke
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/06-free-agent.png
+  PASS free-agent-predecessor-smoke
+
+CASE: academy-predecessor-smoke
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/07-academy.png
+  PASS academy-predecessor-smoke
+
+CASE: skip-controls-and-match-cards
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/08-skip-controls.png
+  PASS skip-controls-and-match-cards
+
+CASE: finished-season-evidence-and-keeper-path
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/09-finished-season-gk.png
+  PASS finished-season-evidence-and-keeper-path
+
+CASE: live-et-pens-segment-playback
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/10-ko-dashboard.png
+  PASS live-et-pens-segment-playback
+
+CASE: live-et-pens-season-continue
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/12-ko-complete-before-continue.png
+  screenshot /Users/mojsa/Desktop/Simulation/qa/screenshots/checklist-match-participation/13-ko-complete-after-desk.png
+  PASS live-et-pens-season-continue
+
+Browser checklist summary: {
+  "pass": true,
+  "caseCount": 8,
+  "results": [
+    "PASS move-loan-ownership-transfer",
+    "PASS live-loan-controls",
+    "PASS free-agent-predecessor-smoke",
+    "PASS academy-predecessor-smoke",
+    "PASS skip-controls-and-match-cards",
+    "PASS finished-season-evidence-and-keeper-path",
+    "PASS live-et-pens-segment-playback",
+    "PASS live-et-pens-season-continue"
+  ]
+}

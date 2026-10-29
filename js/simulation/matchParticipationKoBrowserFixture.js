@@ -170,18 +170,135 @@ export function buildMatchParticipationKoBrowserFixture(opts = {}) {
   };
 
   const playerMatches = [zeroMatch, et.match, pens.match];
+  const etMinutes = Number(et.match.playerStats.minutes) || 0;
+  const pensMinutes = Number(pens.match.playerStats.minutes) || 0;
+  const etGoals = Number(et.match.playerStats.goals) || 0;
+  const pensGoals = Number(pens.match.playerStats.goals) || 0;
+  const etAssists = Number(et.match.playerStats.assists) || 0;
+  const pensAssists = Number(pens.match.playerStats.assists) || 0;
+  const rated = [et.match.playerStats.rating, pens.match.playerStats.rating].filter(
+    (r) => r != null && Number.isFinite(Number(r))
+  );
+  const avgMatchRating = rated.length
+    ? rated.reduce((a, b) => a + Number(b), 0) / rated.length
+    : 0;
+  const seasonId = `fix05-ko-season-${cfg.startYear}`;
+  const season = {
+    seasonId,
+    seasonNumber: 1,
+    year: cfg.startYear,
+    age: player.age,
+    clubId: home.clubId,
+    clubName: home.name,
+    clubDisplay: home.displayName || home.name,
+    league: league.name,
+    leagueId: league.leagueId,
+    matches: 2,
+    appearances: 2,
+    minutes: etMinutes + pensMinutes,
+    goals: etGoals + pensGoals,
+    assists: etAssists + pensAssists,
+    cleanSheets: 0,
+    yellowCards: 0,
+    redCards: 0,
+    avgMatchRating,
+    // Present ET/pens once via the league dashboard slate in the completed-season
+    // animation (avoid also replaying the same slate in domesticCupCampaigns).
+    leagueMatches: playerMatches,
+    leagueAllMatches: playerMatches,
+    domesticCupCampaigns: [],
+    seasonEvidence: {
+      total: {
+        minutes: etMinutes + pensMinutes,
+        appearances: 2,
+        goals: etGoals + pensGoals,
+        assists: etAssists + pensAssists,
+        cleanSheets: 0,
+      },
+      byScope: {
+        cup: {
+          minutes: etMinutes + pensMinutes,
+          appearances: 2,
+          goals: etGoals + pensGoals,
+          assists: etAssists + pensAssists,
+          cleanSheets: 0,
+        },
+        league: {
+          minutes: 0,
+          appearances: 0,
+          goals: 0,
+          assists: 0,
+          cleanSheets: 0,
+        },
+      },
+    },
+  };
+  player.seasons = [season];
+  player.age = Number(player.age) + 1;
+
+  const standings = {
+    table: (league.clubs || []).map((c, i) => ({
+      clubId: c.clubId,
+      name: c.name,
+      displayName: c.displayName || c.name,
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      gf: 0,
+      ga: 0,
+      gd: 0,
+      pts: 0,
+      position: i + 1,
+    })),
+    playerRecord: null,
+  };
+
+  const seasonData = {
+    season,
+    league,
+    standings,
+    leagueAllMatches: playerMatches,
+    leaguePlayerMatches: playerMatches,
+    domesticCupCampaigns: [],
+    individualAwards: [],
+    attributeChanges: {},
+    previousRating: player.rating,
+    newRating: player.rating,
+    performanceScore: 0.55,
+    continueDashboard: false,
+    revealedFixtureIds: [],
+  };
+
   player.__qaKoFixture = {
     etFixtureId: et.match.fixtureId,
     pensFixtureId: pens.match.fixtureId,
     zeroFixtureId: zeroMatch.fixtureId,
     etDecidedBy: et.match.decidedBy,
     pensDecidedBy: pens.match.decidedBy,
-    etMinutes: et.match.playerStats.minutes,
-    pensMinutes: pens.match.playerStats.minutes,
+    etMinutes,
+    pensMinutes,
+    zeroMinutes: 0,
     etRating: et.match.playerStats.rating,
     pensRating: pens.match.playerStats.rating,
+    etGoals,
+    pensGoals,
+    etAssists,
+    pensAssists,
     etSeed: et.seed,
     pensSeed: pens.seed,
+    seasonId,
+    savedMatches: playerMatches.map((m) => ({
+      fixtureId: m.fixtureId,
+      decidedBy: m.decidedBy || null,
+      minutes: m.playerStats?.minutes ?? null,
+      rating: m.playerStats?.rating ?? null,
+      goals: m.playerStats?.goals ?? 0,
+      assists: m.playerStats?.assists ?? 0,
+      homeGoals: m.homeGoals,
+      awayGoals: m.awayGoals,
+      winnerSide: m.winnerSide || null,
+    })),
   };
 
   return {
@@ -190,6 +307,8 @@ export function buildMatchParticipationKoBrowserFixture(opts = {}) {
     league,
     playerMatches,
     allMatches: playerMatches,
+    season,
+    seasonData,
     et: et.match,
     pens: pens.match,
     zero: zeroMatch,

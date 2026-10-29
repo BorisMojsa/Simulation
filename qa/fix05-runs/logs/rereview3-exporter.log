@@ -1,0 +1,16 @@
+{
+  "pass": true,
+  "zeroMinuteViolations": 0,
+  "knockoutViolations": 0,
+  "et": 100,
+  "pens": 74,
+  "seasons": 20,
+  "seasonErrors": 0,
+  "goalDisagreements": 0,
+  "editionCoverageMin": 1,
+  "keeperEvidenceOk": true,
+  "substituteWindowPass": true,
+  "loanProbeOk": true,
+  "simSeasonOk": true,
+  "etExposureOk": true
+}

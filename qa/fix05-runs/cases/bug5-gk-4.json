@@ -2,15 +2,15 @@
   "careerId": "bug5-gk-4",
   "position": "GK",
   "seed": 606,
-  "rawRecords": 55,
-  "positiveMinutes": 20,
-  "zeroMinutes": 35,
-  "withEdition": 55,
+  "rawRecords": 59,
+  "positiveMinutes": 21,
+  "zeroMinutes": 38,
+  "withEdition": 59,
   "editionCoverage": 1,
-  "rawCleanSheets": 2,
-  "ledgerCleanSheets": 2,
-  "evidenceLeagueCleanSheets": 1,
-  "evidenceTotalCleanSheets": 2,
+  "rawCleanSheets": 0,
+  "ledgerCleanSheets": 0,
+  "evidenceLeagueCleanSheets": 0,
+  "evidenceTotalCleanSheets": 0,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
     "uefa-champions-league::2026-uefa-champions-league"
@@ -22,7 +22,7 @@
   "goalsFromLedger": 0,
   "matchesWithEvents": 14,
   "eventGoalDisagree": 0,
-  "apps": 20,
+  "apps": 21,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:0",
@@ -32,7 +32,7 @@
       "minutes": 18,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 7
+      "rating": 6
     },
     {
       "matchId": "league:england-premier-league:md:10",
@@ -42,7 +42,7 @@
       "minutes": 26,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 7
+      "rating": 6.3
     }
   ],
   "sampleZero": [
@@ -61,12 +61,12 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 527,
+      "minutes": 510,
       "appearances": 14,
       "starts": 4,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": 1
+      "cleanSheets": 0
     },
     "cup": {
       "minutes": 0,
@@ -77,12 +77,12 @@
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 238,
-      "appearances": 6,
-      "starts": 2,
+      "minutes": 331,
+      "appearances": 7,
+      "starts": 3,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": 1
+      "cleanSheets": 0
     },
     "international": {
       "minutes": 0,

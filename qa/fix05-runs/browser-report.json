@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-29T03:18:15.999Z",
+  "generatedAt": "2026-10-29T11:38:22.102Z",
   "baseUrl": "http://127.0.0.1:8000",
   "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "results": [
@@ -52,7 +52,7 @@
         "academy": {
           "status": "pending-review",
           "periodCount": 1,
-          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvsz3q0x",
+          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvtgyuyx",
           "exitAge": 21
         },
         "nextAction": {
@@ -69,36 +69,52 @@
       "detail": {
         "cardsSample": [
           {
+            "fixtureId": "league:england-premier-league:md:370",
             "contrib": "Injured",
-            "rating": "—"
+            "rating": "—",
+            "text": "MATCHDAY 38 · BEFORE MOVE\nAston Villa\n0 – 3\nArsenal\nInjured\n—"
           },
           {
+            "fixtureId": "league:england-premier-league:md:370",
             "contrib": "Injured",
-            "rating": "—"
+            "rating": "—",
+            "text": "MATCHDAY 38 · BEFORE MOVE\nAston Villa\n0 – 3\nArsenal\nInjured\n—"
           },
           {
+            "fixtureId": "league:england-premier-league:md:360",
             "contrib": "0G / 0A · 27' · Sub",
-            "rating": "5.8"
+            "rating": "5.8",
+            "text": "MATCHDAY 37 · BEFORE MOVE\nAFC Bournemouth\n1 – 1\nArsenal\n0G / 0A · 27' · Sub\n5.8"
           },
           {
+            "fixtureId": "league:england-premier-league:md:360",
             "contrib": "0G / 0A · 27' · Sub",
-            "rating": "5.8"
+            "rating": "5.8",
+            "text": "MATCHDAY 37 · BEFORE MOVE\nAFC Bournemouth\n1 – 1\nArsenal\n0G / 0A · 27' · Sub\n5.8"
           },
           {
+            "fixtureId": "league:england-premier-league:md:350",
             "contrib": "Not selected",
-            "rating": "—"
+            "rating": "—",
+            "text": "MATCHDAY 36 · BEFORE MOVE\nBrentford\n0 – 1\nArsenal\nNot selected\n—"
           },
           {
+            "fixtureId": "league:england-premier-league:md:350",
             "contrib": "Not selected",
-            "rating": "—"
+            "rating": "—",
+            "text": "MATCHDAY 36 · BEFORE MOVE\nBrentford\n0 – 1\nArsenal\nNot selected\n—"
           },
           {
+            "fixtureId": "league:england-premier-league:md:340",
             "contrib": "Not selected",
-            "rating": "—"
+            "rating": "—",
+            "text": "MATCHDAY 35 · BEFORE MOVE\nBrighton & Hove Albion\n1 – 4\nArsenal\nNot selected\n—"
           },
           {
+            "fixtureId": "league:england-premier-league:md:340",
             "contrib": "Not selected",
-            "rating": "—"
+            "rating": "—",
+            "text": "MATCHDAY 35 · BEFORE MOVE\nBrighton & Hove Albion\n1 – 4\nArsenal\nNot selected\n—"
           }
         ],
         "zeroish": 30,
@@ -128,31 +144,31 @@
       "status": "PASS",
       "detail": {
         "position": "GK",
-        "minutes": 628,
+        "minutes": 602,
         "evidenceByScope": {
           "league": {
-            "minutes": 450,
-            "appearances": 14,
-            "starts": 2,
+            "minutes": 343,
+            "appearances": 13,
+            "starts": 1,
             "goals": 0,
             "assists": 0,
-            "cleanSheets": 0
+            "cleanSheets": 1
           },
           "cup": {
-            "minutes": 50,
-            "appearances": 3,
+            "minutes": 23,
+            "appearances": 1,
             "starts": 0,
             "goals": 0,
             "assists": 0,
             "cleanSheets": null
           },
           "continental": {
-            "minutes": 128,
-            "appearances": 5,
-            "starts": 0,
+            "minutes": 236,
+            "appearances": 7,
+            "starts": 1,
             "goals": 0,
             "assists": 0,
-            "cleanSheets": null
+            "cleanSheets": 0
           },
           "international": {
             "minutes": 0,
@@ -171,7 +187,8 @@
             "cleanSheets": null
           }
         },
-        "cleanSheets": 0,
+        "cleanSheets": 1,
+        "evidenceLeagueCleanSheets": 1,
         "awardFieldKeys": [
           "league:england-premier-league::2026",
           "season-1:world"
@@ -180,9 +197,10 @@
       }
     },
     {
-      "name": "live-et-pens-playback-continue",
+      "name": "live-et-pens-segment-playback",
       "status": "PASS",
       "detail": {
+        "mode": "segment",
         "qaKo": {
           "etFixtureId": "fix05-ko-extraTime-2",
           "pensFixtureId": "fix05-ko-penalties-3",
@@ -191,45 +209,332 @@
           "pensDecidedBy": "penalties",
           "etMinutes": 120,
           "pensMinutes": 120,
+          "zeroMinutes": 0,
           "etRating": 7.4,
           "pensRating": 6.4,
+          "etGoals": 1,
+          "pensGoals": 0,
+          "etAssists": 0,
+          "pensAssists": 0,
           "etSeed": 2,
-          "pensSeed": 3
+          "pensSeed": 3,
+          "seasonId": "fix05-ko-season-2026",
+          "savedMatches": [
+            {
+              "fixtureId": "fix05-ko-zero-11",
+              "decidedBy": "regulation",
+              "minutes": 0,
+              "rating": null,
+              "goals": 0,
+              "assists": 0,
+              "homeGoals": 3,
+              "awayGoals": 2,
+              "winnerSide": "home"
+            },
+            {
+              "fixtureId": "fix05-ko-extraTime-2",
+              "decidedBy": "extraTime",
+              "minutes": 120,
+              "rating": 7.4,
+              "goals": 1,
+              "assists": 0,
+              "homeGoals": 3,
+              "awayGoals": 2,
+              "winnerSide": "home"
+            },
+            {
+              "fixtureId": "fix05-ko-penalties-3",
+              "decidedBy": "penalties",
+              "minutes": 120,
+              "rating": 6.4,
+              "goals": 0,
+              "assists": 0,
+              "homeGoals": 1,
+              "awayGoals": 1,
+              "winnerSide": "home"
+            }
+          ]
         },
         "reachedSkip": true,
-        "reachedContinue": false,
         "zeroish": 2,
         "cardsSample": [
           {
+            "fixtureId": "fix05-ko-penalties-3",
             "contrib": "0G / 0A · 120' · Started",
-            "rating": "6.4"
+            "rating": "6.4",
+            "text": "LEAGUE\nArsenal\n1 – 1\nBrentford\n0G / 0A · 120' · Started\n6.4"
           },
           {
+            "fixtureId": "fix05-ko-penalties-3",
             "contrib": "0G / 0A · 120' · Started",
-            "rating": "6.4"
+            "rating": "6.4",
+            "text": "LEAGUE\nArsenal\n1 – 1\nBrentford\n0G / 0A · 120' · Started\n6.4"
           },
           {
+            "fixtureId": "fix05-ko-extraTime-2",
             "contrib": "1G / 0A · 120' · Started",
-            "rating": "7.4"
+            "rating": "7.4",
+            "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\n1G / 0A · 120' · Started\n7.4"
           },
           {
+            "fixtureId": "fix05-ko-extraTime-2",
             "contrib": "1G / 0A · 120' · Started",
-            "rating": "7.4"
+            "rating": "7.4",
+            "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\n1G / 0A · 120' · Started\n7.4"
           },
           {
+            "fixtureId": "fix05-ko-zero-11",
             "contrib": "Unused substitute",
-            "rating": "—"
+            "rating": "—",
+            "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\nUnused substitute\n—"
           },
           {
+            "fixtureId": "fix05-ko-zero-11",
             "contrib": "Unused substitute",
-            "rating": "—"
+            "rating": "—",
+            "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\nUnused substitute\n—"
+          }
+        ],
+        "runtimeErrors": []
+      }
+    },
+    {
+      "name": "live-et-pens-season-continue",
+      "status": "PASS",
+      "detail": {
+        "name": "live-et-pens-season-continue",
+        "before": {
+          "age": 20,
+          "seasonsCount": 1,
+          "rating": 83,
+          "minutes": 240,
+          "goals": 1,
+          "assists": 0,
+          "cleanSheets": 0,
+          "evidenceByScope": {
+            "cup": {
+              "minutes": 240,
+              "appearances": 2,
+              "goals": 1,
+              "assists": 0,
+              "cleanSheets": 0
+            },
+            "league": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "cleanSheets": 0
+            }
+          },
+          "qaKo": {
+            "etFixtureId": "fix05-ko-extraTime-2",
+            "pensFixtureId": "fix05-ko-penalties-3",
+            "zeroFixtureId": "fix05-ko-zero-11",
+            "etMinutes": 120,
+            "pensMinutes": 120,
+            "etRating": 7.4,
+            "pensRating": 6.4,
+            "etGoals": 1,
+            "pensGoals": 0,
+            "savedMatches": [
+              {
+                "fixtureId": "fix05-ko-zero-11",
+                "decidedBy": "regulation",
+                "minutes": 0,
+                "rating": null,
+                "goals": 0,
+                "assists": 0,
+                "homeGoals": 3,
+                "awayGoals": 2,
+                "winnerSide": "home"
+              },
+              {
+                "fixtureId": "fix05-ko-extraTime-2",
+                "decidedBy": "extraTime",
+                "minutes": 120,
+                "rating": 7.4,
+                "goals": 1,
+                "assists": 0,
+                "homeGoals": 3,
+                "awayGoals": 2,
+                "winnerSide": "home"
+              },
+              {
+                "fixtureId": "fix05-ko-penalties-3",
+                "decidedBy": "penalties",
+                "minutes": 120,
+                "rating": 6.4,
+                "goals": 0,
+                "assists": 0,
+                "homeGoals": 1,
+                "awayGoals": 1,
+                "winnerSide": "home"
+              }
+            ]
+          }
+        },
+        "after": {
+          "age": 20,
+          "seasonsCount": 1,
+          "rating": 83,
+          "minutes": 240,
+          "goals": 1,
+          "assists": 0,
+          "cleanSheets": 0,
+          "evidenceByScope": {
+            "cup": {
+              "minutes": 240,
+              "appearances": 2,
+              "goals": 1,
+              "assists": 0,
+              "cleanSheets": 0
+            },
+            "league": {
+              "minutes": 0,
+              "appearances": 0,
+              "goals": 0,
+              "assists": 0,
+              "cleanSheets": 0
+            }
+          },
+          "qaKo": {
+            "etFixtureId": "fix05-ko-extraTime-2",
+            "pensFixtureId": "fix05-ko-penalties-3",
+            "zeroFixtureId": "fix05-ko-zero-11",
+            "etMinutes": 120,
+            "pensMinutes": 120,
+            "etRating": 7.4,
+            "pensRating": 6.4,
+            "etGoals": 1,
+            "pensGoals": 0,
+            "savedMatches": [
+              {
+                "fixtureId": "fix05-ko-zero-11",
+                "decidedBy": "regulation",
+                "minutes": 0,
+                "rating": null,
+                "goals": 0,
+                "assists": 0,
+                "homeGoals": 3,
+                "awayGoals": 2,
+                "winnerSide": "home"
+              },
+              {
+                "fixtureId": "fix05-ko-extraTime-2",
+                "decidedBy": "extraTime",
+                "minutes": 120,
+                "rating": 7.4,
+                "goals": 1,
+                "assists": 0,
+                "homeGoals": 3,
+                "awayGoals": 2,
+                "winnerSide": "home"
+              },
+              {
+                "fixtureId": "fix05-ko-penalties-3",
+                "decidedBy": "penalties",
+                "minutes": 120,
+                "rating": 6.4,
+                "goals": 0,
+                "assists": 0,
+                "homeGoals": 1,
+                "awayGoals": 1,
+                "winnerSide": "home"
+              }
+            ]
+          }
+        },
+        "reachedContinue": true,
+        "continueClicks": 5,
+        "skipClicks": 1,
+        "overlayHidden": true,
+        "dashboardHidden": true,
+        "seasonActionInFlight": false,
+        "nextAction": {
+          "id": "start-season",
+          "label": "Simulate next season",
+          "canSimulate": true
+        },
+        "cardsSample": [
+          {
+            "fixtureId": "fix05-ko-penalties-3",
+            "contrib": "0G / 0A · 120' · Started",
+            "rating": "6.4",
+            "text": "LEAGUE\nArsenal\n1 – 1\nBrentford\n0G / 0A · 120' · Started\n6.4"
+          },
+          {
+            "fixtureId": "fix05-ko-penalties-3",
+            "contrib": "0G / 0A · 120' · Started",
+            "rating": "6.4",
+            "text": "LEAGUE\nArsenal\n1 – 1\nBrentford\n0G / 0A · 120' · Started\n6.4"
+          },
+          {
+            "fixtureId": "fix05-ko-extraTime-2",
+            "contrib": "1G / 0A · 120' · Started",
+            "rating": "7.4",
+            "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\n1G / 0A · 120' · Started\n7.4"
+          },
+          {
+            "fixtureId": "fix05-ko-extraTime-2",
+            "contrib": "1G / 0A · 120' · Started",
+            "rating": "7.4",
+            "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\n1G / 0A · 120' · Started\n7.4"
+          },
+          {
+            "fixtureId": "fix05-ko-zero-11",
+            "contrib": "Unused substitute",
+            "rating": "—",
+            "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\nUnused substitute\n—"
+          },
+          {
+            "fixtureId": "fix05-ko-zero-11",
+            "contrib": "Unused substitute",
+            "rating": "—",
+            "text": "LEAGUE\nArsenal\n3 – 2\nBrentford\nUnused substitute\n—"
+          }
+        ],
+        "zeroish": 2,
+        "savedMatches": [
+          {
+            "fixtureId": "fix05-ko-zero-11",
+            "decidedBy": "regulation",
+            "minutes": 0,
+            "rating": null,
+            "goals": 0,
+            "assists": 0,
+            "homeGoals": 3,
+            "awayGoals": 2,
+            "winnerSide": "home"
+          },
+          {
+            "fixtureId": "fix05-ko-extraTime-2",
+            "decidedBy": "extraTime",
+            "minutes": 120,
+            "rating": 7.4,
+            "goals": 1,
+            "assists": 0,
+            "homeGoals": 3,
+            "awayGoals": 2,
+            "winnerSide": "home"
+          },
+          {
+            "fixtureId": "fix05-ko-penalties-3",
+            "decidedBy": "penalties",
+            "minutes": 120,
+            "rating": 6.4,
+            "goals": 0,
+            "assists": 0,
+            "homeGoals": 1,
+            "awayGoals": 1,
+            "winnerSide": "home"
           }
         ],
         "runtimeErrors": []
       }
     }
   ],
-  "casesReached": 7,
+  "casesReached": 8,
   "casesFailed": 0,
   "pass": true
 }

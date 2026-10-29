@@ -2,15 +2,15 @@
   "careerId": "bug5-gk-5",
   "position": "GK",
   "seed": 222,
-  "rawRecords": 59,
-  "positiveMinutes": 19,
-  "zeroMinutes": 40,
-  "withEdition": 59,
+  "rawRecords": 54,
+  "positiveMinutes": 18,
+  "zeroMinutes": 36,
+  "withEdition": 54,
   "editionCoverage": 1,
-  "rawCleanSheets": 2,
-  "ledgerCleanSheets": 2,
-  "evidenceLeagueCleanSheets": 2,
-  "evidenceTotalCleanSheets": 2,
+  "rawCleanSheets": 1,
+  "ledgerCleanSheets": 1,
+  "evidenceLeagueCleanSheets": 1,
+  "evidenceTotalCleanSheets": 1,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
     "FA Cup::2026:FA Cup",
@@ -21,9 +21,9 @@
   "goalsAgree": true,
   "goalsFromPositive": 0,
   "goalsFromLedger": 0,
-  "matchesWithEvents": 11,
+  "matchesWithEvents": 14,
   "eventGoalDisagree": 0,
-  "apps": 19,
+  "apps": 18,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:0",
@@ -33,7 +33,7 @@
       "minutes": 26,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.1
+      "rating": 7.1
     },
     {
       "matchId": "league:england-premier-league:md:20",
@@ -43,7 +43,7 @@
       "minutes": 25,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 5.7
+      "rating": 6.6
     }
   ],
   "sampleZero": [
@@ -54,7 +54,7 @@
       "teamId": "club:england:arsenal"
     },
     {
-      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:norway:bodo-glimt",
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:spain:real-madrid",
       "reason": "not_selected",
       "editionId": "2026-uefa-champions-league",
       "teamId": "club:england:arsenal"
@@ -62,24 +62,24 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 355,
-      "appearances": 11,
+      "minutes": 459,
+      "appearances": 14,
       "starts": 2,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": 2
+      "cleanSheets": 1
     },
     "cup": {
-      "minutes": 38,
-      "appearances": 2,
+      "minutes": 13,
+      "appearances": 1,
       "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 136,
-      "appearances": 6,
+      "minutes": 44,
+      "appearances": 3,
       "starts": 0,
       "goals": 0,
       "assists": 0,

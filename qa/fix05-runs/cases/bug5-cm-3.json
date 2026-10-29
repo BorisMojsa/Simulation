@@ -2,10 +2,10 @@
   "careerId": "bug5-cm-3",
   "position": "CM",
   "seed": 707,
-  "rawRecords": 53,
+  "rawRecords": 51,
   "positiveMinutes": 23,
-  "zeroMinutes": 30,
-  "withEdition": 53,
+  "zeroMinutes": 28,
+  "withEdition": 51,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -19,9 +19,9 @@
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 1,
-  "goalsFromLedger": 1,
-  "matchesWithEvents": 14,
+  "goalsFromPositive": 0,
+  "goalsFromLedger": 0,
+  "matchesWithEvents": 16,
   "eventGoalDisagree": 0,
   "apps": 23,
   "samplePositive": [
@@ -31,19 +31,19 @@
       "competitionId": "league:england-premier-league",
       "teamId": "club:england:arsenal",
       "minutes": 86,
-      "goals": 1,
+      "goals": 0,
       "cleanSheet": null,
-      "rating": 7.1
+      "rating": 5.6
     },
     {
-      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:england:afc-bournemouth",
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:turkey:fenerbahce",
       "editionId": "2026-uefa-champions-league",
       "competitionId": "uefa-champions-league",
       "teamId": "club:england:arsenal",
       "minutes": 25,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.2
+      "rating": 6.4
     }
   ],
   "sampleZero": [
@@ -62,24 +62,24 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 425,
-      "appearances": 14,
+      "minutes": 476,
+      "appearances": 16,
       "starts": 2,
-      "goals": 1,
-      "assists": 0,
+      "goals": 0,
+      "assists": 1,
       "cleanSheets": null
     },
     "cup": {
-      "minutes": 65,
-      "appearances": 2,
+      "minutes": 34,
+      "appearances": 1,
       "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 150,
-      "appearances": 7,
+      "minutes": 130,
+      "appearances": 6,
       "starts": 0,
       "goals": 0,
       "assists": 0,

@@ -332,8 +332,20 @@ function simulateSeasonEvidenceProbe() {
     const goalsFromLedger = ledgerRows
       .filter((r) => (r.minutes || 0) > 0)
       .reduce((s, r) => s + (r.goals || 0), 0);
+    const goalsFromLeagueLedger = ledgerRows
+      .filter(
+        (r) =>
+          (r.minutes || 0) > 0 &&
+          (r.competitionType === "league" ||
+            String(r.competitionId || "").startsWith("league:"))
+      )
+      .reduce((s, r) => s + (r.goals || 0), 0);
+    const evidenceTotalGoals =
+      evidence?.total?.goals ??
+      Object.values(evidence?.byScope || {}).reduce((s, row) => s + (row?.goals || 0), 0);
     // League descriptor must use fixture edition ids (e.g. 2026), not season-1 index,
     // and byEdition must key as competitionId::editionId.
+    // Compare league ledger goals to byScope.league (not all-competition totals).
     const ok =
       Boolean(evidence) &&
       Boolean(evidence.byScope) &&
@@ -344,7 +356,8 @@ function simulateSeasonEvidenceProbe() {
       !editionKeys.includes("season-1") &&
       (editionKeys.length === 0 || editionKeys.every((k) => k.includes("::"))) &&
       ledgerRows.length > 0 &&
-      goalsFromLedger === (evidence.byScope?.league?.goals ?? goalsFromLedger);
+      goalsFromLeagueLedger === (evidence.byScope?.league?.goals ?? goalsFromLeagueLedger) &&
+      goalsFromLedger === evidenceTotalGoals;
     return {
       ok,
       editionCount: editions.length,
@@ -357,6 +370,8 @@ function simulateSeasonEvidenceProbe() {
       leagueEvidenceKey: leagueEdition?.evidenceKey ?? null,
       ledgerRows: ledgerRows.length,
       goalsFromLedger,
+      goalsFromLeagueLedger,
+      evidenceTotalGoals,
       byScopeLeague: evidence?.byScope?.league || null,
     };
   } catch (e) {

@@ -2,15 +2,15 @@
   "careerId": "bug5-rb-1",
   "position": "RB",
   "seed": 33,
-  "rawRecords": 55,
+  "rawRecords": 59,
   "positiveMinutes": 35,
-  "zeroMinutes": 20,
-  "withEdition": 55,
+  "zeroMinutes": 24,
+  "withEdition": 59,
   "editionCoverage": 1,
-  "rawCleanSheets": 1,
-  "ledgerCleanSheets": 1,
-  "evidenceLeagueCleanSheets": 0,
-  "evidenceTotalCleanSheets": 1,
+  "rawCleanSheets": 4,
+  "ledgerCleanSheets": 4,
+  "evidenceLeagueCleanSheets": 3,
+  "evidenceTotalCleanSheets": 4,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
     "FA Cup::2026:FA Cup",
@@ -31,9 +31,9 @@
       "competitionId": "league:england-premier-league",
       "teamId": "club:england:arsenal",
       "minutes": 85,
-      "goals": 1,
+      "goals": 0,
       "cleanSheet": false,
-      "rating": 5.9
+      "rating": 5.4
     },
     {
       "matchId": "league:england-premier-league:md:30",
@@ -43,7 +43,7 @@
       "minutes": 17,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6
+      "rating": 6.1
     }
   ],
   "sampleZero": [
@@ -62,28 +62,28 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 906,
+      "minutes": 960,
       "appearances": 24,
-      "starts": 6,
+      "starts": 7,
       "goals": 1,
-      "assists": 1,
-      "cleanSheets": 0
+      "assists": 2,
+      "cleanSheets": 3
     },
     "cup": {
-      "minutes": 115,
-      "appearances": 2,
-      "starts": 1,
+      "minutes": 267,
+      "appearances": 5,
+      "starts": 2,
       "goals": 0,
       "assists": 0,
       "cleanSheets": 1
     },
     "continental": {
-      "minutes": 305,
-      "appearances": 9,
-      "starts": 1,
+      "minutes": 163,
+      "appearances": 6,
+      "starts": 0,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": 0
+      "cleanSheets": null
     },
     "international": {
       "minutes": 0,

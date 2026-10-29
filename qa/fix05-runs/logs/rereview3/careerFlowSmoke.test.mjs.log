@@ -1,0 +1,17 @@
+OK  ACADEMY_POOL has entries
+OK  pickThreeAcademies returns up to 3 enriched offers
+OK  England academies are home-heavy across many rolls
+OK  Nations without a league still get abroad stories
+OK  Serbia offers are mostly Serbian; distant continents are rare
+OK  United States rarely pulls Balkan academies
+OK  opening scenario bank has at least 77 stories
+OK  pickScenariosForPosition returns 5 for each position code
+OK  pickChoiceResult links text to delta
+OK  Top corner screamer stays two-way; fair choices need not be identical ± mirrors
+OK  rollAcademyStartingRating stays in 54–78 and 75+ is rare
+OK  pickRandomBackstory returns string
+OK  createPlayerIdentity + finalize + narrative season + first pro deal choice
+OK  club rivals map covers Eternal Derby and El Clasico sides
+OK  2. Bundesliga 2nd place promotes; bottom does not relegate
+OK  Bundesliga bottom places relegate to 2. Bundesliga
+All smoke tests passed.
