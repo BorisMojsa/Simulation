@@ -5,11 +5,11 @@
 import assert from "node:assert/strict";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../js/data/leagues.js";
-import { createRng, reseedCareerRng, createStreamRng } from "../js/simulation/rng.js";
+import { createRng, reseedCareerRng, createStreamRng, setSimRng } from "../js/simulation/rng.js";
 import { createPlayerIdentity } from "../js/simulation/playerDevelopment.js";
 import { ensurePlayerModel } from "../js/simulation/playerModelMigration.js";
 import { refreshAbilityCaches } from "../js/simulation/playerAbility.js";
-import { createWorldState, setWorldState } from "../js/simulation/worldState.js";
+import { createWorldState, setWorldState, getWorldState } from "../js/simulation/worldState.js";
 import { resetClubFinanceLedgers } from "../js/simulation/clubFinance.js";
 import { simulateSeason } from "../js/simulation/seasonSimulator.js";
 import {
@@ -35,6 +35,7 @@ import { ensurePlayingStints } from "../js/simulation/playingRegistration.js";
 import { applyOfferToPlayer } from "../js/simulation/dealPipeline.js";
 import { resolveMoveRegistration } from "../js/simulation/destinationSchedule.js";
 import { allSeniorClubs } from "../js/simulation/seniorClubs.js";
+import { applySeniorScenarioPolicy } from "../js/simulation/seniorCareerScenarios.js";
 
 const OUT = "qa/fix06-runs";
 mkdirSync(OUT, { recursive: true });
@@ -391,6 +392,96 @@ test("A: undated archived duration excluded; undated active fallback", () => {
   assert.ok(activeUndated.method.includes("undated") || activeUndated.method.includes("partial"));
 });
 
+test("A: R1 invalid active duration cannot cancel known days", () => {
+  const r = detail({
+    injuryHistory: [inj("known", 1010, 1020)],
+    activeInjury: { eventId: "bad-active", durationDays: -30 },
+  });
+  assert.ok(r.injuredDays >= 10, `known interval cancelled: ${r.injuredDays}`);
+  assert.equal(r.injuredDays, 10);
+  assert.ok(r.clippedIntervals.some((c) => c.eventId === "known" && c.clippedDays === 10));
+  writeFileSync(
+    `${OUT}/cases/R1-invalid-active-duration.json`,
+    JSON.stringify({ expectedMissed: 10, result: r }, null, 2)
+  );
+});
+
+test("A: R2 complete dated history survives incomplete active duplicate", () => {
+  const r = detail({
+    injuryHistory: [inj("same", 1010, 1040)],
+    activeInjury: { eventId: "same", durationDays: 3 },
+  });
+  assert.equal(r.injuredDays, 30);
+  assert.ok(r.clippedIntervals.some((c) => c.eventId === "same" && c.clippedDays === 30));
+  writeFileSync(
+    `${OUT}/cases/R2-dated-history-beats-incomplete-active.json`,
+    JSON.stringify({ expectedMissed: 30, result: r }, null, 2)
+  );
+});
+
+test("A: R2 incomplete history yields to complete dated active", () => {
+  const r = detail({
+    injuryHistory: [{ eventId: "same", durationDays: 3 }],
+    activeInjury: inj("same", 1010, 1040),
+  });
+  assert.equal(r.injuredDays, 30);
+});
+
+test("A: R2 invalid numeric fields on active do not erase dated history", () => {
+  const r = detail({
+    injuryHistory: [inj("same", 1010, 1040)],
+    activeInjury: {
+      eventId: "same",
+      startDay: Number.NaN,
+      expectedReturnDay: Number.POSITIVE_INFINITY,
+      durationDays: -5,
+    },
+  });
+  assert.equal(r.injuredDays, 30);
+});
+
+test("A: R3 date-only expectedReturnDate beats late recoveredDay", () => {
+  const rec = {
+    eventId: "date-only-return",
+    date: "2026-07-01",
+    expectedReturnDate: "2026-07-11",
+    recoveredDay: toDay("2026-07-31"),
+  };
+  assert.equal(availabilityReturnDayOf(rec), toDay("2026-07-11"));
+  // Deliberately omit expectedReturnDay so only the date-string branch applies.
+  assert.equal(rec.expectedReturnDay, undefined);
+  const r = estimateHealthyTrainingDetail({
+    seasonStartDate: "2026-06-01",
+    seasonEndDate: "2027-06-01",
+    health: { activeInjury: null, injuryHistory: [rec] },
+  });
+  assert.equal(r.injuredDays, 10);
+  writeFileSync(
+    `${OUT}/cases/R3-date-only-return.json`,
+    JSON.stringify({ expectedMissed: 10, returnDay: availabilityReturnDayOf(rec), result: r }, null, 2)
+  );
+});
+
+test("A: malformed expectedReturnDate falls through truthfully", () => {
+  const r = estimateHealthyTrainingDetail({
+    seasonStartDate: "2026-06-01",
+    seasonEndDate: "2027-06-01",
+    health: {
+      activeInjury: null,
+      injuryHistory: [
+        {
+          eventId: "bad-date",
+          date: "2026-07-01",
+          expectedReturnDate: "not-a-date",
+          recoveredDay: toDay("2026-07-31"),
+        },
+      ],
+    },
+  });
+  // No usable return boundary besides recoveredDay observation → 30 days.
+  assert.equal(r.injuredDays, 30);
+});
+
 /* ------------------------------------------------------------------ */
 /* B. Real health recovery semantics                                   */
 /* ------------------------------------------------------------------ */
@@ -504,34 +595,57 @@ test("B: legacy late recoveredDay with valid expectedReturn", () => {
 });
 
 test("B: durable damage retained while missed days are zero", () => {
+  // Seed 6 deterministically samples nonzero durable damage for severity "severe".
   const p = barePlayer();
-  const beforeSpeed = p.attributes.Speed;
+  const beforeAttrs = { ...p.attributes };
   applyInjury(
     p,
     {
       eventId: "dmg",
       kind: "match",
-      severity: "serious",
+      severity: "severe",
       startDay: 100,
       durationDays: 50,
       expectedReturnDay: 150,
-      temporaryEffects: { overallPenalty: 3, scale: 1, attributePenalties: {} },
-      returnReadiness: 0.7,
+      temporaryEffects: { overallPenalty: 6, scale: 1, attributePenalties: {} },
+      returnReadiness: 0.55,
     },
-    { rng: createRng(99) }
+    { rng: createRng(6) }
   );
   advanceHealth(p, 200);
-  const health = p.health;
-  const r = detail(health);
+  const damagedKeys = Object.entries(p.health.durableDamage || {}).filter(([, v]) => v > 0);
+  assert.ok(damagedKeys.length > 0, "expected nonzero tracked durable damage");
+  const damageBefore = JSON.stringify(p.health.durableDamage);
+  const attrsBeforeEvidence = JSON.stringify(p.attributes);
+  const recoverableBefore = JSON.stringify(p.health.recoverableDamage);
+  const r = detail(p.health);
   assert.equal(r.injuredDays, 0);
-  assert.ok(
-    Object.keys(health.durableDamage || {}).length >= 0,
-    "durable damage map present"
+  assert.equal(JSON.stringify(p.health.durableDamage), damageBefore);
+  assert.equal(JSON.stringify(p.attributes), attrsBeforeEvidence);
+  assert.equal(JSON.stringify(p.health.recoverableDamage), recoverableBefore);
+  assert.ok(healthHistoryHas(p, "dmg"));
+  for (const [k, lost] of damagedKeys) {
+    assert.ok(p.attributes[k] < beforeAttrs[k], `${k} should remain below pre-injury`);
+    assert.ok(lost > 0);
+  }
+  writeFileSync(
+    `${OUT}/cases/B-durable-damage-preserved.json`,
+    JSON.stringify(
+      {
+        seed: 6,
+        durableDamage: p.health.durableDamage,
+        injuredDays: r.injuredDays,
+        attrsAfter: p.attributes,
+      },
+      null,
+      2
+    )
   );
-  // Attributes may or may not have been damaged depending on RNG; history retained.
-  assert.ok(health.injuryHistory.some((h) => h.eventId === "dmg"));
-  void beforeSpeed;
 });
+
+function healthHistoryHas(player, eventId) {
+  return (player.health.injuryHistory || []).some((h) => h.eventId === eventId);
+}
 
 /* ------------------------------------------------------------------ */
 /* C. Full completed-season integration                                */
@@ -768,7 +882,7 @@ test("C: requireDatedHealthWindow rejects bare seasonDays", () => {
 /* D. Pause, move, snapshot                                            */
 /* ------------------------------------------------------------------ */
 
-function pauseToDecision(player) {
+function pauseToDecision(player, { scenarioPolicy = "balanced" } = {}) {
   let seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: true,
     autoDecisionPolicy: null,
@@ -776,6 +890,14 @@ function pauseToDecision(player) {
   let guards = 0;
   while (seasonData?.awaitingScenario && guards < 12) {
     guards += 1;
+    const pending =
+      player.pendingSeniorScenario ||
+      seasonData.pendingSeniorScenario ||
+      seasonData.checkpoint?.pendingSeniorScenario ||
+      null;
+    assert.ok(pending, "awaitingScenario requires pendingSeniorScenario");
+    const applied = applySeniorScenarioPolicy(player, pending, scenarioPolicy);
+    assert.ok(applied && applied.ok !== false, `scenario policy failed: ${applied?.reason}`);
     player.pendingSeniorScenario = null;
     if (seasonData.checkpoint) seasonData.checkpoint.pendingSeniorScenario = null;
     player.seasonCheckpoint = seasonData.checkpoint;
@@ -789,11 +911,13 @@ function pauseToDecision(player) {
 }
 
 test("D: pause/resume preserves period and exact-once development", () => {
+  // Run the uninterrupted twin to completion first, then build the paused
+  // player on a freshly reseated world (same order as the audit harness).
   const uninterrupted = makeSeasonPlayer({ seed: 640, oldInjury: OLD_INJURY });
-  const pausedPlayer = makeSeasonPlayer({ seed: 640, oldInjury: OLD_INJURY });
   simulateSeason(uninterrupted, LEAGUES, LEAGUE_LOOKUP, { autoDecisionPolicy: "stay" });
   const u = uninterrupted.seasons[0];
 
+  const pausedPlayer = makeSeasonPlayer({ seed: 640, oldInjury: OLD_INJURY });
   const paused = pauseToDecision(pausedPlayer);
   assert.ok(paused.checkpoint?.developmentPeriod, "checkpoint carries period");
   assert.equal(pausedPlayer.age, 19, "age not advanced at pause");
@@ -801,13 +925,14 @@ test("D: pause/resume preserves period and exact-once development", () => {
 
   const snap = serializeCareerSnapshot({
     player: pausedPlayer,
-    world: createWorldState({ startYear: 2026 }),
+    world: getWorldState(),
     checkpoint: paused.checkpoint,
   });
   const restored = deserializeCareerSnapshot(JSON.parse(JSON.stringify(snap)));
   setWorldState(restored.world);
+  if (snap.rngSeed != null) setSimRng(createRng(snap.rngSeed));
   const rp = restored.player;
-  // Resolve stay
+  // Resolve stay (matched policy with uninterrupted twin).
   rp.pendingDecision = null;
   rp.pendingOffers = [];
   if (rp.seasonCheckpoint) {
@@ -822,6 +947,9 @@ test("D: pause/resume preserves period and exact-once development", () => {
   assert.equal(s.developmentPeriod.startDate, u.developmentPeriod.startDate);
   assert.equal(s.developmentPeriod.endExclusiveDate, u.developmentPeriod.endExclusiveDate);
   assert.equal(s.developmentPeriod.days, u.developmentPeriod.days);
+  assert.equal(s.seasonEvidence.healthyTrainingFraction, u.seasonEvidence.healthyTrainingFraction);
+  assert.equal(s.seasonEvidence.health.injuredDays, u.seasonEvidence.health.injuredDays);
+  assert.deepEqual(rp.attributes, uninterrupted.attributes);
   assert.equal(rp.seasons.length, 1);
   assert.equal(rp.development.lastProcessedSeasonId, "season-1");
   const evidenceBefore = JSON.stringify(rp.seasons[0].seasonEvidence);
@@ -839,26 +967,63 @@ test("D: pause/resume preserves period and exact-once development", () => {
   assert.equal(JSON.stringify(rp.seasons[0].seasonEvidence), evidenceBefore);
 });
 
-test("D: old checkpoint without window fields reconstructs deterministically", () => {
-  const p = makeSeasonPlayer({ seed: 650 });
-  const period = resolveDevelopmentPeriod(p, { seasonIndex: 0 });
-  const legacyCk = {
-    status: "awaiting_decision",
-    version: 3,
-    seasonIndex: 0,
-    seasonStartYear: 2026,
-    calendarYear: 2026,
-    leagueId: p.club.leagueId,
-    eventIndex: 0,
-    ordered: [],
-    // intentionally no developmentPeriod
-  };
-  const reconstructed = resolveDevelopmentPeriod(p, {
-    seasonIndex: legacyCk.seasonIndex,
-    seasonStartYear: legacyCk.seasonStartYear,
+test("D: legacy checkpoint without window fields completes via simulateSeason", () => {
+  const p = makeSeasonPlayer({ seed: 650, oldInjury: OLD_INJURY });
+  const paused = pauseToDecision(p);
+  const ck = structuredClone(paused.checkpoint || p.seasonCheckpoint);
+  assert.ok(ck, "need a real paused checkpoint");
+  const expected = resolveDevelopmentPeriod(p, {
+    seasonIndex: ck.seasonIndex,
+    seasonStartYear: ck.seasonStartYear,
   });
-  assert.equal(reconstructed.periodStartDate, period.periodStartDate);
-  assert.equal(reconstructed.periodDays, period.periodDays);
+  delete ck.developmentPeriod;
+  assert.equal(ck.developmentPeriod, undefined);
+
+  p.seasonCheckpoint = ck;
+  p.pendingDecision = null;
+  p.pendingOffers = [];
+  if (p.seasonCheckpoint) {
+    p.seasonCheckpoint.decision = null;
+    p.seasonCheckpoint.offers = [];
+  }
+  const snap = serializeCareerSnapshot({
+    player: p,
+    world: getWorldState(),
+    checkpoint: ck,
+  });
+  const restored = deserializeCareerSnapshot(JSON.parse(JSON.stringify(snap)));
+  setWorldState(restored.world);
+  if (snap.rngSeed != null) setSimRng(createRng(snap.rngSeed));
+  const rp = restored.player;
+  rp.pendingDecision = null;
+  rp.pendingOffers = [];
+  if (rp.seasonCheckpoint) {
+    delete rp.seasonCheckpoint.developmentPeriod;
+    rp.seasonCheckpoint.decision = null;
+    rp.seasonCheckpoint.offers = [];
+  }
+  const done = simulateSeason(rp, LEAGUES, LEAGUE_LOOKUP, {
+    autoDecisionPolicy: "stay",
+    pauseForDecisions: false,
+  });
+  const season = done.season;
+  assert.equal(season.developmentPeriod.startDate, expected.periodStartDate);
+  assert.equal(season.developmentPeriod.endExclusiveDate, expected.periodEndExclusiveDate);
+  assert.equal(season.developmentPeriod.days, expected.periodDays);
+  assert.equal(season.seasonEvidence.health.hasDatedWindow, true);
+  writeFileSync(
+    `${OUT}/cases/D-legacy-checkpoint-reconstruct.json`,
+    JSON.stringify(
+      {
+        seed: 650,
+        removedField: "developmentPeriod",
+        reconstructed: season.developmentPeriod,
+        injuredDays: season.seasonEvidence.health.injuredDays,
+      },
+      null,
+      2
+    )
+  );
 });
 
 test("D: midseason transfer preserves original period window", () => {

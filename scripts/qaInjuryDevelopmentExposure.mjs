@@ -42,6 +42,7 @@ import { applyOfferToPlayer } from "../js/simulation/dealPipeline.js";
 import { resolveMoveRegistration } from "../js/simulation/destinationSchedule.js";
 import { allSeniorClubs } from "../js/simulation/seniorClubs.js";
 import { assertPlayableRegistration } from "../js/simulation/contractLifecycle.js";
+import { applySeniorScenarioPolicy } from "../js/simulation/seniorCareerScenarios.js";
 
 const OUT = "qa/fix06-runs/audit";
 const CASES = `${OUT}/cases`;
@@ -85,25 +86,73 @@ function recordStart(rec) {
   return finiteOrNull(rec?.startDay ?? rec?.onsetDay) ?? dayFromDate(rec?.date);
 }
 
-/** Independent re-statement of the availability boundary (cross-check for production helper). */
+/** Independent re-statement of the availability boundary (must not call production helpers). */
 function independentReturn(rec) {
   const a = finiteOrNull(rec?.availabilityReturnDay);
   if (a != null) return a;
   const e = finiteOrNull(rec?.expectedReturnDay);
   if (e != null) return e;
+  const availDate = dayFromDate(rec?.availabilityReturnDate);
+  if (availDate != null) return availDate;
+  const expectedDate = dayFromDate(rec?.expectedReturnDate);
+  if (expectedDate != null) return expectedDate;
   const s = recordStart(rec);
   const dur = finiteOrNull(rec?.durationDays);
-  if (s != null && dur != null) return s + dur;
+  if (s != null && dur != null && dur >= 0) return s + dur;
   return finiteOrNull(rec?.recoveredDay);
 }
 
-function allInjuryRecords(health) {
-  const out = [];
-  for (const r of health?.injuryHistory || []) if (r && typeof r === "object") out.push({ rec: r, active: false });
-  if (health?.activeInjury && typeof health.activeInjury === "object") {
-    out.push({ rec: health.activeInjury, active: true });
+function independentUsableDated(rec) {
+  const s = recordStart(rec);
+  const e = independentReturn(rec);
+  return s != null && e != null && e > s;
+}
+
+/** Prefer usable dated copies; active only breaks ties among equally usable copies. */
+function independentCompleteness(rec, active) {
+  let score = 0;
+  if (!rec || typeof rec !== "object") return score;
+  if (independentUsableDated(rec)) {
+    score += 10000;
+    if (active) score += 100;
+  } else if (active) {
+    score += 500;
   }
-  return out;
+  if (rec.startDay != null || rec.onsetDay != null || rec.date != null) score += 40;
+  if (
+    rec.expectedReturnDay != null ||
+    rec.availabilityReturnDay != null ||
+    rec.expectedReturnDate != null ||
+    rec.availabilityReturnDate != null
+  ) {
+    score += 40;
+  }
+  const dur = finiteOrNull(rec.durationDays);
+  if (dur != null && dur > 0) score += 20;
+  if (rec.recoveredDay != null) score += 5;
+  if (!rec.superseded) score += 2;
+  return score;
+}
+
+function allInjuryRecords(health) {
+  const byId = new Map();
+  const anonymous = [];
+  const consider = (rec, active) => {
+    if (!rec || typeof rec !== "object") return;
+    const idKey = rec.eventId != null ? String(rec.eventId) : null;
+    const entry = { rec, active: Boolean(active) };
+    if (!idKey) {
+      anonymous.push(entry);
+      return;
+    }
+    const prev = byId.get(idKey);
+    if (!prev || independentCompleteness(rec, active) >= independentCompleteness(prev.rec, prev.active)) {
+      byId.set(idKey, entry);
+    }
+  };
+  for (const r of health?.injuryHistory || []) consider(r, false);
+  if (health?.activeInjury) consider(health.activeInjury, true);
+  return [...byId.values(), ...anonymous];
 }
 
 /**
@@ -114,12 +163,6 @@ function allInjuryRecords(health) {
 function oracleForPeriod(health, S, E) {
   const days = E - S;
   const records = allInjuryRecords(health);
-  const datedIdsWithValidCopy = new Set();
-  for (const { rec } of records) {
-    const s = recordStart(rec);
-    const e = availabilityReturnDayOf(rec);
-    if (s != null && e != null && e > s && rec.eventId != null) datedIdsWithValidCopy.add(String(rec.eventId));
-  }
 
   const occupied = new Set();
   const intervals = [];
@@ -129,10 +172,11 @@ function oracleForPeriod(health, S, E) {
 
   for (const { rec, active } of records) {
     const eventId = rec.eventId != null ? String(rec.eventId) : null;
+    // Oracle occupancy uses the independent endpoint only — never the production helper.
     const s = recordStart(rec);
-    const e = availabilityReturnDayOf(rec);
-    const eInd = independentReturn(rec);
-    if ((e ?? null) !== (eInd ?? null)) endpointMismatches.push({ eventId, production: e, independent: eInd });
+    const e = independentReturn(rec);
+    const eProd = availabilityReturnDayOf(rec);
+    if ((e ?? null) !== (eProd ?? null)) endpointMismatches.push({ eventId, production: eProd, independent: e });
 
     const hasEndpoints = s != null && e != null;
     if (hasEndpoints && !(e > s)) {
@@ -140,16 +184,20 @@ function oracleForPeriod(health, S, E) {
       continue;
     }
     if (!hasEndpoints) {
-      if (eventId && datedIdsWithValidCopy.has(eventId)) {
-        exclusions.push({ eventId, reason: "incomplete-copy-superseded-by-dated-copy" });
-      } else if (active) {
+      if (active) {
         const dur = finiteOrNull(rec.durationDays);
-        undatedActiveDays += dur != null ? dur : 30;
-        exclusions.push({
-          eventId,
-          reason: "undated-active-compat-charge",
-          chargedDays: dur != null ? dur : 30,
-        });
+        // Invalid/negative durations never cancel known missed days.
+        if (dur != null && !(dur > 0)) {
+          exclusions.push({ eventId, reason: "invalid-undated-active-duration", durationDays: dur });
+        } else {
+          const charge = dur != null ? dur : 30;
+          undatedActiveDays += charge;
+          exclusions.push({
+            eventId,
+            reason: "undated-active-compat-charge",
+            chargedDays: charge,
+          });
+        }
       } else {
         exclusions.push({ eventId, reason: "undated-historical-excluded" });
       }
@@ -837,7 +885,12 @@ function runCareer(cfg) {
 /* Dedicated cases                                                     */
 /* ------------------------------------------------------------------ */
 
-function pauseToDecision(player) {
+/**
+ * Pause through real midseason decisions. Senior scenarios are resolved with the
+ * same "balanced" policy that `autoDecisionPolicy: "stay"` applies on the
+ * uninterrupted path — never by clearing the pending scene without a choice.
+ */
+function pauseToDecision(player, { scenarioPolicy = "balanced" } = {}) {
   let seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: true,
     autoDecisionPolicy: null,
@@ -845,6 +898,16 @@ function pauseToDecision(player) {
   let guards = 0;
   while (seasonData?.awaitingScenario && guards < 12) {
     guards += 1;
+    const pending =
+      player.pendingSeniorScenario ||
+      seasonData.pendingSeniorScenario ||
+      seasonData.checkpoint?.pendingSeniorScenario ||
+      null;
+    if (!pending) throw new Error("awaitingScenario without pendingSeniorScenario");
+    const applied = applySeniorScenarioPolicy(player, pending, scenarioPolicy);
+    if (!applied || applied.ok === false) {
+      throw new Error(`scenario policy '${scenarioPolicy}' failed: ${applied?.reason || "unknown"}`);
+    }
     player.pendingSeniorScenario = null;
     if (seasonData.checkpoint) seasonData.checkpoint.pendingSeniorScenario = null;
     player.seasonCheckpoint = seasonData.checkpoint;
@@ -950,25 +1013,21 @@ function pauseRestoreCase({ id, seed, position, rating, oldInjury, injected, lea
       breakdownFieldDiffs: diffKeys(season.developmentBreakdown, t.developmentBreakdown),
     };
     if (!record.checks.twinComparison.periodEqual) fail("restored period differs from uninterrupted twin");
-    // Same injuries => health accounting must agree exactly. Development output is compared only when
-    // the match-derived inputs (minutes/seasonP/reliability) also agree: post-pause fixtures replay from
-    // restored RNG state and fixture-level divergence there is not an injury-accounting defect.
-    // The divergent breakdown fields are exported in breakdownFieldDiffs.
+    // Matched-policy twins (balanced scenarios + stay) must agree on period, health,
+    // match-derived inputs, breakdown and attributes. No waiver for input divergence.
     const sameInjuries = same(
       oracleForPeriod(rp.health, exp.S, exp.E).intervals,
       oracleForPeriod(twin.health, exp.S, exp.E).intervals
     );
     const tc = record.checks.twinComparison;
     tc.sameInjuryIntervals = sameInjuries;
-    if (sameInjuries) {
-      if (!tc.healthEqual) fail("same injuries but restored evidence.health != twin");
-      if (tc.breakdownFieldDiffs.healthyTrainingFraction)
-        fail("same injuries but breakdown healthyTrainingFraction != twin", tc.breakdownFieldDiffs.healthyTrainingFraction);
-      if (tc.matchInputsEqual) {
-        if (!tc.breakdownEqual) fail("same injuries + match inputs but restored breakdown != twin", tc.breakdownFieldDiffs);
-        if (!tc.attributesEqual) fail("same injuries + match inputs but restored attributes != twin");
-      }
-    }
+    if (!tc.healthEqual) fail("restored evidence.health != uninterrupted twin");
+    if (!tc.matchInputsEqual) fail("restored match inputs != uninterrupted twin (matched balanced policy)");
+    if (!tc.breakdownEqual) fail("restored breakdown != uninterrupted twin", tc.breakdownFieldDiffs);
+    if (!tc.attributesEqual) fail("restored attributes != uninterrupted twin");
+    if (!sameInjuries) fail("restored injury intervals != uninterrupted twin");
+    if (tc.breakdownFieldDiffs.healthyTrainingFraction)
+      fail("breakdown healthyTrainingFraction != twin", tc.breakdownFieldDiffs.healthyTrainingFraction);
     // Exact-once after resume.
     if (rp.seasons.length !== 1) fail("resumed player has wrong season count", rp.seasons.length);
     if (rp.development.lastProcessedSeasonId !== "season-1") fail("lastProcessedSeasonId != season-1");

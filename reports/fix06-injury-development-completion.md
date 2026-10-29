@@ -78,11 +78,25 @@ Saved `seasonEvidence` now includes `developmentPeriod`, `season` endpoints, raw
 
 Injury-free control for old-history integration: ST seed **2**, GK seed **3** (`careerId fix06-${seed}-${position}`). Search range 1..5000 recorded in focused test case JSON.
 
+## Re-review follow-up (R1–R5)
+
+Addressed against independent review of `fe58bcab218a4ac089fa015da6a151ba54c8a7a7`:
+
+| ID | Fix |
+| --- | --- |
+| R1 | Undated-active fallback only accepts finite **positive** durations; invalid/negative durations are excluded and cannot cancel known union days. |
+| R2 | Duplicate-event selection prefers a usable dated interval over an incomplete copy; active status only breaks ties among equally usable copies. |
+| R3 | `availabilityReturnDayOf` honors `expectedReturnDate` / `availabilityReturnDate` before falling back to late `recoveredDay`. |
+| R4 | Pause helpers resolve senior scenarios via `applySeniorScenarioPolicy(..., "balanced")` (same as `autoDecisionPolicy: "stay"`). Matched-policy twins require period/health/match inputs/breakdown/attributes equality. Focused snapshot test uses `getWorldState()` + restored RNG. Legacy checkpoint test strips `developmentPeriod` from a real pause, serializes/restores, and completes via `simulateSeason`. Durable-damage test uses configured `severe` + seed 6 with nonzero tracked damage. |
+| R5 | Fresh Fix 05 browser report packaged from the post-fix working checkout (not the Git-exported historical copy). |
+
+Audit oracle independently implements the same return-date and nonnegative-duration rules and uses those endpoints for occupancy (production helper is only cross-checked).
+
 ## Limitations
 
-- Browser B01 may still accumulate *new* in-season injuries under UI pause-for-decisions; assertions reconcile against the live union oracle rather than requiring zero new injuries in the browser path.
-- Summer-international audit case injects a dated June/July injury (engine-forced international injury sampling is not deterministic enough for the matrix).
-- One pause/restore dedicated audit case can diverge in match-derived minutes/performance vs uninterrupted twin while health accounting remains identical (pre-existing unrelated divergence; recorded in audit JSON).
+- Browser B01 may still accumulate *new* in-season injuries under UI pause-for-decisions; assertions reconcile against the live union oracle rather than requiring zero new injuries in the browser path. A separate engine control (seed 2) proves exact 100% credit with old history and no new overlap.
+- Summer-international audit case injects a dated June/July injury as a controlled interval/window integration test; it does not claim a naturally sampled international injury event.
+- The previously reported PR2 pause/restore divergence was a **mismatched scenario policy** in the harness (cleared pending scenes vs balanced auto-policy). Under matched balanced policy the twins agree; that limitation is withdrawn.
 
 ## Not done (by design)
 

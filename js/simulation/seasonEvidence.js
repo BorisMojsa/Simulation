@@ -210,13 +210,67 @@ function mergeIntervals(intervals) {
   return out;
 }
 
-/** Prefer active / richer copies when the same eventId appears twice. */
+function injuryOnsetDay(rec) {
+  if (!rec || typeof rec !== "object") return null;
+  return numOrNull(rec.startDay ?? rec.onsetDay) ?? toDay(rec.date);
+}
+
+/**
+ * Availability return boundary — same semantics as `isAvailable`.
+ * Prefer explicit availability / expected return (day or date) / onset+duration.
+ * A late `recoveredDay` observation must not extend unavailable time.
+ */
+export function availabilityReturnDayOf(rec) {
+  if (!rec || typeof rec !== "object") return null;
+  const explicit = numOrNull(rec.availabilityReturnDay);
+  if (explicit != null) return explicit;
+  const expected = numOrNull(rec.expectedReturnDay);
+  if (expected != null) return expected;
+  // Date-string equivalents already emitted by the health model.
+  const availabilityDate = toDay(rec.availabilityReturnDate);
+  if (availabilityDate != null) return availabilityDate;
+  const expectedDate = toDay(rec.expectedReturnDate);
+  if (expectedDate != null) return expectedDate;
+  const start = injuryOnsetDay(rec);
+  const duration = numOrNull(rec.durationDays);
+  // Only a finite nonnegative duration establishes onset+duration return.
+  if (start != null && duration != null && duration >= 0) return start + duration;
+  // Last-resort legacy: observation day only when no return boundary exists.
+  return numOrNull(rec.recoveredDay);
+}
+
+/** True when the record establishes a usable [start, return) interval. */
+function hasUsableDatedInterval(rec) {
+  const start = injuryOnsetDay(rec);
+  const end = availabilityReturnDayOf(rec);
+  return start != null && end != null && Number.isFinite(start) && Number.isFinite(end) && end > start;
+}
+
+/**
+ * Prefer a usable dated interval over any incomplete copy.
+ * Active status only breaks ties among equally usable copies.
+ */
 function recordCompleteness(rec, active) {
-  let score = active ? 1000 : 0;
+  let score = 0;
   if (rec == null || typeof rec !== "object") return score;
+  if (hasUsableDatedInterval(rec)) {
+    score += 10000;
+    if (active) score += 100;
+  } else if (active) {
+    // Undated active may win over incomplete history, never over a dated copy.
+    score += 500;
+  }
   if (rec.startDay != null || rec.onsetDay != null || rec.date != null) score += 40;
-  if (rec.expectedReturnDay != null || rec.availabilityReturnDay != null) score += 40;
-  if (rec.durationDays != null) score += 20;
+  if (
+    rec.expectedReturnDay != null ||
+    rec.availabilityReturnDay != null ||
+    rec.expectedReturnDate != null ||
+    rec.availabilityReturnDate != null
+  ) {
+    score += 40;
+  }
+  const dur = numOrNull(rec.durationDays);
+  if (dur != null && dur > 0) score += 20;
   if (rec.recoveredDay != null) score += 5;
   if (!rec.superseded) score += 2;
   return score;
@@ -244,27 +298,12 @@ function injuryRecords(health) {
   return [...byId.values(), ...anonymous];
 }
 
-/**
- * Availability return boundary — same semantics as `isAvailable`.
- * Prefer explicit availability / expected return / onset+duration.
- * A late `recoveredDay` observation must not extend unavailable time.
- */
-export function availabilityReturnDayOf(rec) {
-  if (!rec || typeof rec !== "object") return null;
-  const explicit = numOrNull(rec.availabilityReturnDay);
-  if (explicit != null) return explicit;
-  const expected = numOrNull(rec.expectedReturnDay);
-  if (expected != null) return expected;
-  const start = numOrNull(rec.startDay ?? rec.onsetDay) ?? toDay(rec.date);
-  const duration = numOrNull(rec.durationDays);
-  if (start != null && duration != null) return start + duration;
-  // Last-resort legacy: observation day only when no return boundary exists.
-  return numOrNull(rec.recoveredDay);
-}
-
-function injuryOnsetDay(rec) {
-  if (!rec || typeof rec !== "object") return null;
-  return numOrNull(rec.startDay ?? rec.onsetDay) ?? toDay(rec.date);
+/** Finite positive duration for undated-active fallback; invalid values never subtract. */
+function nonnegativeFallbackDays(duration, { allowDefault30 = false } = {}) {
+  if (duration != null) {
+    return Number.isFinite(duration) && duration > 0 ? duration : null;
+  }
+  return allowDefault30 ? 30 : null;
 }
 
 function emptyHealthDetail(days, method, partial, extras = {}) {
@@ -392,9 +431,17 @@ export function estimateHealthyTrainingDetail({
     if (hasWindow) {
       if (active) {
         // Bounded compatibility for undated active injury — not exact dated overlap.
-        undatedActiveDays += duration != null ? duration : 30;
-        usedActiveUndatedFallback = true;
-        partial = true;
+        // Invalid/negative durations never cancel known missed days.
+        const charge = nonnegativeFallbackDays(duration, { allowDefault30: true });
+        if (charge != null) {
+          undatedActiveDays += charge;
+          usedActiveUndatedFallback = true;
+          partial = true;
+        } else {
+          excludedUnknownCount += 1;
+          if (eventId) excludedUnknownEventIds.push(eventId);
+          partial = true;
+        }
       } else {
         // Unscoped historical duration must not charge every subsequent year.
         excludedUnknownCount += 1;
@@ -404,8 +451,16 @@ export function estimateHealthyTrainingDetail({
       continue;
     }
 
-    undatedActiveDays += duration != null ? duration : active ? 30 : 0;
-    if (active && duration == null && !(start != null && end != null)) usedActiveUndatedFallback = true;
+    if (active) {
+      const charge = nonnegativeFallbackDays(duration, { allowDefault30: true });
+      if (charge != null) {
+        undatedActiveDays += charge;
+        usedActiveUndatedFallback = true;
+      }
+    } else {
+      const charge = nonnegativeFallbackDays(duration, { allowDefault30: false });
+      if (charge != null) undatedActiveDays += charge;
+    }
     partial = true;
   }
 
