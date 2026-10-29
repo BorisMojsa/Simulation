@@ -2,7 +2,11 @@
  * Transfer market facade — all offers route through the shared deal pipeline.
  */
 import { calculateContractLength } from "./playerValuation.js";
-import { generatePipelineOffers, acceptPipelineOffer, buildValidatedOffer } from "./dealPipeline.js";
+import {
+  generatePipelineOffers,
+  acceptPipelineOffer,
+  buildValidatedOffer,
+} from "./dealPipeline.js";
 import { getOrInitClubSeasonFinance } from "./clubFinance.js";
 import { LEAGUE_LOOKUP } from "../data/leagues.js";
 import { findSeniorClub } from "./seniorClubs.js";
@@ -72,6 +76,10 @@ export function generateTransferOffers(
 
   player.lastOfferRejectionLog = result.rejectionLog;
   player.lastEligibleOfferCount = result.eligibleCount;
+  player.lastMarketDiagnostics = result.diagnostics || null;
+  player.lastMarketReviewId = result.reviewId || null;
+  // Do not close the free-agent review on generation/rerender — settlement
+  // (decline window, Continue, or train/wait) closes it exactly once.
   return result.offers;
 }
 

@@ -160,38 +160,50 @@ export function ensureContractAuthority(player) {
 /**
  * Sporting/role, age, performance, and affordability policy for renewal willingness.
  * Does not book money. Temporary finance failure ≠ firm non-renewal.
+ *
+ * Review windows are identified by employer + contract revision + season + phase.
+ * An early-season firm outcome stays latched within that phase; a later scheduled
+ * boundary phase with completed evidence may open a distinct review once.
  */
 export function evaluateRenewalReview(player, opts = {}) {
   ensureContractAuthority(player);
   const seasonIndex = opts.seasonIndex ?? completedSeasons(player);
   const rem =
     player.contractEndSeason == null ? 99 : player.contractEndSeason - seasonIndex;
+  const reviewPhase = opts.reviewPhase || "in-season";
 
   const employer = resolveEmploymentClub(player);
   const employerId = employer?.clubId || employmentClubId(player);
 
-  const reviewId = `review:${player.careerId || player.name}:${employerId}:${player.contractRevision}:${seasonIndex}`;
+  const reviewId = `review:${player.careerId || player.name}:${employerId}:${player.contractRevision}:${seasonIndex}:${reviewPhase}`;
 
   // Outside final year / expiry window — no firm review.
-  if (rem > 1 || player.club?.isAcademy || !employerId) {
+  // Boundary phase runs at rem <= 0 (term just completed) or rem === 1.
+  const inWindow =
+    reviewPhase === "boundary"
+      ? rem <= 1
+      : rem <= 1;
+  if ((!inWindow && rem > 1) || player.club?.isAcademy || !employerId) {
     const review = {
       outcome: "undecided",
       reason: rem > 1 ? "not-final-year" : "no-employer",
       employerClubId: employerId,
       contractRevision: player.contractRevision,
       reviewSeason: seasonIndex,
+      reviewPhase,
       reviewId,
     };
     player.renewalReview = review;
     return review;
   }
 
-  // Preserve an already-firm review for this contract revision / window.
+  // Preserve an already-firm review for this contract revision / window / phase.
   const existing = player.renewalReview;
   if (
     existing &&
     existing.contractRevision === player.contractRevision &&
     existing.reviewSeason === seasonIndex &&
+    (existing.reviewPhase || "in-season") === reviewPhase &&
     (existing.outcome === "wants-renewal" || existing.outcome === "will-not-renew") &&
     !opts.forceReevaluate
   ) {
@@ -243,6 +255,7 @@ export function evaluateRenewalReview(player, opts = {}) {
     employerClubId: employerId,
     contractRevision: player.contractRevision,
     reviewSeason: seasonIndex,
+    reviewPhase,
     reviewId,
     role,
     interest,
@@ -390,12 +403,21 @@ export function releaseToFreeAgency(player, reason = "contract-expired") {
 /**
  * Call after a season completes (history already written under the old clubs).
  * Releases if the term has ended and no new deal was signed.
+ * Defers release while a boundary contract review is still pending settlement.
  */
 export function applyContractExpiryAtBoundary(player) {
   ensureContractAuthority(player);
   if (player.club?.isAcademy) return { ok: true, action: "academy" };
   if (player.contractStatus === "released") return { ok: true, action: "already-free" };
   if (player.contractEndSeason == null) return { ok: true, action: "unsigned" };
+
+  if (player.pendingContractReview?.status === "pending") {
+    return {
+      ok: true,
+      action: "deferred-pending-review",
+      reviewId: player.pendingContractReview.reviewId,
+    };
+  }
 
   if (completedSeasons(player) >= player.contractEndSeason) {
     // If still on loan when parent term ends, settle via free agency.
@@ -405,12 +427,103 @@ export function applyContractExpiryAtBoundary(player) {
 }
 
 /**
+ * Open or reuse the completed-evidence boundary renewal review before irreversible release.
+ * Shared by engine policies and browser UI — not a main.js-only path.
+ */
+export function openBoundaryContractReview(player, opts = {}) {
+  ensureContractAuthority(player);
+  if (player.club?.isAcademy) return { ok: true, action: "academy" };
+  if (player.contractStatus === "released") return { ok: true, action: "already-free" };
+  if (player.contractEndSeason == null) return { ok: true, action: "unsigned" };
+
+  const seasonIndex = completedSeasons(player);
+  if (seasonIndex < player.contractEndSeason) {
+    return { ok: true, action: "still-active" };
+  }
+
+  const existing = player.pendingContractReview;
+  if (
+    existing &&
+    existing.status === "pending" &&
+    existing.contractRevision === player.contractRevision &&
+    existing.employerClubId === employmentClubId(player)
+  ) {
+    return { ok: true, action: "pending-review", review: existing };
+  }
+
+  // Distinct completed-evidence review — reevaluate once for this boundary phase.
+  const review = evaluateRenewalReview(player, {
+    seasonIndex,
+    performanceScore: opts.performanceScore ?? 70,
+    financeOk: opts.financeOk,
+    financeReason: opts.financeReason,
+    reviewPhase: "boundary",
+    forceReevaluate: true,
+  });
+
+  const pending = {
+    status: "pending",
+    reviewId: review.reviewId,
+    reviewPhase: "boundary",
+    reviewSeason: seasonIndex,
+    employerClubId: employmentClubId(player),
+    contractRevision: player.contractRevision,
+    outcome: review.outcome,
+    reason: review.reason,
+    interest: review.interest,
+    openedAtSeason: seasonIndex,
+  };
+  player.pendingContractReview = pending;
+
+  return { ok: true, action: "opened-review", review, pending };
+}
+
+/**
+ * Settle a pending boundary review: accept already applied, or decline/non-renew → expiry once.
+ */
+export function settleBoundaryContractReview(player, opts = {}) {
+  ensureContractAuthority(player);
+  const pending = player.pendingContractReview;
+  if (!pending || pending.status !== "pending") {
+    return applyContractExpiryAtBoundary(player);
+  }
+
+  const choice = opts.choice || "decline";
+  pending.status = "settled";
+  pending.settledChoice = choice;
+  pending.settledAtSeason = completedSeasons(player);
+
+  if (choice === "accepted" || isContractActive(player)) {
+    // Renewal acceptance already extended the term; clear pending and keep active.
+    if (completedSeasons(player) < (player.contractEndSeason ?? 0)) {
+      player.pendingContractReview = { ...pending, status: "settled" };
+      return { ok: true, action: "renewed", pending };
+    }
+  }
+
+  // Decline / genuine non-renewal / exhausted review → release exactly once.
+  player.pendingContractReview = { ...pending, status: "settled" };
+  if (completedSeasons(player) >= player.contractEndSeason) {
+    return { ...releaseToFreeAgency(player, opts.reason || "contract-expired"), action: "released" };
+  }
+  return { ok: true, action: "still-active", pending };
+}
+
+/**
  * Gate before starting/resuming a season or attaching club fixtures.
  */
 export function assertPlayableRegistration(player) {
   ensureContractAuthority(player);
   if (player.isRetired) return { ok: false, reason: "retired" };
   if (player.club?.isAcademy) return { ok: true, mode: "academy" };
+  if (player.pendingContractReview?.status === "pending") {
+    return {
+      ok: false,
+      reason: "pending-contract-review",
+      mode: "pending-review",
+      reviewId: player.pendingContractReview.reviewId,
+    };
+  }
   if (isFreeAgent(player) || !player.club) {
     return { ok: false, reason: "free-agent", mode: "free-agent" };
   }
@@ -456,6 +569,9 @@ export function consumeRelatedDecisionAfterDeal(player, offer) {
  */
 export function declineWindowAndContinue(player, opts = {}) {
   ensureContractAuthority(player);
+  const hadValidOffers = (player.pendingOffers || []).some(
+    (o) => o && o.status !== "declined" && o.status !== "superseded"
+  );
   for (const o of player.pendingOffers || []) {
     markOfferStatus(player, o, "declined");
   }
@@ -467,6 +583,21 @@ export function declineWindowAndContinue(player, opts = {}) {
       resolvedChoice: opts.choiceId || "see-out",
     };
     player.pendingDecision = null;
+  }
+  // Free-agent refusal of a valid offer breaks the consecutive-empty streak.
+  if (isFreeAgent(player) && player.freeAgentSpell && hadValidOffers) {
+    const spell = player.freeAgentSpell;
+    const reviewId = spell.lastReviewId;
+    if (reviewId && !spell.closedReviewIds.includes(reviewId)) {
+      spell.closedReviewIds.push(reviewId);
+      spell.consecutiveEmptyReviews = 0;
+      spell.lastClosedClassification = "refusal";
+      spell.history.push({
+        reviewId,
+        classification: "refusal",
+        consecutiveEmptyReviews: 0,
+      });
+    }
   }
   return { ok: true, action: "continue", contractActive: isContractActive(player) };
 }
@@ -481,18 +612,33 @@ export function bumpContractRevision(player) {
 }
 
 /**
- * Apply a renewal: extend employer term without changing playing club on loan.
+ * Apply a renewal extension: offered years add coverage from the existing end
+ * boundary (or completed seasons if later). A one-year extension from end 1 at
+ * completed index 0 becomes end 2.
  */
 export function applyRenewalTerms(player, offer) {
   ensureContractAuthority(player);
   const currentSeason = completedSeasons(player);
-  const years = offer.contractYears || 1;
+  const previousEnd =
+    player.contractEndSeason != null && Number.isFinite(Number(player.contractEndSeason))
+      ? Number(player.contractEndSeason)
+      : currentSeason;
+  const extensionYears = Math.max(
+    1,
+    Number(offer.extensionYears ?? offer.contractYears) || 1
+  );
+  const newEnd = Math.max(previousEnd, currentSeason) + extensionYears;
+  const start =
+    player.contractStartSeason != null && Number.isFinite(Number(player.contractStartSeason))
+      ? Number(player.contractStartSeason)
+      : currentSeason;
+
   player.weeklyWage = offer.wage;
   player.wage = offer.wage;
   player.expectedRole = offer.expectedRole || player.expectedRole;
-  player.contractStartSeason = currentSeason;
-  player.contractYears = years;
-  player.contractEndSeason = currentSeason + years;
+  player.contractStartSeason = start;
+  player.contractYears = Math.max(1, newEnd - start);
+  player.contractEndSeason = newEnd;
   player.contractStatus = "active";
   player.employmentClubId = offer.clubId || employmentClubId(player);
   bumpContractRevision(player);
@@ -502,9 +648,18 @@ export function applyRenewalTerms(player, offer) {
     employerClubId: player.employmentClubId,
     contractRevision: player.contractRevision,
     reviewSeason: currentSeason,
+    reviewPhase: "renewed",
     reviewId: null,
   };
   player.renewalPlanned = true;
+  if (player.pendingContractReview?.status === "pending") {
+    player.pendingContractReview = {
+      ...player.pendingContractReview,
+      status: "settled",
+      settledChoice: "accepted",
+      settledAtSeason: currentSeason,
+    };
+  }
   // On loan: keep borrower as playing club.
   if (player.activeLoan?.status === "active") {
     // playingClubId / player.club stay as borrower
@@ -512,7 +667,13 @@ export function applyRenewalTerms(player, offer) {
     // Not on loan — employment and playing club stay the employer.
     player.playingClubId = player.employmentClubId;
   }
-  return { ok: true };
+  return {
+    ok: true,
+    previousEnd,
+    extensionYears,
+    contractEndSeason: newEnd,
+    remainingCoverage: newEnd - currentSeason,
+  };
 }
 
 /**
@@ -522,6 +683,25 @@ export function advanceFreeAgentPeriod(player, opts = {}) {
   ensureContractAuthority(player);
   if (!isFreeAgent(player) && player.club) {
     return { ok: false, reason: "not-free-agent" };
+  }
+
+  // Closing an open empty market review before the wait advances the spell once.
+  if (player.freeAgentSpell?.lastReviewId) {
+    const spell = player.freeAgentSpell;
+    if (!spell.closedReviewIds.includes(spell.lastReviewId)) {
+      const frozen = spell.frozenReviews?.[spell.lastReviewId];
+      const offerCount = frozen?.offers?.length || 0;
+      if (offerCount === 0) {
+        spell.closedReviewIds.push(spell.lastReviewId);
+        spell.consecutiveEmptyReviews += 1;
+        spell.lastClosedClassification = "empty-before-wait";
+        spell.history.push({
+          reviewId: spell.lastReviewId,
+          classification: "empty-before-wait",
+          consecutiveEmptyReviews: spell.consecutiveEmptyReviews,
+        });
+      }
+    }
   }
 
   const seasons = Math.max(1, opts.seasons || 1);

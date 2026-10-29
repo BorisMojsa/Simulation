@@ -19,6 +19,7 @@ import {
   selectNextCareerAction,
   isFreeAgent,
   declineWindowAndContinue,
+  settleBoundaryContractReview,
 } from "./js/simulation/contractLifecycle.js?v=81";
 import {
   declineAcademyReview,
@@ -1095,6 +1096,13 @@ function finishOfferWindow(accepted, offer) {
       declineAcademyReview(player, { reason: "academy-review-declined" });
     } else {
       declineWindowAndContinue(player, { choiceId: "decline-window" });
+      // Boundary renewal tray declined → settle expiry once through shared lifecycle.
+      if (player?.pendingContractReview?.status === "pending") {
+        settleBoundaryContractReview(player, {
+          choice: "decline",
+          reason: "declined-boundary-offers",
+        });
+      }
     }
   } else {
     player.pendingOffers = [];

@@ -615,8 +615,18 @@ test("pre-kickoff training injury zeros selected minutes", () => {
 test("accepted cross-league loan keeps distinct competition edition buckets", () => {
   const fixture = buildLiveLoanBrowserFixture({ seed: 42 });
   assert.equal(fixture.ok, true, fixture.reason);
-  const offer = fixture.offers.find((o) => o.isLoan && o.clubId !== fixture.player.employmentClubId);
+  // Prefer a cross-league loan so origin and destination edition keys differ.
+  const offer =
+    fixture.offers.find(
+      (o) =>
+        o.isLoan &&
+        o.clubId !== fixture.player.employmentClubId &&
+        o.leagueId &&
+        o.leagueId !== "league:italy-serie-a"
+    ) || fixture.offers.find((o) => o.isLoan && o.clubId !== fixture.player.employmentClubId);
   assert.ok(offer, "generated loan offer");
+  const destinationLeagueId = offer.leagueId;
+  assert.ok(destinationLeagueId, "loan offer must carry destination leagueId");
   const transition = startLoan(fixture.player, offer);
   assert.equal(transition.ok, true, transition.reason);
   fixture.player.pendingOffers = [];
@@ -646,10 +656,13 @@ test("accepted cross-league loan keeps distinct competition edition buckets", ()
   });
   assert.equal(evidence.byEdition["2026"], undefined);
   assert.ok(evidence.byEdition["league:italy-serie-a::2026"]?.minutes > 0);
-  assert.ok(evidence.byEdition["league:croatia-hnl::2026"]?.minutes > 0);
+  const destKey = `${destinationLeagueId}::2026`;
+  assert.ok(
+    evidence.byEdition[destKey]?.minutes > 0,
+    `expected destination minutes for ${destKey}; keys=${Object.keys(evidence.byEdition || {})}`
+  );
   assert.equal(
-    evidence.byEdition["league:italy-serie-a::2026"].minutes +
-      evidence.byEdition["league:croatia-hnl::2026"].minutes,
+    evidence.byEdition["league:italy-serie-a::2026"].minutes + evidence.byEdition[destKey].minutes,
     evidence.byScope.league.minutes
   );
 });

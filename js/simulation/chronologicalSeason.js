@@ -523,6 +523,7 @@ export function simulateChronologicalSeason({
         seasonStartYear,
         league,
         leagueAllMatches,
+        ledgerRecords,
       });
       processedEventIds.push(eventId);
       lastDate = ev.date;
@@ -1023,7 +1024,27 @@ function midSeasonPerformanceProxy(stats) {
   return Math.max(35, Math.min(90, 55 + impact / Math.max(1, apps) - (apps < 5 ? 8 : 0)));
 }
 
-function midSeasonSeasonProxy(playerMatchStats, leagueAllMatches = [], playerClubId = null) {
+function midSeasonSeasonProxy(playerMatchStats, leagueAllMatches = [], playerClubId = null, ledgerRecords = []) {
+  // Prefer real dated club ledger rows (league/cup/continental) reached by this
+  // checkpoint. Do not mix cumulative minutes with league-only fixture counts.
+  const clubRows = (ledgerRecords || []).filter(
+    (r) =>
+      r &&
+      !r.isInternational &&
+      r.teamType !== "national" &&
+      (!playerClubId || !r.teamId || r.teamId === playerClubId)
+  );
+  if (clubRows.length > 0) {
+    const minutes = clubRows.reduce((a, r) => a + (Number(r.minutes) || 0), 0);
+    return {
+      matches: clubRows.filter((r) => (Number(r.minutes) || 0) > 0).length,
+      minutes,
+      injuryAbsences: clubRows.filter((r) => r.available === false).length,
+      ledgerRecords: clubRows,
+      playingClubId: playerClubId,
+    };
+  }
+  // Fallback: league fixtures only, with league-attributed minutes when known.
   const clubGames = (leagueAllMatches || []).filter(
     (m) =>
       !playerClubId ||
@@ -1032,17 +1053,15 @@ function midSeasonSeasonProxy(playerMatchStats, leagueAllMatches = [], playerClu
       m.home?.name === playerClubId ||
       m.away?.name === playerClubId
   );
-  const eligible = Math.max(clubGames.length, playerMatchStats?.played || 0);
-  const minutes = playerMatchStats?.minutes || 0;
+  const leagueMinutes = (playerMatchStats?.leagueMinutes != null
+    ? playerMatchStats.leagueMinutes
+    : playerMatchStats?.minutes) || 0;
   return {
-    matches: eligible,
-    minutes,
+    matches: clubGames.length,
+    minutes: leagueMinutes,
     injuryAbsences: 0,
-    participationLedger: {
-      eligibleClubMatches: eligible,
-      availableClubMinutes: Math.max(1, eligible) * 90,
-      clubMinutesPlayed: minutes,
-    },
+    standing: { matches: clubGames.length },
+    playingClubId: playerClubId,
   };
 }
 
@@ -1057,17 +1076,26 @@ function handleWindowDecision({
   seasonStartYear,
   league,
   leagueAllMatches = [],
+  ledgerRecords = [],
 }) {
   if (player.club?.isAcademy) return { pause: false };
   const perf = midSeasonPerformanceProxy(playerMatchStats);
   const clubId = player.playingClubId || player.club?.clubId || player.club?.name;
-  const seasonProxy = midSeasonSeasonProxy(playerMatchStats, leagueAllMatches, clubId);
+  const seasonProxy = midSeasonSeasonProxy(
+    playerMatchStats,
+    leagueAllMatches,
+    clubId,
+    ledgerRecords
+  );
   const decision = evaluateSquadDecision(player, {
     seasonIndex,
     checkpoint: "mid-season",
     performanceScore: perf,
     date,
+    checkpointDate: date,
     season: seasonProxy,
+    ledgerRecords: seasonProxy.ledgerRecords || [],
+    clubId,
   });
   let offers = [];
   const policyMode = typeof autoDecisionPolicy === "string" ? autoDecisionPolicy : autoDecisionPolicy?.mode;
@@ -1559,6 +1587,7 @@ export function resumeChronologicalSeason({
         seasonStartYear: checkpoint.seasonStartYear,
         league: activeLeague || league,
         leagueAllMatches,
+        ledgerRecords,
       });
       lastDate = ev.date;
       const clubAfter = player.playingClubId || player.club?.clubId;

@@ -5,8 +5,9 @@
  *
  * Modes:
  * - empty (default): released, no pending offers at load — search available
- * - empty-result: same desk, but careerId chosen so post-period market review
- *   stays empty under current production recruitment (assert, don't force)
+ * - empty-result: careerId chosen so the first ordinary market review fails the
+ *   interest gate (assert, don't force). Fix 07 recovery may surface offers on
+ *   the next scheduled search after that empty review closes.
  * - offers: released with validated free-agent offers ready to review
  * - retire-41: age 41 free agent — next search reaches the age-42 retirement path
  * - signed: already accepted a permanent offer — next season is ordinary club play

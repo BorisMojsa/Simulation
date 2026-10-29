@@ -11,7 +11,13 @@ import {
   evaluateRenewalReview,
   isContractActive,
   declineWindowAndContinue,
+  settleBoundaryContractReview,
 } from "./contractLifecycle.js";
+import {
+  assessClubPlayingTime,
+  clubMinutesShareFromAssessment,
+  participationLedgerFromAssessment,
+} from "./playingTimeAssessment.js";
 
 function decisionId(kind, player, seasonIndex) {
   return `decision:${kind}:${player.careerId || player.name}:${seasonIndex}`;
@@ -19,33 +25,24 @@ function decisionId(kind, player, seasonIndex) {
 
 /**
  * Club minutes share among fit/eligible club matches only.
+ * Uses the shared opportunity assessment (ledger records + exclusions).
  */
 export function clubMinutesShare(player, opts = {}) {
   const season = opts.season || player.seasons?.[player.seasons.length - 1];
-  if (!season) return { share: 0, eligibleMatches: 0, minutes: 0 };
-
-  const matches = season.matches || 0;
-  const minutes = season.minutes || season.clubMinutes || 0;
-  // Approximate eligible denominator: matches where not injured for the whole game.
-  // Prefer explicit ledger if present.
-  const ledger = season.participationLedger || player.seasonLedger;
-  if (ledger?.eligibleClubMatches != null && ledger?.availableClubMinutes != null) {
-    const avail = Math.max(1, ledger.availableClubMinutes);
-    return {
-      share: clamp01((ledger.clubMinutesPlayed || minutes) / avail),
-      eligibleMatches: ledger.eligibleClubMatches,
-      minutes: ledger.clubMinutesPlayed || minutes,
-    };
+  if (!season && !opts.ledgerRecords && !opts.records) {
+    return { share: 0, eligibleMatches: 0, minutes: 0, usableForLowMinutes: false };
   }
 
-  const injuryAbsences = season.injuryAbsences || 0;
-  const eligibleMatches = Math.max(0, matches - injuryAbsences);
-  const denom = Math.max(1, eligibleMatches * 90);
-  return { share: clamp01(minutes / denom), eligibleMatches, minutes };
-}
-
-function clamp01(x) {
-  return Math.max(0, Math.min(1, x));
+  const assessment = assessClubPlayingTime(player, {
+    ...opts,
+    season,
+    checkpoint: opts.checkpoint || "end",
+  });
+  if (season && opts.persistAssessment !== false) {
+    season.playingTimeAssessment = assessment;
+    season.participationLedger = participationLedgerFromAssessment(assessment);
+  }
+  return clubMinutesShareFromAssessment(assessment);
 }
 
 function hasCooldown(player, kind, seasonIndex) {
@@ -75,7 +72,7 @@ export function evaluateSquadDecision(player, opts = {}) {
 
   const seasonIndex = opts.seasonIndex ?? player.seasons?.length ?? 0;
   const age = Number(player.age) || 20;
-  const minutes = clubMinutesShare(player, opts);
+  const minutes = clubMinutesShare(player, { ...opts, persistAssessment: true });
   const injuredNow = player.health?.activeInjury && !isAvailable(player.health, opts.date);
 
   // Injury recovery — do not treat as failure to compete.
@@ -147,9 +144,11 @@ export function evaluateSquadDecision(player, opts = {}) {
     forceParent: true,
   });
 
-  const lowMinutes = minutes.share < SQUAD_REVIEW.lowMinutesShare;
+  const lowMinutes =
+    Boolean(minutes.usableForLowMinutes) && minutes.share < SQUAD_REVIEW.lowMinutesShare;
   const enoughEvidence =
-    minutes.eligibleMatches >= SQUAD_REVIEW.midSeasonMinEligibleMatches || opts.checkpoint === "pre-season";
+    minutes.eligibleMatches >= SQUAD_REVIEW.midSeasonMinEligibleMatches ||
+    opts.checkpoint === "pre-season";
 
   if (
     age >= ageLo &&
@@ -159,7 +158,12 @@ export function evaluateSquadDecision(player, opts = {}) {
     (fit.projection.role === "prospect" || fit.projection.role === "cover" || fit.projection.role === "ineligible") &&
     !hasCooldown(player, "development-loan", seasonIndex)
   ) {
-    const loans = generateLoanOffers(player, { maxOffers: 3, performanceScore: opts.performanceScore ?? 65 });
+    const loans = generateLoanOffers(player, {
+      maxOffers: 3,
+      performanceScore: opts.performanceScore ?? 65,
+      developmentRecommendation: true,
+      currentProjectedShare: fit.projection.minutesShare,
+    });
     return {
       decisionId: decisionId("development-loan", player, seasonIndex),
       kind: "development-loan",
@@ -176,8 +180,12 @@ export function evaluateSquadDecision(player, opts = {}) {
         { id: "request-permanent", label: "Request a permanent move" },
       ],
       loanOffers: loans.offers,
+      loanRejectionLog: loans.rejectionLog || [],
       cooldownKind: "development-loan",
       projectedHomeMinutes: fit.projection.minutesShare,
+      playingTimeAssessment: minutes.assessment || null,
+      minutesShare: minutes.share,
+      eligibleMatches: minutes.eligibleMatches,
     };
   }
 
@@ -187,7 +195,11 @@ export function evaluateSquadDecision(player, opts = {}) {
     fit.projection.role === "ineligible" &&
     !hasCooldown(player, "surplus", seasonIndex)
   ) {
-    const loans = generateLoanOffers(player, { maxOffers: 2 });
+    const loans = generateLoanOffers(player, {
+      maxOffers: 2,
+      developmentRecommendation: true,
+      currentProjectedShare: fit.projection.minutesShare,
+    });
     return {
       decisionId: decisionId("surplus", player, seasonIndex),
       kind: "surplus",
@@ -204,7 +216,11 @@ export function evaluateSquadDecision(player, opts = {}) {
         { id: "remain", label: "Remain at the club" },
       ],
       loanOffers: loans.offers,
+      loanRejectionLog: loans.rejectionLog || [],
       cooldownKind: "surplus",
+      playingTimeAssessment: minutes.assessment || null,
+      minutesShare: minutes.share,
+      eligibleMatches: minutes.eligibleMatches,
     };
   }
 
@@ -302,6 +318,21 @@ export function resolveSquadDecision(player, decision, choiceId, opts = {}) {
     player.pendingOffers = offers;
     player.pendingDecision = null;
     return { ok: true, action: "show-loans", offers };
+  }
+
+  if (choiceId === "decline-renewal") {
+    declineWindowAndContinue(player, { choiceId });
+    const settled = settleBoundaryContractReview(player, {
+      choice: "decline",
+      reason: "declined-renewal",
+    });
+    return { ok: true, action: "released", settled };
+  }
+
+  if (choiceId === "accept-renewal") {
+    // Leave renewal offers in the tray for the normal accept path.
+    player.pendingDecision = null;
+    return { ok: true, action: "show-renewal", offers: player.pendingOffers || [] };
   }
 
   if (choiceId === "stay-compete" || choiceId === "remain" || choiceId === "acknowledge" || choiceId === "see-out") {

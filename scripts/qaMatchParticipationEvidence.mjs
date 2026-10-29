@@ -203,8 +203,18 @@ function crossLeagueLoanProbe() {
       return { ok: false, reason: fixture?.reason || "fixture-failed" };
     }
     const { player: p, offers } = fixture;
-    const offer = offers.find((o) => o.isLoan && o.clubId !== p.employmentClubId);
+    // Prefer a cross-league loan so origin/destination edition keys stay distinct.
+    const offer =
+      offers.find(
+        (o) =>
+          o.isLoan &&
+          o.clubId !== p.employmentClubId &&
+          o.leagueId &&
+          o.leagueId !== "league:italy-serie-a"
+      ) || offers.find((o) => o.isLoan && o.clubId !== p.employmentClubId);
     if (!offer) return { ok: false, reason: "no-generated-loan" };
+    const destinationLeagueId = offer.leagueId;
+    if (!destinationLeagueId) return { ok: false, reason: "loan-missing-leagueId" };
     const transition = startLoan(p, offer);
     if (!transition?.ok) return { ok: false, reason: transition?.reason || "startLoan-failed" };
     p.pendingOffers = [];
@@ -246,25 +256,26 @@ function crossLeagueLoanProbe() {
       competitionEditions,
     });
     const serieKey = evidenceEditionKey("league:italy-serie-a", "2026");
-    const hnlKey = evidenceEditionKey("league:croatia-hnl", "2026");
+    const destKey = evidenceEditionKey(destinationLeagueId, "2026");
     const serie = ev.byEdition?.[serieKey];
-    const hnl = ev.byEdition?.[hnlKey];
+    const dest = ev.byEdition?.[destKey];
     const ok =
-      Boolean(serie && hnl) &&
+      Boolean(serie && dest) &&
       serie.minutes === (group["league:italy-serie-a|2026"]?.minutes || 0) &&
-      hnl.minutes === (group["league:croatia-hnl|2026"]?.minutes || 0) &&
+      dest.minutes === (group[`${destinationLeagueId}|2026`]?.minutes || 0) &&
       !ev.byEdition?.["2026"] &&
       serie.minutes > 0 &&
-      hnl.minutes > 0;
+      dest.minutes > 0;
     return {
       ok,
       status: r.status,
       borrower: offer.clubId,
+      destinationLeagueId,
       groups: group,
       byEdition: ev.byEdition,
       leagueScope: ev.byScope.league,
       serieMinutes: serie?.minutes ?? null,
-      hnlMinutes: hnl?.minutes ?? null,
+      destinationMinutes: dest?.minutes ?? null,
     };
   } catch (e) {
     return { ok: false, reason: String(e?.stack || e) };

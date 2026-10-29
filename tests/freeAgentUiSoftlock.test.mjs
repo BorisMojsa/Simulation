@@ -147,7 +147,10 @@ describe("free-agent UI soft-lock", () => {
     assert.equal(completions, 1);
   });
 
-  it("deterministic empty-result fixture: two periods stay empty and searchable", async () => {
+  it("deterministic empty-result fixture: first search empty; recovery may offer; desk stays searchable", async () => {
+    // Fix 07: after one closed empty market review, the next scheduled search
+    // bypasses the interest lottery. Period 1 must still be empty under the
+    // empty-result identity; period 2 may surface validated recovery offers.
     const fixture = buildFreeAgentBrowserFixture({ mode: "empty-result" });
     assert.equal(fixture.ok, true, fixture.reason || "empty-result fixture");
     const player = fixture.player;
@@ -170,7 +173,9 @@ describe("free-agent UI soft-lock", () => {
         seasonData.season?.avgMatchRating ?? null
       );
       player.pendingOffers = offers;
-      assert.equal(offers.length, 0, `period ${i + 1} must stay empty under empty-result identity`);
+      if (i === 0) {
+        assert.equal(offers.length, 0, "period 1 must stay empty under empty-result identity");
+      }
 
       const presentation = showSeasonAnimation(seasonData, player, Object.keys(player.attributes), () => {
         appendSeasonCard(player.seasons[player.seasons.length - 1], dom.ensure("season-log"), player);
@@ -178,7 +183,9 @@ describe("free-agent UI soft-lock", () => {
       });
       await new Promise((r) => setTimeout(r, 10));
       const body = dom.ensure("free-agent-recap-body").innerHTML;
-      assert.match(body, /No suitable offers arrived/i);
+      if (offers.length === 0) {
+        assert.match(body, /No suitable offers arrived/i);
+      }
       dom.ensure("continue-btn").click();
       await presentation;
 
@@ -188,8 +195,13 @@ describe("free-agent UI soft-lock", () => {
       assert.equal(player.weeklyWage || 0, 0);
       assert.equal(!player.club, true);
       const next = selectNextCareerAction(player);
-      assert.equal(next.id, "free-agent");
-      assert.equal(next.canSimulate, true);
+      if (offers.length > 0) {
+        assert.equal(next.id, "resolve-offers");
+        assert.equal(next.canSimulate, false);
+      } else {
+        assert.equal(next.id, "free-agent");
+        assert.equal(next.canSimulate, true);
+      }
     }
   });
 

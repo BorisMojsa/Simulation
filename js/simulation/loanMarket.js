@@ -13,7 +13,10 @@ import {
   weeklyToAnnual,
 } from "./clubFinance.js";
 import { roundFee } from "./playerValuation.js";
-import { CONTRACT_RULES } from "../config/recruitmentConfig.js";
+import { CONTRACT_RULES, SQUAD_REVIEW } from "../config/recruitmentConfig.js";
+
+const LOAN_DEST_MIN_SHARE = SQUAD_REVIEW.loanDestinationMinMinutesShare;
+const LOAN_MIN_IMPROVEMENT = SQUAD_REVIEW.loanMinutesImprovement;
 import { resolveMoveRegistration } from "./destinationSchedule.js";
 import {
   ensureContractAuthority,
@@ -150,16 +153,58 @@ export function generateLoanOffers(player, opts = {}) {
   }).filter((c) => c.club.clubId !== player.club.clubId);
 
   // Prefer destinations projecting more minutes than current club.
+  // Development recommendations use configured destination/improvement gates.
+  // Ordinary elective loan searches keep a broader pool (0.35) and are not
+  // advertised as qualifying development recommendations.
+  const offers = [];
+  const rejectionLog = [];
+  const developmentRecommendation = Boolean(opts.developmentRecommendation);
+  const minShare = developmentRecommendation ? LOAN_DEST_MIN_SHARE : 0.35;
+  const minImprovement = developmentRecommendation ? LOAN_MIN_IMPROVEMENT : null;
+  const currentProjected =
+    opts.currentProjectedShare != null && Number.isFinite(Number(opts.currentProjectedShare))
+      ? Number(opts.currentProjectedShare)
+      : null;
+
   const scored = eligible
     .map((c) => ({
       ...c,
       weight: c.weight * (0.5 + (c.fit.projection.minutesShare || 0)),
     }))
-    .filter((c) => (c.fit.projection.minutesShare || 0) >= 0.35);
+    .filter((c) => {
+      const destShare = c.fit.projection.minutesShare || 0;
+      if (destShare < minShare) {
+        rejectionLog.push({
+          clubId: c.club.clubId,
+          reasons: ["destination-minutes-below-gate"],
+          destinationShare: destShare,
+          minShare,
+          developmentRecommendation,
+        });
+        return false;
+      }
+      if (
+        developmentRecommendation &&
+        minImprovement != null &&
+        currentProjected != null &&
+        destShare - currentProjected < minImprovement
+      ) {
+        rejectionLog.push({
+          clubId: c.club.clubId,
+          reasons: ["destination-improvement-below-gate"],
+          destinationShare: destShare,
+          currentProjectedShare: currentProjected,
+          minImprovement,
+          developmentRecommendation: true,
+        });
+        return false;
+      }
+      return true;
+    });
 
+  // Keep weighted sampling among destinations that already pass the gates so
+  // ordinary and development paths remain deterministic under the same RNG.
   const picked = pickWeighted(scored, rng, opts.maxOffers ?? 3);
-  const offers = [];
-  const rejectionLog = [];
 
   for (const candidate of picked) {
     const shares = normalizeWageShares(rng.float(0.4, 0.85), null);

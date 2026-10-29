@@ -42,8 +42,10 @@ import {
   consumeRelatedDecisionAfterDeal,
   bumpContractRevision,
   completedSeasons,
+  isFreeAgent,
 } from "./contractLifecycle.js";
 import { recordPlayingTransition, ensurePlayingStints } from "./playingRegistration.js";
+import { CONTRACT_RULES } from "../config/recruitmentConfig.js";
 
 /**
  * Career/league calendar date for an accepted deal when the offer omits dates.
@@ -191,23 +193,40 @@ export function buildValidatedOffer({
     return { ok: false, reasons: [wageProposal.reason || "wage-failed"], offer: null };
   }
 
-  const contractYears = calculateContractLength(
+  let contractYears = calculateContractLength(
     player.age,
     safePlayerOverall(player),
     sporting.scout.assessedUpside,
     performanceScore,
     rng
   );
+  let extensionYears = null;
+  let isExtension = false;
+  if (dealType === "renewal") {
+    // Offered years are additional coverage from the existing end boundary.
+    // Cap by remaining room under under-18 / adult maximum total coverage.
+    const age = Number(player.age) || 20;
+    const maxTotal =
+      age < CONTRACT_RULES.under18Age
+        ? CONTRACT_RULES.under18MaxYears
+        : CONTRACT_RULES.adultMaxYears;
+    const maxExtension = Math.max(1, maxTotal - remYears);
+    extensionYears = Math.min(Math.max(1, contractYears), maxExtension);
+    contractYears = extensionYears;
+    isExtension = true;
+  }
 
   const deal = {
     transferFee: dealType === "loan" ? 0 : fee,
     loanFee: loanTerms?.loanFee ?? 0,
     wage: wageProposal.wage,
     contractYears: dealType === "loan" ? 1 : contractYears,
+    extensionYears: dealType === "renewal" ? extensionYears : null,
     expectedRole: role,
     isLoan: dealType === "loan",
     isFreeAgent: isFreeAgent && dealType !== "loan",
     isRenewal: dealType === "renewal",
+    isExtension,
     isParentOffer: dealType === "first_pro" && forceParent,
     previousAnnualWage:
       dealType === "renewal" && playerCurrentWeeklyWage(player) != null
@@ -238,11 +257,16 @@ export function buildValidatedOffer({
     transferFee: deal.transferFee,
     loanFee: deal.loanFee,
     contractYears: dealType === "loan" ? null : deal.contractYears,
+    extensionYears: deal.extensionYears,
+    isExtension: Boolean(deal.isExtension),
     expectedRole: role,
     pathway: sporting.pathway,
     projectedMinutesRange: sporting.projection.minutesRange,
     projectedMinutesShare: sporting.projection.minutesShare,
-    message: buildOfferMessage(club, dealType, role, sporting),
+    message:
+      dealType === "renewal" && extensionYears
+        ? `${club.displayName ?? club.name} want to extend your contract by ${extensionYears} year${extensionYears === 1 ? "" : "s"} ${role === "starter" ? "as a likely starter" : role === "rotation" ? "in a rotation role" : role === "cover" ? "as squad cover" : role === "prospect" ? "on a development pathway" : "in the squad"}.`
+        : buildOfferMessage(club, dealType, role, sporting),
     isRenewal: dealType === "renewal",
     isParentOffer: Boolean(deal.isParentOffer),
     isFreeAgent: Boolean(deal.isFreeAgent),
@@ -262,6 +286,77 @@ export function buildValidatedOffer({
   return { ok: true, reasons: [], offer, ledger, deal };
 }
 
+function ensureFreeAgentSpell(player) {
+  if (!isFreeAgent(player)) return null;
+  if (!player.freeAgentSpell || player.freeAgentSpell.status === "closed") {
+    const seasonIndex = completedSeasons(player);
+    player.freeAgentSpell = {
+      spellId: `fa-spell:${player.careerId || player.name}:${seasonIndex}`,
+      startedAtSeason: seasonIndex,
+      consecutiveEmptyReviews: 0,
+      closedReviewIds: [],
+      frozenReviews: {},
+      status: "active",
+      history: [],
+    };
+  }
+  return player.freeAgentSpell;
+}
+
+/**
+ * Close a scheduled free-agent market review exactly once.
+ * Zero executable offers advance the empty-review counter; a declined valid
+ * offer breaks the consecutive-empty streak without counting as empty.
+ */
+export function closeFreeAgentMarketReview(player, result = {}) {
+  ensureContractAuthority(player);
+  const spell = ensureFreeAgentSpell(player);
+  if (!spell) return { ok: false, reason: "not-free-agent" };
+  const reviewId = result.reviewId || spell.lastReviewId;
+  if (!reviewId) return { ok: false, reason: "no-review" };
+  if (spell.closedReviewIds.includes(reviewId)) {
+    return { ok: true, duplicate: true, spell };
+  }
+  spell.closedReviewIds.push(reviewId);
+  const executable = Number(result.validatedOfferCount ?? result.offers?.length ?? 0);
+  const declinedValid = Boolean(result.declinedValidOffer);
+  let classification = "empty";
+  if (declinedValid || executable > 0 && result.playerDeclined) {
+    classification = "refusal";
+    spell.consecutiveEmptyReviews = 0;
+  } else if (executable > 0) {
+    classification = "offers-present";
+    spell.consecutiveEmptyReviews = 0;
+  } else if (result.interestGateDeclined) {
+    classification = "interest-gate";
+    spell.consecutiveEmptyReviews += 1;
+  } else if (result.exhausted) {
+    classification = "exhausted";
+    spell.consecutiveEmptyReviews += 1;
+  } else {
+    classification = "empty";
+    spell.consecutiveEmptyReviews += 1;
+  }
+  spell.history.push({
+    reviewId,
+    classification,
+    consecutiveEmptyReviews: spell.consecutiveEmptyReviews,
+    eligibleCount: result.eligibleCount ?? null,
+    validatedOfferCount: executable,
+    recoveryStage: result.recoveryStage || "ordinary",
+  });
+  spell.lastClosedClassification = classification;
+  return { ok: true, classification, spell };
+}
+
+export function endFreeAgentSpell(player, reason = "signed") {
+  if (!player?.freeAgentSpell) return;
+  const prior = { ...player.freeAgentSpell, status: "closed", closedReason: reason };
+  if (!player.freeAgentSpellHistory) player.freeAgentSpellHistory = [];
+  player.freeAgentSpellHistory.push(prior);
+  player.freeAgentSpell = null;
+}
+
 /**
  * Generate transfer / renewal / free-agent offers through the shared pipeline.
  */
@@ -269,18 +364,38 @@ export function generatePipelineOffers(player, opts = {}) {
   const performanceScore = opts.performanceScore ?? 70;
   const careerId = player.careerId || player.name || "career";
   const seasonIndex = player.seasons?.length ?? 0;
-  const rng = opts.rng || createStreamRng(careerId, `offers:${seasonIndex}:${performanceScore}`);
+  const reviewPhase = opts.reviewPhase || "in-season";
+  const rngStream =
+    opts.rngStream ||
+    (reviewPhase === "boundary"
+      ? `offers:${seasonIndex}:${performanceScore}:boundary`
+      : `offers:${seasonIndex}:${performanceScore}`);
+  const rng = opts.rng || createStreamRng(careerId, rngStream);
   const clubs = opts.clubs || allSeniorClubs();
   const offers = [];
   const rejectionLog = [];
+  const diagnostics = {
+    reviewId: null,
+    spellId: null,
+    generationAttempted: true,
+    interestGateResult: null,
+    recoveryStage: "ordinary",
+    candidatesExamined: 0,
+    sportingEligibleCount: null,
+    validatedOfferCount: 0,
+    reasonCounts: {},
+  };
 
   // Renewal discussion — employer club only (not loan borrower). Shared review authority.
   ensureContractAuthority(player);
   const rem =
     player.contractEndSeason == null ? 99 : player.contractEndSeason - seasonIndex;
   const employer = resolveEmploymentClub(player);
-  if (!player.club?.isAcademy && employer?.clubId && rem <= 1) {
-    // Probe affordability without treating failure as firm non-renewal.
+  const renewalWindow =
+    !player.club?.isAcademy &&
+    employer?.clubId &&
+    (rem <= 1 || reviewPhase === "boundary");
+  if (renewalWindow) {
     const renewalProbe = buildValidatedOffer({
       player,
       club: employer,
@@ -294,19 +409,21 @@ export function generatePipelineOffers(player, opts = {}) {
       performanceScore,
       financeOk: renewalProbe.ok,
       financeReason: renewalProbe.reasons?.[0] || null,
+      reviewPhase,
+      forceReevaluate: Boolean(opts.forceReevaluate),
     });
 
     if (review.outcome === "wants-renewal" && renewalProbe.ok) {
       const offer = {
         ...renewalProbe.offer,
-        isPreExpiryRenewal: rem === 1,
+        isPreExpiryRenewal: rem === 1 || reviewPhase === "boundary",
         status: "pending",
         careerId: careerId,
         contractRevision: player.contractRevision,
         employerClubIdAtIssue: employer.clubId,
         renewalReviewId: review.reviewId,
         message:
-          rem === 1
+          rem === 1 || reviewPhase === "boundary"
             ? `${employer.displayName ?? employer.name} want to talk about a new contract before yours expires.`
             : renewalProbe.offer.message,
       };
@@ -346,27 +463,98 @@ export function generatePipelineOffers(player, opts = {}) {
     else rejectionLog.push({ clubId: parent.clubId, reasons: parentOffer.reasons, kind: "parent" });
   }
 
-  const ovr = safePlayerOverall(player);
-  const interest = 0.18 + performanceScore / 220 + ovr / 280;
-  if (!rng.chance(Math.min(0.9, interest)) && !opts.forceGenerate) {
-    return { offers, rejectionLog, eligibleCount: 0 };
-  }
-
   const remYears =
     player.contractEndSeason == null ? 0 : Math.max(0, player.contractEndSeason - seasonIndex);
   const dealType = remYears <= 0 || player.club?.isAcademy ? "free_agent" : "permanent";
+  const freeAgentSearch = dealType === "free_agent" && isFreeAgent(player);
+  const spell = freeAgentSearch ? ensureFreeAgentSpell(player) : null;
+  const recoveryMode =
+    freeAgentSearch &&
+    !opts.forceGenerate &&
+    (opts.recoveryMode === true || (spell && spell.consecutiveEmptyReviews >= 1));
+  const reviewId = freeAgentSearch
+    ? `fa-review:${spell.spellId}:${seasonIndex}:${recoveryMode ? "recovery" : "ordinary"}`
+    : `market:${careerId}:${seasonIndex}:${reviewPhase}`;
+  diagnostics.reviewId = reviewId;
+  diagnostics.spellId = spell?.spellId || null;
+  diagnostics.recoveryStage = recoveryMode ? "recovery" : "ordinary";
+
+  if (spell?.frozenReviews?.[reviewId] && !opts.forceGenerate) {
+    const frozen = spell.frozenReviews[reviewId];
+    return {
+      offers: frozen.offers,
+      rejectionLog: frozen.rejectionLog,
+      eligibleCount: frozen.eligibleCount,
+      leagues: LEAGUES,
+      diagnostics: frozen.diagnostics,
+      reviewId,
+      frozen: true,
+    };
+  }
+
+  const ovr = safePlayerOverall(player);
+  const interest = 0.18 + performanceScore / 220 + ovr / 280;
+  const interestPass = opts.forceGenerate || rng.chance(Math.min(0.9, interest)) || recoveryMode;
+  diagnostics.interestGateResult = interestPass
+    ? recoveryMode
+      ? "recovery-bypass"
+      : opts.forceGenerate
+        ? "forced"
+        : "passed"
+    : "declined";
+
+  if (!interestPass) {
+    const result = {
+      offers,
+      rejectionLog,
+      eligibleCount: null,
+      eligibilityEvaluated: false,
+      leagues: LEAGUES,
+      diagnostics: {
+        ...diagnostics,
+        sportingEligibleCount: null,
+        reasonCounts: { "interest-gate": 1 },
+      },
+      reviewId,
+    };
+    if (spell) {
+      spell.frozenReviews[reviewId] = {
+        offers: result.offers,
+        rejectionLog: result.rejectionLog,
+        eligibleCount: null,
+        diagnostics: result.diagnostics,
+      };
+      spell.lastReviewId = reviewId;
+      player.lastMarketDiagnostics = result.diagnostics;
+    }
+    return result;
+  }
 
   const eligible = findEligibleClubs(player, clubs, {
     seasonIndex,
     careerId,
     preferLowerDivisions: ovr < 68,
   });
+  diagnostics.sportingEligibleCount = eligible.length;
 
   const targetSlots = Math.min(4, Math.max(1, Math.round(1 + (ovr - 55) / 18)));
-  const picked = pickWeighted(eligible, rng, targetSlots + 2);
+  const reasonCounts = {};
+  const bumpReason = (reasons) => {
+    for (const r of reasons || ["unknown"]) {
+      reasonCounts[r] = (reasonCounts[r] || 0) + 1;
+    }
+  };
 
-  for (const candidate of picked) {
-    if (offers.length >= targetSlots) break;
+  let candidates;
+  if (recoveryMode) {
+    candidates = eligible.slice().sort((a, b) => (b.weight || 0) - (a.weight || 0));
+  } else {
+    candidates = pickWeighted(eligible, rng, targetSlots + 2);
+  }
+
+  for (const candidate of candidates) {
+    diagnostics.candidatesExamined += 1;
+    if (offers.filter((o) => !o.isRenewal).length >= targetSlots) break;
     if (offers.some((o) => o.clubId === candidate.club.clubId)) continue;
     const built = buildValidatedOffer({
       player,
@@ -377,10 +565,52 @@ export function generatePipelineOffers(player, opts = {}) {
       rng,
     });
     if (built.ok) offers.push(built.offer);
-    else rejectionLog.push({ clubId: candidate.club.clubId, reasons: built.reasons, kind: dealType });
+    else {
+      bumpReason(built.reasons);
+      rejectionLog.push({
+        clubId: candidate.club.clubId,
+        reasons: built.reasons,
+        kind: dealType,
+      });
+    }
   }
 
-  return { offers, rejectionLog, eligibleCount: eligible.length, leagues: LEAGUES };
+  const marketOffers = offers.filter((o) => !o.isRenewal);
+  diagnostics.validatedOfferCount = marketOffers.length;
+  diagnostics.reasonCounts = reasonCounts;
+  if (recoveryMode && marketOffers.length === 0) {
+    diagnostics.recoveryStage = "recovery-exhausted";
+  } else if (recoveryMode) {
+    diagnostics.recoveryStage = "recovery-success";
+  } else if (
+    !recoveryMode &&
+    marketOffers.length === 0 &&
+    eligible.length > 0 &&
+    diagnostics.candidatesExamined < eligible.length
+  ) {
+    diagnostics.recoveryStage = "sample-failed-before-full-pool";
+  }
+
+  const result = {
+    offers,
+    rejectionLog,
+    eligibleCount: eligible.length,
+    eligibilityEvaluated: true,
+    leagues: LEAGUES,
+    diagnostics,
+    reviewId,
+  };
+  if (spell) {
+    spell.frozenReviews[reviewId] = {
+      offers: result.offers,
+      rejectionLog: result.rejectionLog,
+      eligibleCount: eligible.length,
+      diagnostics,
+    };
+    spell.lastReviewId = reviewId;
+    player.lastMarketDiagnostics = diagnostics;
+  }
+  return result;
 }
 
 /**
@@ -495,6 +725,10 @@ export function applyOfferToPlayer(player, offer, transactionId) {
     player.pendingOffers = [];
     player.suppressParentContractOffer = true;
     return;
+  }
+
+  if (isFreeAgent(player) || player.freeAgentSpell) {
+    endFreeAgentSpell(player, "signed");
   }
 
   if (!offer.isLoan) {

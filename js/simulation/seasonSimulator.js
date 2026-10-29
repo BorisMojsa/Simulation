@@ -36,10 +36,17 @@ import {
   ensureContractAuthority,
   assertPlayableRegistration,
   applyContractExpiryAtBoundary,
+  openBoundaryContractReview,
+  settleBoundaryContractReview,
   advanceFreeAgentPeriod,
   isFreeAgent,
   selectNextCareerAction,
 } from "./contractLifecycle.js";
+import {
+  assessClubPlayingTime,
+  participationLedgerFromAssessment,
+} from "./playingTimeAssessment.js";
+import { generatePipelineOffers, acceptPipelineOffer } from "./dealPipeline.js";
 import {
   advanceAcademyPeriod,
   toAcademySeasonResult,
@@ -891,9 +898,103 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   // Exact-once guard for this period id (next seasonIndex advances the id).
   player.development.lastProcessedSeasonId = seasonId;
 
-  // History written under the clubs actually represented; then enforce expiry once.
+  // Persist shared club opportunity assessment from completed ledger evidence.
+  const playingAssessment = assessClubPlayingTime(player, {
+    season,
+    ledgerRecords: season.ledgerRecords,
+    clubId: season.playingClubId || player.playingClubId || player.club?.clubId,
+    checkpoint: "end",
+    seasonIndex: player.seasons.length,
+  });
+  season.playingTimeAssessment = playingAssessment;
+  season.participationLedger = participationLedgerFromAssessment(playingAssessment);
+
+  // History written under the clubs actually represented; then open a completed-
+  // evidence boundary review before irreversible release when the term ends.
   player.seasonCheckpoint = null;
-  const expiry = applyContractExpiryAtBoundary(player);
+  let expiry = { ok: true, action: "still-active" };
+  if (
+    player.contractEndSeason != null &&
+    player.seasons.length >= player.contractEndSeason &&
+    player.contractStatus !== "released"
+  ) {
+    const boundary = openBoundaryContractReview(player, {
+      performanceScore,
+    });
+    season.boundaryContractReview = boundary;
+    if (boundary.action === "opened-review" || boundary.action === "pending-review") {
+      const pipe = generatePipelineOffers(player, {
+        performanceScore,
+        reviewPhase: "boundary",
+        forceReevaluate: true,
+      });
+      const renewalOffers = (pipe.offers || []).filter((o) => o.isRenewal);
+      const policyMode =
+        typeof opts.autoDecisionPolicy === "string"
+          ? opts.autoDecisionPolicy
+          : opts.autoDecisionPolicy?.mode;
+      const renewalFirst =
+        policyMode === "accept-first-transfer" ||
+        policyMode === "renewal-first" ||
+        policyMode === "accept-renewal";
+      if (renewalOffers.length && renewalFirst) {
+        // Engine policies that prefer continuity accept the first executable renewal.
+        const accepted = acceptPipelineOffer(player, renewalOffers[0]);
+        expiry = accepted.ok
+          ? { ok: true, action: "renewed", offerId: renewalOffers[0].offerId }
+          : settleBoundaryContractReview(player, {
+              choice: "accept-failed",
+              reason: accepted.reason || "accept-failed",
+            });
+      } else if (
+        renewalOffers.length &&
+        (policyMode === "stay" ||
+          (opts.pauseForDecisions === false && !opts.keepPendingBoundaryReview))
+      ) {
+        // Deterministic stay/auto paths decline the boundary window and release once.
+        // Interactive UI keeps the pending review when pauseForDecisions/keepPending is set.
+        player.pendingOffers = [];
+        expiry = settleBoundaryContractReview(player, {
+          choice: "decline",
+          reason: "auto-decline-boundary",
+        });
+      } else if (renewalOffers.length) {
+        player.pendingOffers = renewalOffers;
+        player.pendingDecision = {
+          decisionId: `decision:boundary-renewal:${player.careerId || player.name}:${player.seasons.length}`,
+          kind: "boundary-renewal",
+          status: "pending",
+          allowedChoices: ["accept-renewal", "decline-renewal"],
+          employerClubId: player.employmentClubId,
+          contractRevision: player.contractRevision,
+          renewalReviewId: player.renewalReview?.reviewId,
+          headline: "Contract renewal",
+          lead: "Your contract term is ending. The club has a renewal opportunity based on the completed season.",
+          choices: [
+            { id: "accept-renewal", label: "Review renewal offer" },
+            { id: "decline-renewal", label: "Decline and leave" },
+          ],
+          cooldownKind: "boundary-renewal",
+        };
+        expiry = applyContractExpiryAtBoundary(player); // deferred while pending
+      } else if (player.renewalReview?.outcome === "will-not-renew") {
+        expiry = settleBoundaryContractReview(player, {
+          choice: "non-renewal",
+          reason: "will-not-renew",
+        });
+      } else {
+        // Temporary finance / undecided with no executable renewal — settle expiry.
+        expiry = settleBoundaryContractReview(player, {
+          choice: "no-offer",
+          reason: player.renewalReview?.reason || "no-renewal-offer",
+        });
+      }
+    } else {
+      expiry = applyContractExpiryAtBoundary(player);
+    }
+  } else {
+    expiry = applyContractExpiryAtBoundary(player);
+  }
   season.contractExpiry = expiry;
 
   const divisionMove = player.club
