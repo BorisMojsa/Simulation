@@ -2,27 +2,28 @@
   "careerId": "bug5-cb-2",
   "position": "CB",
   "seed": 404,
-  "rawRecords": 49,
-  "positiveMinutes": 12,
-  "zeroMinutes": 37,
-  "withEdition": 49,
+  "rawRecords": 58,
+  "positiveMinutes": 14,
+  "zeroMinutes": 44,
+  "withEdition": 58,
   "editionCoverage": 1,
-  "rawCleanSheets": 2,
-  "ledgerCleanSheets": 2,
-  "evidenceLeagueCleanSheets": 2,
-  "evidenceTotalCleanSheets": 2,
+  "rawCleanSheets": 0,
+  "ledgerCleanSheets": 0,
+  "evidenceLeagueCleanSheets": 0,
+  "evidenceTotalCleanSheets": 0,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
-    "uefa-champions-league::2026-uefa-champions-league"
+    "uefa-champions-league::2026-uefa-champions-league",
+    "FA Cup::2026:FA Cup"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 0,
-  "goalsFromLedger": 0,
-  "matchesWithEvents": 8,
+  "goalsFromPositive": 1,
+  "goalsFromLedger": 1,
+  "matchesWithEvents": 9,
   "eventGoalDisagree": 0,
-  "apps": 12,
+  "apps": 14,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:30",
@@ -32,7 +33,7 @@
       "minutes": 17,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.5
+      "rating": 6.2
     },
     {
       "matchId": "league:england-premier-league:md:50",
@@ -42,7 +43,7 @@
       "minutes": 12,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.3
+      "rating": 5.8
     }
   ],
   "sampleZero": [
@@ -61,23 +62,23 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 271,
-      "appearances": 8,
+      "minutes": 302,
+      "appearances": 9,
       "starts": 2,
-      "goals": 0,
+      "goals": 1,
       "assists": 0,
-      "cleanSheets": 2
+      "cleanSheets": 0
     },
     "cup": {
-      "minutes": 0,
-      "appearances": 0,
+      "minutes": 16,
+      "appearances": 1,
       "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 86,
+      "minutes": 74,
       "appearances": 4,
       "starts": 0,
       "goals": 0,

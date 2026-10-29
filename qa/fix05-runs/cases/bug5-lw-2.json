@@ -2,10 +2,10 @@
   "careerId": "bug5-lw-2",
   "position": "LW",
   "seed": 808,
-  "rawRecords": 58,
-  "positiveMinutes": 23,
-  "zeroMinutes": 35,
-  "withEdition": 58,
+  "rawRecords": 54,
+  "positiveMinutes": 22,
+  "zeroMinutes": 32,
+  "withEdition": 54,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -18,11 +18,11 @@
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 0,
-  "goalsFromLedger": 0,
-  "matchesWithEvents": 15,
+  "goalsFromPositive": 2,
+  "goalsFromLedger": 2,
+  "matchesWithEvents": 16,
   "eventGoalDisagree": 0,
-  "apps": 23,
+  "apps": 22,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:60",
@@ -32,17 +32,17 @@
       "minutes": 19,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.5
+      "rating": 6.4
     },
     {
-      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md2:club:england:arsenal:club:england:newcastle-united",
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md2:club:germany:fc-augsburg:club:england:arsenal",
       "editionId": "2026-uefa-champions-league",
       "competitionId": "uefa-champions-league",
       "teamId": "club:england:arsenal",
       "minutes": 35,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.5
+      "rating": 7.9
     }
   ],
   "sampleZero": [
@@ -61,11 +61,11 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 533,
-      "appearances": 15,
-      "starts": 3,
-      "goals": 0,
-      "assists": 1,
+      "minutes": 567,
+      "appearances": 16,
+      "starts": 4,
+      "goals": 2,
+      "assists": 2,
       "cleanSheets": null
     },
     "cup": {
@@ -77,11 +77,11 @@
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 309,
-      "appearances": 8,
-      "starts": 2,
+      "minutes": 250,
+      "appearances": 6,
+      "starts": 1,
       "goals": 0,
-      "assists": 1,
+      "assists": 3,
       "cleanSheets": null
     },
     "international": {

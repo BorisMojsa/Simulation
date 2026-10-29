@@ -2,10 +2,10 @@
   "careerId": "bug5-lw-1",
   "position": "LW",
   "seed": 3,
-  "rawRecords": 56,
+  "rawRecords": 58,
   "positiveMinutes": 25,
-  "zeroMinutes": 31,
-  "withEdition": 56,
+  "zeroMinutes": 33,
+  "withEdition": 58,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -19,9 +19,9 @@
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 2,
-  "goalsFromLedger": 2,
-  "matchesWithEvents": 17,
+  "goalsFromPositive": 1,
+  "goalsFromLedger": 1,
+  "matchesWithEvents": 13,
   "eventGoalDisagree": 0,
   "apps": 25,
   "samplePositive": [
@@ -36,14 +36,14 @@
       "rating": 6.5
     },
     {
-      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:italy:lazio",
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:england:liverpool",
       "editionId": "2026-uefa-champions-league",
       "competitionId": "uefa-champions-league",
       "teamId": "club:england:arsenal",
       "minutes": 86,
-      "goals": 0,
+      "goals": 1,
       "cleanSheet": null,
-      "rating": 6.4
+      "rating": 7.3
     }
   ],
   "sampleZero": [
@@ -62,27 +62,27 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 599,
-      "appearances": 17,
-      "starts": 3,
+      "minutes": 529,
+      "appearances": 13,
+      "starts": 4,
       "goals": 0,
-      "assists": 0,
+      "assists": 3,
       "cleanSheets": null
     },
     "cup": {
-      "minutes": 88,
-      "appearances": 1,
-      "starts": 1,
-      "goals": 2,
+      "minutes": 76,
+      "appearances": 3,
+      "starts": 0,
+      "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 205,
-      "appearances": 7,
+      "minutes": 287,
+      "appearances": 9,
       "starts": 1,
-      "goals": 0,
-      "assists": 0,
+      "goals": 1,
+      "assists": 1,
       "cleanSheets": null
     },
     "international": {

@@ -2,10 +2,10 @@
   "careerId": "bug5-st-3",
   "position": "ST",
   "seed": 101,
-  "rawRecords": 59,
+  "rawRecords": 56,
   "positiveMinutes": 19,
-  "zeroMinutes": 40,
-  "withEdition": 59,
+  "zeroMinutes": 37,
+  "withEdition": 56,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -13,15 +13,15 @@
   "evidenceTotalCleanSheets": null,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
-    "FA Cup::2026:FA Cup",
-    "uefa-champions-league::2026-uefa-champions-league"
+    "uefa-champions-league::2026-uefa-champions-league",
+    "FA Cup::2026:FA Cup"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 0,
-  "goalsFromLedger": 0,
-  "matchesWithEvents": 14,
+  "goalsFromPositive": 2,
+  "goalsFromLedger": 2,
+  "matchesWithEvents": 12,
   "eventGoalDisagree": 0,
   "apps": 19,
   "samplePositive": [
@@ -31,9 +31,9 @@
       "competitionId": "league:england-premier-league",
       "teamId": "club:england:arsenal",
       "minutes": 78,
-      "goals": 0,
+      "goals": 1,
       "cleanSheet": null,
-      "rating": 6.5
+      "rating": 7.3
     },
     {
       "matchId": "league:england-premier-league:md:20",
@@ -43,7 +43,7 @@
       "minutes": 33,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.4
+      "rating": 5.8
     }
   ],
   "sampleZero": [
@@ -62,24 +62,24 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 501,
-      "appearances": 14,
+      "minutes": 439,
+      "appearances": 12,
       "starts": 3,
-      "goals": 0,
-      "assists": 0,
+      "goals": 2,
+      "assists": 1,
       "cleanSheets": null
     },
     "cup": {
-      "minutes": 77,
-      "appearances": 3,
+      "minutes": 14,
+      "appearances": 1,
       "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 32,
-      "appearances": 2,
+      "minutes": 157,
+      "appearances": 6,
       "starts": 0,
       "goals": 0,
       "assists": 0,

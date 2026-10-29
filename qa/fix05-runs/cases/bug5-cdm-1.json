@@ -9,7 +9,7 @@
   "editionCoverage": 1,
   "rawCleanSheets": 1,
   "ledgerCleanSheets": 1,
-  "evidenceLeagueCleanSheets": 1,
+  "evidenceLeagueCleanSheets": 0,
   "evidenceTotalCleanSheets": 1,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
@@ -20,7 +20,7 @@
   "goalsAgree": true,
   "goalsFromPositive": 0,
   "goalsFromLedger": 0,
-  "matchesWithEvents": 10,
+  "matchesWithEvents": 13,
   "eventGoalDisagree": 0,
   "apps": 18,
   "samplePositive": [
@@ -32,7 +32,7 @@
       "minutes": 23,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 7
+      "rating": 6.7
     },
     {
       "matchId": "league:england-premier-league:md:20",
@@ -42,7 +42,7 @@
       "minutes": 32,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.3
+      "rating": 6.9
     }
   ],
   "sampleZero": [
@@ -61,12 +61,12 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 387,
-      "appearances": 10,
-      "starts": 2,
+      "minutes": 346,
+      "appearances": 13,
+      "starts": 1,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": 1
+      "cleanSheets": 0
     },
     "cup": {
       "minutes": 0,
@@ -77,12 +77,12 @@
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 158,
-      "appearances": 8,
-      "starts": 0,
+      "minutes": 199,
+      "appearances": 5,
+      "starts": 1,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": null
+      "cleanSheets": 1
     },
     "international": {
       "minutes": 0,

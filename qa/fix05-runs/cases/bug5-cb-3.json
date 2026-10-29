@@ -2,15 +2,15 @@
   "careerId": "bug5-cb-3",
   "position": "CB",
   "seed": 111,
-  "rawRecords": 61,
-  "positiveMinutes": 26,
-  "zeroMinutes": 35,
-  "withEdition": 61,
+  "rawRecords": 55,
+  "positiveMinutes": 23,
+  "zeroMinutes": 32,
+  "withEdition": 55,
   "editionCoverage": 1,
-  "rawCleanSheets": 2,
-  "ledgerCleanSheets": 2,
+  "rawCleanSheets": 1,
+  "ledgerCleanSheets": 1,
   "evidenceLeagueCleanSheets": 1,
-  "evidenceTotalCleanSheets": 2,
+  "evidenceTotalCleanSheets": 1,
   "evidenceEditionKeys": [
     "world-cup::2026-world-cup",
     "league:england-premier-league::2026",
@@ -19,14 +19,14 @@
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 2,
-  "goalsFromLedger": 2,
+  "goalsFromPositive": 1,
+  "goalsFromLedger": 1,
   "matchesWithEvents": 15,
   "eventGoalDisagree": 0,
-  "apps": 26,
+  "apps": 23,
   "samplePositive": [
     {
-      "matchId": "world-cup:2026:group:E:md3:slot1",
+      "matchId": "world-cup:2026:group:D:md3:slot0",
       "editionId": "2026-world-cup",
       "competitionId": "world-cup",
       "teamId": "nation:england",
@@ -36,25 +36,25 @@
       "rating": 6.3
     },
     {
-      "matchId": "world-cup:2026:ko:m74",
+      "matchId": "world-cup:2026:ko:m88",
       "editionId": "2026-world-cup",
       "competitionId": "world-cup",
       "teamId": "nation:england",
       "minutes": 21,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.7
+      "rating": 6.8
     }
   ],
   "sampleZero": [
     {
-      "matchId": "world-cup:2026:group:E:md1:slot1",
+      "matchId": "world-cup:2026:group:D:md1:slot0",
       "reason": "not_selected",
       "editionId": "2026-world-cup",
       "teamId": "nation:england"
     },
     {
-      "matchId": "world-cup:2026:group:E:md2:slot0",
+      "matchId": "world-cup:2026:group:D:md2:slot0",
       "reason": "unused_substitute",
       "editionId": "2026-world-cup",
       "teamId": "nation:england"
@@ -62,9 +62,9 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 533,
+      "minutes": 474,
       "appearances": 15,
-      "starts": 4,
+      "starts": 3,
       "goals": 1,
       "assists": 0,
       "cleanSheets": 1
@@ -78,20 +78,20 @@
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 101,
-      "appearances": 5,
+      "minutes": 122,
+      "appearances": 4,
+      "starts": 1,
+      "goals": 0,
+      "assists": 0,
+      "cleanSheets": 0
+    },
+    "international": {
+      "minutes": 98,
+      "appearances": 4,
       "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
-    },
-    "international": {
-      "minutes": 262,
-      "appearances": 6,
-      "starts": 2,
-      "goals": 1,
-      "assists": 0,
-      "cleanSheets": 1
     },
     "other": {
       "minutes": 0,

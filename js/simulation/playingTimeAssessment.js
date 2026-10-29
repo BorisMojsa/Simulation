@@ -317,7 +317,9 @@ export function assessClubPlayingTime(player, opts = {}) {
   const playerLedger = player?.seasonLedger || null;
   const candidate =
     (ledger && ledgerScoped(ledger, season, representedClubId) && ledger) ||
-    (playerLedger && ledgerScoped(playerLedger, season, representedClubId) && playerLedger) ||
+    (playerLedger &&
+      ledgerScoped(playerLedger, season, representedClubId, { requirePeriodProof: true }) &&
+      playerLedger) ||
     null;
 
   if (candidate) {
@@ -368,24 +370,51 @@ export function assessClubPlayingTime(player, opts = {}) {
   }
 
   // Legacy league-only estimate: standing.matches as opportunity count when known.
-  // Prefer proved club-only minutes; never divide combined club+international totals
-  // by league-only capacity.
+  // Prefer proved league-only minutes with league-only opportunities. Never mix
+  // club+international or league+cup numerators with league-only capacity.
   const standingMatches = coerceFiniteOrNull(season?.standing?.matches);
   const clubOnlyMinutes =
     coerceFiniteOrNull(season?.clubMinutes) ??
     coerceFiniteOrNull(season?.ledgerSummary?.club?.minutes);
   const internationalMinutes = coerceFiniteOrNull(season?.ledgerSummary?.international?.minutes);
   const combinedMinutes = coerceFiniteOrNull(season?.minutes);
+  const cupMinutes = legacyCupMinutes(season);
   if (standingMatches != null && standingMatches > 0) {
     let seasonMinutes = null;
-    if (clubOnlyMinutes != null && clubOnlyMinutes >= 0) {
+    const leagueOnlyHint =
+      coerceFiniteOrNull(season?.leagueMinutes) ??
+      coerceFiniteOrNull(season?.ledgerSummary?.league?.minutes) ??
+      null;
+
+    if (cupMinutes > 0) {
+      // League standing capacity cannot absorb cup minutes.
+      if (leagueOnlyHint != null && leagueOnlyHint >= 0) {
+        seasonMinutes = leagueOnlyHint;
+      } else if (
+        clubOnlyMinutes != null &&
+        clubOnlyMinutes >= cupMinutes &&
+        Number.isFinite(clubOnlyMinutes - cupMinutes)
+      ) {
+        seasonMinutes = clubOnlyMinutes - cupMinutes;
+      } else {
+        base.conflicts.push({
+          kind: "legacy-league-cup-mixed",
+          clubMinutes: clubOnlyMinutes,
+          cupMinutes,
+          standingMatches,
+        });
+        base.source = "legacy-mixed-incomplete";
+        base.completeness = "incomplete";
+        base.share = null;
+        base.eligibleFixtureCount = 0;
+        base.opportunityCapacity = 0;
+        return base;
+      }
+    } else if (leagueOnlyHint != null && leagueOnlyHint >= 0) {
+      seasonMinutes = leagueOnlyHint;
+    } else if (clubOnlyMinutes != null && clubOnlyMinutes >= 0) {
+      // Explicit club-only minutes are valid even when an international summary exists.
       seasonMinutes = clubOnlyMinutes;
-    } else if (
-      combinedMinutes != null &&
-      combinedMinutes >= 0 &&
-      (internationalMinutes == null || internationalMinutes === 0)
-    ) {
-      seasonMinutes = combinedMinutes;
     } else if (
       combinedMinutes != null &&
       internationalMinutes != null &&
@@ -404,6 +433,12 @@ export function assessClubPlayingTime(player, opts = {}) {
       base.eligibleFixtureCount = 0;
       base.opportunityCapacity = 0;
       return base;
+    } else if (
+      combinedMinutes != null &&
+      combinedMinutes >= 0 &&
+      (internationalMinutes == null || internationalMinutes === 0)
+    ) {
+      seasonMinutes = combinedMinutes;
     } else if (combinedMinutes != null && combinedMinutes >= 0) {
       seasonMinutes = combinedMinutes;
     }
@@ -442,13 +477,16 @@ export function assessClubPlayingTime(player, opts = {}) {
   return base;
 }
 
-function ledgerScoped(ledger, season, clubId) {
+function ledgerScoped(ledger, season, clubId, opts = {}) {
   if (!ledger || typeof ledger !== "object") return false;
   // Period membership must be proved. Missing or mismatched identity is uncertainty.
   if (ledger.seasonId) {
     if (!season?.seasonId) return false;
     if (ledger.seasonId !== season.seasonId) return false;
   } else if (season?.seasonId) {
+    return false;
+  } else if (opts.requirePeriodProof) {
+    // Unscoped player-level cache with no period ids on either side is not proof.
     return false;
   }
   const ledgerClub = ledger.clubId || ledger.playingClubId || null;
@@ -459,6 +497,17 @@ function ledgerScoped(ledger, season, clubId) {
     return false;
   }
   return true;
+}
+
+function legacyCupMinutes(season) {
+  const rows = season?.domesticCupResult?.playerMatches;
+  if (!Array.isArray(rows) || !rows.length) return 0;
+  let total = 0;
+  for (const row of rows) {
+    const mins = coerceFiniteOrNull(row?.playerStats?.minutes ?? row?.minutes);
+    if (mins != null && mins > 0) total += mins;
+  }
+  return total;
 }
 
 function summarizeLedger(ledger) {

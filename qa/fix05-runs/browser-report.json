@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-29T11:38:22.102Z",
+  "generatedAt": "2026-10-29T20:39:55.709Z",
   "baseUrl": "http://127.0.0.1:8000",
   "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "results": [
@@ -16,7 +16,7 @@
       "name": "live-loan-controls",
       "status": "PASS",
       "detail": {
-        "playing": "club:croatia:slaven-belupo",
+        "playing": "club:serbia:tsc-backa-topola",
         "employment": "club:italy:atalanta",
         "runtimeErrors": []
       }
@@ -52,7 +52,7 @@
         "academy": {
           "status": "pending-review",
           "periodCount": 1,
-          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvtgyuyx",
+          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvu0bc0f",
           "exitAge": 21
         },
         "nextAction": {
@@ -147,24 +147,24 @@
         "minutes": 602,
         "evidenceByScope": {
           "league": {
-            "minutes": 343,
-            "appearances": 13,
+            "minutes": 378,
+            "appearances": 15,
             "starts": 1,
             "goals": 0,
             "assists": 0,
             "cleanSheets": 1
           },
           "cup": {
-            "minutes": 23,
-            "appearances": 1,
+            "minutes": 0,
+            "appearances": 0,
             "starts": 0,
             "goals": 0,
             "assists": 0,
             "cleanSheets": null
           },
           "continental": {
-            "minutes": 236,
-            "appearances": 7,
+            "minutes": 224,
+            "appearances": 6,
             "starts": 1,
             "goals": 0,
             "assists": 0,

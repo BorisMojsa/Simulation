@@ -7,10 +7,10 @@
   "zeroMinutes": 24,
   "withEdition": 59,
   "editionCoverage": 1,
-  "rawCleanSheets": 4,
-  "ledgerCleanSheets": 4,
-  "evidenceLeagueCleanSheets": 3,
-  "evidenceTotalCleanSheets": 4,
+  "rawCleanSheets": 5,
+  "ledgerCleanSheets": 5,
+  "evidenceLeagueCleanSheets": 4,
+  "evidenceTotalCleanSheets": 5,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
     "FA Cup::2026:FA Cup",
@@ -19,8 +19,8 @@
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 1,
-  "goalsFromLedger": 1,
+  "goalsFromPositive": 0,
+  "goalsFromLedger": 0,
   "matchesWithEvents": 24,
   "eventGoalDisagree": 0,
   "apps": 35,
@@ -33,7 +33,7 @@
       "minutes": 85,
       "goals": 0,
       "cleanSheet": false,
-      "rating": 5.4
+      "rating": 6.2
     },
     {
       "matchId": "league:england-premier-league:md:30",
@@ -43,7 +43,7 @@
       "minutes": 17,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.1
+      "rating": 6.4
     }
   ],
   "sampleZero": [
@@ -62,12 +62,12 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 960,
+      "minutes": 902,
       "appearances": 24,
-      "starts": 7,
-      "goals": 1,
-      "assists": 2,
-      "cleanSheets": 3
+      "starts": 6,
+      "goals": 0,
+      "assists": 1,
+      "cleanSheets": 4
     },
     "cup": {
       "minutes": 267,
@@ -82,7 +82,7 @@
       "appearances": 6,
       "starts": 0,
       "goals": 0,
-      "assists": 0,
+      "assists": 1,
       "cleanSheets": null
     },
     "international": {

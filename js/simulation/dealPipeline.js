@@ -398,6 +398,28 @@ export function generatePipelineOffers(player, opts = {}) {
     employer?.clubId &&
     (rem <= 1 || reviewPhase === "boundary");
   if (renewalWindow) {
+    // Once a boundary review owns the tray, reuse its issued renewal terms rather
+    // than rebuilding wages/years from a differently adjusted performance score.
+    const ownedBoundary =
+      reviewPhase === "boundary" &&
+      player.pendingContractReview?.status === "pending" &&
+      player.renewalReview?.reviewPhase === "boundary" &&
+      player.renewalReview?.outcome === "wants-renewal" &&
+      !opts.forceReevaluate;
+    const existingBoundaryRenewal =
+      ownedBoundary &&
+      (player.pendingOffers || []).find((o) => {
+        if (!o?.isRenewal) return false;
+        if (o.renewalReviewId && o.renewalReviewId !== player.renewalReview.reviewId) return false;
+        const journal = player.offerJournal?.[o.offerId]?.status;
+        if (journal && journal !== "pending") return false;
+        if (o.status === "declined" || o.status === "superseded" || o.status === "accepted") return false;
+        return true;
+      });
+
+    if (existingBoundaryRenewal) {
+      offers.push(existingBoundaryRenewal);
+    } else {
     const renewalProbe = buildValidatedOffer({
       player,
       club: employer,
@@ -461,6 +483,7 @@ export function generatePipelineOffers(player, opts = {}) {
     } else if (!renewalProbe.ok) {
       rejectionLog.push({ clubId: employer.clubId, reasons: renewalProbe.reasons, kind: "renewal" });
     }
+    } // end else rebuild renewal
   }
 
   if (player.club?.isAcademy && player.club.parentClub && !player.suppressParentContractOffer) {

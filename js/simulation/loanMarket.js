@@ -539,7 +539,46 @@ export function endLoan(player, resolution = "return", opts = {}) {
     return { ok: true, resolution: "purchase", offer, transactionId: result.transactionId };
   }
 
+  const pendingParentReview = player.pendingContractReview?.status === "pending";
   const contractExpired = !isContractActive(player) || resolution === "expiry";
+
+  // Co-terminal loan end while a parent boundary review is open: settle the
+  // borrower spell/finance, restore parent registration, but do NOT release or
+  // discard the unresolved parent renewal decision.
+  if (pendingParentReview && resolution !== "purchase") {
+    settleLoanSlotsAndWages(player, loan, sk, contractExpired ? "expiry" : "return");
+    player.club = { ...parent, isLoanSpell: false };
+    player.employmentClubId = loan.parentClubId;
+    player.playingClubId = loan.parentClubId;
+    if (Number.isFinite(loan.previousWeeklyWage)) {
+      player.weeklyWage = loan.previousWeeklyWage;
+      player.wage = loan.previousWeeklyWage;
+    }
+    player.activeLoan = {
+      ...loan,
+      status: contractExpired ? "expired" : "returned",
+      settledFinance: true,
+    };
+    player.parentClubSnapshot = null;
+    if (!player.consumedTransitionIds) player.consumedTransitionIds = [];
+    player.consumedTransitionIds.push(settleId);
+    const returnDate =
+      opts.effectiveDate ||
+      opts.date ||
+      loan.endDate ||
+      `${(player.startYear || 2026) + completedSeasons(player) + 1}-06-30`;
+    ensurePlayingStints(player, { asOfDate: returnDate });
+    recordPlayingTransition(player, {
+      effectiveDate: returnDate,
+      playingClubId: loan.parentClubId,
+      employmentClubId: loan.parentClubId,
+      leagueId: parent?.leagueId || null,
+      clubName: parent?.name || null,
+      kind: "loan_return_pending_review",
+      onLoan: false,
+    });
+    return { ok: true, resolution: "return-pending-review" };
+  }
 
   if (contractExpired) {
     settleLoanSlotsAndWages(player, loan, sk, "expiry");

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-29T19:41:36.636Z",
+  "generatedAt": "2026-10-29T20:39:08.021Z",
   "base": "http://127.0.0.1:8000",
   "selected": [
     "B01",
@@ -16,8 +16,8 @@
       "name": "B01",
       "status": "PASS",
       "detail": {
-        "stay": "Stay and compete",
-        "loanOptsVisible": true,
+        "stay": "Decline",
+        "loanOpts": "Review loan options",
         "continueClicks": 9,
         "age": 20
       }
@@ -35,10 +35,15 @@
       "name": "B03",
       "status": "PASS",
       "detail": {
-        "freeAgent": true,
-        "age": 29,
-        "seasons": 1,
-        "declined": false
+        "negativeOutcome": "will-not-renew",
+        "positiveReached": true,
+        "positiveDeclined": true,
+        "coterminalDeclined": true,
+        "ages": {
+          "negative": 29,
+          "positive": 25,
+          "coterminal": 25
+        }
       }
     },
     {
@@ -46,8 +51,8 @@
       "status": "PASS",
       "detail": {
         "signed": true,
-        "age": 25,
-        "club": "club:serbia:vojvodina"
+        "age": 26,
+        "club": "club:serbia:partizan"
       }
     },
     {
@@ -87,7 +92,8 @@
       "status": "PASS",
       "detail": {
         "offerId": "club:england:hull-city:renewal:2026:starter:193500:0",
-        "end": 2
+        "end": 2,
+        "dupReason": "journal-accepted"
       }
     }
   ],

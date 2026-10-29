@@ -2,10 +2,10 @@
   "careerId": "bug5-cm-2",
   "position": "CM",
   "seed": 303,
-  "rawRecords": 58,
-  "positiveMinutes": 20,
-  "zeroMinutes": 38,
-  "withEdition": 58,
+  "rawRecords": 54,
+  "positiveMinutes": 19,
+  "zeroMinutes": 35,
+  "withEdition": 54,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -13,17 +13,17 @@
   "evidenceTotalCleanSheets": null,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
-    "uefa-champions-league::2026-uefa-champions-league",
-    "FA Cup::2026:FA Cup"
+    "FA Cup::2026:FA Cup",
+    "uefa-champions-league::2026-uefa-champions-league"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
   "goalsFromPositive": 0,
   "goalsFromLedger": 0,
-  "matchesWithEvents": 15,
+  "matchesWithEvents": 11,
   "eventGoalDisagree": 0,
-  "apps": 20,
+  "apps": 19,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:30",
@@ -33,17 +33,17 @@
       "minutes": 78,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6
+      "rating": 6.4
     },
     {
-      "matchId": "league:england-premier-league:md:60",
-      "editionId": "2026",
-      "competitionId": "league:england-premier-league",
+      "matchId": "cup:FA Cup:0:Round of 64",
+      "editionId": "2026:FA Cup",
+      "competitionId": "FA Cup",
       "teamId": "club:england:arsenal",
       "minutes": 21,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.1
+      "rating": 6.4
     }
   ],
   "sampleZero": [
@@ -62,25 +62,25 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 437,
-      "appearances": 15,
-      "starts": 2,
+      "minutes": 423,
+      "appearances": 11,
+      "starts": 3,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "cup": {
-      "minutes": 35,
-      "appearances": 1,
-      "starts": 0,
+      "minutes": 139,
+      "appearances": 4,
+      "starts": 1,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 208,
+      "minutes": 89,
       "appearances": 4,
-      "starts": 2,
+      "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null

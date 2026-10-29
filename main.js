@@ -405,6 +405,29 @@ window.__exportCareerSnapshot = function exportCareerSnapshot() {
   return serializeCareerSnapshot({ player, world: getWorldState() });
 };
 
+/**
+ * QA: attempt acceptance through the same production pipeline as the UI.
+ * Used to prove stale/duplicate Accept rejection without inventing a second path.
+ */
+window.__acceptPipelineOffer = function acceptPipelineOfferForQa(offer) {
+  if (!player) return { ok: false, reason: "no-player" };
+  if (!offer) return { ok: false, reason: "missing-offer" };
+  const beforeEnd = player.contractEndSeason;
+  const beforeWage = player.weeklyWage;
+  const result = acceptPipelineOffer(player, offer);
+  refreshAll();
+  syncSimulateButton();
+  return {
+    ...result,
+    attempted: true,
+    beforeEnd,
+    beforeWage,
+    afterEnd: player.contractEndSeason,
+    afterWage: player.weeklyWage,
+  };
+};
+window.__acceptTransferOffer = window.__acceptPipelineOffer;
+
 /** QA: restore a previously exported session snapshot onto the desk. */
 window.__restoreCareerSnapshot = function restoreCareerSnapshot(data) {
   const restored = deserializeCareerSnapshot(data);

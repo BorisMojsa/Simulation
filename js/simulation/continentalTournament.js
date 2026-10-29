@@ -33,6 +33,7 @@ import { updateFatigue, updateFormFromObservation } from "./playerState.js";
 import { applyInjury, computeRiskMultiplier, sampleInjuryFromExposure } from "./playerHealth.js";
 import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./worldState.js";
 import { effectiveTeamStrength } from "./teamStrength.js";
+import { fixtureOpportunityCapacity } from "./playerMatchDay.js";
 import {
   commitEdition,
   commitMatch,
@@ -1525,16 +1526,12 @@ function syncLedgerRecordFromMatch(ledgerRecord, match) {
   ledgerRecord.selected = Boolean(ps.selected ?? ledgerRecord.selected);
   ledgerRecord.available = Boolean(ps.available ?? ledgerRecord.available);
   ledgerRecord.nonParticipationReason = ps.nonParticipationReason ?? ledgerRecord.nonParticipationReason ?? null;
-  // availableMinutes tracks total credited duration (regulation + ET). matchDuration
-  // is raised when ET extends participation so record metadata agrees with minutes.
-  ledgerRecord.availableMinutes = Math.max(
-    Number(ledgerRecord.availableMinutes) || 0,
-    minutes,
-    minutes > 90 ? minutes : Number(ledgerRecord.matchDuration) || 90
-  );
-  if (minutes > 90) {
-    ledgerRecord.matchDuration = Math.max(Number(ledgerRecord.matchDuration) || 90, minutes);
-  }
+  // Fixture opportunity capacity follows whether ET was actually played — never
+  // the user's own minutes. Keep played minutes separate from capacity.
+  const regulation = Number(ledgerRecord.matchDuration) || 90;
+  const capacity = fixtureOpportunityCapacity(match, regulation);
+  ledgerRecord.availableMinutes = capacity;
+  ledgerRecord.matchDuration = capacity;
   if (match.editionId != null && ledgerRecord.editionId == null) {
     ledgerRecord.editionId = match.editionId;
   }
@@ -1569,25 +1566,26 @@ function applyDeferredFinalExposure(player, match, processorResult, priorExposur
   const delta = finalMinutes - prior;
   processorResult._exposureSynced = true;
   processorResult._exposureMinutesCharged = finalMinutes;
+  const capacity = fixtureOpportunityCapacity(
+    match,
+    Number(processorResult.participation?.matchDuration) ||
+      Number(player.matchParticipation?.matchDuration) ||
+      90
+  );
   if (processorResult.participation) {
     processorResult.participation = {
       ...processorResult.participation,
       minutes: finalMinutes,
-      availableMinutes: Math.max(finalMinutes, Number(processorResult.participation.availableMinutes) || 0),
-      matchDuration: Math.max(
-        Number(processorResult.participation.matchDuration) || 90,
-        finalMinutes > 90 ? finalMinutes : 90
-      ),
+      availableMinutes: capacity,
+      matchDuration: capacity,
     };
   }
   if (player.matchParticipation) {
     player.matchParticipation = {
       ...player.matchParticipation,
       minutes: finalMinutes,
-      matchDuration: Math.max(
-        Number(player.matchParticipation.matchDuration) || 90,
-        finalMinutes > 90 ? finalMinutes : 90
-      ),
+      matchDuration: capacity,
+      availableMinutes: capacity,
     };
   }
   if (!(delta > 0)) return;

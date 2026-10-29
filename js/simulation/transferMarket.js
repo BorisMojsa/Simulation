@@ -63,6 +63,23 @@ export function generateTransferOffers(
     (player.pendingContractReview?.reviewPhase === "boundary" ||
       player.renewalReview?.reviewPhase === "boundary");
 
+  // Preserve already-issued boundary renewal terms; facade rating adjustment must
+  // not silently rebuild wages/years for the same owned review.
+  const existingBoundaryRenewals = pendingBoundary
+    ? (player.pendingOffers || []).filter((o) => {
+        if (!o?.isRenewal) return false;
+        if (
+          o.renewalReviewId &&
+          player.renewalReview?.reviewId &&
+          o.renewalReviewId !== player.renewalReview.reviewId
+        ) {
+          return false;
+        }
+        const journal = player.offerJournal?.[o.offerId]?.status;
+        return !journal || journal === "pending";
+      })
+    : [];
+
   // Post-season facade must reuse the completed-evidence boundary review — never
   // open an unrelated default in-season phase that overwrites firm boundary state.
   const result = generatePipelineOffers(player, {
@@ -73,8 +90,16 @@ export function generateTransferOffers(
     forceReevaluate: false,
   });
 
+  const offers =
+    existingBoundaryRenewals.length > 0
+      ? [
+          ...existingBoundaryRenewals,
+          ...(result.offers || []).filter((o) => !o.isRenewal),
+        ]
+      : result.offers;
+
   // Ensure ledgers exist for involved clubs (lazy init; no spend on generation).
-  for (const offer of result.offers) {
+  for (const offer of offers) {
     if (offer.clubId) {
       getOrInitClubSeasonFinance(
         offer.clubId,
@@ -89,7 +114,7 @@ export function generateTransferOffers(
   player.lastMarketReviewId = result.reviewId || null;
   // Do not close the free-agent review on generation/rerender — settlement
   // (decline window, Continue, or train/wait) closes it exactly once.
-  return result.offers;
+  return offers;
 }
 
 export function acceptTransferOffer(player, offer) {

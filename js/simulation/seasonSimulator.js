@@ -183,6 +183,27 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   ensurePlayerModel(player);
   ensureContractAuthority(player);
 
+  // Pending parent boundary review must win over loan-expiry release / train-wait.
+  // Soft-settle an ended borrower spell without discarding the unresolved parent decision.
+  const pendingGate = assertPlayableRegistration(player);
+  if (!pendingGate.ok && pendingGate.mode === "pending-review") {
+    if (
+      player.activeLoan?.status === "active" &&
+      player.activeLoan.endSeason != null &&
+      (player.seasons?.length ?? 0) >= player.activeLoan.endSeason
+    ) {
+      endLoan(player, "return");
+    }
+    return {
+      season: null,
+      pendingContractReview: true,
+      review: player.pendingContractReview,
+      performanceScore: null,
+      nextAction: selectNextCareerAction(player),
+      playable: assertPlayableRegistration(player),
+    };
+  }
+
   // Settle expired loans at the season boundary before attaching fixtures.
   if (
     player.activeLoan?.status === "active" &&
@@ -192,7 +213,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     endLoan(player, isFreeAgent(player) || !assertPlayableRegistration(player).ok ? "expiry" : "return");
   }
 
-  // Pending boundary review / free agent / expired: do not invent a senior period.
+  // Free agent / expired: do not invent a senior club period.
   const playable = assertPlayableRegistration(player);
   if (!playable.ok && playable.mode === "pending-review") {
     return {
