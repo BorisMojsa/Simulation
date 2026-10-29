@@ -33,9 +33,11 @@ import {
   closeFreeAgentMarketReview,
 } from "../js/simulation/dealPipeline.js";
 import { generateLoanOffers, startLoan } from "../js/simulation/loanMarket.js";
+import { resolveSquadDecision } from "../js/simulation/squadDecisions.js";
 import { buildLiveLoanBrowserFixture } from "../js/simulation/liveLoanBrowserFixture.js";
 import { buildFreeAgentBrowserFixture } from "../js/simulation/freeAgentBrowserFixture.js";
 import { simulateSeason } from "../js/simulation/seasonSimulator.js";
+import { applySeniorScenarioPolicy } from "../js/simulation/seniorCareerScenarios.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BASE = process.env.BASE_URL || "http://127.0.0.1:8000";
@@ -68,6 +70,29 @@ function num(v, label) {
   return v;
 }
 const jsonClone = (v) => JSON.parse(JSON.stringify(v));
+
+/** Compact player/review evidence for case JSON (full snaps blow string limits). */
+function slimPlayer(snapOrPlayer) {
+  const p = snapOrPlayer?.player || snapOrPlayer;
+  if (!p) return null;
+  return {
+    careerId: p.careerId || null,
+    age: p.age ?? null,
+    contractStatus: p.contractStatus || null,
+    employmentClubId: p.employmentClubId || null,
+    playingClubId: p.playingClubId || null,
+    contractEndSeason: p.contractEndSeason ?? null,
+    seasons: p.seasons?.length ?? 0,
+    pendingContractReview: p.pendingContractReview
+      ? {
+          status: p.pendingContractReview.status || null,
+          outcome: p.pendingContractReview.outcome || null,
+          settledChoice: p.pendingContractReview.settledChoice || null,
+        }
+      : null,
+    activeLoanStatus: p.activeLoan?.status || null,
+  };
+}
 
 async function loadPlaywright() {
   return import("playwright-core");
@@ -241,6 +266,7 @@ async function driveToDesk(page, { timeoutMs = 90000 } = {}) {
       (cur.pendingDecision || cur.pendingOffers > 0 || cur.nextAction?.id === "resolve-decision")
     ) {
       const clicked =
+        (await clickMatching(page, "Continue the season")) ||
         (await clickMatching(page, "Stay and compete")) ||
         (await clickMatching(page, "Acknowledge|acknowledge")) ||
         (await clickMatching(page, "remain|see out|Decline and leave|decline")) ||
@@ -479,11 +505,198 @@ async function main() {
 
     if (SELECTED.includes("B03")) {
       await caseRun("B03", async () => {
+        const hull = allSeniorClubs().find((c) => c.name === "Hull City");
+
+        function completeToPendingRenewal(player) {
+          let data = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+            pauseForDecisions: true,
+            autoDecisionPolicy: null,
+          });
+          let guard = 0;
+          while ((data.awaitingScenario || data.awaitingDecision) && ++guard < 40) {
+            if (data.awaitingScenario) {
+              applySeniorScenarioPolicy(
+                player,
+                player.pendingSeniorScenario || data.pendingSeniorScenario,
+                "balanced"
+              );
+              player.pendingSeniorScenario = null;
+            } else if (data.awaitingDecision) {
+              const d = data.decision || player.pendingDecision;
+              const choice = (d.allowedChoices || d.choices?.map((c) => c.id) || [])[0];
+              assert(choice, `paused decision has no choice (${d?.kind})`);
+              const resolved = resolveSquadDecision(player, d, choice);
+              assert(resolved.ok, `resolve ${choice} failed: ${resolved.reason}`);
+              player.pendingOffers = [];
+            }
+            data = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+              pauseForDecisions: true,
+              autoDecisionPolicy: null,
+              keepPendingBoundaryReview: true,
+              checkpoint: data.checkpoint,
+            });
+          }
+          return data;
+        }
+
+        // Prefabricate ALL pause + restore fixtures before any browser mutation.
+        // Pause snaps must be built first — completeToPendingRenewal mutates shared club state.
+        function pauseBeforeCompletion(player) {
+          let data = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+            pauseForDecisions: true,
+            autoDecisionPolicy: null,
+          });
+          let guard = 0;
+          while (data.awaitingScenario && !(player.seasons?.length >= 1) && ++guard < 8) {
+            const pending = player.pendingSeniorScenario || data.pendingSeniorScenario;
+            applySeniorScenarioPolicy(player, pending, "balanced");
+            player.pendingSeniorScenario = null;
+            data = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+              pauseForDecisions: true,
+              autoDecisionPolicy: null,
+              checkpoint: data.checkpoint,
+            });
+          }
+          assert(!(player.seasons?.length >= 1), "paused fixture must not already complete the season");
+          assert(data.awaitingDecision && data.checkpoint, "paused fixture needs a live squad decision");
+          player.seasonCheckpoint = data.checkpoint;
+          player.pendingDecision = data.decision || player.pendingDecision;
+          player.pendingOffers = data.offers || player.pendingOffers || [];
+          return serializeCareerSnapshot({
+            player,
+            world: getWorldState(),
+            checkpoint: data.checkpoint,
+          });
+        }
+
+        function buildPositivePlayer(id, name = "Fix07 Positive Review") {
+          reseedCareerRng(707);
+          resetClubFinanceLedgers();
+          setWorldState(createWorldState({ startYear: 2026 }));
+          const p = createPlayerIdentity({
+            name,
+            nationality: "England",
+            position: "ST",
+            age: 24,
+          });
+          Object.assign(p, {
+            careerId: id,
+            startYear: 2026,
+            age: 24,
+            rating: 90,
+            attributes: attrs(90),
+            club: { ...hull },
+            employmentClubId: hull.clubId,
+            playingClubId: hull.clubId,
+            contractStatus: "active",
+            contractStartSeason: 0,
+            contractYears: 1,
+            contractEndSeason: 1,
+            weeklyWage: 1500,
+            wage: 1500,
+            seasons: [],
+          });
+          ensurePlayerModel(p);
+          refreshAbilityCaches(p);
+          ensureContractAuthority(p);
+          return p;
+        }
+
+        function buildCoterminalPlayer(id, name = "Fix07 CoTerminal") {
+          reseedCareerRng(707);
+          resetClubFinanceLedgers();
+          setWorldState(createWorldState({ startYear: 2026 }));
+          const atalanta = allSeniorClubs().find((c) => c.name === "Atalanta");
+          const p = createPlayerIdentity({
+            name,
+            nationality: "England",
+            position: "ST",
+            age: 24,
+          });
+          Object.assign(p, {
+            careerId: id,
+            startYear: 2026,
+            age: 24,
+            rating: 90,
+            attributes: attrs(90),
+            club: { ...atalanta },
+            employmentClubId: atalanta.clubId,
+            playingClubId: atalanta.clubId,
+            contractStatus: "active",
+            contractStartSeason: 0,
+            contractYears: 1,
+            contractEndSeason: 1,
+            weeklyWage: 1500,
+            wage: 1500,
+            seasons: [],
+          });
+          ensurePlayerModel(p);
+          refreshAbilityCaches(p);
+          ensureContractAuthority(p);
+          const loans = generateLoanOffers(p, { maxOffers: 3, rng: createRng(707) });
+          assert(loans.offers?.length > 0, "co-terminal loan offers required");
+          assert(startLoan(p, loans.offers[0]).ok, "co-terminal startLoan");
+          reseedCareerRng(708);
+          return { player: p, loanClub: loans.offers[0].clubId, parent: atalanta.clubId };
+        }
+
+        // One pause fixture per club path — a second build can land a different loan
+        // club / minute path (Hertha 90' → will-not-renew) while live stays on Schalke.
+        // Clone the live pause snap for Accept so resume stays on the same seeded path.
+        const positiveLiveStart = pauseBeforeCompletion(buildPositivePlayer("fix07-b03-positive-live"));
+        const positiveAcceptStart = jsonClone(positiveLiveStart);
+        const cotermLiveBuilt = buildCoterminalPlayer("fix07-b03-coterminal-live");
+        const cotermLiveMeta = {
+          snap: pauseBeforeCompletion(cotermLiveBuilt.player),
+          loanClub: cotermLiveBuilt.loanClub,
+          parent: cotermLiveBuilt.parent,
+        };
+        const cotermAcceptStart = {
+          snap: jsonClone(cotermLiveMeta.snap),
+          parent: cotermLiveMeta.parent,
+          loanClub: cotermLiveMeta.loanClub,
+        };
+        await writeJson(join(FIXTURE_DIR, "B03-positive-start.json"), positiveLiveStart);
+        await writeJson(join(FIXTURE_DIR, "B03-positive-accept-start.json"), positiveAcceptStart);
+        await writeJson(join(FIXTURE_DIR, "B03-coterminal-start.json"), cotermLiveMeta.snap);
+        await writeJson(join(FIXTURE_DIR, "B03.json"), cotermLiveMeta.snap);
+        await writeJson(join(FIXTURE_DIR, "B03-coterminal-accept-start.json"), cotermAcceptStart.snap);
+
+        // Restore fixtures after pause snaps (may mutate Hull/Atalanta club state).
+        const restorePositiveEarly = buildPositivePlayer(
+          "fix07-b03-positive-restore",
+          "Fix07 Positive Restore"
+        );
+        completeToPendingRenewal(restorePositiveEarly);
+        assert(
+          restorePositiveEarly.pendingContractReview?.outcome === "wants-renewal",
+          "early positive restore fixture"
+        );
+        const positiveRestoreSnap = serializeCareerSnapshot({
+          player: restorePositiveEarly,
+          world: getWorldState(),
+        });
+        await writeJson(join(FIXTURE_DIR, "B03-positive.json"), positiveRestoreSnap);
+
+        const cotermRestoreBuilt = buildCoterminalPlayer(
+          "fix07-b03-coterminal-restore",
+          "Fix07 CoTerminal Restore"
+        );
+        completeToPendingRenewal(cotermRestoreBuilt.player);
+        assert(
+          cotermRestoreBuilt.player.pendingContractReview?.outcome === "wants-renewal",
+          "early coterm restore fixture"
+        );
+        const cotermRestoreSnap = serializeCareerSnapshot({
+          player: cotermRestoreBuilt.player,
+          world: getWorldState(),
+        });
+        await writeJson(join(FIXTURE_DIR, "B03-coterminal.json"), cotermRestoreSnap);
+
         // A) Negative terminal review (genuine non-renewal) via UI.
         reseedCareerRng(707);
         resetClubFinanceLedgers();
         setWorldState(createWorldState({ startYear: 2026 }));
-        const hull = allSeniorClubs().find((c) => c.name === "Hull City");
         const negativePlayer = createPlayerIdentity({
           name: "Fix07 Expiry",
           nationality: "England",
@@ -552,309 +765,342 @@ async function main() {
           "negative path must settle genuine non-renewal/release"
         );
 
-        // B) Positive terminal renewal: complete season to pending wants-renewal, then
-        // decline through real desk controls (no silent Node settlement of the tray).
-        reseedCareerRng(707);
-        resetClubFinanceLedgers();
-        setWorldState(createWorldState({ startYear: 2026 }));
-        const positivePlayer = createPlayerIdentity({
-          name: "Fix07 Positive Review",
-          nationality: "England",
-          position: "ST",
-          age: 24,
-        });
-        Object.assign(positivePlayer, {
-          careerId: "fix07-b03-positive",
-          startYear: 2026,
-          age: 24,
-          rating: 90,
-          attributes: attrs(90),
-          club: { ...hull },
-          employmentClubId: hull.clubId,
-          playingClubId: hull.clubId,
-          contractStatus: "active",
-          contractStartSeason: 0,
-          contractYears: 1,
-          contractEndSeason: 1,
-          weeklyWage: 1500,
-          wage: 1500,
-          seasons: [],
-        });
-        ensurePlayerModel(positivePlayer);
-        refreshAbilityCaches(positivePlayer);
-        ensureContractAuthority(positivePlayer);
-        simulateSeason(positivePlayer, LEAGUES, LEAGUE_LOOKUP, {
-          pauseForDecisions: false,
-          autoDecisionPolicy: null,
-          keepPendingBoundaryReview: true,
-        });
-        assert(
-          positivePlayer.pendingContractReview?.status === "pending" &&
-            positivePlayer.pendingContractReview?.outcome === "wants-renewal",
-          "positive wants-renewal must be produced for UI decline"
-        );
-        assert(
-          (positivePlayer.pendingOffers || []).some((o) => o.isRenewal),
-          "positive renewal offer required"
-        );
-        const positiveSnap = serializeCareerSnapshot({
-          player: positivePlayer,
-          world: getWorldState(),
-        });
-        await writeJson(join(FIXTURE_DIR, "B03-positive.json"), positiveSnap);
-        await restoreSnapshot(page, positiveSnap);
-        const posBefore = await exportSnap(page);
-        await shot(page, "B03-positive-start");
-        assert(
-          posBefore.player.pendingContractReview?.status === "pending" &&
-            posBefore.player.pendingContractReview?.outcome === "wants-renewal",
-          "browser must restore positive pending review"
-        );
-        const positiveReached = true;
-        const positiveOfferId = (posBefore.player.pendingOffers || []).find((o) => o.isRenewal)?.offerId || null;
-        const posAgeLocked = posBefore.player.age;
-        const posSeasonsLocked = (posBefore.player.seasons || []).length;
-        let positiveDeclined = false;
-        let posDeclineHit = null;
-        for (let i = 0; i < 40; i++) {
-          const cur = await uiState(page);
-          if (cur.continueBtnVisible && !cur.continueBtnDisabled) {
-            await clickContinueBtn(page);
+        async function waitBoundaryTray(label) {
+          const actions = [];
+          let beforeFinalContinue = null;
+          let continueClicks = 0;
+          let sawPendingReview = false;
+          const deadline = Date.now() + 180000;
+          while (Date.now() < deadline) {
+            const cur = await uiState(page);
+            const snap = await exportSnap(page).catch(() => null);
+            const review = snap?.player?.pendingContractReview;
+            const renewals = (snap?.player?.pendingOffers || []).filter((o) => o.isRenewal);
+            const decisionKind = snap?.player?.pendingDecision?.kind || cur.pendingDecision?.kind;
+            const lead = snap?.player?.pendingDecision?.lead || "";
+            const reviewReady =
+              review?.status === "pending" &&
+              review?.outcome === "wants-renewal" &&
+              renewals.length > 0 &&
+              decisionKind === "boundary-renewal";
+            if (reviewReady) {
+              sawPendingReview = true;
+              assert(
+                !/will become a free agent after settlement/i.test(lead),
+                `${label}: premature FA wording (${lead})`
+              );
+            }
+
+            if (cur.continueBtnVisible && !cur.continueBtnDisabled) {
+              beforeFinalContinue = snap;
+              if (reviewReady) {
+                actions.push({
+                  type: "review-before-continue",
+                  decision: decisionKind,
+                  offerId: renewals[0].offerId,
+                });
+              }
+              const cont = await clickContinueBtn(page);
+              if (cont?.clicked) {
+                continueClicks += 1;
+                actions.push({ type: "continue", age: snap?.player?.age });
+              }
+              await page.waitForTimeout(160);
+              continue;
+            }
+
+            if (reviewReady && cur.overlayHidden && cur.dashboardHidden) {
+              const ready = await page.evaluate(() =>
+                [...document.querySelectorAll("button")].some(
+                  (b) =>
+                    /Decline and leave|^Decline$|Accept Offer|^Accept$/i.test(
+                      (b.textContent || "").trim()
+                    ) &&
+                    !b.disabled &&
+                    b.offsetParent !== null
+                )
+              );
+              if (ready) {
+                return {
+                  snap,
+                  beforeFinalContinue,
+                  continueClicks,
+                  actions,
+                  offerId: renewals[0].offerId,
+                  lead,
+                  decisionKind,
+                };
+              }
+            }
+
+            const scenarioHit = await page.evaluate(() => {
+              const overlay = document.getElementById("senior-scenario-overlay");
+              if (!overlay || overlay.classList.contains("hidden")) return null;
+              const btns = [
+                ...document.querySelectorAll(
+                  "#senior-scenario-overlay button, .scenario-actions button"
+                ),
+              ];
+              const pick =
+                btns.find((b) =>
+                  /balanced|continue|acknowledge|proceed|ok/i.test(b.textContent || "")
+                ) || btns.find((b) => !b.disabled && b.offsetParent !== null);
+              if (!pick || pick.disabled) return null;
+              pick.click();
+              return (pick.textContent || "").trim();
+            });
+            if (scenarioHit) {
+              actions.push({ type: "scenario", label: scenarioHit });
+              await page.waitForTimeout(200);
+              continue;
+            }
+
+            if (
+              cur.overlayHidden &&
+              decisionKind !== "boundary-renewal" &&
+              (cur.pendingDecision ||
+                cur.pendingOffers > 0 ||
+                cur.nextAction?.id === "resolve-decision")
+            ) {
+              const clicked =
+                (await clickMatching(page, "Continue the season")) ||
+                (await clickMatching(page, "Stay and compete")) ||
+                (await clickMatching(page, "Acknowledge|acknowledge")) ||
+                (await clickMatching(page, "remain|see out|compete")) ||
+                (await clickMatching(page, "Decline|decline"));
+              if (clicked) {
+                actions.push({ type: "decision", label: clicked, kind: decisionKind });
+                await page.waitForTimeout(200);
+                continue;
+              }
+            }
+
+            if (cur.nextAction?.id === "resolve-scenario") {
+              const clicked =
+                (await clickMatching(page, "balanced|continue|acknowledge|proceed")) ||
+                (await clickMatching(page, "ok|close"));
+              if (clicked) {
+                actions.push({ type: "scenario-text", label: clicked });
+                await page.waitForTimeout(200);
+                continue;
+              }
+            }
+
+            await page.evaluate(() => {
+              for (const id of [
+                "sim-skip-phase-btn",
+                "match-skip-phase-btn",
+                "sim-skip-match-btn",
+                "match-skip-btn",
+              ]) {
+                const el = document.getElementById(id);
+                if (el && !el.disabled && el.offsetParent !== null) el.click();
+              }
+            });
             await page.waitForTimeout(120);
-            continue;
           }
-          const declineReady = await page.evaluate(() =>
-            [...document.querySelectorAll("button")].some(
-              (b) =>
-                /Decline and leave|^Decline$/i.test((b.textContent || "").trim()) &&
-                !b.disabled &&
-                b.offsetParent !== null
-            )
+          const last = await exportSnap(page).catch(() => null);
+          throw new Error(
+            `${label}: boundary wants-renewal tray not reached (sawPending=${sawPendingReview}, review=${last?.player?.pendingContractReview?.status}/${last?.player?.pendingContractReview?.outcome}, decision=${last?.player?.pendingDecision?.kind}, seasons=${last?.player?.seasons?.length}, age=${last?.player?.age})`
           );
-          if (declineReady && cur.overlayHidden) {
-            await shot(page, "B03-positive-tray");
-            posDeclineHit =
-              (await clickMatching(page, "Decline and leave|decline-renewal")) ||
-              (await clickMatching(page, "^Decline$|Decline"));
-            positiveDeclined = Boolean(posDeclineHit);
-            break;
-          }
-          await page.waitForTimeout(120);
         }
-        assert(positiveDeclined, "positive renewal must be declined through UI");
+
+        async function clearDeskNoAdvance(label) {
+          for (let i = 0; i < 40; i++) {
+            const cur = await uiState(page);
+            if (
+              cur.overlayHidden &&
+              cur.dashboardHidden &&
+              !cur.seasonActionInFlight &&
+              cur.nextAction?.id !== "resolve-scenario"
+            ) {
+              break;
+            }
+            if (cur.continueBtnVisible && !cur.continueBtnDisabled) {
+              await clickContinueBtn(page);
+            } else if (cur.nextAction?.id === "resolve-scenario" || cur.pendingDecision) {
+              await clickMatching(
+                page,
+                "Acknowledge|acknowledge|Continue|continue|remain|stay|balanced|OK"
+              );
+            } else {
+              await page.waitForTimeout(120);
+            }
+          }
+          await assertDeskClear(page, label);
+        }
+
+        // B/C) Live / accept / restore paths — all pause fixtures were prefabricated
+        // before any browser club mutations so shared Hull/Atalanta state stays clean.
+        async function resumePausedSeason(label) {
+          const st = await uiState(page);
+          if (st.pendingDecision || st.pendingOffers > 0) {
+            assert(
+              (await clickMatching(page, "Continue the season")) ||
+                (await clickMatching(page, "Stay and compete")) ||
+                (await clickMatching(page, "Acknowledge|acknowledge|remain|stay|compete")),
+              `${label} must resolve paused decision through UI`
+            );
+          } else if (!st.simulateDisabled) {
+            await page.click("#simulate-btn");
+          }
+        }
+
+        await restoreSnapshot(page, positiveLiveStart);
+        const posBefore = await exportSnap(page);
+        assert(posBefore.player.contractStatus === "active", "positive live starts employed");
+        assert(!(posBefore.player.pendingContractReview?.status === "pending"), "starts pre-review");
+        assert(!(posBefore.player.seasons?.length >= 1), "positive live starts pre-completion");
+        await shot(page, "B03-positive-start");
+        await resumePausedSeason("B03-positive-live");
+        const posTray = await waitBoundaryTray("B03-positive-live");
+        await shot(page, "B03-positive-tray");
+        const posDecline =
+          (await clickMatching(page, "Decline and leave|decline-renewal")) ||
+          (await clickMatching(page, "^Decline$|Decline"));
+        assert(posDecline, "positive live Decline control required");
         await page.waitForTimeout(250);
         const posAfterDecline = await exportSnap(page);
-        assert(posAfterDecline.player.age === posAgeLocked, "positive decline must not age");
-        assert(
-          (posAfterDecline.player.seasons || []).length === posSeasonsLocked,
-          "positive decline must not add period"
-        );
-        // Clear any leftover presentation without advancing a free-agent wait year.
-        for (let i = 0; i < 20; i++) {
-          const cur = await uiState(page);
-          if (cur.overlayHidden && cur.dashboardHidden && !cur.seasonActionInFlight) break;
-          if (cur.continueBtnVisible && !cur.continueBtnDisabled) {
-            await clickContinueBtn(page);
-          } else {
-            await page.waitForTimeout(120);
-          }
-        }
-        await assertDeskClear(page, "B03-positive");
-        const posBeforeFinalContinue = posAfterDecline;
-        const posDriven = { continueClicks: 0, actions: ["decline-only"] };
+        assert(posAfterDecline.player.age === posBefore.player.age + 1, "positive live ages once");
+        await clearDeskNoAdvance("B03-positive-live");
         const posAfter = await exportSnap(page);
         await shot(page, "B03-desk");
         assert(
-          posAfter.player.contractStatus === "released" ||
-            posAfter.player.freeAgent ||
-            !posAfter.player.employmentClubId,
-          "declined positive renewal must release"
+          posAfter.player.contractStatus === "released" || !posAfter.player.employmentClubId,
+          "positive live decline releases"
         );
-        assert(
-          posAfter.player.pendingContractReview?.status === "settled" ||
-            posAfter.player.pendingContractReview?.settledChoice === "declined" ||
-            !posAfter.player.employmentClubId,
-          "positive review must settle after decline"
-        );
-        assert(posAfter.player.age === posAgeLocked, "positive FA age stays locked after decline");
 
-        // C) Co-terminal parent contract + loan: pending parent review before loan settlement.
-        reseedCareerRng(707);
-        resetClubFinanceLedgers();
-        setWorldState(createWorldState({ startYear: 2026 }));
-        const atalanta = allSeniorClubs().find((c) => c.name === "Atalanta");
-        const loanParent = createPlayerIdentity({
-          name: "Fix07 CoTerminal",
-          nationality: "England",
-          position: "ST",
-          age: 24,
-        });
-        Object.assign(loanParent, {
-          careerId: "fix07-b03-coterminal",
-          startYear: 2026,
-          age: 24,
-          rating: 90,
-          attributes: attrs(90),
-          club: { ...atalanta },
-          employmentClubId: atalanta.clubId,
-          playingClubId: atalanta.clubId,
-          contractStatus: "active",
-          contractStartSeason: 0,
-          contractYears: 1,
-          contractEndSeason: 1,
-          weeklyWage: 1500,
-          wage: 1500,
-          seasons: [],
-        });
-        ensurePlayerModel(loanParent);
-        refreshAbilityCaches(loanParent);
-        ensureContractAuthority(loanParent);
-        const loans = generateLoanOffers(loanParent, { maxOffers: 3, rng: createRng(707) });
-        assert(loans.offers?.length > 0, "co-terminal loan offers required");
-        const started = startLoan(loanParent, loans.offers[0]);
-        assert(started.ok, `co-terminal startLoan failed: ${JSON.stringify(started)}`);
-        reseedCareerRng(708);
-        simulateSeason(loanParent, LEAGUES, LEAGUE_LOOKUP, {
-          pauseForDecisions: false,
-          autoDecisionPolicy: null,
-          keepPendingBoundaryReview: true,
-        });
-        assert(
-          loanParent.pendingContractReview?.status === "pending" &&
-            loanParent.pendingContractReview?.outcome === "wants-renewal",
-          "co-terminal must leave pending parent wants-renewal"
-        );
-        const gate = assertPlayableRegistration(loanParent);
-        assert(gate.ok === false && gate.reason === "pending-contract-review", "gate pending-review");
-        const cotermSnap = serializeCareerSnapshot({
-          player: loanParent,
-          world: getWorldState(),
-        });
-        await writeJson(join(FIXTURE_DIR, "B03-coterminal.json"), cotermSnap);
-        await writeJson(join(FIXTURE_DIR, "B03.json"), cotermSnap);
-        await restoreSnapshot(page, cotermSnap);
+        await restoreSnapshot(page, positiveRestoreSnap);
+        const restorePosBefore = await exportSnap(page);
+        assert(restorePosBefore.player.pendingContractReview?.status === "pending", "restore pending");
+        const restoreDecline =
+          (await clickMatching(page, "Decline and leave|decline-renewal")) ||
+          (await clickMatching(page, "^Decline$|Decline"));
+        assert(restoreDecline, "restore Decline required");
+        await clearDeskNoAdvance("B03-positive-restore");
+
+        await restoreSnapshot(page, positiveAcceptStart);
+        await resumePausedSeason("B03-positive-accept");
+        const posAcceptTray = await waitBoundaryTray("B03-positive-accept");
+        const posAccept =
+          (await clickMatching(page, "Accept Offer")) ||
+          (await clickMatching(page, "^Accept$|Accept|Sign"));
+        assert(posAccept, "positive live Accept control required");
+        await page.waitForTimeout(250);
+        const posAccepted = await exportSnap(page);
+        assert(posAccepted.player.contractStatus === "active", "accepted renewal stays active");
+        assert(posAccepted.player.contractEndSeason > 1, "accepted renewal extends");
+        assert(posAccepted.player.employmentClubId === hull.clubId, "employer preserved");
+        await clearDeskNoAdvance("B03-positive-accept");
+
+        await restoreSnapshot(page, cotermLiveMeta.snap);
         const cotermBefore = await exportSnap(page);
-        assert(
-          cotermBefore.player.pendingContractReview?.status === "pending",
-          "browser restores pending parent review"
-        );
-        assert(
-          (cotermBefore.player.pendingOffers || []).some((o) => o.isRenewal),
-          "parent renewal offer present"
-        );
-        const ageLocked = cotermBefore.player.age;
-        const seasonsLocked = (cotermBefore.player.seasons || []).length;
-        const employerLocked = cotermBefore.player.employmentClubId;
-        let decline = null;
-        for (let i = 0; i < 40; i++) {
-          const cur = await uiState(page);
-          if (cur.continueBtnVisible && !cur.continueBtnDisabled) {
-            await clickContinueBtn(page);
-            await page.waitForTimeout(120);
-            continue;
-          }
-          const ready = await page.evaluate(() =>
-            [...document.querySelectorAll("button")].some(
-              (b) =>
-                /Decline and leave|^Decline$/i.test((b.textContent || "").trim()) &&
-                !b.disabled &&
-                b.offsetParent !== null
-            )
-          );
-          if (ready && cur.overlayHidden) {
-            await shot(page, "B03-coterminal-tray");
-            decline =
-              (await clickMatching(page, "Decline and leave|decline-renewal")) ||
-              (await clickMatching(page, "^Decline$|Decline"));
-            break;
-          }
-          await page.waitForTimeout(120);
-        }
-        assert(decline, "co-terminal Decline control required");
+        assert(cotermBefore.player.activeLoan?.status === "active", "coterm starts on loan");
+        assert(!(cotermBefore.player.seasons?.length >= 1), "coterm starts pre-completion");
+        await shot(page, "B03-coterminal-start");
+        await resumePausedSeason("B03-coterminal-live");
+        const cotermTray = await waitBoundaryTray("B03-coterminal-live");
+        await shot(page, "B03-coterminal-tray");
+        assert(cotermTray.continueClicks > 0, "coterm live must click final Continue");
+        assert(cotermTray.beforeFinalContinue, "coterm live beforeFinalContinue required");
+        const cotermDecline =
+          (await clickMatching(page, "Decline and leave|decline-renewal")) ||
+          (await clickMatching(page, "^Decline$|Decline"));
+        assert(cotermDecline, "coterm live Decline required");
         await page.waitForTimeout(250);
         const cotermAfterDecline = await exportSnap(page);
-        assert(cotermAfterDecline.player.age === ageLocked, "decline must not age");
-        assert(
-          (cotermAfterDecline.player.seasons || []).length === seasonsLocked,
-          "decline must not add period"
-        );
-        // Clear scene/presentation overlays without advancing another period.
-        for (let i = 0; i < 40; i++) {
-          const cur = await uiState(page);
-          if (
-            cur.overlayHidden &&
-            cur.dashboardHidden &&
-            !cur.seasonActionInFlight &&
-            !cur.pendingDecision &&
-            cur.pendingOffers === 0 &&
-            cur.nextAction?.id !== "resolve-scenario"
-          ) {
-            break;
-          }
-          if (cur.continueBtnVisible && !cur.continueBtnDisabled) {
-            await clickContinueBtn(page);
-          } else if (cur.nextAction?.id === "resolve-scenario" || cur.pendingDecision) {
-            await clickMatching(
-              page,
-              "Acknowledge|acknowledge|Continue|continue|remain|stay|balanced|Accept|OK"
-            );
-          } else {
-            await page.waitForTimeout(120);
-          }
-        }
-        const cotermDriven = { continueClicks: 0, actions: ["decline-parent-renewal"] };
-        await assertDeskClear(page, "B03-coterminal");
+        await clearDeskNoAdvance("B03-coterminal-live");
         const cotermAfter = await exportSnap(page);
         await shot(page, "B03-coterminal-desk");
-        assert(cotermAfter.player.age === ageLocked, "co-terminal age locked after decline");
         assert(
           cotermAfter.player.pendingContractReview?.status === "settled" ||
-            !cotermAfter.player.employmentClubId ||
-            cotermAfter.player.employmentClubId !== employerLocked,
-          "parent review must settle after decline"
+            !cotermAfter.player.employmentClubId,
+          "coterm live review settled after decline"
         );
+
+        await restoreSnapshot(page, cotermRestoreSnap);
+        const restoreCotermDecline =
+          (await clickMatching(page, "Decline and leave|decline-renewal")) ||
+          (await clickMatching(page, "^Decline$|Decline"));
+        assert(restoreCotermDecline, "coterm restore Decline required");
+        await clearDeskNoAdvance("B03-coterminal-restore");
+
+        await restoreSnapshot(page, cotermAcceptStart.snap);
+        await resumePausedSeason("B03-coterminal-accept");
+        const cotermAcceptTray = await waitBoundaryTray("B03-coterminal-accept");
+        const cotermAccept =
+          (await clickMatching(page, "Accept Offer")) ||
+          (await clickMatching(page, "^Accept$|Accept|Sign"));
+        assert(cotermAccept, "coterm live Accept required");
+        await page.waitForTimeout(250);
+        const cotermAccepted = await exportSnap(page);
+        assert(cotermAccepted.player.contractStatus === "active", "coterm accept active");
+        assert(cotermAccepted.player.employmentClubId === cotermAcceptStart.parent, "parent kept");
+        assert(cotermAccepted.player.contractEndSeason > 1, "coterm accept extends");
+        await clearDeskNoAdvance("B03-coterminal-accept");
 
         await writeJson(join(CASE_DIR, "B03.json"), {
           negative: {
-            before: negBefore,
-            beforeFinalContinue: negBeforeFinalContinue,
-            after: negAfter,
+            before: slimPlayer(negBefore),
+            beforeFinalContinue: slimPlayer(negBeforeFinalContinue),
+            after: slimPlayer(negAfter),
             declined: negDeclined,
             driven: negDriven,
             reviewOutcome: negAfter.player.pendingContractReview?.outcome || null,
             settledChoice: negAfter.player.pendingContractReview?.settledChoice || null,
           },
-          positive: {
-            before: posBefore,
-            beforeFinalContinue: posBeforeFinalContinue,
-            after: posAfter,
-            reached: positiveReached,
-            declined: positiveDeclined,
-            offerId: positiveOfferId,
-            driven: posDriven,
-            reviewOutcome: posAfter.player.pendingContractReview?.outcome || null,
-            settledChoice: posAfter.player.pendingContractReview?.settledChoice || null,
+          positiveLive: {
+            before: slimPlayer(posBefore),
+            beforeFinalContinue: slimPlayer(posTray.beforeFinalContinue),
+            afterDecline: slimPlayer(posAfterDecline),
+            after: slimPlayer(posAfter),
+            declined: Boolean(posDecline),
+            offerId: posTray.offerId,
+            continueClicks: posTray.continueClicks,
+            actions: posTray.actions,
+            lead: posTray.lead,
           },
-          coterminal: {
-            before: cotermBefore,
-            afterDecline: cotermAfterDecline,
-            after: cotermAfter,
-            declined: Boolean(decline),
-            loanClub: loans.offers[0].clubId,
-            parent: employerLocked,
-            driven: cotermDriven,
+          positiveAcceptLive: {
+            beforeFinalContinue: slimPlayer(posAcceptTray.beforeFinalContinue),
+            after: slimPlayer(posAccepted),
+            continueClicks: posAcceptTray.continueClicks,
+            actions: posAcceptTray.actions,
+            offerId: posAcceptTray.offerId,
+          },
+          positiveRestore: {
+            before: slimPlayer(restorePosBefore),
+            declined: Boolean(restoreDecline),
+          },
+          coterminalLive: {
+            before: slimPlayer(cotermBefore),
+            beforeFinalContinue: slimPlayer(cotermTray.beforeFinalContinue),
+            afterDecline: slimPlayer(cotermAfterDecline),
+            after: slimPlayer(cotermAfter),
+            declined: Boolean(cotermDecline),
+            continueClicks: cotermTray.continueClicks,
+            actions: cotermTray.actions,
+            lead: cotermTray.lead,
+            loanClub: cotermLiveMeta.loanClub,
+            parent: cotermLiveMeta.parent,
+          },
+          coterminalAcceptLive: {
+            beforeFinalContinue: slimPlayer(cotermAcceptTray.beforeFinalContinue),
+            after: slimPlayer(cotermAccepted),
+            continueClicks: cotermAcceptTray.continueClicks,
+            actions: cotermAcceptTray.actions,
+            parent: cotermAcceptStart.parent,
+          },
+          coterminalRestore: {
+            declined: Boolean(restoreCotermDecline),
           },
         });
         return {
           negativeOutcome: negAfter.player.pendingContractReview?.outcome || "released",
-          positiveReached,
-          positiveDeclined,
-          coterminalDeclined: Boolean(decline),
-          ages: {
-            negative: negAfter.player.age,
-            positive: posAfter.player.age,
-            coterminal: cotermAfter.player.age,
-          },
+          positiveLiveDeclined: Boolean(posDecline),
+          positiveLiveAccepted: posAccepted.player.contractEndSeason > 1,
+          coterminalLiveDeclined: Boolean(cotermDecline),
+          coterminalLiveAccepted: cotermAccepted.player.contractEndSeason > 1,
+          cotermContinueClicks: cotermTray.continueClicks,
         };
       });
     }

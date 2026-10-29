@@ -28,7 +28,7 @@ const { simulateSeason } = await mod("js/simulation/seasonSimulator.js");
 const { generateTransferOffers } = await mod("js/simulation/transferMarket.js");
 const { acceptPipelineOffer, declineWindowAndContinue } = await mod("js/simulation/dealPipeline.js");
 const { clubMinutesShare } = await mod("js/simulation/squadDecisions.js");
-const { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } = await mod("js/data/leagues.js");
+const { LEAGUES, LEAGUE_LOOKUP } = await mod("js/data/leagues.js");
 
 const POLICY_MODE = {
   "renewal-first": "renewal-first",
@@ -59,10 +59,18 @@ function attrs(ovr) {
 }
 
 function resolveClub(cfg) {
-  if (cfg.clubName) return allSeniorClubs().find((c) => c.name === cfg.clubName);
-  const league = LEAGUE_BY_ID.get(cfg.leagueId);
-  const clubs = (league?.clubs || []).map((id) => allSeniorClubs().find((c) => c.clubId === id)).filter(Boolean);
-  return clubs[cfg.clubIndex % clubs.length];
+  const all = allSeniorClubs();
+  if (cfg.clubName) {
+    const named = all.find((c) => c.name === cfg.clubName);
+    if (!named) throw new Error(`no senior club named ${cfg.clubName}`);
+    return named;
+  }
+  // Match ordinary Fix 07 cohort resolution: leagueId + stable clubIndex over
+  // senior clubs (league.clubs entries are objects, not raw IDs).
+  const leagueClubs = all.filter((c) => c.leagueId === cfg.leagueId);
+  const club = leagueClubs[cfg.clubIndex] || leagueClubs[0];
+  if (!club) throw new Error(`no senior club for ${cfg.leagueId}#${cfg.clubIndex}`);
+  return club;
 }
 
 function readiness(setup) {
@@ -76,6 +84,7 @@ function makePlayer(cfg) {
   setWorldState(createWorldState({ startYear: 2026 }));
   reseedCareerRng(cfg.seed);
   const club = resolveClub(cfg);
+  if (!club?.clubId) throw new Error(`club resolution failed for ${cfg.id}`);
   const p = createPlayerIdentity({
     name: `Fix07Base-${cfg.id}`,
     nationality: cfg.nationality,
@@ -88,21 +97,24 @@ function makePlayer(cfg) {
     age: cfg.age,
     rating: cfg.rating,
     attributes: attrs(cfg.rating),
-    club: club ? { ...club } : null,
-    employmentClubId: club?.clubId || null,
-    playingClubId: club?.clubId || null,
-    contractStatus: club ? "active" : "released",
+    club: { ...club },
+    employmentClubId: club.clubId,
+    playingClubId: club.clubId,
+    contractStatus: "active",
     contractStartSeason: 0,
     contractYears: cfg.contractEndSeason,
     contractEndSeason: cfg.contractEndSeason,
-    weeklyWage: club ? 1500 : 0,
-    wage: club ? 1500 : 0,
+    weeklyWage: 1500,
+    wage: 1500,
     seasons: [],
     state: { ...readiness(cfg.setup), roleFit: 1, adaptationPenalty: 0 },
   });
   ensurePlayerModel(p);
   refreshAbilityCaches(p);
   ensureContractAuthority(p);
+  if (p.employmentClubId !== club.clubId || p.contractStatus !== "active") {
+    throw new Error(`initial employment assertion failed for ${cfg.id}`);
+  }
   return p;
 }
 
@@ -153,6 +165,11 @@ function summarizePeriod(player, cfg, seasonIdx, kind, faAction, thrown) {
     standingMatches: season?.standing?.matches ?? null,
     share,
     shareSource,
+    // Measured exposure only — source "none"/unknown must not count as share 1.
+    measuredShare:
+      shareSource && shareSource !== "none" && typeof share === "number" && Number.isFinite(share)
+        ? share
+        : null,
     freeAgent: Boolean(isFreeAgent(player)),
     loanActive: player.activeLoan?.status === "active",
     pendingReview: player.pendingContractReview?.status || null,
@@ -198,15 +215,33 @@ function stepPeriod(player, cfg) {
   return out;
 }
 
+const initialFixtures = [];
 const records = [];
 for (const cfg of CAREERS) {
   const player = makePlayer(cfg);
+  initialFixtures.push({
+    id: cfg.id,
+    seed: cfg.seed,
+    policy: cfg.policy,
+    setup: cfg.setup,
+    employmentClubId: player.employmentClubId,
+    playingClubId: player.playingClubId,
+    contractStatus: player.contractStatus,
+    contractEndSeason: player.contractEndSeason,
+    clubName: player.club?.name || null,
+    leagueId: player.club?.leagueId || null,
+  });
   for (let k = 0; k < 4; k++) {
     const step = stepPeriod(player, cfg);
     records.push(summarizePeriod(player, cfg, k, step.kind, step.faAction, step.thrown));
   }
 }
 
+if (initialFixtures.length !== 12 || initialFixtures.some((f) => !f.employmentClubId)) {
+  throw new Error("all 12 careers must resolve an initial employer before simulation");
+}
+
+const measured = records.map((r) => r.measuredShare).filter((x) => typeof x === "number" && Number.isFinite(x));
 const summary = {
   generatedAt: new Date().toISOString(),
   root,
@@ -215,13 +250,13 @@ const summary = {
   freeAgentPeriods: records.filter((r) => r.kind === "free-agent-period").length,
   clubSeasons: records.filter((r) => r.kind === "club-season").length,
   loansActive: records.filter((r) => r.loanActive).length,
-  meanShare: (() => {
-    const xs = records.map((r) => r.share).filter((x) => typeof x === "number" && Number.isFinite(x));
-    return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
-  })(),
+  initialEmployedCareers: initialFixtures.filter((f) => f.contractStatus === "active").length,
+  meanMeasuredShare: measured.length ? measured.reduce((a, b) => a + b, 0) / measured.length : null,
+  measuredShareCount: measured.length,
+  unknownOrNoneShareCount: records.length - measured.length,
 };
 
-const out = { summary, records };
+const out = { summary, initialFixtures, records };
 const dest = process.env.FIX07_BASELINE_OUT;
 if (dest) writeFileSync(dest, JSON.stringify(out, null, 2));
 console.log(JSON.stringify(summary));

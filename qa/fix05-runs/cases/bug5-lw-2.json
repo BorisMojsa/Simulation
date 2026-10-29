@@ -2,47 +2,48 @@
   "careerId": "bug5-lw-2",
   "position": "LW",
   "seed": 808,
-  "rawRecords": 54,
-  "positiveMinutes": 22,
-  "zeroMinutes": 32,
-  "withEdition": 54,
+  "rawRecords": 58,
+  "positiveMinutes": 23,
+  "zeroMinutes": 35,
+  "withEdition": 58,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
   "evidenceLeagueCleanSheets": null,
   "evidenceTotalCleanSheets": null,
   "evidenceEditionKeys": [
+    "uefa-champions-league::2026-uefa-champions-league",
     "league:england-premier-league::2026",
-    "uefa-champions-league::2026-uefa-champions-league"
+    "FA Cup::2026:FA Cup"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
   "goalsFromPositive": 2,
   "goalsFromLedger": 2,
-  "matchesWithEvents": 16,
+  "matchesWithEvents": 15,
   "eventGoalDisagree": 0,
-  "apps": 22,
+  "apps": 23,
   "samplePositive": [
     {
-      "matchId": "league:england-premier-league:md:60",
-      "editionId": "2026",
-      "competitionId": "league:england-premier-league",
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md2:club:england:arsenal:club:spain:deportivo-alaves",
+      "editionId": "2026-uefa-champions-league",
+      "competitionId": "uefa-champions-league",
       "teamId": "club:england:arsenal",
       "minutes": 19,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.4
+      "rating": 6.2
     },
     {
-      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md2:club:germany:fc-augsburg:club:england:arsenal",
-      "editionId": "2026-uefa-champions-league",
-      "competitionId": "uefa-champions-league",
+      "matchId": "league:england-premier-league:md:70",
+      "editionId": "2026",
+      "competitionId": "league:england-premier-league",
       "teamId": "club:england:arsenal",
       "minutes": 35,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 7.9
+      "rating": 6.5
     }
   ],
   "sampleZero": [
@@ -61,27 +62,27 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 567,
-      "appearances": 16,
-      "starts": 4,
+      "minutes": 549,
+      "appearances": 15,
+      "starts": 3,
       "goals": 2,
       "assists": 2,
       "cleanSheets": null
     },
     "cup": {
-      "minutes": 0,
-      "appearances": 0,
-      "starts": 0,
+      "minutes": 67,
+      "appearances": 1,
+      "starts": 1,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 250,
-      "appearances": 6,
+      "minutes": 226,
+      "appearances": 7,
       "starts": 1,
       "goals": 0,
-      "assists": 3,
+      "assists": 0,
       "cleanSheets": null
     },
     "international": {

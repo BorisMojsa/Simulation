@@ -2,10 +2,10 @@
   "careerId": "bug5-lw-1",
   "position": "LW",
   "seed": 3,
-  "rawRecords": 58,
-  "positiveMinutes": 25,
-  "zeroMinutes": 33,
-  "withEdition": 58,
+  "rawRecords": 54,
+  "positiveMinutes": 24,
+  "zeroMinutes": 30,
+  "withEdition": 54,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -19,11 +19,11 @@
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 1,
-  "goalsFromLedger": 1,
-  "matchesWithEvents": 13,
+  "goalsFromPositive": 2,
+  "goalsFromLedger": 2,
+  "matchesWithEvents": 14,
   "eventGoalDisagree": 0,
-  "apps": 25,
+  "apps": 24,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:20",
@@ -33,17 +33,17 @@
       "minutes": 10,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.5
+      "rating": 6.3
     },
     {
-      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:england:liverpool",
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:spain:real-betis:club:england:arsenal",
       "editionId": "2026-uefa-champions-league",
       "competitionId": "uefa-champions-league",
       "teamId": "club:england:arsenal",
       "minutes": 86,
-      "goals": 1,
+      "goals": 0,
       "cleanSheet": null,
-      "rating": 7.3
+      "rating": 6
     }
   ],
   "sampleZero": [
@@ -62,11 +62,11 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 529,
-      "appearances": 13,
+      "minutes": 538,
+      "appearances": 14,
       "starts": 4,
-      "goals": 0,
-      "assists": 3,
+      "goals": 2,
+      "assists": 1,
       "cleanSheets": null
     },
     "cup": {
@@ -78,10 +78,10 @@
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 287,
-      "appearances": 9,
+      "minutes": 248,
+      "appearances": 7,
       "starts": 1,
-      "goals": 1,
+      "goals": 0,
       "assists": 1,
       "cleanSheets": null
     },

@@ -849,10 +849,16 @@ async function finalizeCompletedSeasonUi(seasonData) {
   if (player.activeLoan?.status === "active") {
     const seasonIndex = player.seasons.length;
     if (player.activeLoan.endSeason != null && seasonIndex >= player.activeLoan.endSeason) {
-      queueSquadDecision(player, "loan-return", {
-        seasonIndex,
-        performanceScore: seasonData.performanceScore,
-      });
+      if (player.pendingContractReview?.status === "pending") {
+        // Soft-settle the ended borrower spell; unresolved parent boundary review
+        // keeps tray ownership. Do not queue loan-return / promise free agency.
+        endLoan(player, "return");
+      } else {
+        queueSquadDecision(player, "loan-return", {
+          seasonIndex,
+          performanceScore: seasonData.performanceScore,
+        });
+      }
     }
   }
 

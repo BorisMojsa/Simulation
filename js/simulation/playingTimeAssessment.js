@@ -378,7 +378,7 @@ export function assessClubPlayingTime(player, opts = {}) {
     coerceFiniteOrNull(season?.ledgerSummary?.club?.minutes);
   const internationalMinutes = coerceFiniteOrNull(season?.ledgerSummary?.international?.minutes);
   const combinedMinutes = coerceFiniteOrNull(season?.minutes);
-  const cupMinutes = legacyCupMinutes(season);
+  const nonLeagueClub = legacyNonLeagueClubMinutes(season);
   if (standingMatches != null && standingMatches > 0) {
     let seasonMinutes = null;
     const leagueOnlyHint =
@@ -386,21 +386,39 @@ export function assessClubPlayingTime(player, opts = {}) {
       coerceFiniteOrNull(season?.ledgerSummary?.league?.minutes) ??
       null;
 
-    if (cupMinutes > 0) {
-      // League standing capacity cannot absorb cup minutes.
+    if (nonLeagueClub.incomplete) {
+      base.conflicts.push({
+        kind: "legacy-non-league-incomplete",
+        clubMinutes: clubOnlyMinutes,
+        nonLeagueMinutes: nonLeagueClub.minutes,
+        standingMatches,
+        reasons: nonLeagueClub.reasons,
+      });
+      base.source = "legacy-mixed-incomplete";
+      base.completeness = "incomplete";
+      base.share = null;
+      base.eligibleFixtureCount = 0;
+      base.opportunityCapacity = 0;
+      return base;
+    }
+
+    if (nonLeagueClub.minutes > 0) {
+      // League standing capacity cannot absorb cup/continental minutes.
       if (leagueOnlyHint != null && leagueOnlyHint >= 0) {
         seasonMinutes = leagueOnlyHint;
       } else if (
         clubOnlyMinutes != null &&
-        clubOnlyMinutes >= cupMinutes &&
-        Number.isFinite(clubOnlyMinutes - cupMinutes)
+        clubOnlyMinutes >= nonLeagueClub.minutes &&
+        Number.isFinite(clubOnlyMinutes - nonLeagueClub.minutes)
       ) {
-        seasonMinutes = clubOnlyMinutes - cupMinutes;
+        seasonMinutes = clubOnlyMinutes - nonLeagueClub.minutes;
       } else {
         base.conflicts.push({
           kind: "legacy-league-cup-mixed",
           clubMinutes: clubOnlyMinutes,
-          cupMinutes,
+          cupMinutes: nonLeagueClub.minutes,
+          continentalMinutes: nonLeagueClub.continentalMinutes,
+          domesticCupMinutes: nonLeagueClub.domesticCupMinutes,
           standingMatches,
         });
         base.source = "legacy-mixed-incomplete";
@@ -499,15 +517,74 @@ function ledgerScoped(ledger, season, clubId, opts = {}) {
   return true;
 }
 
-function legacyCupMinutes(season) {
-  const rows = season?.domesticCupResult?.playerMatches;
-  if (!Array.isArray(rows) || !rows.length) return 0;
-  let total = 0;
-  for (const row of rows) {
-    const mins = coerceFiniteOrNull(row?.playerStats?.minutes ?? row?.minutes);
-    if (mins != null && mins > 0) total += mins;
+/**
+ * Sum proved non-league club minutes from legacy season campaign views.
+ * Deduplicates overlapping primary cup / campaign / continental fixture rows.
+ * Incomplete or unprovable rows yield incomplete=true (unknown, not zero).
+ */
+function legacyNonLeagueClubMinutes(season) {
+  const seen = new Set();
+  let domesticCupMinutes = 0;
+  let continentalMinutes = 0;
+  const reasons = [];
+  let incomplete = false;
+
+  function addRows(rows, bucket) {
+    if (rows == null) return;
+    if (!Array.isArray(rows)) {
+      incomplete = true;
+      reasons.push(`non-array-${bucket}`);
+      return;
+    }
+    for (const row of rows) {
+      if (!row || typeof row !== "object") {
+        incomplete = true;
+        reasons.push(`invalid-row-${bucket}`);
+        continue;
+      }
+      const mins = coerceFiniteOrNull(row?.playerStats?.minutes ?? row?.minutes);
+      if (mins == null) {
+        // Unknown minutes must not silently become zero.
+        if (row.played === true || row.playerStats?.played === true) {
+          incomplete = true;
+          reasons.push(`unknown-minutes-${bucket}`);
+        }
+        continue;
+      }
+      if (mins <= 0) continue;
+      const id = row.fixtureId || row.matchId || null;
+      if (id) {
+        if (seen.has(id)) continue;
+        seen.add(id);
+      }
+      if (bucket === "continental") continentalMinutes += mins;
+      else domesticCupMinutes += mins;
+    }
   }
-  return total;
+
+  addRows(season?.domesticCupResult?.playerMatches, "primary-cup");
+  const campaigns = season?.domesticCupCampaigns;
+  if (campaigns != null) {
+    if (!Array.isArray(campaigns)) {
+      incomplete = true;
+      reasons.push("non-array-domesticCupCampaigns");
+    } else {
+      for (const camp of campaigns) {
+        addRows(camp?.playerMatches, "domestic-campaign");
+      }
+    }
+  }
+  if (season?.europeanCampaign?.qualified || season?.europeanCampaign?.playerMatches) {
+    addRows(season?.europeanCampaign?.playerMatches, "continental");
+  }
+
+  return {
+    minutes: domesticCupMinutes + continentalMinutes,
+    domesticCupMinutes,
+    continentalMinutes,
+    incomplete,
+    reasons,
+  };
 }
 
 function summarizeLedger(ledger) {

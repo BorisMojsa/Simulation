@@ -2,10 +2,10 @@
   "careerId": "bug5-cm-3",
   "position": "CM",
   "seed": 707,
-  "rawRecords": 56,
-  "positiveMinutes": 25,
+  "rawRecords": 55,
+  "positiveMinutes": 24,
   "zeroMinutes": 31,
-  "withEdition": 56,
+  "withEdition": 55,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -21,9 +21,9 @@
   "goalsAgree": true,
   "goalsFromPositive": 1,
   "goalsFromLedger": 1,
-  "matchesWithEvents": 15,
+  "matchesWithEvents": 14,
   "eventGoalDisagree": 0,
-  "apps": 25,
+  "apps": 24,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:40",
@@ -33,17 +33,17 @@
       "minutes": 86,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6
+      "rating": 5.6
     },
     {
-      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:portugal:benfica:club:england:arsenal",
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:germany:bayern-munich",
       "editionId": "2026-uefa-champions-league",
       "competitionId": "uefa-champions-league",
       "teamId": "club:england:arsenal",
       "minutes": 25,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 5.9
+      "rating": 6.2
     }
   ],
   "sampleZero": [
@@ -62,24 +62,24 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 386,
-      "appearances": 15,
+      "minutes": 376,
+      "appearances": 14,
       "starts": 1,
-      "goals": 1,
-      "assists": 2,
-      "cleanSheets": null
-    },
-    "cup": {
-      "minutes": 53,
-      "appearances": 3,
-      "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
+    "cup": {
+      "minutes": 69,
+      "appearances": 4,
+      "starts": 0,
+      "goals": 1,
+      "assists": 0,
+      "cleanSheets": null
+    },
     "continental": {
-      "minutes": 227,
-      "appearances": 7,
+      "minutes": 211,
+      "appearances": 6,
       "starts": 1,
       "goals": 0,
       "assists": 1,

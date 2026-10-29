@@ -2,25 +2,26 @@
   "careerId": "bug5-cdm-1",
   "position": "CDM",
   "seed": 21,
-  "rawRecords": 56,
+  "rawRecords": 55,
   "positiveMinutes": 18,
-  "zeroMinutes": 38,
-  "withEdition": 56,
+  "zeroMinutes": 37,
+  "withEdition": 55,
   "editionCoverage": 1,
   "rawCleanSheets": 1,
   "ledgerCleanSheets": 1,
-  "evidenceLeagueCleanSheets": 0,
+  "evidenceLeagueCleanSheets": 1,
   "evidenceTotalCleanSheets": 1,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
-    "uefa-champions-league::2026-uefa-champions-league"
+    "uefa-champions-league::2026-uefa-champions-league",
+    "FA Cup::2026:FA Cup"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
   "goalsFromPositive": 0,
   "goalsFromLedger": 0,
-  "matchesWithEvents": 13,
+  "matchesWithEvents": 14,
   "eventGoalDisagree": 0,
   "apps": 18,
   "samplePositive": [
@@ -32,7 +33,7 @@
       "minutes": 23,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.7
+      "rating": 6.1
     },
     {
       "matchId": "league:england-premier-league:md:20",
@@ -42,7 +43,7 @@
       "minutes": 32,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.9
+      "rating": 6.8
     }
   ],
   "sampleZero": [
@@ -61,28 +62,28 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 346,
-      "appearances": 13,
-      "starts": 1,
+      "minutes": 443,
+      "appearances": 14,
+      "starts": 2,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": 0
+      "cleanSheets": 1
     },
     "cup": {
-      "minutes": 0,
-      "appearances": 0,
+      "minutes": 19,
+      "appearances": 1,
       "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 199,
-      "appearances": 5,
-      "starts": 1,
+      "minutes": 83,
+      "appearances": 3,
+      "starts": 0,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": 1
+      "cleanSheets": null
     },
     "international": {
       "minutes": 0,

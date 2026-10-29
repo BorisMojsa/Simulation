@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-29T20:39:08.021Z",
+  "generatedAt": "2026-10-29T23:27:53.232Z",
   "base": "http://127.0.0.1:8000",
   "selected": [
     "B01",
@@ -36,14 +36,11 @@
       "status": "PASS",
       "detail": {
         "negativeOutcome": "will-not-renew",
-        "positiveReached": true,
-        "positiveDeclined": true,
-        "coterminalDeclined": true,
-        "ages": {
-          "negative": 29,
-          "positive": 25,
-          "coterminal": 25
-        }
+        "positiveLiveDeclined": true,
+        "positiveLiveAccepted": true,
+        "coterminalLiveDeclined": true,
+        "coterminalLiveAccepted": true,
+        "cotermContinueClicks": 9
       }
     },
     {

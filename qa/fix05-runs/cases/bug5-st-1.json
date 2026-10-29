@@ -2,10 +2,10 @@
   "careerId": "bug5-st-1",
   "position": "ST",
   "seed": 11,
-  "rawRecords": 59,
-  "positiveMinutes": 20,
-  "zeroMinutes": 39,
-  "withEdition": 59,
+  "rawRecords": 56,
+  "positiveMinutes": 19,
+  "zeroMinutes": 37,
+  "withEdition": 56,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -13,17 +13,16 @@
   "evidenceTotalCleanSheets": null,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
-    "uefa-champions-league::2026-uefa-champions-league",
-    "FA Cup::2026:FA Cup"
+    "uefa-champions-league::2026-uefa-champions-league"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
   "goalsFromPositive": 1,
   "goalsFromLedger": 1,
-  "matchesWithEvents": 13,
+  "matchesWithEvents": 14,
   "eventGoalDisagree": 0,
-  "apps": 20,
+  "apps": 19,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:10",
@@ -31,9 +30,9 @@
       "competitionId": "league:england-premier-league",
       "teamId": "club:england:arsenal",
       "minutes": 82,
-      "goals": 0,
+      "goals": 1,
       "cleanSheet": null,
-      "rating": 6.4
+      "rating": 7.5
     },
     {
       "matchId": "league:england-premier-league:md:40",
@@ -62,24 +61,24 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 401,
-      "appearances": 13,
+      "minutes": 433,
+      "appearances": 14,
       "starts": 2,
       "goals": 1,
-      "assists": 0,
+      "assists": 1,
       "cleanSheets": null
     },
     "cup": {
-      "minutes": 32,
-      "appearances": 1,
+      "minutes": 0,
+      "appearances": 0,
       "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 133,
-      "appearances": 6,
+      "minutes": 110,
+      "appearances": 5,
       "starts": 0,
       "goals": 0,
       "assists": 0,

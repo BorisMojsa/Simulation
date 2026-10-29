@@ -2,28 +2,27 @@
   "careerId": "bug5-cb-1",
   "position": "CB",
   "seed": 7,
-  "rawRecords": 57,
-  "positiveMinutes": 20,
-  "zeroMinutes": 37,
-  "withEdition": 57,
+  "rawRecords": 59,
+  "positiveMinutes": 21,
+  "zeroMinutes": 38,
+  "withEdition": 59,
   "editionCoverage": 1,
-  "rawCleanSheets": 2,
-  "ledgerCleanSheets": 2,
+  "rawCleanSheets": 1,
+  "ledgerCleanSheets": 1,
   "evidenceLeagueCleanSheets": 0,
-  "evidenceTotalCleanSheets": 2,
+  "evidenceTotalCleanSheets": 1,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
-    "uefa-champions-league::2026-uefa-champions-league",
-    "FA Cup::2026:FA Cup"
+    "uefa-champions-league::2026-uefa-champions-league"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
   "goalsFromPositive": 0,
   "goalsFromLedger": 0,
-  "matchesWithEvents": 10,
+  "matchesWithEvents": 15,
   "eventGoalDisagree": 0,
-  "apps": 20,
+  "apps": 21,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:20",
@@ -33,7 +32,7 @@
       "minutes": 88,
       "goals": 0,
       "cleanSheet": false,
-      "rating": 6.4
+      "rating": 5.4
     },
     {
       "matchId": "league:england-premier-league:md:30",
@@ -43,7 +42,7 @@
       "minutes": 30,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.6
+      "rating": 6.2
     }
   ],
   "sampleZero": [
@@ -62,28 +61,28 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 307,
-      "appearances": 10,
-      "starts": 1,
+      "minutes": 490,
+      "appearances": 15,
+      "starts": 2,
       "goals": 0,
-      "assists": 0,
+      "assists": 1,
       "cleanSheets": 0
     },
     "cup": {
-      "minutes": 58,
-      "appearances": 3,
+      "minutes": 0,
+      "appearances": 0,
       "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 279,
-      "appearances": 7,
-      "starts": 2,
+      "minutes": 188,
+      "appearances": 6,
+      "starts": 1,
       "goals": 0,
-      "assists": 0,
-      "cleanSheets": 2
+      "assists": 1,
+      "cleanSheets": 1
     },
     "international": {
       "minutes": 0,

@@ -260,6 +260,9 @@ export function evaluateSquadDecision(player, opts = {}) {
 function buildLoanEndingDecision(player, opts = {}) {
   const seasonIndex = opts.seasonIndex ?? player.seasons?.length ?? 0;
   if (hasCooldown(player, "loan-return", seasonIndex)) return null;
+  // Unresolved parent boundary review owns the tray — never displace it with
+  // loan-return / premature free-agency wording.
+  if (player.pendingContractReview?.status === "pending") return null;
   if (opts.checkpoint !== "loan-return" && player.activeLoan?.endSeason !== seasonIndex) {
     return null;
   }
@@ -382,6 +385,15 @@ export function resolveSquadDecision(player, decision, choiceId, opts = {}) {
 export function queueSquadDecision(player, checkpoint = "pre-season", opts = {}) {
   const decision = evaluateSquadDecision(player, { ...opts, checkpoint });
   if (!decision) {
+    // Loan-return that yields to a pending parent boundary review must not wipe
+    // the owned renewal tray.
+    if (
+      checkpoint === "loan-return" &&
+      player.pendingContractReview?.status === "pending" &&
+      player.pendingDecision?.kind === "boundary-renewal"
+    ) {
+      return null;
+    }
     player.pendingDecision = null;
     return null;
   }

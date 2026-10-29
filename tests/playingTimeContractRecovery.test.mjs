@@ -1036,3 +1036,148 @@ test("F9: post-season facade preserves pending boundary phase", async () => {
   assert.equal(p.renewalReview?.reviewPhase, "boundary");
   assert.equal(p.renewalReview?.outcome, "wants-renewal");
 });
+
+test("F12: legacy continental and second-cup minutes do not mix into league share", () => {
+  const matches = (prefix, n) =>
+    Array.from({ length: n }, (_, i) => ({
+      fixtureId: `${prefix}-${i}`,
+      playerStats: { minutes: 90, played: true },
+    }));
+  const primary = { name: "Primary domestic cup", playerMatches: matches("cup-primary", 5) };
+  const secondary = { name: "Second domestic cup", playerMatches: matches("cup-secondary", 5) };
+
+  const continental = clubMinutesShare(
+    {
+      seasons: [
+        {
+          matches: 15,
+          minutes: 1050,
+          clubMinutes: 1050,
+          standing: { matches: 38 },
+          ledgerSummary: { club: { minutes: 1050 }, international: { minutes: 0 } },
+          europeanCampaign: {
+            qualified: true,
+            competition: "Champions League",
+            playerMatches: matches("continental", 5),
+          },
+        },
+      ],
+    },
+    { persistAssessment: false }
+  );
+  assert.ok(
+    !continental.usableForLowMinutes || Math.abs(continental.share - 600 / 3420) < 1e-12,
+    `continental share ${continental.share}`
+  );
+
+  const twoCups = clubMinutesShare(
+    {
+      seasons: [
+        {
+          matches: 20,
+          minutes: 1500,
+          clubMinutes: 1500,
+          standing: { matches: 38 },
+          ledgerSummary: { club: { minutes: 1500 }, international: { minutes: 0 } },
+          domesticCupResult: primary,
+          domesticCupCampaigns: [primary, secondary],
+          europeanCampaign: { qualified: false },
+        },
+      ],
+    },
+    { persistAssessment: false }
+  );
+  assert.ok(
+    !twoCups.usableForLowMinutes || Math.abs(twoCups.share - 600 / 3420) < 1e-12,
+    `two-cup share ${twoCups.share}`
+  );
+
+  // Overlap: primary listed twice must not double-subtract.
+  const overlap = clubMinutesShare(
+    {
+      seasons: [
+        {
+          matches: 15,
+          minutes: 1050,
+          clubMinutes: 1050,
+          standing: { matches: 38 },
+          domesticCupResult: primary,
+          domesticCupCampaigns: [primary],
+          europeanCampaign: { qualified: false },
+        },
+      ],
+    },
+    { persistAssessment: false }
+  );
+  assert.ok(Math.abs(overlap.share - 600 / 3420) < 1e-12, `overlap share ${overlap.share}`);
+});
+
+test("F13: app finalizer keeps pending parent renewal over loan-return", async () => {
+  const { readFileSync } = await import("node:fs");
+  const vm = await import("node:vm");
+  const { endLoan } = await import("../js/simulation/loanMarket.js");
+  const { queueSquadDecision } = await import("../js/simulation/squadDecisions.js");
+  const { assertPlayableRegistration } = await import("../js/simulation/contractLifecycle.js");
+  const { acceptPipelineOffer } = await import("../js/simulation/dealPipeline.js");
+  const { ensureTransferSave } = await import("../js/simulation/transferMigration.js");
+
+  const p = basePlayer({ ovr: 90, age: 24, id: "rr07-parent-loan-90" });
+  attachClub(p, "Atalanta", { contractEndSeason: 1, contractYears: 1 });
+  const loans = generateLoanOffers(p, { maxOffers: 3, rng: createRng(707) });
+  assert.ok(loans.offers.length > 0);
+  assert.equal(startLoan(p, loans.offers[0]).ok, true);
+  reseedCareerRng(708);
+  const data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: false,
+    autoDecisionPolicy: null,
+    keepPendingBoundaryReview: true,
+  });
+  assert.equal(p.pendingContractReview?.status, "pending");
+  assert.equal(p.pendingContractReview?.outcome, "wants-renewal");
+  assert.equal(p.pendingDecision?.kind, "boundary-renewal");
+
+  const main = readFileSync(new URL("../main.js", import.meta.url), "utf8");
+  const begin = main.indexOf("async function finalizeCompletedSeasonUi(");
+  const end = main.indexOf("\nfunction seasonHistoryKey(", begin);
+  assert.ok(begin >= 0 && end > begin, "finalizeCompletedSeasonUi binding");
+  const noop = () => {};
+  const finalize = vm.runInNewContext("(" + main.slice(begin, end).trim() + ")", {
+    player: p,
+    queueSquadDecision,
+    endLoan,
+    assertPlayableRegistration,
+    generateTransferOffers,
+    ensureTransferSave,
+    LEAGUES,
+    LEAGUE_LOOKUP,
+    maybeAutoRetire: () => false,
+    syncSimulateButton: noop,
+    refreshOverview: noop,
+    refreshStandings: noop,
+    refreshCompetitions: noop,
+    refreshTransferOffers: noop,
+    appendSeasonCard: noop,
+    getDisplayAttributeKeys: () => [],
+    showSeasonAnimation: async () => {},
+    finishSeasonAnimation: noop,
+    recoverSeasonPresentationFailure: (e) => {
+      throw e;
+    },
+  });
+  await finalize(data);
+  assert.equal(p.pendingDecision?.kind, "boundary-renewal");
+  assert.ok(!/will become a free agent after settlement/i.test(p.pendingDecision?.lead || ""));
+  assert.equal(p.pendingContractReview?.status, "pending");
+  assert.ok((p.pendingOffers || []).some((o) => o.isRenewal));
+
+  // queueSquadDecision must not wipe the tray when loan-return is refused.
+  const kept = p.pendingDecision;
+  queueSquadDecision(p, "loan-return", { seasonIndex: p.seasons.length });
+  assert.equal(p.pendingDecision?.kind, "boundary-renewal");
+  assert.equal(p.pendingDecision?.decisionId, kept.decisionId);
+
+  const accept = acceptPipelineOffer(p, p.pendingOffers.find((o) => o.isRenewal));
+  assert.equal(accept.ok, true);
+  assert.equal(p.contractStatus, "active");
+  assert.equal(p.employmentClubId, "club:italy:atalanta");
+});
