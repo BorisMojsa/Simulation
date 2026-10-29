@@ -540,8 +540,14 @@ export function normalizeSuppliedRivals(supplied, editionId, possibleMinutes = 3
 /* ------------------------------------------------------------------ */
 
 function editionLine(evidence, editionId, scope) {
-  const byEdition = evidence.byEdition?.[editionId];
-  if (byEdition) return byEdition;
+  const byEdition = evidence.byEdition || {};
+  if (editionId && byEdition[editionId]) return byEdition[editionId];
+  // evidenceKey is competitionId::editionId; also accept a unique suffix match.
+  if (editionId && !String(editionId).includes("::")) {
+    const suffix = `::${editionId}`;
+    const hits = Object.entries(byEdition).filter(([k]) => k.endsWith(suffix));
+    if (hits.length === 1) return hits[0][1];
+  }
   const scoped = evidence.byScope?.[scope];
   if (scoped) return scoped;
   // Hand-built evidence may only carry raw competition-type buckets.

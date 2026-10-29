@@ -1,0 +1,54 @@
+=== tests/abilityFormatting.test.mjs ===
+exit:0
+=== tests/academyContinuation.test.mjs ===
+exit:0
+=== tests/academyOpening.test.mjs ===
+exit:0
+=== tests/browserFlowSmoke.test.mjs ===
+exit:0
+=== tests/careerFlowSmoke.test.mjs ===
+exit:0
+=== tests/chronologicalSeason.test.mjs ===
+exit:0
+=== tests/clubOwnershipTransfers.test.mjs ===
+exit:0
+=== tests/competitionsFormats.test.mjs ===
+exit:0
+=== tests/continentalIntegrity.test.mjs ===
+exit:0
+=== tests/contractLifecycle.test.mjs ===
+exit:0
+=== tests/crossLeagueCareer.test.mjs ===
+exit:0
+=== tests/freeAgentUiSoftlock.test.mjs ===
+exit:0
+=== tests/individualAwards.test.mjs ===
+exit:0
+=== tests/internationalIntegrity.test.mjs ===
+exit:0
+=== tests/leagueSimulationDashboard.test.mjs ===
+exit:0
+=== tests/loanPlayingLeague.test.mjs ===
+exit:0
+=== tests/matchParticipationEvidence.test.mjs ===
+exit:0
+=== tests/playerAbility.test.mjs ===
+exit:1
+=== tests/playerDevelopmentBehavior.test.mjs ===
+exit:0
+=== tests/playerProgressionV3.test.mjs ===
+exit:0
+=== tests/seniorCareerDevelopment.test.mjs ===
+exit:0
+=== tests/seniorCareerScenarios.test.mjs ===
+exit:0
+=== tests/simulationDashboardUi.test.mjs ===
+exit:0
+=== tests/strengthProvenance.test.mjs ===
+exit:0
+=== tests/teamStrength.test.mjs ===
+exit:0
+=== tests/transferLoanFollowup.test.mjs ===
+exit:0
+=== tests/transferLoanPipeline.test.mjs ===
+exit:0

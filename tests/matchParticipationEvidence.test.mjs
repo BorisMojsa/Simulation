@@ -28,6 +28,9 @@ import {
 } from "../js/simulation/playerDevelopmentModel.js";
 import { ensurePlayingStints } from "../js/simulation/playingRegistration.js";
 import { createWorldState, setWorldState } from "../js/simulation/worldState.js";
+import { buildLiveLoanBrowserFixture } from "../js/simulation/liveLoanBrowserFixture.js";
+import { startLoan } from "../js/simulation/loanMarket.js";
+import { resumeChronologicalSeason } from "../js/simulation/chronologicalSeason.js";
 
 function test(name, fn) {
   try {
@@ -269,7 +272,7 @@ test("two-leg tie: second leg carries finalized KO stats; first leg regulation-o
   }
 });
 
-test("finalizePlayerMatchStats is idempotent", () => {
+test("finalizePlayerMatchStats is idempotent with shared RNG stream", () => {
   const player = makePlayer(90);
   const match = simulateMatch(home, away, {
     player,
@@ -277,9 +280,154 @@ test("finalizePlayerMatchStats is idempotent", () => {
     playerMinutes: 90,
     rng: createRng(42),
   });
-  const once = finalizePlayerMatchStats(match, player, createRng(1));
-  const twice = finalizePlayerMatchStats(once, player, createRng(1));
+  const rng = createRng(1);
+  const once = finalizePlayerMatchStats(match, player, rng);
+  const afterFirst = rng.seed();
+  const twice = finalizePlayerMatchStats(once, player, rng);
+  const afterSecond = rng.seed();
   assert.deepEqual(once.playerStats, twice.playerStats);
+  assert.equal(afterFirst, afterSecond);
+  assert.equal(twice, once);
+});
+
+test("substitute window: no user goals/assists/cards before entry (seed 6 witness)", () => {
+  const player = makePlayer(20, { participation: { started: false, selected: true, matchDuration: 90 } });
+  const match = simulateMatch(home, away, {
+    player,
+    playerSide: "home",
+    playerMinutes: 20,
+    matchDuration: 90,
+    rng: createRng(6),
+  });
+  assert.equal(match.playerStats.minutes, 20);
+  assert.equal(match.playerStats.started, false);
+  const early = userEvents(match).filter((e) => (e.minute || 0) < 70);
+  assert.equal(
+    early.filter((e) => e.type === "goal" || e.type === "assist" || e.type === "yellow" || e.type === "red").length,
+    0
+  );
+});
+
+test("starter leaving early: no user events after exit window", () => {
+  const player = makePlayer(30, { participation: { started: true, selected: true, matchDuration: 90 } });
+  let sawLate = false;
+  for (let seed = 1; seed <= 200; seed++) {
+    const match = simulateMatch(home, away, {
+      player: makePlayer(30, { participation: { started: true, selected: true, matchDuration: 90 } }),
+      playerSide: "away",
+      playerMinutes: 30,
+      matchDuration: 90,
+      rng: createRng(seed),
+    });
+    const late = userEvents(match).filter((e) => (e.minute || 0) > 40);
+    if (late.some((e) => e.type === "goal" || e.type === "assist" || e.type === "yellow" || e.type === "red")) {
+      sawLate = true;
+      break;
+    }
+  }
+  assert.equal(sawLate, false);
+});
+
+test("regulation simulateMatch caps overlong minutes at matchDuration", () => {
+  const player = makePlayer(200);
+  const match = simulateMatch(home, away, {
+    player,
+    playerSide: "home",
+    playerMinutes: 200,
+    matchDuration: 90,
+    rng: createRng(1),
+  });
+  assert.equal(match.playerStats.minutes, 90);
+});
+
+test("byEdition keys by competitionId::editionId; trophy scoped to winning club", () => {
+  const cross = createEmptyLedger("season-1");
+  for (const rec of [
+    {
+      matchId: "pl",
+      competitionId: "league:england-premier-league",
+      teamId: home.clubId,
+      goals: 1,
+    },
+    {
+      matchId: "hnl",
+      competitionId: "league:croatia-hnl",
+      teamId: "club:croatia:dinamo-zagreb",
+      goals: 3,
+    },
+  ]) {
+    recordMatchObservation(cross, {
+      competitionType: "league",
+      editionId: "2026",
+      competitionEditionId: "2026",
+      minutes: 90,
+      rating: 7,
+      position: "ST",
+      started: true,
+      selected: true,
+      available: true,
+      assists: 0,
+      ...rec,
+    });
+  }
+  const crossEv = buildSeasonEvidence(
+    { position: "ST", name: "Probe" },
+    {
+      ledger: cross,
+      seasonId: "season-1",
+      competitionEditions: [
+        { editionId: "2026", scope: "league", competitionKey: "league:england-premier-league" },
+        { editionId: "2026", scope: "league", competitionKey: "league:croatia-hnl" },
+      ],
+    }
+  );
+  assert.equal(crossEv.byEdition["2026"], undefined);
+  assert.equal(crossEv.byEdition["league:england-premier-league::2026"].goals, 1);
+  assert.equal(crossEv.byEdition["league:england-premier-league::2026"].minutes, 90);
+  assert.equal(crossEv.byEdition["league:croatia-hnl::2026"].goals, 3);
+  assert.equal(crossEv.byEdition["league:croatia-hnl::2026"].minutes, 90);
+
+  const trophyLedger = createEmptyLedger("season-1");
+  for (const teamId of [home.clubId, away.clubId]) {
+    recordMatchObservation(trophyLedger, {
+      matchId: `m-${teamId}`,
+      competitionType: "league",
+      competitionId: "league:england-premier-league",
+      editionId: "2026",
+      teamId,
+      minutes: 90,
+      goals: 0,
+      assists: 0,
+      rating: 7,
+      position: "ST",
+      started: true,
+      selected: true,
+      available: true,
+    });
+  }
+  const trophyEv = buildSeasonEvidence(
+    { position: "ST", name: "Probe" },
+    {
+      ledger: trophyLedger,
+      seasonId: "season-1",
+      competitionEditions: [
+        { editionId: "2026", scope: "league", competitionKey: "league:england-premier-league" },
+      ],
+      trophies: [
+        {
+          kind: "league",
+          scope: "league",
+          winningClubId: home.clubId,
+          competitionId: "league:england-premier-league",
+          editionId: "2026",
+          label: "Premier League",
+        },
+      ],
+    }
+  );
+  assert.equal(trophyEv.byEdition["league:england-premier-league::2026"].minutes, 180);
+  assert.equal(trophyEv.trophies[0].minutes, 90);
+  assert.equal(trophyEv.trophies[0].participationWeight, Number((90 / (90 + 270)).toFixed(4)));
 });
 
 test("ledger: null rating stays unrated; cleanSheet preserved; structured zero-minute", () => {
@@ -359,8 +507,9 @@ test("ledger: null rating stays unrated; cleanSheet preserved; structured zero-m
     }
   );
   assert.equal(evidence.byScope.league.cleanSheets, 1);
-  assert.ok(evidence.byEdition["2026"]);
-  assert.equal(evidence.byEdition["2026"].cleanSheets, 1);
+  const edKey = "league:england-premier-league::2026";
+  assert.ok(evidence.byEdition[edKey]);
+  assert.equal(evidence.byEdition[edKey].cleanSheets, 1);
 });
 
 test("ledger known-false clean sheet distinct from unknown", () => {
@@ -455,6 +604,92 @@ test("pre-kickoff training injury zeros selected minutes", () => {
   assert.equal(result.ledgerRecord.minutes, 0);
   assert.equal(result.ledgerRecord.nonParticipationReason, "injured");
   assert.equal(userEvents(result.match).length, 0);
+});
+
+test("accepted cross-league loan keeps distinct competition edition buckets", () => {
+  const fixture = buildLiveLoanBrowserFixture({ seed: 42 });
+  assert.equal(fixture.ok, true, fixture.reason);
+  const offer = fixture.offers.find((o) => o.isLoan && o.clubId !== fixture.player.employmentClubId);
+  assert.ok(offer, "generated loan offer");
+  const transition = startLoan(fixture.player, offer);
+  assert.equal(transition.ok, true, transition.reason);
+  fixture.player.pendingOffers = [];
+  fixture.player.pendingDecision = null;
+  const resumed = resumeChronologicalSeason({
+    player: fixture.player,
+    league: LEAGUE_BY_ID.get("league:italy-serie-a"),
+    seasonIndex: 0,
+    checkpoint: structuredClone(fixture.player.seasonCheckpoint),
+    pauseForDecisions: false,
+    autoDecisionPolicy: "stay",
+  });
+  const ledger = createEmptyLedger("season-1");
+  for (const row of resumed.ledgerRecords || []) recordMatchObservation(ledger, row);
+  const rows = (resumed.ledgerRecords || []).filter((x) => x.competitionType === "league" && x.minutes > 0);
+  const evidence = buildSeasonEvidence(fixture.player, {
+    ledger,
+    seasonId: "season-1",
+    competitionEditions: [
+      ...new Map(
+        rows.map((row) => [
+          row.competitionId,
+          { editionId: row.editionId, competitionKey: row.competitionId, scope: "league" },
+        ])
+      ).values(),
+    ],
+  });
+  assert.equal(evidence.byEdition["2026"], undefined);
+  assert.ok(evidence.byEdition["league:italy-serie-a::2026"]?.minutes > 0);
+  assert.ok(evidence.byEdition["league:croatia-hnl::2026"]?.minutes > 0);
+  assert.equal(
+    evidence.byEdition["league:italy-serie-a::2026"].minutes +
+      evidence.byEdition["league:croatia-hnl::2026"].minutes,
+    evidence.byScope.league.minutes
+  );
+});
+
+test("match-day ET syncs participation and fatigue to final 120 minutes", () => {
+  const player = makeRegisteredPlayer("ST", 85);
+  player.state.fatigue = 0;
+  const injuryRng = {
+    random: () => 0.99,
+    chance: () => false,
+    int: (a) => a,
+    float: (a) => a,
+    pick: (arr) => arr[0],
+    shuffle: (arr) => arr,
+  };
+  const selRng = {
+    random: () => 0,
+    chance: () => true,
+    int: (a, b) => b,
+    float: (a, b) => (b == null ? a : b),
+    pick: (arr) => arr[0],
+    shuffle: (arr) => arr,
+  };
+  const result = processPlayerMatchDay({
+    home,
+    away,
+    player,
+    playerSide: "home",
+    date: "2026-09-01",
+    competition: "league",
+    competitionType: "league",
+    competitionId: league.leagueId,
+    editionId: "2026",
+    fixtureId: "et-exposure-2",
+    teamType: "club",
+    rng: createRng(2),
+    selRng,
+    injuryRng,
+    resolveKnockout,
+  });
+  assert.ok(["extraTime", "penalties"].includes(result.match.decidedBy));
+  assert.equal(result.match.playerStats.minutes, 120);
+  assert.equal(result.participation.minutes, 120);
+  assert.equal(result.ledgerRecord.minutes, 120);
+  assert.equal(player.matchParticipation.minutes, 120);
+  assert.ok(Math.abs(player.state.fatigue - 120 / 90 * 0.25) < 1e-12);
 });
 
 test("controlled pre-kickoff injury via applyInjury before simulate path", () => {

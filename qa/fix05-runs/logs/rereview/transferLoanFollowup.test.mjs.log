@@ -1,0 +1,9 @@
+OK  promoteAcademyGraduate books wage through pipeline; preserves player nationality
+OK  skip/bootstrap empty offers do not throw
+OK  pre-expiry renewal can appear with one year left
+OK  auto policy completes season without January pause
+OK  pauseForDecisions can await without aging or finalizing
+OK  career snapshot JSON round-trip preserves wage and finance ledger
+OK  worldState serialize round-trip keeps Maps
+
+All transfer/loan follow-up tests passed.

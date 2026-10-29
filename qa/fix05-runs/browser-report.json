@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-28T20:22:45.404Z",
+  "generatedAt": "2026-10-29T02:23:54.088Z",
   "baseUrl": "http://127.0.0.1:8000",
   "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "results": [
@@ -8,7 +8,8 @@
       "status": "PASS",
       "detail": {
         "playing": "club:england:brentford",
-        "seasons": 1
+        "seasons": 1,
+        "runtimeErrors": []
       }
     },
     {
@@ -16,7 +17,8 @@
       "status": "PASS",
       "detail": {
         "playing": "club:croatia:slaven-belupo",
-        "employment": "club:italy:atalanta"
+        "employment": "club:italy:atalanta",
+        "runtimeErrors": []
       }
     },
     {
@@ -34,7 +36,13 @@
             "isLoan": false,
             "wage": 120000
           }
-        ]
+        ],
+        "afterNext": {
+          "id": "start-season",
+          "label": "Simulate next season",
+          "canSimulate": true
+        },
+        "runtimeErrors": []
       }
     },
     {
@@ -44,14 +52,15 @@
         "academy": {
           "status": "pending-review",
           "periodCount": 1,
-          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvsk9n3p",
+          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvsx5pdi",
           "exitAge": 21
         },
         "nextAction": {
           "id": "resolve-offers",
           "label": "Review offers",
           "canSimulate": false
-        }
+        },
+        "runtimeErrors": []
       }
     },
     {
@@ -60,12 +69,20 @@
       "detail": {
         "cardsSample": [
           {
-            "contrib": "…",
+            "contrib": "Injured",
             "rating": "—"
           },
           {
-            "contrib": "…",
+            "contrib": "Injured",
             "rating": "—"
+          },
+          {
+            "contrib": "0G / 0A · 27' · Sub",
+            "rating": "5.8"
+          },
+          {
+            "contrib": "0G / 0A · 27' · Sub",
+            "rating": "5.8"
           },
           {
             "contrib": "Not selected",
@@ -82,19 +99,97 @@
           {
             "contrib": "Not selected",
             "rating": "—"
-          },
-          {
-            "contrib": "0G / 0A · 25' · Sub",
-            "rating": "6.3"
-          },
-          {
-            "contrib": "0G / 0A · 25' · Sub",
-            "rating": "6.3"
           }
         ],
-        "zeroish": 26
+        "zeroish": 30,
+        "reachedSkip": true,
+        "reachedContinue": false,
+        "positiveMinutes": 559,
+        "nonParticipation": {
+          "total": 38,
+          "unused": 38,
+          "byReason": {
+            "unused_substitute": 14,
+            "unused": 14,
+            "not_selected": 22,
+            "injured": 2,
+            "unavailable": 0,
+            "suspended": 0,
+            "rested": 0,
+            "unknown": 0,
+            "other": 0
+          }
+        },
+        "runtimeErrors": []
+      }
+    },
+    {
+      "name": "finished-season-evidence-and-keeper-path",
+      "status": "PASS",
+      "detail": {
+        "minutes": 559,
+        "goals": 0,
+        "assists": 1,
+        "evidenceByScope": {
+          "league": {
+            "minutes": 461,
+            "appearances": 15,
+            "starts": 2,
+            "goals": 0,
+            "assists": 1,
+            "cleanSheets": 0
+          },
+          "cup": {
+            "minutes": 13,
+            "appearances": 1,
+            "starts": 0,
+            "goals": 0,
+            "assists": 0,
+            "cleanSheets": null
+          },
+          "continental": {
+            "minutes": 85,
+            "appearances": 1,
+            "starts": 1,
+            "goals": 0,
+            "assists": 0,
+            "cleanSheets": null
+          },
+          "international": {
+            "minutes": 0,
+            "appearances": 0,
+            "starts": 0,
+            "goals": 0,
+            "assists": 0,
+            "cleanSheets": null
+          },
+          "other": {
+            "minutes": 0,
+            "appearances": 0,
+            "starts": 0,
+            "goals": 0,
+            "assists": 0,
+            "cleanSheets": null
+          }
+        },
+        "cleanSheets": 0,
+        "runtimeErrors": []
+      }
+    },
+    {
+      "name": "engine-backed-et-pens-playback-surface",
+      "status": "PASS",
+      "detail": {
+        "koProbe": {
+          "ok": true,
+          "hasResolveKnockout": true
+        },
+        "runtimeErrors": [],
+        "reached": true
       }
     }
   ],
+  "casesReached": 7,
+  "casesFailed": 0,
   "pass": true
 }

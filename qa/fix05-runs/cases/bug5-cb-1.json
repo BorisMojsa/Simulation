@@ -7,31 +7,43 @@
   "zeroMinutes": 37,
   "withEdition": 58,
   "editionCoverage": 1,
-  "rawCleanSheets": 0,
-  "ledgerCleanSheets": 0,
-  "evidenceLeagueCleanSheets": 0,
-  "evidenceTotalCleanSheets": 0,
+  "rawCleanSheets": 1,
+  "ledgerCleanSheets": 1,
+  "evidenceLeagueCleanSheets": 1,
+  "evidenceTotalCleanSheets": 1,
+  "evidenceEditionKeys": [
+    "league:england-premier-league::2026",
+    "uefa-champions-league::2026-uefa-champions-league",
+    "FA Cup::2026:FA Cup"
+  ],
+  "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
   "goalsFromPositive": 0,
   "goalsFromLedger": 0,
+  "matchesWithEvents": 13,
+  "eventGoalDisagree": 0,
   "apps": 21,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:20",
       "editionId": "2026",
+      "competitionId": "league:england-premier-league",
+      "teamId": "club:england:arsenal",
       "minutes": 88,
       "goals": 0,
-      "cleanSheet": false,
-      "rating": 5.8
+      "cleanSheet": true,
+      "rating": 6.8
     },
     {
       "matchId": "league:england-premier-league:md:30",
       "editionId": "2026",
+      "competitionId": "league:england-premier-league",
+      "teamId": "club:england:arsenal",
       "minutes": 30,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.4
+      "rating": 6.9
     }
   ],
   "sampleZero": [
@@ -47,5 +59,47 @@
       "editionId": "2026",
       "teamId": "club:england:arsenal"
     }
-  ]
+  ],
+  "evidenceByScope": {
+    "league": {
+      "minutes": 440,
+      "appearances": 13,
+      "starts": 2,
+      "goals": 0,
+      "assists": 0,
+      "cleanSheets": 1
+    },
+    "cup": {
+      "minutes": 28,
+      "appearances": 2,
+      "starts": 0,
+      "goals": 0,
+      "assists": 0,
+      "cleanSheets": null
+    },
+    "continental": {
+      "minutes": 210,
+      "appearances": 6,
+      "starts": 1,
+      "goals": 0,
+      "assists": 0,
+      "cleanSheets": 0
+    },
+    "international": {
+      "minutes": 0,
+      "appearances": 0,
+      "starts": 0,
+      "goals": 0,
+      "assists": 0,
+      "cleanSheets": null
+    },
+    "other": {
+      "minutes": 0,
+      "appearances": 0,
+      "starts": 0,
+      "goals": 0,
+      "assists": 0,
+      "cleanSheets": null
+    }
+  }
 }

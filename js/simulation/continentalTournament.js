@@ -29,6 +29,7 @@ import {
   simulateMatch,
 } from "./matchEngine.js";
 import { getSimRng } from "./rng.js";
+import { updateFatigue, updateFormFromObservation } from "./playerState.js";
 import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./worldState.js";
 import { effectiveTeamStrength } from "./teamStrength.js";
 import {
@@ -1484,7 +1485,14 @@ function playOneMatch(state, fixture, ctx, { finalize = null } = {}) {
   // Sync deferred ledger/counters with the finalized match (ET/pens may land after
   // processPlayerMatchDay). Must run before commit so store + ledger agree.
   if (processorResult?.ledgerRecord && match) {
+    const priorExposure = Number(
+      processorResult._exposureMinutesCharged ??
+        processorResult.participation?.minutes ??
+        processorResult.ledgerRecord.minutes ??
+        0
+    );
     syncLedgerRecordFromMatch(processorResult.ledgerRecord, match);
+    applyDeferredFinalExposure(ctx.player, match, processorResult, priorExposure, fixture.date);
     if (typeof ctx.onPlayerMatchFinalized === "function") {
       ctx.onPlayerMatchFinalized(match, processorResult);
     }
@@ -1528,6 +1536,42 @@ function syncLedgerRecordFromMatch(ledgerRecord, match) {
     ledgerRecord.cleanSheet = Number(conceded) === 0;
   }
   return ledgerRecord;
+}
+
+/**
+ * When ET/pens finalize after match-day processing, charge only the minute delta
+ * for fatigue/form and sync participation — never resample or double-charge.
+ */
+function applyDeferredFinalExposure(player, match, processorResult, priorExposureMinutes, date) {
+  if (!player || !match || !processorResult || processorResult._exposureSynced) return;
+  const finalMinutes = Math.max(0, Number(match.playerStats?.minutes) || 0);
+  const prior = Math.max(0, Number(priorExposureMinutes) || 0);
+  const delta = finalMinutes - prior;
+  processorResult._exposureSynced = true;
+  processorResult._exposureMinutesCharged = finalMinutes;
+  if (processorResult.participation) {
+    processorResult.participation = { ...processorResult.participation, minutes: finalMinutes };
+  }
+  if (player.matchParticipation) {
+    player.matchParticipation = {
+      ...player.matchParticipation,
+      minutes: finalMinutes,
+      matchDuration: Math.max(
+        Number(player.matchParticipation.matchDuration) || 90,
+        finalMinutes > 90 ? 120 : 90
+      ),
+    };
+  }
+  if (!(delta > 0) || !player.state) return;
+  updateFatigue(player.state, { minutes: delta });
+  if (match.playerStats?.rating != null) {
+    const expected = Number(processorResult.ledgerRecord?.expectedRating);
+    if (Number.isFinite(expected)) {
+      const obsScale = 0.6;
+      const z = Math.max(-3, Math.min(3, (match.playerStats.rating - expected) / obsScale));
+      updateFormFromObservation(player.state, Math.tanh(z / 1.5), delta, date);
+    }
+  }
 }
 
 function resolveSingleLeg(state, fixture, match, ctx) {

@@ -82,15 +82,30 @@ export function defaultCompetitionEditionId(seasonId, scope, competitionKey = ""
 }
 
 /**
- * Resolve the competition edition id for a scope from evidence/editions.
- * Prefers an explicit edition list, then the evidence default.
+ * Canonical evidence bucket key: competition ID + edition ID.
+ * Bare years alone must not merge distinct competitions.
+ */
+export function evidenceEditionKey(competitionId, editionId) {
+  const c = competitionId != null && String(competitionId) !== "" ? String(competitionId) : null;
+  const e = editionId != null && String(editionId) !== "" ? String(editionId) : null;
+  if (c && e) return `${c}::${e}`;
+  if (e) return e;
+  if (c) return c;
+  return null;
+}
+
+/**
+ * Resolve the competition edition lookup key for a scope from evidence/editions.
+ * Prefers evidenceKey (competitionId::editionId) so award consumers hit the
+ * correct byEdition bucket.
  */
 export function resolveCompetitionEditionId(evidenceOrEditions, scope = "league", { seasonId, competitionKey } = {}) {
   const editions = Array.isArray(evidenceOrEditions) ? evidenceOrEditions : evidenceOrEditions?.editions || [];
   const hit = editions.find((e) => e.scope === scope && (!competitionKey || e.competitionKey === competitionKey));
-  if (hit?.editionId) return hit.editionId;
+  if (hit) return hit.evidenceKey || hit.editionId;
   const sid = seasonId ?? evidenceOrEditions?.seasonId;
-  return defaultCompetitionEditionId(sid, scope, competitionKey);
+  const fallbackId = defaultCompetitionEditionId(sid, scope, competitionKey);
+  return evidenceEditionKey(competitionKey, fallbackId) || fallbackId;
 }
 
 function normalizeEditions(raw, seasonId, league) {
@@ -99,8 +114,10 @@ function normalizeEditions(raw, seasonId, league) {
     if (!e) continue;
     const scope = competitionScopeOf(e.scope ?? e.kind ?? e.competitionType);
     const key = e.competitionKey ?? e.competitionId ?? e.simKey ?? e.name ?? "";
+    const editionId = String(e.editionId ?? e.id ?? defaultCompetitionEditionId(seasonId, scope, key));
     out.push({
-      editionId: String(e.editionId ?? e.id ?? defaultCompetitionEditionId(seasonId, scope, key)),
+      editionId,
+      evidenceKey: e.evidenceKey || evidenceEditionKey(key, editionId) || editionId,
       scope,
       competitionKey: key ? String(key) : null,
       name: e.name ?? e.label ?? null,
@@ -109,8 +126,10 @@ function normalizeEditions(raw, seasonId, league) {
   }
   if (!out.some((e) => e.scope === "league")) {
     const key = league?.leagueId ?? league?.name ?? "";
+    const editionId = defaultCompetitionEditionId(seasonId, "league", key);
     out.push({
-      editionId: defaultCompetitionEditionId(seasonId, "league", key),
+      editionId,
+      evidenceKey: evidenceEditionKey(key, editionId) || editionId,
       scope: "league",
       competitionKey: key ? String(key) : null,
       name: league?.displayName ?? league?.name ?? null,
@@ -342,14 +361,79 @@ function clubFinishBlock(player, ctx) {
 /* Trophies                                                            */
 /* ------------------------------------------------------------------ */
 
-function trophyBlock(trophies, editions, byScope, byEdition) {
+function lineFromMatchesForTrophy(matches, { scope, winningClubId, competitionId, editionId, evidenceKey }) {
+  const line = emptyScopeLine();
+  let used = false;
+  for (const m of matches) {
+    const minutes = num(m.minutes);
+    if (!(minutes > 0)) continue;
+    if (winningClubId && m.teamId !== winningClubId) continue;
+    if (competitionId && m.competitionId && m.competitionId !== competitionId) continue;
+    const mScope = competitionScopeOf(m.competitionType ?? m.scope, Boolean(m.international ?? m.isInternational));
+    if (mScope !== scope) continue;
+    if (editionId || evidenceKey) {
+      const mid = m.competitionEditionId ?? m.editionId ?? null;
+      const mKey = evidenceEditionKey(m.competitionId, mid);
+      if (
+        mid !== editionId &&
+        mKey !== editionId &&
+        mKey !== evidenceKey &&
+        !(evidenceKey && mKey === evidenceKey)
+      ) {
+        continue;
+      }
+    }
+    used = true;
+    line.minutes += Math.min(minutes, 150);
+    line.appearances += 1;
+    line.starts += m.started ? 1 : 0;
+    line.goals += Math.max(0, num(m.goals));
+    line.assists += Math.max(0, num(m.assists));
+    if (typeof m.cleanSheet === "boolean") {
+      line.cleanSheets = (line.cleanSheets ?? 0) + (m.cleanSheet ? 1 : 0);
+    }
+  }
+  return { line, used };
+}
+
+function trophyBlock(trophies, editions, byScope, byEdition, matches = []) {
   return (Array.isArray(trophies) ? trophies : []).map((t) => {
     const scope = competitionScopeOf(t.scope ?? t.kind);
+    const winningClubId = t.winningClubId ?? null;
+    const competitionId = t.competitionId ?? t.competitionKey ?? null;
     const edition =
-      editions.find((e) => t.editionId && e.editionId === t.editionId) ||
+      editions.find(
+        (e) =>
+          t.editionId &&
+          (e.editionId === t.editionId || e.evidenceKey === t.editionId || e.evidenceKey === evidenceEditionKey(competitionId, t.editionId))
+      ) ||
+      editions.find(
+        (e) => e.scope === scope && competitionId && e.competitionKey === competitionId
+      ) ||
       editions.find((e) => e.scope === scope && e.name && (e.name === t.competition || e.name === t.simKey)) ||
       editions.find((e) => e.scope === scope);
-    const line = (edition && byEdition[edition.editionId]) || byScope[scope] || emptyScopeLine();
+
+    let line = emptyScopeLine();
+    const fromMatches = lineFromMatchesForTrophy(matches, {
+      scope,
+      winningClubId,
+      competitionId: competitionId || edition?.competitionKey || null,
+      editionId: edition?.editionId ?? t.editionId ?? null,
+      evidenceKey: edition?.evidenceKey || evidenceEditionKey(competitionId, t.editionId),
+    });
+    if (fromMatches.used) {
+      line = fromMatches.line;
+    } else if (winningClubId) {
+      // Known winning club with no matching team minutes: do not borrow later-club
+      // or broad-scope participation.
+      line = emptyScopeLine();
+    } else {
+      line =
+        (edition && (byEdition[edition.evidenceKey] || byEdition[edition.editionId])) ||
+        byScope[scope] ||
+        emptyScopeLine();
+    }
+
     const minutes = line.minutes;
     let weight;
     let basis;
@@ -366,6 +450,7 @@ function trophyBlock(trophies, editions, byScope, byEdition) {
       kind: t.kind ?? scope,
       scope,
       editionId: edition?.editionId ?? t.editionId ?? null,
+      evidenceKey: edition?.evidenceKey ?? evidenceEditionKey(competitionId, edition?.editionId ?? t.editionId),
       minutes,
       appearances: line.appearances,
       participationWeight: Number(weight.toFixed(4)),
@@ -423,7 +508,8 @@ function scopeLinesFromMatches(matches) {
     const scope = competitionScopeOf(m.competitionType ?? m.scope, Boolean(m.international ?? m.isInternational));
     const lines = [byScope[scope]];
     const editionId = m.competitionEditionId ?? m.editionId ?? null;
-    if (editionId) lines.push((byEdition[editionId] ||= emptyScopeLine()));
+    const key = evidenceEditionKey(m.competitionId, editionId);
+    if (key) lines.push((byEdition[key] ||= emptyScopeLine()));
     for (const line of lines) {
       line.minutes += Math.min(minutes, 150);
       line.appearances += 1;
@@ -558,7 +644,7 @@ export function buildSeasonEvidence(player, context = {}) {
 
   const strength = competitionStrengthBlock(player, ctx);
   const clubFinish = clubFinishBlock(player, ctx);
-  const trophies = trophyBlock(ctx.trophies, editions, byScope, byEdition);
+  const trophies = trophyBlock(ctx.trophies, editions, byScope, byEdition, matches);
   const { stints, onLoan, loanInfo } = stintBlock(player, ctx);
   const positionInfo = normalizePosition(ctx.position ?? player?.position);
   const seasonStartAge = numOrNull(ctx.seasonStartAge ?? ctx.ageAtSeasonStart) ?? (Number.isFinite(player?.age) ? player.age - 1 : null);

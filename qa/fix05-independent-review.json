@@ -1,0 +1,167 @@
+{
+  "head": "39603f3463019a0ac74f98bdd2d69caecdfb1487",
+  "node": "v22.19.0",
+  "substitute": {
+    "seed": 6,
+    "participation": {
+      "minutes": 20,
+      "started": false,
+      "selected": true,
+      "matchDuration": 90,
+      "date": null
+    },
+    "stats": {
+      "played": true,
+      "minutes": 20,
+      "started": false,
+      "goals": 1,
+      "assists": 0,
+      "yellow": 0,
+      "red": 0,
+      "rating": 7.1
+    },
+    "events": [
+      {
+        "minute": 9,
+        "type": "goal",
+        "team": "home",
+        "phase": "regulation",
+        "playerInvolved": true,
+        "label": "Independent Fix 05"
+      }
+    ]
+  },
+  "finalizer": {
+    "firstRating": 8.8,
+    "secondRating": 8.6,
+    "afterFirst": 1831565814,
+    "afterSecond": 3663131627,
+    "statsEqual": false
+  },
+  "durationBound": {
+    "inputMinutes": 200,
+    "matchDuration": 90,
+    "actualMinutes": 150
+  },
+  "editionCollision": {
+    "input": [
+      {
+        "competitionId": "league:england-premier-league",
+        "editionId": "2026",
+        "goals": 1
+      },
+      {
+        "competitionId": "league:croatia-hnl",
+        "editionId": "2026",
+        "goals": 3
+      }
+    ],
+    "editions": [
+      {
+        "editionId": "2026",
+        "scope": "league",
+        "competitionKey": "league:england-premier-league",
+        "name": null,
+        "teamMatches": null
+      },
+      {
+        "editionId": "2026",
+        "scope": "league",
+        "competitionKey": "league:croatia-hnl",
+        "name": null,
+        "teamMatches": null
+      }
+    ],
+    "byEdition": {
+      "2026": {
+        "minutes": 180,
+        "appearances": 2,
+        "starts": 0,
+        "goals": 4,
+        "assists": 0,
+        "cleanSheets": null
+      }
+    },
+    "byScope": {
+      "minutes": 180,
+      "appearances": 2,
+      "starts": 0,
+      "goals": 4,
+      "assists": 0,
+      "cleanSheets": null
+    }
+  },
+  "etExposure": {
+    "seed": 2,
+    "decidedBy": "extraTime",
+    "matchMinutes": 120,
+    "ledgerMinutes": 120,
+    "participationMinutes": 90,
+    "playerParticipationMinutes": 120,
+    "actualFatigue": 0.25,
+    "expected120Fatigue": 0.3333333333333333,
+    "fatigue90": 0.25
+  },
+  "actualLoanEdition": {
+    "status": "complete",
+    "borrower": "club:croatia:slaven-belupo",
+    "groups": {
+      "league:italy-serie-a|2026": {
+        "minutes": 126,
+        "goals": 0,
+        "assists": 1,
+        "rows": 6
+      },
+      "league:croatia-hnl|2026": {
+        "minutes": 453,
+        "goals": 0,
+        "assists": 0,
+        "rows": 6
+      }
+    },
+    "byEdition": {
+      "2026": {
+        "minutes": 579,
+        "appearances": 12,
+        "starts": 5,
+        "goals": 0,
+        "assists": 1,
+        "cleanSheets": null
+      },
+      "2026-uefa-champions-league": {
+        "minutes": 59,
+        "appearances": 3,
+        "starts": 0,
+        "goals": 0,
+        "assists": 0,
+        "cleanSheets": null
+      }
+    },
+    "leagueScope": {
+      "minutes": 579,
+      "appearances": 12,
+      "starts": 5,
+      "goals": 0,
+      "assists": 1,
+      "cleanSheets": null
+    }
+  },
+  "trophyParticipation": {
+    "winningClubId": "club:england:arsenal",
+    "winningClubMinutes": 90,
+    "laterClubMinutes": 90,
+    "trophyEvidence": [
+      {
+        "kind": "league",
+        "competition": "Premier League",
+        "winningClubId": "club:england:arsenal",
+        "editionId": "2026",
+        "scope": "league",
+        "minutes": 180,
+        "appearances": 2,
+        "participationWeight": 0.4,
+        "participationBasis": "saturating-proxy"
+      }
+    ]
+  }
+}

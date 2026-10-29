@@ -173,6 +173,16 @@ function participationMinutesOf(player, { omittedFallback = 0, durationMax = 150
 }
 
 /**
+ * Map a clock minute (0..matchDuration) onto the event-minute span used by
+ * buildGoalEvents / buildCardEvents (e.g. 3..92 including stoppage labels).
+ */
+function eventMinuteForClock(clockMinute, matchDuration, minuteMin, minuteMax) {
+  const dur = Math.max(Number(matchDuration) || 90, 1);
+  const span = Math.max(minuteMax - minuteMin, 1);
+  return minuteMin + (span * clamp(clockMinute, 0, dur)) / dur;
+}
+
+/**
  * Whether the user is on the pitch at `minute` for event attribution.
  * Starters cover kickoff→minutes; substitutes enter at (duration - minutes).
  * Extra-time events require completed regulation duration (continued participation).
@@ -181,7 +191,10 @@ function participationMinutesOf(player, { omittedFallback = 0, durationMax = 150
 function playerOnPitchAt(player, playerSide, team, minute, phase, minuteMin = 3, minuteMax = 92) {
   if (!player || playerSide !== team) return false;
   const matchDuration = Number(player.matchParticipation?.matchDuration) || 90;
-  const minutes = participationMinutesOf(player, { omittedFallback: 0, durationMax: 150 });
+  const minutes = participationMinutesOf(player, {
+    omittedFallback: 0,
+    durationMax: Math.max(matchDuration + 30, 150),
+  });
   if (!(minutes > 0)) return false;
 
   if (phase === "extraTime") {
@@ -189,10 +202,22 @@ function playerOnPitchAt(player, playerSide, team, minute, phase, minuteMin = 3,
     return minutes >= matchDuration && minute >= 91 && minute <= 120;
   }
 
-  // Regulation / stoppage (including 90+ labels): start-biased minute window used by
-  // the prior engine. Keeps positive-minute RNG/attribution close to historical
-  // behavior while still requiring minutes > 0.
-  return minute <= minuteMin + ((minuteMax - minuteMin) * minutes) / Math.max(minuteMax, 90);
+  const started = player.matchParticipation?.started !== false;
+  const regMinutes = Math.min(minutes, matchDuration);
+
+  if (started) {
+    // Starter: on pitch from kickoff until credited regulation minutes (stoppage
+    // included when the full regulation duration was completed).
+    if (regMinutes >= matchDuration) return minute >= minuteMin && minute <= minuteMax;
+    const leaveAt = eventMinuteForClock(regMinutes, matchDuration, minuteMin, minuteMax);
+    return minute <= leaveAt;
+  }
+
+  // Substitute: enters for the final `regMinutes` of regulation.
+  if (regMinutes >= matchDuration) return minute >= minuteMin && minute <= minuteMax;
+  const entryClock = Math.max(0, matchDuration - regMinutes);
+  const enterAt = eventMinuteForClock(entryClock, matchDuration, minuteMin, minuteMax);
+  return minute >= enterAt && minute <= minuteMax;
 }
 
 function buildGoalEvents({
@@ -340,7 +365,9 @@ export function countUserOpenPlayEvents(match) {
 
 /**
  * Idempotent finalizer: playerStats goals/assists/cards equal counted open-play
- * user events; rating only when minutes > 0. Safe to call repeatedly.
+ * user events; rating only when minutes > 0. Repeated calls on an unchanged
+ * result are a true no-op (stats, rating, and RNG). Re-rates only when minutes
+ * or open-play event totals genuinely change (e.g. regulation → ET).
  */
 export function finalizePlayerMatchStats(match, player = null, rng = null) {
   if (!match) return match;
@@ -351,10 +378,25 @@ export function finalizePlayerMatchStats(match, player = null, rng = null) {
   });
   const played = Boolean(match.playerSide && player && minutes > 0);
   const counts = played ? countUserOpenPlayEvents(match) : { goals: 0, assists: 0, yellow: 0, red: 0 };
+  const nextMinutes = played ? minutes : 0;
+
+  if (
+    match.playerStatsFinalized &&
+    prev.played === played &&
+    prev.minutes === nextMinutes &&
+    prev.goals === counts.goals &&
+    prev.assists === counts.assists &&
+    prev.yellow === counts.yellow &&
+    prev.red === counts.red &&
+    (played ? prev.rating != null : true)
+  ) {
+    return match;
+  }
+
   const playerStats = {
     ...prev,
     played,
-    minutes: played ? minutes : 0,
+    minutes: nextMinutes,
     started: played ? Boolean(prev.started ?? player?.matchParticipation?.started) : Boolean(prev.started),
     goals: counts.goals,
     assists: counts.assists,
@@ -362,7 +404,7 @@ export function finalizePlayerMatchStats(match, player = null, rng = null) {
     red: counts.red,
     rating: null,
   };
-  const next = { ...match, playerStats };
+  const next = { ...match, playerStats, playerStatsFinalized: true };
   if (played) {
     playerStats.rating = computeMatchRating(next, player, rng);
   }
@@ -453,13 +495,15 @@ export function simulateMatch(home, away, {
 } = {}) {
   const r = rngOr(rng);
   const omittedFallback = playerSide && player ? matchDuration : 0;
+  // Regulation boundary caps at matchDuration. ET minutes are added only by
+  // resolveKnockout / simulateExtraTime continuation paths.
   const minutes = normalizeParticipationMinutes(
     playerMinutes != null
       ? playerMinutes
       : player?.matchParticipation?.minutes != null
         ? player.matchParticipation.minutes
         : null,
-    { omittedFallback, durationMax: Math.max(Number(matchDuration) || 90, 150) }
+    { omittedFallback, durationMax: Number(matchDuration) || 90 }
   );
 
   if (player && playerSide) {

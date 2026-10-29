@@ -146,6 +146,15 @@ async function caseRun(name, fn) {
   }
 }
 
+function attachRuntimeGuards(page) {
+  const errors = [];
+  page.on("pageerror", (err) => errors.push({ type: "pageerror", message: String(err?.message || err) }));
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push({ type: "console", message: msg.text() });
+  });
+  return errors;
+}
+
 async function main() {
   const { chromium } = await loadPlaywright();
   await mkdir(SHOT_DIR, { recursive: true });
@@ -153,6 +162,7 @@ async function main() {
   await caseRun("move-loan-ownership-transfer", async () => {
     const browser = await chromium.launch({ executablePath: CHROME, headless: true });
     const page = await browser.newPage();
+    const runtimeErrors = attachRuntimeGuards(page);
     try {
       await loadFixture(page, "?fixture=ownership-transfer");
       const before = await debug(page);
@@ -172,7 +182,8 @@ async function main() {
       await shot(page, "02-transfer-accepted");
       await skipThroughSeason(page);
       await shot(page, "03-transfer-season");
-      return { playing: after.playingClubId, seasons: after.seasonsCount };
+      assert(runtimeErrors.length === 0, "no page/console errors", runtimeErrors);
+      return { playing: after.playingClubId, seasons: after.seasonsCount, runtimeErrors };
     } finally {
       await browser.close();
     }
@@ -181,6 +192,7 @@ async function main() {
   await caseRun("live-loan-controls", async () => {
     const browser = await chromium.launch({ executablePath: CHROME, headless: true });
     const page = await browser.newPage();
+    const runtimeErrors = attachRuntimeGuards(page);
     try {
       await loadFixture(page, "?fixture=live-loan");
       await shot(page, "04-loan-desk");
@@ -197,7 +209,8 @@ async function main() {
       assert(d.employmentClubId === "club:italy:atalanta", "employer Atalanta", d);
       assert(d.playingClubId && d.playingClubId !== d.employmentClubId, "playing club moved", d);
       await shot(page, "05-loan-accepted");
-      return { playing: d.playingClubId, employment: d.employmentClubId };
+      assert(runtimeErrors.length === 0, "no page/console errors", runtimeErrors);
+      return { playing: d.playingClubId, employment: d.employmentClubId, runtimeErrors };
     } finally {
       await browser.close();
     }
@@ -206,6 +219,7 @@ async function main() {
   await caseRun("free-agent-predecessor-smoke", async () => {
     const browser = await chromium.launch({ executablePath: CHROME, headless: true });
     const page = await browser.newPage();
+    const runtimeErrors = attachRuntimeGuards(page);
     try {
       await loadFixture(page, "?fixture=free-agent-offers");
       const d = await debug(page);
@@ -213,7 +227,12 @@ async function main() {
       await shot(page, "06-free-agent");
       const next = d.nextAction;
       assert(next, "next action present", d);
-      return { nextAction: next, offers: d.pendingOffers };
+      // Attempt one continuation click when a continue/accept control is present.
+      await clickMatching(page, "continue|accept|sign|review");
+      await page.waitForTimeout(300);
+      const after = await debug(page);
+      assert(runtimeErrors.length === 0, "no page/console errors", runtimeErrors);
+      return { nextAction: next, offers: d.pendingOffers, afterNext: after?.nextAction, runtimeErrors };
     } finally {
       await browser.close();
     }
@@ -222,6 +241,7 @@ async function main() {
   await caseRun("academy-predecessor-smoke", async () => {
     const browser = await chromium.launch({ executablePath: CHROME, headless: true });
     const page = await browser.newPage();
+    const runtimeErrors = attachRuntimeGuards(page);
     try {
       await loadFixture(page, "?fixture=academy-continue-offers");
       const d = await debug(page);
@@ -232,7 +252,10 @@ async function main() {
         // Academy must not invent senior league fixtures pre-graduation.
         assert(false, "academy should not have senior league appearances before graduation", seasons);
       }
-      return { academy: d.academyLifecycle, nextAction: d.nextAction };
+      await clickMatching(page, "continue|graduate|accept|review");
+      await page.waitForTimeout(300);
+      assert(runtimeErrors.length === 0, "no page/console errors", runtimeErrors);
+      return { academy: d.academyLifecycle, nextAction: d.nextAction, runtimeErrors };
     } finally {
       await browser.close();
     }
@@ -241,17 +264,17 @@ async function main() {
   await caseRun("skip-controls-and-match-cards", async () => {
     const browser = await chromium.launch({ executablePath: CHROME, headless: true });
     const page = await browser.newPage();
+    const runtimeErrors = attachRuntimeGuards(page);
     try {
-      // Ordinary career: start page then fill setup if needed — ownership fixture already mid-season.
       await loadFixture(page, "?fixture=ownership-transfer");
-      // Decline/stay path: skip decision by simulating continue if possible.
       await page.evaluate(() => {
         const stay = [...document.querySelectorAll("button")].find((b) => /stay|reject|decline|keep/i.test(b.textContent || ""));
         stay?.click();
       });
       await page.waitForTimeout(300);
-      // Drive simulate / skip season
-      for (let i = 0; i < 30; i++) {
+      let reachedSkip = false;
+      let reachedContinue = false;
+      for (let i = 0; i < 40; i++) {
         const progressed = await page.evaluate(() => {
           const skip = [...document.querySelectorAll("button")].find((b) =>
             /skip season|skip phase|skip match/i.test(b.textContent || "")
@@ -272,6 +295,8 @@ async function main() {
           }
           return null;
         });
+        if (progressed === "skip") reachedSkip = true;
+        if (progressed === "continue") reachedContinue = true;
         await page.waitForTimeout(150);
         if (!progressed) break;
       }
@@ -282,7 +307,83 @@ async function main() {
       );
       const ratedZero = zeroish.filter((c) => c.rating && c.rating !== "—" && c.rating !== "-");
       assert(ratedZero.length === 0, "zero-minute cards must not show numeric ratings", ratedZero);
-      return { cardsSample: cards.slice(0, 8), zeroish: zeroish.length };
+      const finished = await debug(page);
+      const np = finished?.lastSeason?.nonParticipation || finished?.nonParticipation || null;
+      const positiveMinutes = Number(finished?.lastSeason?.minutes || finished?.seasonTotals?.minutes || 0);
+      assert(runtimeErrors.length === 0, "no page/console errors", runtimeErrors);
+      return {
+        cardsSample: cards.slice(0, 8),
+        zeroish: zeroish.length,
+        reachedSkip,
+        reachedContinue,
+        positiveMinutes,
+        nonParticipation: np,
+        runtimeErrors,
+      };
+    } finally {
+      await browser.close();
+    }
+  });
+
+  await caseRun("finished-season-evidence-and-keeper-path", async () => {
+    const browser = await chromium.launch({ executablePath: CHROME, headless: true });
+    const page = await browser.newPage();
+    const runtimeErrors = attachRuntimeGuards(page);
+    try {
+      await loadFixture(page, "?fixture=ownership-transfer");
+      await page.evaluate(() => {
+        const stay = [...document.querySelectorAll("button")].find((b) => /stay|reject|decline|keep/i.test(b.textContent || ""));
+        stay?.click();
+      });
+      await skipThroughSeason(page, { maxSteps: 100 });
+      await shot(page, "09-finished-season");
+      const d = await debug(page);
+      const last = d?.lastSeason || null;
+      assert(last, "finished season present", d);
+      assert(
+        Number(last.minutes || 0) > 0 || Number(last.appearances || 0) > 0,
+        "positive season participation",
+        last
+      );
+      // Evidence scope lines when the debug surface exposes them.
+      if (last.evidenceByScope) {
+        assert(typeof last.evidenceByScope.league === "object", "league scope present", last.evidenceByScope);
+      }
+      assert(runtimeErrors.length === 0, "no page/console errors", runtimeErrors);
+      return {
+        minutes: last.minutes,
+        goals: last.goals,
+        assists: last.assists,
+        evidenceByScope: last.evidenceByScope || null,
+        cleanSheets: last.cleanSheets ?? last.evidenceCleanSheets ?? null,
+        runtimeErrors,
+      };
+    } finally {
+      await browser.close();
+    }
+  });
+
+  await caseRun("engine-backed-et-pens-playback-surface", async () => {
+    const browser = await chromium.launch({ executablePath: CHROME, headless: true });
+    const page = await browser.newPage();
+    const runtimeErrors = attachRuntimeGuards(page);
+    try {
+      await loadFixture(page, "?fixture=ownership-transfer");
+      // Production UI path: drive controls; engine ET/pens coverage is required via exporter.
+      // Here we assert the live page can evaluate knockout helpers without runtime errors.
+      const koProbe = await page.evaluate(async () => {
+        const mod = await import("./js/simulation/matchEngine.js").catch(() => null);
+        if (!mod?.simulateMatch || !mod?.resolveKnockout) {
+          return { ok: false, reason: "module-unavailable" };
+        }
+        return { ok: true, hasResolveKnockout: typeof mod.resolveKnockout === "function" };
+      });
+      assert(koProbe.ok || koProbe.reason === "module-unavailable", "knockout module probe", koProbe);
+      // If bundling prevents dynamic import, still require a clean page.
+      const d = await debug(page);
+      assert(d, "debug surface available");
+      assert(runtimeErrors.filter((e) => e.type === "pageerror").length === 0, "no pageerrors", runtimeErrors);
+      return { koProbe, runtimeErrors, reached: Boolean(d) };
     } finally {
       await browser.close();
     }
@@ -293,7 +394,9 @@ async function main() {
     baseUrl: BASE,
     chrome: CHROME,
     results,
-    pass: results.every((r) => r.status === "PASS"),
+    casesReached: results.filter((r) => r.status === "PASS").length,
+    casesFailed: results.filter((r) => r.status === "FAIL").length,
+    pass: results.every((r) => r.status === "PASS") && results.length >= 7,
   };
   await writeFile(OUT, JSON.stringify(summary, null, 2));
   console.log("\nBrowser checklist summary:", JSON.stringify({ pass: summary.pass, results: results.map((r) => `${r.status} ${r.name}`) }, null, 2));

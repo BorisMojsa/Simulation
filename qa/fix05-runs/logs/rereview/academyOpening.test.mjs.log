@@ -1,0 +1,15 @@
+OK  weighted sampling respects explicit weights
+OK  invalid weights and empty results throw
+OK  asymmetric-loss regression: narrative −3 is not several times larger than +3
+OK  cumulative budget: five +3 moments cannot each take a fresh annual share
+OK  whole-number feedback uses rounded endpoints
+OK  all five position groups get five distinct scenario ids
+OK  duplicate choice clicks do not apply twice
+OK  opening moments respect shared annual allowance without forced +1 display jumps
+OK  snapshot resume keeps cursor and does not reroll applied moments
+OK  thoughtful policy improves more often than reckless on a small seeded batch
+OK  skip path applies baseline once and is not richer than a full opening mean path
+OK  legacy applyOpeningChoiceResult still returns a finite rating delta
+OK  bank normalizes ids and dispositions; life scenarios exist
+
+Done.

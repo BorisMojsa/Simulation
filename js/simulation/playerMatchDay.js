@@ -144,6 +144,20 @@ export function processPlayerMatchDay({
 
   let ledgerRecord = null;
   if (validatedSide && player && participation) {
+    // After KO/ET/pens, sync local minutes + participation before exposure/form.
+    const finalizedMinutes = Number(match.playerStats?.minutes);
+    if (Number.isFinite(finalizedMinutes) && finalizedMinutes >= 0) {
+      minutes = finalizedMinutes;
+      participation = { ...participation, minutes };
+      player.matchParticipation = {
+        ...(player.matchParticipation || {}),
+        ...participation,
+        date,
+        matchDuration: Math.max(matchDuration, minutes > 90 ? 120 : matchDuration),
+        minutes,
+      };
+    }
+
     if (minutes > 0 && participation.available) {
       const inj = sampleInjuryFromExposure({
         hours: minutes / 60,
@@ -174,6 +188,13 @@ export function processPlayerMatchDay({
           }
           match.playerStats.played = minutes > 0;
           match = finalizePlayerMatchStats(match, player, rng);
+          participation = { ...participation, minutes };
+          player.matchParticipation = {
+            ...(player.matchParticipation || {}),
+            ...participation,
+            date,
+            minutes,
+          };
         }
         applyInjury(player, inj);
         match.injuryEventIds = [inj.eventId];

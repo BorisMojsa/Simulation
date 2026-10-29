@@ -26,6 +26,8 @@ import {
   buildSeasonEvidence,
   evidenceToDevelopmentContext,
   attachRecognitionToEvidence,
+  evidenceEditionKey,
+  competitionScopeOf,
 } from "./seasonEvidence.js?v=85";
 import { clubNameForDisplay, clamp, pickRandom, randFloat } from "../utils/helpers.js";
 import { applySeasonDevelopment, attachClubIdentity, ensureWorldState, getWorldState } from "./worldState.js";
@@ -513,41 +515,102 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   // Prefer per-match cleanSheet flags on the normalized ledger for scoped evidence.
   // Fall back to the season-level total only when no ledger flags exist (legacy).
   const ledgerHasCleanSheetFlags = (ledger.matches || []).some((m) => typeof m.cleanSheet === "boolean");
-  const competitionEditions = [];
+  // Edition descriptors come from actual fixture identities on the ledger (including
+  // origin + destination leagues/cups). Season-history index is never a substitute.
+  const editionByKey = new Map();
+  const pushEdition = (desc) => {
+    if (!desc) return;
+    const competitionKey = desc.competitionKey || desc.competitionId || null;
+    const editionId = desc.editionId != null ? String(desc.editionId) : null;
+    if (!editionId && !competitionKey) return;
+    const key = evidenceEditionKey(competitionKey, editionId) || editionId || competitionKey;
+    if (!key || editionByKey.has(key)) return;
+    editionByKey.set(key, {
+      editionId: editionId || key,
+      evidenceKey: key,
+      scope: competitionScopeOf(desc.scope ?? desc.competitionType, Boolean(desc.isInternational)),
+      competitionKey: competitionKey ? String(competitionKey) : null,
+      name: desc.name || null,
+    });
+  };
+  for (const m of ledger.matches || []) {
+    pushEdition({
+      editionId: m.editionId ?? m.competitionEditionId ?? null,
+      competitionKey: m.competitionId || null,
+      scope: m.competitionType,
+      isInternational: m.isInternational,
+      name: null,
+    });
+  }
+  for (const m of Object.values(ledger.nonParticipation || {})) {
+    if (!m || typeof m !== "object") continue;
+    pushEdition({
+      editionId: m.editionId ?? m.competitionEditionId ?? null,
+      competitionKey: m.competitionId || null,
+      scope: m.competitionType,
+      isInternational: m.isInternational,
+      name: null,
+    });
+  }
+  // Campaign fallbacks cover entitled competitions with zero appearances.
   const leagueKey = playingLeague?.leagueId || playingLeague?.name || "";
-  competitionEditions.push({
-    editionId: String(seasonId),
-    scope: "league",
-    competitionKey: leagueKey,
-    name: playingLeague?.displayName || playingLeague?.name || null,
-  });
+  const originLeagueId = player?.originLeagueId || player?.parentClub?.leagueId || null;
+  if (leagueKey) {
+    const sampleEdition =
+      (ledger.matches || []).find((m) => m.competitionId === leagueKey)?.editionId ||
+      (ledger.matches || []).find((m) => m.competitionType === "league")?.editionId ||
+      null;
+    pushEdition({
+      editionId: sampleEdition || String(seasonId),
+      competitionKey: leagueKey,
+      scope: "league",
+      name: playingLeague?.displayName || playingLeague?.name || null,
+    });
+  }
+  if (originLeagueId && originLeagueId !== leagueKey) {
+    const originSample = (ledger.matches || []).find((m) => m.competitionId === originLeagueId);
+    pushEdition({
+      editionId: originSample?.editionId || originSample?.competitionEditionId || String(seasonId),
+      competitionKey: originLeagueId,
+      scope: "league",
+      name: null,
+    });
+  }
   for (const cupCampaign of domesticCupCampaigns) {
     const cupName = cupCampaign?.name;
     if (!cupName) continue;
-    competitionEditions.push({
-      editionId: `${seasonId}:${cupName}`,
+    const cupId = cupCampaign.competitionId || cupName;
+    const cupEdition =
+      cupCampaign.editionId ||
+      (ledger.matches || []).find(
+        (m) => m.competitionType === "cup" && (m.competitionId === cupId || m.competitionId === cupName)
+      )?.editionId ||
+      `${seasonId}:${cupName}`;
+    pushEdition({
+      editionId: cupEdition,
+      competitionKey: cupId,
       scope: "cup",
-      competitionKey: cupName,
       name: cupName,
     });
   }
   if (europeanCampaign?.editionId || europeanCampaign?.competitionId) {
-    competitionEditions.push({
+    pushEdition({
       editionId: europeanCampaign.editionId || `${seasonId}:continental`,
-      scope: "continental",
       competitionKey: europeanCampaign.competitionId || europeanCampaign.competition,
+      scope: "continental",
       name: europeanCampaign.competition || null,
     });
   }
   if (internationalSeason?.primary?.editionId || internationalSeason?.primary?.name) {
-    competitionEditions.push({
+    pushEdition({
       editionId: internationalSeason.primary.editionId || `${seasonId}:international`,
-      scope: "international",
       competitionKey:
         internationalSeason.primary.competitionId || internationalSeason.primary.name,
+      scope: "international",
       name: internationalSeason.primary.name || null,
     });
   }
+  const competitionEditions = [...editionByKey.values()];
 
   const evidence = buildSeasonEvidence(player, {
     aggregate: agg,
@@ -700,9 +763,20 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       seasonP: evidence.seasonP,
       reliability: evidence.reliability,
       minutes: evidence.minutes,
+      appearances: evidence.appearances,
+      goals: evidence.goals,
+      assists: evidence.assists,
+      cleanSheets: evidence.cleanSheets,
       healthyTrainingFraction: evidence.healthyTrainingFraction,
       competitionStrength: evidence.competitionStrength,
+      // Bounded canonical slices for debug/QA reconciliation (not a public UI export).
+      byScope: evidence.byScope,
+      byEdition: evidence.byEdition,
+      editions: evidence.editions,
+      total: evidence.total,
+      trophies: evidence.trophies,
     },
+    ledgerRecords: chrono.ledgerRecords || [],
     ledgerSummary: {
       club: agg.club,
       international: agg.international,

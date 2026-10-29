@@ -1,0 +1,22 @@
+OK  low-OVR top scorer wins Golden Boot
+OK  high-OVR non-leader does not win Golden Boot
+OK  Golden Boot ties are shared
+OK  cup goals do not count for the league Golden Boot
+OK  one player can win Golden Boot + Player of the Season + Team of the Season
+OK  World Player of the Year does not suppress other awards
+OK  keepers can win Golden Glove and the Team of the Season GK slot
+OK  Golden Glove needs participation and does not go to outfield players
+OK  Young Player eligibility uses age at season start
+OK  Breakthrough: first substantial senior season; club moves do not reset it
+OK  nominations are separate from selections and wins, and stay out of legacy names
+OK  record shape and stable event ids
+OK  deterministic with the same seed (including generated competitor field)
+OK  competitor field is persisted, consistent with team goals, and not regenerated
+OK  field generation does not depend on the user's season outcome
+OK  evaluation does not consume the caller's rng stream
+OK  individualAwards.js has no Math.random
+OK  simulateIndividualAwards wrapper returns UI names (options and legacy forms)
+OK  evidence: volume, seasonP vs reliability, shrinkage and recognition placeholders
+OK  evidence: trophies carry participationWeight from minutes
+OK  healthy training fraction: dated overlap, fallbacks, active flag is only partial
+OK  evidence: competition strength and challenge are bounded
