@@ -68,7 +68,14 @@ function continentalOpts({
         }
       }
       lastDateRef.current = req.date;
-      return { match, participation, ledgerRecord };
+      // Preserve the injury stream so deferred ET exposure can charge the delta once.
+      return {
+        match,
+        participation,
+        ledgerRecord,
+        _injuryRng: injuryRng,
+        _exposureMinutesCharged: Number(participation?.minutes) || 0,
+      };
     },
     onPlayerMatchFinalized: (finalMatch, processorResult) => {
       const ledgerRecord = processorResult?.ledgerRecord;

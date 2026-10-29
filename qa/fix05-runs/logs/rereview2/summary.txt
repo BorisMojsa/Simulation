@@ -1,0 +1,25 @@
+NODE v22.19.0
+START 2026-10-29T03:17:25Z
+=== RUN tests/matchParticipationEvidence.test.mjs ===
+EXIT:0 tests/matchParticipationEvidence.test.mjs
+=== RUN tests/individualAwards.test.mjs ===
+EXIT:0 tests/individualAwards.test.mjs
+=== RUN tests/clubOwnershipTransfers.test.mjs ===
+EXIT:0 tests/clubOwnershipTransfers.test.mjs
+=== RUN tests/careerFlowSmoke.test.mjs ===
+EXIT:0 tests/careerFlowSmoke.test.mjs
+=== RUN tests/chronologicalSeason.test.mjs ===
+EXIT:0 tests/chronologicalSeason.test.mjs
+=== RUN tests/continentalIntegrity.test.mjs ===
+EXIT:0 tests/continentalIntegrity.test.mjs
+=== RUN tests/loanPlayingLeague.test.mjs ===
+EXIT:0 tests/loanPlayingLeague.test.mjs
+=== RUN tests/crossLeagueCareer.test.mjs ===
+EXIT:0 tests/crossLeagueCareer.test.mjs
+=== RUN tests/transferLoanPipeline.test.mjs ===
+EXIT:0 tests/transferLoanPipeline.test.mjs
+=== RUN tests/contractLifecycle.test.mjs ===
+EXIT:0 tests/contractLifecycle.test.mjs
+=== FULL SUITE ===
+FULL_EXIT:1
+END 2026-10-29T03:17:44Z

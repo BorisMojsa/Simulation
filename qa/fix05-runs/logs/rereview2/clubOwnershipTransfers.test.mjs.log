@@ -1,0 +1,14 @@
+OK  Arsenal to Brentford: no post-move Arsenal player continental/cup sides
+OK  accepted-offer permanent move asserts destination fixture ownership
+OK  cross-country accepted loan detaches parent continental player fixtures
+OK  loan return and parent renewal preserve borrower then restore parent
+OK  delayed registration blocks destination side before effective date
+OK  snapshot round-trip preserves playing stints
+OK  continental format ownership policy covers all eight club formats
+OK  national team identity is unaffected by club side helper
+OK  F01: undated free-agent signing records destination stint and league fixtures
+OK  F02: in-field continental destination fixtures match ledger after resume
+OK  F03: January cross-association move schedules winter destination cup rounds
+OK  R1: direct R16 destination knockout fixtures match ledger in chrono order
+OK  R2: cross-association loan keeps pre-move cup fixture history
+OK  F04: empty trophies[] does not fall through to europeanCampaign.won

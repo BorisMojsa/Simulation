@@ -396,30 +396,95 @@ function lineFromMatchesForTrophy(matches, { scope, winningClubId, competitionId
   return { line, used };
 }
 
+function isSeasonHistoryIndex(id) {
+  return id != null && /^season-\d+/i.test(String(id));
+}
+
 function trophyBlock(trophies, editions, byScope, byEdition, matches = []) {
   return (Array.isArray(trophies) ? trophies : []).map((t) => {
     const scope = competitionScopeOf(t.scope ?? t.kind);
     const winningClubId = t.winningClubId ?? null;
     const competitionId = t.competitionId ?? t.competitionKey ?? null;
-    const edition =
+    const rawEditionId = t.editionId ?? null;
+    const editionIsIndex = isSeasonHistoryIndex(rawEditionId);
+
+    // Resolve competition + edition + team. Never match a bare shared year alone,
+    // and never treat a season-history index as a competition edition identity.
+    let edition =
       editions.find(
         (e) =>
-          t.editionId &&
-          (e.editionId === t.editionId || e.evidenceKey === t.editionId || e.evidenceKey === evidenceEditionKey(competitionId, t.editionId))
+          competitionId &&
+          e.competitionKey === competitionId &&
+          e.scope === scope &&
+          (!rawEditionId ||
+            editionIsIndex ||
+            e.editionId === rawEditionId ||
+            e.evidenceKey === rawEditionId ||
+            e.evidenceKey === evidenceEditionKey(competitionId, rawEditionId))
       ) ||
       editions.find(
-        (e) => e.scope === scope && competitionId && e.competitionKey === competitionId
+        (e) =>
+          e.scope === scope &&
+          e.name &&
+          (e.name === t.competition || e.name === t.simKey || e.name === t.label)
       ) ||
-      editions.find((e) => e.scope === scope && e.name && (e.name === t.competition || e.name === t.simKey)) ||
-      editions.find((e) => e.scope === scope);
+      editions.find((e) => e.scope === scope && competitionId && e.competitionKey === competitionId) ||
+      null;
+
+    // Exact modern evidenceKey / non-index edition match (same competition only).
+    if (!edition && rawEditionId && !editionIsIndex) {
+      edition =
+        editions.find(
+          (e) =>
+            e.scope === scope &&
+            (e.evidenceKey === rawEditionId || e.editionId === rawEditionId) &&
+            (!competitionId || e.competitionKey === competitionId)
+        ) || null;
+    }
+
+    // Infer competition from the winning club's positive-minute records when the
+    // producer omitted competitionId (common league-trophy payload).
+    if (!edition && winningClubId) {
+      const comps = new Set();
+      for (const m of matches) {
+        if (!(num(m.minutes) > 0)) continue;
+        if (m.teamId !== winningClubId) continue;
+        const mScope = competitionScopeOf(m.competitionType ?? m.scope, Boolean(m.international ?? m.isInternational));
+        if (mScope !== scope) continue;
+        if (m.competitionId) comps.add(String(m.competitionId));
+      }
+      if (comps.size === 1) {
+        const inferredId = [...comps][0];
+        edition =
+          editions.find((e) => e.scope === scope && e.competitionKey === inferredId) ||
+          null;
+        if (!edition) {
+          const sample = matches.find(
+            (m) => m.teamId === winningClubId && m.competitionId === inferredId && (m.editionId || m.competitionEditionId)
+          );
+          edition = {
+            editionId: sample?.editionId ?? sample?.competitionEditionId ?? null,
+            evidenceKey: evidenceEditionKey(inferredId, sample?.editionId ?? sample?.competitionEditionId),
+            competitionKey: inferredId,
+            scope,
+            name: t.competition || null,
+          };
+        }
+      }
+    }
+
+    // Old sparse trophies without competition identity stay explicitly unresolved
+    // rather than selecting the first descriptor in scope.
+    const resolvedCompetitionId = competitionId || edition?.competitionKey || null;
+    const resolvedEditionId = edition?.editionId ?? (editionIsIndex ? null : rawEditionId) ?? null;
 
     let line = emptyScopeLine();
     const fromMatches = lineFromMatchesForTrophy(matches, {
       scope,
       winningClubId,
-      competitionId: competitionId || edition?.competitionKey || null,
-      editionId: edition?.editionId ?? t.editionId ?? null,
-      evidenceKey: edition?.evidenceKey || evidenceEditionKey(competitionId, t.editionId),
+      competitionId: resolvedCompetitionId,
+      editionId: resolvedEditionId,
+      evidenceKey: edition?.evidenceKey || evidenceEditionKey(resolvedCompetitionId, resolvedEditionId),
     });
     if (fromMatches.used) {
       line = fromMatches.line;
@@ -427,11 +492,18 @@ function trophyBlock(trophies, editions, byScope, byEdition, matches = []) {
       // Known winning club with no matching team minutes: do not borrow later-club
       // or broad-scope participation.
       line = emptyScopeLine();
-    } else {
+    } else if (edition) {
       line =
-        (edition && (byEdition[edition.evidenceKey] || byEdition[edition.editionId])) ||
-        byScope[scope] ||
-        emptyScopeLine();
+        byEdition[edition.evidenceKey] ||
+        byEdition[edition.editionId] ||
+        // Legacy sparse evidence may only have scope totals for this edition.
+        (Object.keys(byEdition || {}).some((k) => String(k).includes("::"))
+          ? emptyScopeLine()
+          : byScope[scope] || emptyScopeLine());
+    } else {
+      // Genuinely old aggregate-only trophy: scoped line only when no modern buckets exist.
+      const modern = Object.keys(byEdition || {}).some((k) => String(k).includes("::"));
+      line = modern ? emptyScopeLine() : byScope[scope] || emptyScopeLine();
     }
 
     const minutes = line.minutes;
@@ -449,8 +521,9 @@ function trophyBlock(trophies, editions, byScope, byEdition, matches = []) {
       ...t,
       kind: t.kind ?? scope,
       scope,
-      editionId: edition?.editionId ?? t.editionId ?? null,
-      evidenceKey: edition?.evidenceKey ?? evidenceEditionKey(competitionId, edition?.editionId ?? t.editionId),
+      competitionId: resolvedCompetitionId,
+      editionId: resolvedEditionId,
+      evidenceKey: edition?.evidenceKey ?? evidenceEditionKey(resolvedCompetitionId, resolvedEditionId),
       minutes,
       appearances: line.appearances,
       participationWeight: Number(weight.toFixed(4)),

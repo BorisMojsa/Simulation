@@ -1,0 +1,23 @@
+OK  ClubElo raw ratings survive import unchanged
+OK  FootballDatabase secondary never bypasses conversion
+OK  every club has exactly one selected baseline; no league-centre priors
+OK  research-pack gap IDs remain covered exactly once
+OK  derived subratings are not labelled as published observations
+OK  Barcelona Spain and Ecuador names do not conflate
+OK  identity special cases preserve reserve and continuity mappings
+OK  publication dates are not invented as ratingAsOfDate
+OK  rebuild is deterministic
+OK  ClubElo transform is monotonic and distinct from legacy Opta mapping
+OK  finance/reputation alone do not change verified match ability
+OK  player OVR still raises expected performance
+OK  career baseline freeze survives serialize with per-team provenance
+OK  all 79 nations have selected published points; no 1180 priors
+OK  Australia discrepancy retained with selected 1580.52
+OK  Hungary Mali Venezuela use canonical confederations
+OK  nation rebuild is deterministic
+OK  career nation baseline freeze survives serialize and ignores bundled upgrades
+OK  legacy career without baselineNations keeps prior freeze and is not upgraded
+OK  coverage reports match profiles and calibration hashes
+OK  FDB calibration LOO audit reproduces stored diagnostics
+FIFA transform sample Spain→ 93
+ClubElo transform sample 1900→ 85.14

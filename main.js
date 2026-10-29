@@ -30,6 +30,8 @@ import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixt
 import { buildFreeAgentBrowserFixture } from "./js/simulation/freeAgentBrowserFixture.js?v=90";
 import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipTransferBrowserFixture.js?v=91";
 import { buildAcademyBrowserFixture } from "./js/simulation/academyBrowserFixture.js";
+import { buildMatchParticipationKoBrowserFixture } from "./js/simulation/matchParticipationKoBrowserFixture.js";
+import { buildMatchParticipationGkBrowserFixture } from "./js/simulation/matchParticipationGkBrowserFixture.js";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -264,6 +266,55 @@ window.__loadAcademyBrowserFixture = function loadAcademyBrowserFixture(opts = {
   };
 };
 
+window.__loadMatchParticipationKoBrowserFixture = async function loadMatchParticipationKoBrowserFixture(opts = {}) {
+  const result = buildMatchParticipationKoBrowserFixture(opts);
+  if (!result.ok) {
+    console.error("Fix05 KO fixture failed:", result.reason, result);
+    return result;
+  }
+  player = result.player;
+  dealBookingGuard = null;
+  ensureContractAuthority(player);
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  const seasonData = {
+    league: result.league,
+    seasonIndex: 0,
+    leagueAllMatches: result.allMatches,
+    leaguePlayerMatches: result.playerMatches,
+    awaitingDecision: false,
+  };
+  await presentDashboardSegment(seasonData, { continueDashboard: false });
+  return {
+    ok: true,
+    ...player.__qaKoFixture,
+    playingClubId: player.playingClubId,
+  };
+};
+
+window.__loadMatchParticipationGkBrowserFixture = function loadMatchParticipationGkBrowserFixture(opts = {}) {
+  const result = buildMatchParticipationGkBrowserFixture(opts);
+  if (!result.ok) {
+    console.error("Fix05 GK fixture failed:", result.reason, result);
+    return result;
+  }
+  player = result.player;
+  dealBookingGuard = null;
+  ensureContractAuthority(player);
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  syncSimulateButton();
+  return {
+    ok: true,
+    ...(player.__qaGkFixture || {}),
+    playingClubId: player.playingClubId,
+  };
+};
+
 window.__loadOwnershipTransferBrowserFixture = function loadOwnershipTransferBrowserFixture(opts = {}) {
   const result = buildOwnershipTransferBrowserFixture(opts);
   if (!result.ok) {
@@ -416,6 +467,10 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
             player.seasons[player.seasons.length - 1].ledgerSummary?.nonParticipation || null,
         }
       : null,
+    position: player.position || null,
+    qaKo: player.__qaKoFixture || null,
+    qaGk: player.__qaGkFixture || null,
+    awardFieldKeys: Object.keys(player.awardFields || {}),
     nextAction: selectNextCareerAction(player),
     seasonActionInFlight,
     dealBookingGuard,
@@ -1061,6 +1116,10 @@ function finishOfferWindow(accepted, offer) {
       queueMicrotask(() => window.__loadLiveLoanBrowserFixture?.());
     } else if (fixture === "ownership-transfer") {
       queueMicrotask(() => window.__loadOwnershipTransferBrowserFixture?.());
+    } else if (fixture === "fix05-ko" || fixture === "match-participation-ko") {
+      queueMicrotask(() => window.__loadMatchParticipationKoBrowserFixture?.());
+    } else if (fixture === "fix05-gk" || fixture === "match-participation-gk") {
+      queueMicrotask(() => window.__loadMatchParticipationGkBrowserFixture?.());
     } else if (fixture === "academy" || fixture.startsWith("academy-")) {
       const mode = params.get("mode") || fixture.replace(/^academy-?/, "") || "continue-empty";
       queueMicrotask(() => window.__loadAcademyBrowserFixture?.({ mode: mode || "continue-empty" }));

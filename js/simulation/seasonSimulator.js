@@ -423,18 +423,33 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   const creditedHonorKeys = player.creditedHonorKeys || (player.creditedHonorKeys = []);
   const trophies = [];
   const playingClubForLeague = player.playingClubId || player.club?.clubId || null;
+  const fixtureEditionFor = (competitionId, competitionType = null) => {
+    const rows = ledger.matches || [];
+    const hit =
+      rows.find((m) => competitionId && m.competitionId === competitionId && (m.editionId || m.competitionEditionId)) ||
+      rows.find(
+        (m) =>
+          competitionType &&
+          competitionScopeOf(m.competitionType, Boolean(m.isInternational)) ===
+            competitionScopeOf(competitionType) &&
+          (m.editionId || m.competitionEditionId)
+      );
+    return hit?.editionId ?? hit?.competitionEditionId ?? null;
+  };
   if (standing && standing.position === 1) {
     const leagueHonorKey = `league:${seasonId}:${playingLeague.leagueId || playingLeague.name}:${playingClubForLeague || "club"}`;
     if (!creditedHonorKeys.includes(leagueHonorKey)) {
       player.careerHonors.leagueTitles += 1;
       creditedHonorKeys.push(leagueHonorKey);
+      const leagueCompetitionId = playingLeague.leagueId || playingLeague.name || null;
       trophies.push({
         kind: "league",
         label: `${playingLeague.displayName ?? playingLeague.name} Champions`,
         competition: playingLeague.displayName ?? playingLeague.name,
         simKey: playingLeague.name,
+        competitionId: leagueCompetitionId,
         winningClubId: playingClubForLeague,
-        editionId: seasonId,
+        editionId: fixtureEditionFor(leagueCompetitionId, "league"),
       });
     }
   }
@@ -454,6 +469,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       continue;
     }
     const cupName = cupCampaign.name || `${playingLeague.nation} Cup`;
+    const cupCompetitionId = cupCampaign.competitionId || cupName;
     const cupHonorKey = `cup:${seasonId}:${cupName}:${cupWinnerId}`;
     if (!creditedHonorKeys.includes(cupHonorKey)) {
       player.careerHonors.domesticCups += 1;
@@ -463,8 +479,9 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
         label: `${cupName} Winners`,
         competition: cupName,
         simKey: cupName,
+        competitionId: cupCompetitionId,
         winningClubId: cupWinnerId,
-        editionId: seasonId,
+        editionId: cupCampaign.editionId || fixtureEditionFor(cupCompetitionId, "cup"),
       });
     }
   }
@@ -491,6 +508,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
         label: `${europeanCampaign.competition} Winners`,
         competition: europeanCampaign.competition,
         simKey: europeanCampaign.competition,
+        competitionId: europeanCampaign.competitionId || europeanCampaign.competition || null,
         winningClubId: europeWinnerId,
         editionId: europeanCampaign.editionId || null,
       });
@@ -523,8 +541,25 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     const competitionKey = desc.competitionKey || desc.competitionId || null;
     const editionId = desc.editionId != null ? String(desc.editionId) : null;
     if (!editionId && !competitionKey) return;
+    // Never invent a season-history index as a competition edition when the caller
+    // already knows a real fixture/campaign identity under another key.
+    if (editionId && /^season-\d+/i.test(editionId) && competitionKey) {
+      const existingForComp = [...editionByKey.values()].find(
+        (e) => e.competitionKey === String(competitionKey) && !/^season-\d+/i.test(String(e.editionId))
+      );
+      if (existingForComp) {
+        if (!existingForComp.name && desc.name) existingForComp.name = desc.name;
+        return;
+      }
+    }
     const key = evidenceEditionKey(competitionKey, editionId) || editionId || competitionKey;
-    if (!key || editionByKey.has(key)) return;
+    if (!key) return;
+    if (editionByKey.has(key)) {
+      const existing = editionByKey.get(key);
+      if (!existing.name && desc.name) existing.name = desc.name;
+      if (!existing.competitionKey && competitionKey) existing.competitionKey = String(competitionKey);
+      return;
+    }
     editionByKey.set(key, {
       editionId: editionId || key,
       evidenceKey: key,
@@ -580,12 +615,14 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     const cupName = cupCampaign?.name;
     if (!cupName) continue;
     const cupId = cupCampaign.competitionId || cupName;
-    const cupEdition =
-      cupCampaign.editionId ||
-      (ledger.matches || []).find(
-        (m) => m.competitionType === "cup" && (m.competitionId === cupId || m.competitionId === cupName)
-      )?.editionId ||
-      `${seasonId}:${cupName}`;
+    const cupRow = (ledger.matches || []).find(
+      (m) =>
+        competitionScopeOf(m.competitionType, Boolean(m.isInternational)) === "cup" &&
+        (m.competitionId === cupId || m.competitionId === cupName)
+    );
+    const cupEdition = cupCampaign.editionId || cupRow?.editionId || cupRow?.competitionEditionId || null;
+    // Prefer fixture/campaign edition; do not create a season-index twin when known.
+    if (!cupEdition) continue;
     pushEdition({
       editionId: cupEdition,
       competitionKey: cupId,

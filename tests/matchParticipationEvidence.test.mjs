@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { LEAGUE_BY_ID } from "../js/data/leagues.js";
-import { createRng, createStreamRng } from "../js/simulation/rng.js";
+import { createRng, createStreamRng, hashSeed } from "../js/simulation/rng.js";
 import {
   simulateMatch,
   resolveKnockout,
@@ -12,6 +12,7 @@ import {
   normalizeParticipationMinutes,
   countUserOpenPlayEvents,
   finalizePlayerMatchStats,
+  computeMatchRating,
 } from "../js/simulation/matchEngine.js";
 import { processPlayerMatchDay } from "../js/simulation/playerMatchDay.js";
 import {
@@ -31,6 +32,11 @@ import { createWorldState, setWorldState } from "../js/simulation/worldState.js"
 import { buildLiveLoanBrowserFixture } from "../js/simulation/liveLoanBrowserFixture.js";
 import { startLoan } from "../js/simulation/loanMarket.js";
 import { resumeChronologicalSeason } from "../js/simulation/chronologicalSeason.js";
+import { evaluateSeasonAwards } from "../js/simulation/individualAwards.js";
+import {
+  prepareContinentalEdition,
+  drainContinentalEdition,
+} from "../js/simulation/continentalTournament.js";
 
 function test(name, fn) {
   try {
@@ -646,6 +652,203 @@ test("accepted cross-league loan keeps distinct competition edition buckets", ()
       evidence.byEdition["league:croatia-hnl::2026"].minutes,
     evidence.byScope.league.minutes
   );
+});
+
+test("awards use current league edition key; cross-league goals do not inflate Golden Boot", () => {
+  const hnl = LEAGUE_BY_ID.get("league:croatia-hnl");
+  const current = hnl.clubs.find((c) => c.clubId === "club:croatia:slaven-belupo");
+  const p = {
+    careerId: "r1-awards",
+    name: "R1 Consumers",
+    position: "ST",
+    age: 20,
+    club: { ...current, league: hnl.name, leagueId: hnl.leagueId },
+    playingClubId: current.clubId,
+  };
+  const ledger = createEmptyLedger("season-1");
+  for (const rec of [
+    { matchId: "origin", competitionId: "league:italy-serie-a", teamId: "club:italy:atalanta", goals: 1 },
+    { matchId: "destination", competitionId: hnl.leagueId, teamId: current.clubId, goals: 3 },
+  ]) {
+    recordMatchObservation(ledger, {
+      competitionType: "league",
+      editionId: "2026",
+      minutes: 90,
+      rating: 7,
+      position: "ST",
+      started: true,
+      selected: true,
+      available: true,
+      assists: 0,
+      ...rec,
+    });
+  }
+  const evidence = buildSeasonEvidence(p, {
+    ledger,
+    league: hnl,
+    seasonId: "season-1",
+    competitionEditions: [
+      { editionId: "2026", scope: "league", competitionKey: "league:italy-serie-a", name: null },
+      { editionId: "2026", scope: "league", competitionKey: hnl.leagueId, name: null },
+    ],
+    trophies: [
+      {
+        kind: "league",
+        competition: hnl.displayName ?? hnl.name,
+        simKey: hnl.name,
+        winningClubId: current.clubId,
+        editionId: "season-1",
+      },
+    ],
+  });
+  const awards = evaluateSeasonAwards({
+    player: p,
+    evidence,
+    league: hnl,
+    seasonId: "season-1",
+    rivals: { leagueScorers: [{ id: "rival", name: "Rival", goals: 3 }] },
+  });
+  assert.equal(awards.fields.league, "league:croatia-hnl::2026");
+  assert.equal(awards.byAward["golden-boot"].evidence.goals, 3);
+  assert.equal(awards.byAward["golden-boot"].evidence.leaderGoals, 3);
+  assert.equal(awards.byAward["golden-boot"].shared, true);
+  assert.equal(awards.byAward["golden-boot"].competitionEditionId, "league:croatia-hnl::2026");
+  assert.equal(evidence.trophies[0].minutes, 90);
+  assert.equal(evidence.trophies[0].competitionId, hnl.leagueId);
+  assert.equal(evidence.trophies[0].evidenceKey, "league:croatia-hnl::2026");
+  assert.equal(evidence.trophies[0].participationWeight, 0.25);
+});
+
+test("direct penalties re-rate from final outcome; unchanged finalize is RNG no-op", () => {
+  const player = makePlayer(90);
+  const rng = { ...createRng(2), float: () => 0 };
+  const initial = simulateMatch(home, away, {
+    player,
+    playerSide: "home",
+    playerMinutes: 90,
+    rng,
+  });
+  assert.equal(initial.homeGoals, initial.awayGoals);
+  const regulationRating = initial.playerStats.rating;
+  const final = resolveKnockout(initial, { player, rng, allowExtraTime: false });
+  assert.equal(final.decidedBy, "penalties");
+  assert.ok(final.winnerSide);
+  const expected = computeMatchRating(final, player, { float: () => 0 });
+  assert.equal(final.playerStats.rating, expected);
+  assert.notEqual(final.playerStats.rating, regulationRating);
+  const seedAfter = rng.seed();
+  const again = finalizePlayerMatchStats(final, player, rng);
+  assert.equal(again, final);
+  assert.equal(rng.seed(), seedAfter);
+  assert.equal(again.playerStats.rating, expected);
+});
+
+test("deferred continental second-leg ET syncs duration metadata and injury exposure", () => {
+  const player = makeRegisteredPlayer("ST", 85);
+  const world = createWorldState(player);
+  setWorldState(world);
+  const state = prepareContinentalEdition({
+    standing: { position: 1, qualification: "Champions League" },
+    league,
+    player,
+    seasonYear: 2026,
+    world,
+    rng: createRng(7),
+  });
+  assert.ok(state, "continental edition");
+  let injuryRolls = 0;
+  const injuryRng = {
+    ...createRng(44),
+    random: () => {
+      injuryRolls += 1;
+      return 0.99;
+    },
+  };
+  const selRng = {
+    ...createRng(43),
+    random: () => 0,
+    chance: () => true,
+    int: (_min, max) => max,
+  };
+  const reports = [];
+  drainContinentalEdition(state, {
+    player,
+    world,
+    rng: createRng(7),
+    injuryRng,
+    matchProcessor: (req) => {
+      const beforeRolls = injuryRolls;
+      player.state.fatigue = 0;
+      const result = processPlayerMatchDay({
+        home: req.home,
+        away: req.away,
+        player,
+        playerSide: req.playerSide,
+        date: req.date || "2026-12-10",
+        competitionType: "continental",
+        competitionId: req.competitionId,
+        editionId: req.editionId,
+        fixtureId: req.matchId,
+        selRng,
+        injuryRng,
+        rng: createRng(hashSeed(req.matchId)),
+        worldState: world,
+        resolveKnockout: req.knockout ? resolveKnockout : undefined,
+      });
+      if (!req.knockout) {
+        let m = result.match;
+        const leagueStage = req.stageType !== "knockout";
+        const h = leagueStage && req.playerSide === "home" ? 2 : 0;
+        const a = leagueStage && req.playerSide === "away" ? 2 : 0;
+        Object.assign(m, {
+          homeGoals: h,
+          awayGoals: a,
+          regulationHomeGoals: h,
+          regulationAwayGoals: a,
+          matchHomeGoals: h,
+          matchAwayGoals: a,
+          events: [],
+          winnerSide: h > a ? "home" : a > h ? "away" : null,
+          decidedBy: h !== a ? "regulation" : null,
+          playerStatsFinalized: false,
+        });
+        m.playerStats = { ...m.playerStats, goals: 0, assists: 0, yellow: 0, red: 0 };
+        result.match = finalizePlayerMatchStats(m, player, createRng(2));
+      }
+      result._request = req;
+      result._injuryBefore = beforeRolls;
+      result._injuryAfterRegulation = injuryRolls;
+      result._injuryRng = injuryRng;
+      result._exposureMinutesCharged = Number(result.participation?.minutes) || 0;
+      return result;
+    },
+    onPlayerMatchFinalized: (match, result) => {
+      if (result._request.legNumber !== 2 || match.playerStats.minutes <= 90) return;
+      reports.push({
+        decidedBy: match.decidedBy,
+        matchMinutes: match.playerStats.minutes,
+        recordMinutes: result.ledgerRecord.minutes,
+        availableMinutes: result.ledgerRecord.availableMinutes,
+        recordMatchDuration: result.ledgerRecord.matchDuration,
+        participationMinutes: result.participation.minutes,
+        injuryRollsDuringMatchDay: result._injuryAfterRegulation - result._injuryBefore,
+        injuryRollsDuringDeferredET: injuryRolls - result._injuryAfterRegulation,
+        minutesCharged: result._exposureMinutesCharged,
+      });
+    },
+  });
+  assert.ok(reports.length >= 1, "expected deferred second-leg ET/pens");
+  for (const r of reports) {
+    assert.ok(["extraTime", "penalties"].includes(r.decidedBy));
+    assert.equal(r.matchMinutes, 120);
+    assert.equal(r.recordMinutes, 120);
+    assert.equal(r.participationMinutes, 120);
+    assert.ok(r.availableMinutes >= 120, `availableMinutes=${r.availableMinutes}`);
+    assert.ok(r.recordMatchDuration >= 120, `matchDuration=${r.recordMatchDuration}`);
+    assert.equal(r.injuryRollsDuringMatchDay, 2);
+    assert.ok(r.injuryRollsDuringDeferredET >= 1, "deferred ET must sample injury exposure");
+    assert.equal(r.minutesCharged, 120);
+  }
 });
 
 test("match-day ET syncs participation and fatigue to final 120 minutes", () => {

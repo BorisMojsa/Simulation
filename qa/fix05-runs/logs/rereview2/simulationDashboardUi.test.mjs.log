@@ -1,0 +1,6 @@
+OK  dashboard skip buttons use dedicated sim-* IDs
+OK  cup/continental skip bar owns match-skip-btn IDs inside match viewer
+OK  competition tab flicker removed from live league UI
+OK  match card rail is a vertical newest-on-top column
+
+All simulationDashboard UI contract tests passed.

@@ -2,10 +2,10 @@
   "careerId": "bug5-cm-3",
   "position": "CM",
   "seed": 707,
-  "rawRecords": 51,
+  "rawRecords": 53,
   "positiveMinutes": 23,
-  "zeroMinutes": 28,
-  "withEdition": 51,
+  "zeroMinutes": 30,
+  "withEdition": 53,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -33,17 +33,17 @@
       "minutes": 86,
       "goals": 1,
       "cleanSheet": null,
-      "rating": 7.5
+      "rating": 7.1
     },
     {
-      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:belgium:club-brugge:club:england:arsenal",
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:england:afc-bournemouth",
       "editionId": "2026-uefa-champions-league",
       "competitionId": "uefa-champions-league",
       "teamId": "club:england:arsenal",
       "minutes": 25,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.4
+      "rating": 6.2
     }
   ],
   "sampleZero": [
@@ -62,11 +62,11 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 410,
+      "minutes": 425,
       "appearances": 14,
       "starts": 2,
       "goals": 1,
-      "assists": 2,
+      "assists": 0,
       "cleanSheets": null
     },
     "cup": {
@@ -78,7 +78,7 @@
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 165,
+      "minutes": 150,
       "appearances": 7,
       "starts": 0,
       "goals": 0,

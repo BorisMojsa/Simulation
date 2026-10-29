@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-29T02:23:54.088Z",
+  "generatedAt": "2026-10-29T03:18:15.999Z",
   "baseUrl": "http://127.0.0.1:8000",
   "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "results": [
@@ -52,7 +52,7 @@
         "academy": {
           "status": "pending-review",
           "periodCount": 1,
-          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvsx5pdi",
+          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvsz3q0x",
           "exitAge": 21
         },
         "nextAction": {
@@ -127,30 +127,29 @@
       "name": "finished-season-evidence-and-keeper-path",
       "status": "PASS",
       "detail": {
-        "minutes": 559,
-        "goals": 0,
-        "assists": 1,
+        "position": "GK",
+        "minutes": 628,
         "evidenceByScope": {
           "league": {
-            "minutes": 461,
-            "appearances": 15,
+            "minutes": 450,
+            "appearances": 14,
             "starts": 2,
             "goals": 0,
-            "assists": 1,
+            "assists": 0,
             "cleanSheets": 0
           },
           "cup": {
-            "minutes": 13,
-            "appearances": 1,
+            "minutes": 50,
+            "appearances": 3,
             "starts": 0,
             "goals": 0,
             "assists": 0,
             "cleanSheets": null
           },
           "continental": {
-            "minutes": 85,
-            "appearances": 1,
-            "starts": 1,
+            "minutes": 128,
+            "appearances": 5,
+            "starts": 0,
             "goals": 0,
             "assists": 0,
             "cleanSheets": null
@@ -173,19 +172,60 @@
           }
         },
         "cleanSheets": 0,
+        "awardFieldKeys": [
+          "league:england-premier-league::2026",
+          "season-1:world"
+        ],
         "runtimeErrors": []
       }
     },
     {
-      "name": "engine-backed-et-pens-playback-surface",
+      "name": "live-et-pens-playback-continue",
       "status": "PASS",
       "detail": {
-        "koProbe": {
-          "ok": true,
-          "hasResolveKnockout": true
+        "qaKo": {
+          "etFixtureId": "fix05-ko-extraTime-2",
+          "pensFixtureId": "fix05-ko-penalties-3",
+          "zeroFixtureId": "fix05-ko-zero-11",
+          "etDecidedBy": "extraTime",
+          "pensDecidedBy": "penalties",
+          "etMinutes": 120,
+          "pensMinutes": 120,
+          "etRating": 7.4,
+          "pensRating": 6.4,
+          "etSeed": 2,
+          "pensSeed": 3
         },
-        "runtimeErrors": [],
-        "reached": true
+        "reachedSkip": true,
+        "reachedContinue": false,
+        "zeroish": 2,
+        "cardsSample": [
+          {
+            "contrib": "0G / 0A · 120' · Started",
+            "rating": "6.4"
+          },
+          {
+            "contrib": "0G / 0A · 120' · Started",
+            "rating": "6.4"
+          },
+          {
+            "contrib": "1G / 0A · 120' · Started",
+            "rating": "7.4"
+          },
+          {
+            "contrib": "1G / 0A · 120' · Started",
+            "rating": "7.4"
+          },
+          {
+            "contrib": "Unused substitute",
+            "rating": "—"
+          },
+          {
+            "contrib": "Unused substitute",
+            "rating": "—"
+          }
+        ],
+        "runtimeErrors": []
       }
     }
   ],

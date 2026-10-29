@@ -1,0 +1,119 @@
+TAP version 13
+# Subtest: league-phase schedule constraints
+    # Subtest: UCL/UEL: 1000 seeds produce valid 36-club schedules
+    ok 1 - UCL/UEL: 1000 seeds produce valid 36-club schedules
+      ---
+      duration_ms: 136.526792
+      type: 'test'
+      ...
+    # Subtest: UECL: 1000 seeds produce valid 36-club schedules
+    ok 2 - UECL: 1000 seeds produce valid 36-club schedules
+      ---
+      duration_ms: 89.049959
+      type: 'test'
+      ...
+    # Subtest: is deterministic for identical seed and field
+    ok 3 - is deterministic for identical seed and field
+      ---
+      duration_ms: 0.815
+      type: 'test'
+      ...
+    1..3
+ok 1 - league-phase schedule constraints
+  ---
+  duration_ms: 226.794625
+  type: 'suite'
+  ...
+# Subtest: controlled four-win accounting
+    # Subtest: injected results produce P8 W4 D2 L2 Pts14 for Red Star and mirrored opponents
+    ok 1 - injected results produce P8 W4 D2 L2 Pts14 for Red Star and mirrored opponents
+      ---
+      duration_ms: 20.71375
+      type: 'test'
+      ...
+    1..1
+ok 2 - controlled four-win accounting
+  ---
+  duration_ms: 20.787916
+  type: 'suite'
+  ...
+# Subtest: chronology agrees with committed table
+    # Subtest: seed-3 Red Star viewer tallies match league-phase table
+    ok 1 - seed-3 Red Star viewer tallies match league-phase table
+      ---
+      duration_ms: 121.022958
+      type: 'test'
+      ...
+    1..1
+ok 3 - chronology agrees with committed table
+  ---
+  duration_ms: 121.086667
+  type: 'suite'
+  ...
+# Subtest: identity and duplicates
+    # Subtest: reprocessing a fixture is idempotent
+    ok 1 - reprocessing a fixture is idempotent
+      ---
+      duration_ms: 2.852042
+      type: 'test'
+      ...
+    # Subtest: consecutive editions use disjoint match IDs
+    ok 2 - consecutive editions use disjoint match IDs
+      ---
+      duration_ms: 72.768167
+      type: 'test'
+      ...
+    1..2
+ok 4 - identity and duplicates
+  ---
+  duration_ms: 75.841042
+  type: 'suite'
+  ...
+# Subtest: playoff-only advancement
+    # Subtest: playoff round creates 8 winners and no speculative final
+    ok 1 - playoff round creates 8 winners and no speculative final
+      ---
+      duration_ms: 10.150125
+      type: 'test'
+      ...
+    1..1
+ok 5 - playoff-only advancement
+  ---
+  duration_ms: 10.228416
+  type: 'suite'
+  ...
+# Subtest: two-leg extra-time orientation
+    # Subtest: audit seed-4: Čukarički ET win is first-leg-relative away
+    ok 1 - audit seed-4: Čukarički ET win is first-leg-relative away
+      ---
+      duration_ms: 0.719167
+      type: 'test'
+      ...
+    1..1
+ok 6 - two-leg extra-time orientation
+  ---
+  duration_ms: 0.847625
+  type: 'suite'
+  ...
+# Subtest: JSON round-trip
+    # Subtest: rebuilds campaign after serialize/deserialize
+    ok 1 - rebuilds campaign after serialize/deserialize
+      ---
+      duration_ms: 47.920917
+      type: 'test'
+      ...
+    1..1
+ok 7 - JSON round-trip
+  ---
+  duration_ms: 47.964458
+  type: 'suite'
+  ...
+1..7
+# tests 10
+# suites 7
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 510.005917

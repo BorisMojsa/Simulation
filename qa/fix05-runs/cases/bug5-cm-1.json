@@ -2,10 +2,10 @@
   "careerId": "bug5-cm-1",
   "position": "CM",
   "seed": 19,
-  "rawRecords": 53,
+  "rawRecords": 59,
   "positiveMinutes": 9,
-  "zeroMinutes": 44,
-  "withEdition": 53,
+  "zeroMinutes": 50,
+  "withEdition": 59,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -18,8 +18,8 @@
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 0,
-  "goalsFromLedger": 0,
+  "goalsFromPositive": 1,
+  "goalsFromLedger": 1,
   "matchesWithEvents": 8,
   "eventGoalDisagree": 0,
   "apps": 9,
@@ -32,7 +32,7 @@
       "minutes": 14,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 5.9
+      "rating": 6.3
     },
     {
       "matchId": "league:england-premier-league:md:90",
@@ -42,7 +42,7 @@
       "minutes": 33,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.5
+      "rating": 6.4
     }
   ],
   "sampleZero": [
@@ -64,8 +64,8 @@
       "minutes": 234,
       "appearances": 8,
       "starts": 1,
-      "goals": 0,
-      "assists": 1,
+      "goals": 1,
+      "assists": 0,
       "cleanSheets": null
     },
     "cup": {

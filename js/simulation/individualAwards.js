@@ -74,12 +74,38 @@ function leagueOverallOf(league) {
   return Number.isFinite(v) ? v : null;
 }
 
+function evidenceEditionKeyLocal(competitionId, editionId) {
+  const c = competitionId != null && String(competitionId) !== "" ? String(competitionId) : null;
+  const e = editionId != null && String(editionId) !== "" ? String(editionId) : null;
+  if (c && e) return `${c}::${e}`;
+  if (e) return e;
+  if (c) return c;
+  return null;
+}
+
+/**
+ * Inlined leaf resolver (avoids importing seasonEvidence — module-cycle / browser load).
+ * Returns the canonical byEdition lookup key (competitionId::editionId) when possible.
+ * Prefers the requested competitionKey (current league) over first-in-list.
+ */
 function resolveCompetitionEditionId(evidenceOrEditions, scope = "league", { seasonId, competitionKey } = {}) {
   const editions = Array.isArray(evidenceOrEditions) ? evidenceOrEditions : evidenceOrEditions?.editions || [];
-  const hit = editions.find((e) => e.scope === scope && (!competitionKey || e.competitionKey === competitionKey));
-  if (hit?.editionId) return hit.editionId;
+  const isSeasonIndex = (id) => id != null && /^season-\d+/i.test(String(id));
+  if (competitionKey) {
+    const hit = editions.find((e) => e.scope === scope && e.competitionKey === competitionKey);
+    if (hit) return hit.evidenceKey || evidenceEditionKeyLocal(competitionKey, hit.editionId) || hit.editionId;
+    const peerYear = editions.find((e) => e.scope === scope && e.editionId && !isSeasonIndex(e.editionId))?.editionId;
+    const year = peerYear || (!isSeasonIndex(seasonId) ? seasonId : null) || "season";
+    return evidenceEditionKeyLocal(competitionKey, year) || `${competitionKey}::${year}`;
+  }
+  const scoped = editions.filter((e) => e.scope === scope);
+  if (scoped.length === 1) {
+    const hit = scoped[0];
+    return hit.evidenceKey || evidenceEditionKeyLocal(hit.competitionKey, hit.editionId) || hit.editionId;
+  }
+  // Ambiguous multi-competition scope without a competitionKey: do not pick first.
   const sid = seasonId ?? evidenceOrEditions?.seasonId ?? "season";
-  return `${sid}:${scope}${competitionKey ? `:${competitionKey}` : ""}`;
+  return `${sid}:${scope}`;
 }
 
 function attachRecognitionLocal(evidence, records = []) {
@@ -539,32 +565,48 @@ export function normalizeSuppliedRivals(supplied, editionId, possibleMinutes = 3
 /* Candidate building                                                  */
 /* ------------------------------------------------------------------ */
 
+function emptyEditionLine() {
+  return { minutes: 0, appearances: 0, starts: 0, goals: 0, assists: 0, cleanSheets: null };
+}
+
 function editionLine(evidence, editionId, scope) {
   const byEdition = evidence.byEdition || {};
+  const modernKeys = Object.keys(byEdition).filter((k) => String(k).includes("::"));
   if (editionId && byEdition[editionId]) return byEdition[editionId];
-  // evidenceKey is competitionId::editionId; also accept a unique suffix match.
+
+  // evidenceKey is competitionId::editionId; accept a unique bare-year suffix only.
   if (editionId && !String(editionId).includes("::")) {
     const suffix = `::${editionId}`;
     const hits = Object.entries(byEdition).filter(([k]) => k.endsWith(suffix));
     if (hits.length === 1) return hits[0][1];
+    // Ambiguous shared year across competitions: never borrow byScope.league totals.
+    if (hits.length > 1 || modernKeys.length > 0) return emptyEditionLine();
   }
-  const scoped = evidence.byScope?.[scope];
-  if (scoped) return scoped;
-  // Hand-built evidence may only carry raw competition-type buckets.
-  const raw = evidence.byCompetitionType || {};
-  const key = scope === "continental" ? "european" : scope;
-  const b = raw[key] || raw[scope];
-  if (b) {
-    return {
-      minutes: num(b.minutes),
-      appearances: num(b.appearances ?? b.apps),
-      starts: num(b.starts),
-      goals: num(b.goals),
-      assists: num(b.assists),
-      cleanSheets: b.cleanSheets ?? null,
-    };
+
+  // Known modern competition::edition key missing from buckets → zero, not all-league.
+  if (editionId && String(editionId).includes("::") && modernKeys.length > 0) {
+    return emptyEditionLine();
   }
-  return { minutes: 0, appearances: 0, starts: 0, goals: 0, assists: 0, cleanSheets: null };
+
+  // Legacy aggregate-only evidence (no modern byEdition keys).
+  if (modernKeys.length === 0) {
+    const scoped = evidence.byScope?.[scope];
+    if (scoped) return scoped;
+    const raw = evidence.byCompetitionType || {};
+    const key = scope === "continental" ? "european" : scope;
+    const b = raw[key] || raw[scope];
+    if (b) {
+      return {
+        minutes: num(b.minutes),
+        appearances: num(b.appearances ?? b.apps),
+        starts: num(b.starts),
+        goals: num(b.goals),
+        assists: num(b.assists),
+        cleanSheets: b.cleanSheets ?? null,
+      };
+    }
+  }
+  return emptyEditionLine();
 }
 
 function teamPpgOf(standing, evidence) {
@@ -662,8 +704,19 @@ export function evaluateSeasonAwards({
   const records = [];
 
   const bootScope = competitionScopeOf(cfg.goldenBootScope ?? "league");
-  const leagueEditionId = cfg.competitionEditionId ?? resolveCompetitionEditionId(evidence, "league", { seasonId });
-  const bootEditionId = bootScope === "league" ? leagueEditionId : resolveCompetitionEditionId(evidence, bootScope, { seasonId });
+  const leagueCompetitionKey =
+    cfg.competitionKey ||
+    resolvedLeague?.leagueId ||
+    player.club?.leagueId ||
+    player.playingLeagueId ||
+    null;
+  const leagueEditionId =
+    cfg.competitionEditionId ??
+    resolveCompetitionEditionId(evidence, "league", { seasonId, competitionKey: leagueCompetitionKey });
+  const bootEditionId =
+    bootScope === "league"
+      ? leagueEditionId
+      : resolveCompetitionEditionId(evidence, bootScope, { seasonId, competitionKey: cfg.competitionKey || null });
 
   const leagueLine = editionLine(evidence, leagueEditionId, "league");
   const ppg = teamPpgOf(standing, evidence);

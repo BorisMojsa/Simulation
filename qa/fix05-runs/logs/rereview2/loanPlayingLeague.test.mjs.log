@@ -1,0 +1,6 @@
+OK  Atalanta → PEC Zwolle resume returns 18-club Eredivisie table with Zwolle row
+OK  same-league loan retains origin table context
+OK  automatic acceptance path uses borrower league metadata
+OK  snapshot restore keeps loan playing league after resume
+OK  loan return restores parent playing context without rewriting history
+OK  past destination matches seed standings but not player appearances

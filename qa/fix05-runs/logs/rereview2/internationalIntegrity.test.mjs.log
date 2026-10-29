@@ -1,0 +1,93 @@
+TAP version 13
+# Subtest: pending calendar merge
+    # Subtest: preserves processed prefix and merges new events by date
+    ok 1 - preserves processed prefix and merges new events by date
+      ---
+      duration_ms: 0.542459
+      type: 'test'
+      ...
+    1..1
+ok 1 - pending calendar merge
+  ---
+  duration_ms: 0.865166
+  type: 'suite'
+  ...
+# Subtest: official third-place allocations
+    # Subtest: covers all 15 EURO Article 21 combinations without same-group WB pairing
+    ok 1 - covers all 15 EURO Article 21 combinations without same-group WB pairing
+      ---
+      duration_ms: 0.19275
+      type: 'test'
+      ...
+    # Subtest: covers all 495 FIFA Annex C combinations
+    ok 2 - covers all 495 FIFA Annex C combinations
+      ---
+      duration_ms: 0.258542
+      type: 'test'
+      ...
+    # Subtest: EURO/WC first knockout skeletons do not pair group winner with own runner-up
+    ok 3 - EURO/WC first knockout skeletons do not pair group winner with own runner-up
+      ---
+      duration_ms: 0.049416
+      type: 'test'
+      ...
+    1..3
+ok 2 - official third-place allocations
+  ---
+  duration_ms: 0.608708
+  type: 'suite'
+  ...
+# Subtest: N01 controlled Italy 1-2 Serbia group
+    # Subtest: committed scores, table, and qualification agree
+    ok 1 - committed scores, table, and qualification agree
+      ---
+      duration_ms: 9.961542
+      type: 'test'
+      ...
+    1..1
+ok 3 - N01 controlled Italy 1-2 Serbia group
+  ---
+  duration_ms: 10.012917
+  type: 'suite'
+  ...
+# Subtest: chronological national integrity cohort
+    # Subtest: 2026: zero score mismatches and monotonic ledger (100 seeds)
+    ok 1 - 2026: zero score mismatches and monotonic ledger (100 seeds)
+      ---
+      duration_ms: 7856.891083
+      type: 'test'
+      ...
+    # Subtest: 2028: zero score mismatches and monotonic ledger (100 seeds)
+    ok 2 - 2028: zero score mismatches and monotonic ledger (100 seeds)
+      ---
+      duration_ms: 5883.347125
+      type: 'test'
+      ...
+    1..2
+ok 4 - chronological national integrity cohort
+  ---
+  duration_ms: 13740.947208
+  type: 'suite'
+  ...
+# Subtest: preparation has no match side effects
+    # Subtest: prepareNationalEdition does not commit played matches or apply form
+    ok 1 - prepareNationalEdition does not commit played matches or apply form
+      ---
+      duration_ms: 1.174375
+      type: 'test'
+      ...
+    1..1
+ok 5 - preparation has no match side effects
+  ---
+  duration_ms: 1.297833
+  type: 'suite'
+  ...
+1..5
+# tests 8
+# suites 5
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 13760.781583

@@ -30,6 +30,7 @@ import {
 } from "./matchEngine.js";
 import { getSimRng } from "./rng.js";
 import { updateFatigue, updateFormFromObservation } from "./playerState.js";
+import { applyInjury, computeRiskMultiplier, sampleInjuryFromExposure } from "./playerHealth.js";
 import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./worldState.js";
 import { effectiveTeamStrength } from "./teamStrength.js";
 import {
@@ -374,6 +375,7 @@ function resolveContext(state, opts = {}) {
     // Deferred ledger commit after ET/pens finalization (continentalChronology).
     onPlayerMatchFinalized:
       typeof opts.onPlayerMatchFinalized === "function" ? opts.onPlayerMatchFinalized : null,
+    injuryRng: opts.injuryRng || null,
   };
 }
 
@@ -1491,8 +1493,12 @@ function playOneMatch(state, fixture, ctx, { finalize = null } = {}) {
         processorResult.ledgerRecord.minutes ??
         0
     );
+    // Prefer an explicit injury stream from the match-day processor; fall back to ctx.
+    if (!processorResult._injuryRng && ctx.injuryRng) processorResult._injuryRng = ctx.injuryRng;
     syncLedgerRecordFromMatch(processorResult.ledgerRecord, match);
     applyDeferredFinalExposure(ctx.player, match, processorResult, priorExposure, fixture.date);
+    // Re-sync duration/injury metadata after deferred exposure may attach injuries.
+    syncLedgerRecordFromMatch(processorResult.ledgerRecord, match);
     if (typeof ctx.onPlayerMatchFinalized === "function") {
       ctx.onPlayerMatchFinalized(match, processorResult);
     }
@@ -1519,11 +1525,24 @@ function syncLedgerRecordFromMatch(ledgerRecord, match) {
   ledgerRecord.selected = Boolean(ps.selected ?? ledgerRecord.selected);
   ledgerRecord.available = Boolean(ps.available ?? ledgerRecord.available);
   ledgerRecord.nonParticipationReason = ps.nonParticipationReason ?? ledgerRecord.nonParticipationReason ?? null;
+  // availableMinutes tracks total credited duration (regulation + ET). matchDuration
+  // is raised when ET extends participation so record metadata agrees with minutes.
+  ledgerRecord.availableMinutes = Math.max(
+    Number(ledgerRecord.availableMinutes) || 0,
+    minutes,
+    minutes > 90 ? minutes : Number(ledgerRecord.matchDuration) || 90
+  );
+  if (minutes > 90) {
+    ledgerRecord.matchDuration = Math.max(Number(ledgerRecord.matchDuration) || 90, minutes);
+  }
   if (match.editionId != null && ledgerRecord.editionId == null) {
     ledgerRecord.editionId = match.editionId;
   }
   if (match.competitionId != null && ledgerRecord.competitionId == null) {
     ledgerRecord.competitionId = match.competitionId;
+  }
+  if (Array.isArray(match.injuryEventIds) && match.injuryEventIds.length) {
+    ledgerRecord.injuryEventIds = [...match.injuryEventIds];
   }
   const conceded =
     match.playerSide === "home"
@@ -1540,7 +1559,8 @@ function syncLedgerRecordFromMatch(ledgerRecord, match) {
 
 /**
  * When ET/pens finalize after match-day processing, charge only the minute delta
- * for fatigue/form and sync participation — never resample or double-charge.
+ * for fatigue/form/injury exposure and sync participation — never resample the
+ * full fixture or double-charge.
  */
 function applyDeferredFinalExposure(player, match, processorResult, priorExposureMinutes, date) {
   if (!player || !match || !processorResult || processorResult._exposureSynced) return;
@@ -1550,7 +1570,15 @@ function applyDeferredFinalExposure(player, match, processorResult, priorExposur
   processorResult._exposureSynced = true;
   processorResult._exposureMinutesCharged = finalMinutes;
   if (processorResult.participation) {
-    processorResult.participation = { ...processorResult.participation, minutes: finalMinutes };
+    processorResult.participation = {
+      ...processorResult.participation,
+      minutes: finalMinutes,
+      availableMinutes: Math.max(finalMinutes, Number(processorResult.participation.availableMinutes) || 0),
+      matchDuration: Math.max(
+        Number(processorResult.participation.matchDuration) || 90,
+        finalMinutes > 90 ? finalMinutes : 90
+      ),
+    };
   }
   if (player.matchParticipation) {
     player.matchParticipation = {
@@ -1558,18 +1586,40 @@ function applyDeferredFinalExposure(player, match, processorResult, priorExposur
       minutes: finalMinutes,
       matchDuration: Math.max(
         Number(player.matchParticipation.matchDuration) || 90,
-        finalMinutes > 90 ? 120 : 90
+        finalMinutes > 90 ? finalMinutes : 90
       ),
     };
   }
-  if (!(delta > 0) || !player.state) return;
-  updateFatigue(player.state, { minutes: delta });
-  if (match.playerStats?.rating != null) {
-    const expected = Number(processorResult.ledgerRecord?.expectedRating);
-    if (Number.isFinite(expected)) {
-      const obsScale = 0.6;
-      const z = Math.max(-3, Math.min(3, (match.playerStats.rating - expected) / obsScale));
-      updateFormFromObservation(player.state, Math.tanh(z / 1.5), delta, date);
+  if (!(delta > 0)) return;
+  if (player.state) {
+    updateFatigue(player.state, { minutes: delta });
+    if (match.playerStats?.rating != null) {
+      const expected = Number(processorResult.ledgerRecord?.expectedRating);
+      if (Number.isFinite(expected)) {
+        const obsScale = 0.6;
+        const z = Math.max(-3, Math.min(3, (match.playerStats.rating - expected) / obsScale));
+        updateFormFromObservation(player.state, Math.tanh(z / 1.5), delta, date);
+      }
+    }
+  }
+  // Additional match-health exposure for newly credited minutes (exact-once).
+  const injuryRng = processorResult._injuryRng;
+  if (injuryRng && typeof injuryRng.random === "function") {
+    const inj = sampleInjuryFromExposure({
+      hours: delta / 60,
+      kind: "match",
+      riskMultiplier: computeRiskMultiplier(player),
+      rng: injuryRng,
+      eventId: `${match.fixtureId || match.matchId || "continental"}:et-inj`,
+      date,
+      position: player.position,
+    });
+    if (inj) {
+      applyInjury(player, inj);
+      match.injuryEventIds = [...(match.injuryEventIds || []), inj.eventId];
+      if (processorResult.ledgerRecord) {
+        processorResult.ledgerRecord.injuryEventIds = [...(match.injuryEventIds || [])];
+      }
     }
   }
 }

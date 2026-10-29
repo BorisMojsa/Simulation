@@ -1,0 +1,15 @@
+OK  reference 65/20/15 shifts to 55/25/20 exactly
+OK  four disposition senior targets match academy-derived table
+OK  bank has 80 scenes, 3 choices, all three outcome classes
+OK  normalize is idempotent (no second 10-point shift)
+OK  category probability unchanged when adding another positive outcome
+OK  positive/neutral/negative alter durable base OVR correctly
+OK  event idempotency across different choice clones
+OK  annual cap limits scene positive charge
+OK  negative after positive does not refund allowance
+OK  display endpoints use rounded difference
+OK  GK scene uses GK attributes only
+OK  every catalogue scene can resolve in a constructed context
+OK  Monte Carlo category rates within tolerance
+
+Done.

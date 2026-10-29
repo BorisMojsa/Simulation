@@ -363,11 +363,28 @@ export function countUserOpenPlayEvents(match) {
   };
 }
 
+/** Outcome/score inputs that feed computeMatchRating (must trigger re-rate). */
+function ratingContextIdentity(match) {
+  const openHome = match?.matchHomeGoals ?? match?.homeGoals ?? null;
+  const openAway = match?.matchAwayGoals ?? match?.awayGoals ?? null;
+  return [
+    match?.winnerSide ?? null,
+    match?.decidedBy ?? null,
+    openHome,
+    openAway,
+    match?.regulationHomeGoals ?? null,
+    match?.regulationAwayGoals ?? null,
+    match?.penaltyHome ?? null,
+    match?.penaltyAway ?? null,
+  ].join("|");
+}
+
 /**
  * Idempotent finalizer: playerStats goals/assists/cards equal counted open-play
  * user events; rating only when minutes > 0. Repeated calls on an unchanged
- * result are a true no-op (stats, rating, and RNG). Re-rates only when minutes
- * or open-play event totals genuinely change (e.g. regulation → ET).
+ * result are a true no-op (stats, rating, and RNG). Re-rates when minutes,
+ * open-play events, or rating outcome/score context genuinely change
+ * (e.g. regulation → ET, or direct penalties without new user events).
  */
 export function finalizePlayerMatchStats(match, player = null, rng = null) {
   if (!match) return match;
@@ -379,9 +396,11 @@ export function finalizePlayerMatchStats(match, player = null, rng = null) {
   const played = Boolean(match.playerSide && player && minutes > 0);
   const counts = played ? countUserOpenPlayEvents(match) : { goals: 0, assists: 0, yellow: 0, red: 0 };
   const nextMinutes = played ? minutes : 0;
+  const ratingCtx = ratingContextIdentity(match);
 
   if (
     match.playerStatsFinalized &&
+    match.playerStatsRatingContext === ratingCtx &&
     prev.played === played &&
     prev.minutes === nextMinutes &&
     prev.goals === counts.goals &&
@@ -404,7 +423,12 @@ export function finalizePlayerMatchStats(match, player = null, rng = null) {
     red: counts.red,
     rating: null,
   };
-  const next = { ...match, playerStats, playerStatsFinalized: true };
+  const next = {
+    ...match,
+    playerStats,
+    playerStatsFinalized: true,
+    playerStatsRatingContext: ratingCtx,
+  };
   if (played) {
     playerStats.rating = computeMatchRating(next, player, rng);
   }
@@ -465,7 +489,14 @@ export function computeMatchRating(match, player, rng = null) {
     rating -= 0.2;
   }
 
-  rating += r.float(-0.18, 0.18);
+  // Stable noise: sample once per match object so outcome-only re-finalize
+  // (e.g. pens winnerSide) can recompute without consuming the shared career RNG again.
+  let noise = match._ratingNoise;
+  if (typeof noise !== "number" || Number.isNaN(noise)) {
+    noise = r.float(-0.18, 0.18);
+    match._ratingNoise = noise;
+  }
+  rating += noise;
   return clamp(parseFloat(rating.toFixed(1)), 4.5, 9.9);
 }
 

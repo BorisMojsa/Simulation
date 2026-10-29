@@ -307,9 +307,12 @@ async function main() {
       );
       const ratedZero = zeroish.filter((c) => c.rating && c.rating !== "—" && c.rating !== "-");
       assert(ratedZero.length === 0, "zero-minute cards must not show numeric ratings", ratedZero);
+      assert(zeroish.length >= 1, "non-participation cards must appear", { zeroish: zeroish.length });
+      assert(reachedSkip || reachedContinue, "skip or continue must be reached", { reachedSkip, reachedContinue });
       const finished = await debug(page);
       const np = finished?.lastSeason?.nonParticipation || finished?.nonParticipation || null;
       const positiveMinutes = Number(finished?.lastSeason?.minutes || finished?.seasonTotals?.minutes || 0);
+      assert(positiveMinutes > 0 || (np?.total || 0) > 0, "season coverage present", { positiveMinutes, np });
       assert(runtimeErrors.length === 0, "no page/console errors", runtimeErrors);
       return {
         cardsSample: cards.slice(0, 8),
@@ -330,32 +333,29 @@ async function main() {
     const page = await browser.newPage();
     const runtimeErrors = attachRuntimeGuards(page);
     try {
-      await loadFixture(page, "?fixture=ownership-transfer");
-      await page.evaluate(() => {
-        const stay = [...document.querySelectorAll("button")].find((b) => /stay|reject|decline|keep/i.test(b.textContent || ""));
-        stay?.click();
-      });
-      await skipThroughSeason(page, { maxSteps: 100 });
-      await shot(page, "09-finished-season");
+      await loadFixture(page, "?fixture=fix05-gk");
+      await shot(page, "09-finished-season-gk");
       const d = await debug(page);
-      const last = d?.lastSeason || null;
-      assert(last, "finished season present", d);
+      assert(d?.position === "GK" || d?.qaGk?.position === "GK", "player is GK", d);
+      assert(Number(d?.qaGk?.minutes || d?.lastSeason?.minutes || 0) > 0, "positive keeper minutes", d);
+      assert(d?.lastSeason?.evidenceByScope?.league, "league evidence scope present", d?.lastSeason);
+      const leagueMinutes = Number(d.lastSeason.evidenceByScope.league.minutes || 0);
+      assert(leagueMinutes > 0, "league minutes in evidence", d.lastSeason.evidenceByScope);
+      // Clean sheets may be 0 but must be a known number on the league line when flags exist.
       assert(
-        Number(last.minutes || 0) > 0 || Number(last.appearances || 0) > 0,
-        "positive season participation",
-        last
+        d.lastSeason.evidenceByScope.league.cleanSheets == null ||
+          Number.isFinite(Number(d.lastSeason.evidenceByScope.league.cleanSheets)),
+        "clean sheets reconcilable",
+        d.lastSeason.evidenceByScope.league
       );
-      // Evidence scope lines when the debug surface exposes them.
-      if (last.evidenceByScope) {
-        assert(typeof last.evidenceByScope.league === "object", "league scope present", last.evidenceByScope);
-      }
+      assert((d.awardFieldKeys || []).length > 0 || d.qaGk?.awardFieldKeys?.length > 0, "award fields persisted", d);
       assert(runtimeErrors.length === 0, "no page/console errors", runtimeErrors);
       return {
-        minutes: last.minutes,
-        goals: last.goals,
-        assists: last.assists,
-        evidenceByScope: last.evidenceByScope || null,
-        cleanSheets: last.cleanSheets ?? last.evidenceCleanSheets ?? null,
+        position: d.position,
+        minutes: d.qaGk?.minutes ?? d.lastSeason?.minutes,
+        evidenceByScope: d.lastSeason?.evidenceByScope || null,
+        cleanSheets: d.lastSeason?.cleanSheets ?? d.lastSeason?.evidenceCleanSheets ?? null,
+        awardFieldKeys: d.awardFieldKeys || d.qaGk?.awardFieldKeys || [],
         runtimeErrors,
       };
     } finally {
@@ -363,27 +363,62 @@ async function main() {
     }
   });
 
-  await caseRun("engine-backed-et-pens-playback-surface", async () => {
+  await caseRun("live-et-pens-playback-continue", async () => {
     const browser = await chromium.launch({ executablePath: CHROME, headless: true });
     const page = await browser.newPage();
     const runtimeErrors = attachRuntimeGuards(page);
     try {
-      await loadFixture(page, "?fixture=ownership-transfer");
-      // Production UI path: drive controls; engine ET/pens coverage is required via exporter.
-      // Here we assert the live page can evaluate knockout helpers without runtime errors.
-      const koProbe = await page.evaluate(async () => {
-        const mod = await import("./js/simulation/matchEngine.js").catch(() => null);
-        if (!mod?.simulateMatch || !mod?.resolveKnockout) {
-          return { ok: false, reason: "module-unavailable" };
-        }
-        return { ok: true, hasResolveKnockout: typeof mod.resolveKnockout === "function" };
-      });
-      assert(koProbe.ok || koProbe.reason === "module-unavailable", "knockout module probe", koProbe);
-      // If bundling prevents dynamic import, still require a clean page.
-      const d = await debug(page);
-      assert(d, "debug surface available");
-      assert(runtimeErrors.filter((e) => e.type === "pageerror").length === 0, "no pageerrors", runtimeErrors);
-      return { koProbe, runtimeErrors, reached: Boolean(d) };
+      await loadFixture(page, "?fixture=fix05-ko");
+      await shot(page, "10-ko-dashboard");
+      const before = await debug(page);
+      assert(before?.qaKo?.etFixtureId, "ET fixture id present", before);
+      assert(before?.qaKo?.pensFixtureId, "pens fixture id present", before);
+      assert(before.qaKo.etDecidedBy === "extraTime", "ET decidedBy", before.qaKo);
+      assert(before.qaKo.pensDecidedBy === "penalties", "pens decidedBy", before.qaKo);
+      assert(Number(before.qaKo.etMinutes) === 120, "ET minutes 120", before.qaKo);
+      assert(Number(before.qaKo.pensMinutes) === 120, "pens minutes 120", before.qaKo);
+      assert(before.qaKo.etRating != null, "ET rating present", before.qaKo);
+      assert(before.qaKo.pensRating != null, "pens rating present", before.qaKo);
+
+      let reachedContinue = false;
+      let reachedSkip = false;
+      for (let i = 0; i < 60; i++) {
+        const progressed = await page.evaluate(() => {
+          const skip = [...document.querySelectorAll("button")].find((b) =>
+            /skip match|skip phase|skip season/i.test(b.textContent || "")
+          );
+          if (skip) {
+            skip.click();
+            return "skip";
+          }
+          const cont = document.getElementById("animation-continue");
+          if (cont && !cont.classList.contains("hidden")) {
+            cont.click();
+            return "continue";
+          }
+          return null;
+        });
+        if (progressed === "skip") reachedSkip = true;
+        if (progressed === "continue") reachedContinue = true;
+        await page.waitForTimeout(120);
+        if (!progressed && i > 10) break;
+      }
+      await shot(page, "11-ko-after-controls");
+      const cards = await readMatchCards(page);
+      const zeroish = cards.filter((c) => /unused|not selected|injured|did not play/i.test(c.contrib));
+      const ratedZero = zeroish.filter((c) => c.rating && c.rating !== "—" && c.rating !== "-");
+      assert(ratedZero.length === 0, "zero-minute KO card unrated", ratedZero);
+      assert(zeroish.length >= 1, "zero-minute companion reached", { zeroish: zeroish.length, cards });
+      assert(reachedSkip || reachedContinue, "playback controls used", { reachedSkip, reachedContinue });
+      assert(runtimeErrors.length === 0, "no page/console errors", runtimeErrors);
+      return {
+        qaKo: before.qaKo,
+        reachedSkip,
+        reachedContinue,
+        zeroish: zeroish.length,
+        cardsSample: cards.slice(0, 6),
+        runtimeErrors,
+      };
     } finally {
       await browser.close();
     }

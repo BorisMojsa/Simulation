@@ -2,60 +2,59 @@
   "careerId": "bug5-gk-2",
   "position": "GK",
   "seed": 88,
-  "rawRecords": 66,
-  "positiveMinutes": 28,
-  "zeroMinutes": 38,
-  "withEdition": 66,
+  "rawRecords": 58,
+  "positiveMinutes": 24,
+  "zeroMinutes": 34,
+  "withEdition": 58,
   "editionCoverage": 1,
-  "rawCleanSheets": 1,
-  "ledgerCleanSheets": 1,
-  "evidenceLeagueCleanSheets": 1,
-  "evidenceTotalCleanSheets": 1,
+  "rawCleanSheets": 3,
+  "ledgerCleanSheets": 3,
+  "evidenceLeagueCleanSheets": 2,
+  "evidenceTotalCleanSheets": 3,
   "evidenceEditionKeys": [
-    "world-cup::2026-world-cup",
     "league:england-premier-league::2026",
-    "FA Cup::2026:FA Cup",
-    "uefa-champions-league::2026-uefa-champions-league"
+    "uefa-champions-league::2026-uefa-champions-league",
+    "FA Cup::2026:FA Cup"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
   "goalsFromPositive": 0,
   "goalsFromLedger": 0,
-  "matchesWithEvents": 15,
+  "matchesWithEvents": 14,
   "eventGoalDisagree": 0,
-  "apps": 28,
+  "apps": 24,
   "samplePositive": [
     {
-      "matchId": "world-cup:2026:group:D:md2:slot0",
-      "editionId": "2026-world-cup",
-      "competitionId": "world-cup",
-      "teamId": "nation:england",
-      "minutes": 83,
+      "matchId": "league:england-premier-league:md:10",
+      "editionId": "2026",
+      "competitionId": "league:england-premier-league",
+      "teamId": "club:england:arsenal",
+      "minutes": 21,
       "goals": 0,
-      "cleanSheet": false,
-      "rating": 6.1
+      "cleanSheet": null,
+      "rating": 6.2
     },
     {
-      "matchId": "world-cup:2026:group:D:md3:slot0",
-      "editionId": "2026-world-cup",
-      "competitionId": "world-cup",
-      "teamId": "nation:england",
+      "matchId": "league:england-premier-league:md:20",
+      "editionId": "2026",
+      "competitionId": "league:england-premier-league",
+      "teamId": "club:england:arsenal",
       "minutes": 88,
       "goals": 0,
-      "cleanSheet": false,
-      "rating": 5.7
+      "cleanSheet": true,
+      "rating": 7.7
     }
   ],
   "sampleZero": [
     {
-      "matchId": "world-cup:2026:group:D:md1:slot0",
+      "matchId": "league:england-premier-league:md:0",
       "reason": "not_selected",
-      "editionId": "2026-world-cup",
-      "teamId": "nation:england"
+      "editionId": "2026",
+      "teamId": "club:england:arsenal"
     },
     {
-      "matchId": "league:england-premier-league:md:0",
+      "matchId": "league:england-premier-league:md:50",
       "reason": "not_selected",
       "editionId": "2026",
       "teamId": "club:england:arsenal"
@@ -63,36 +62,36 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 349,
-      "appearances": 15,
-      "starts": 1,
+      "minutes": 452,
+      "appearances": 14,
+      "starts": 2,
       "goals": 0,
-      "assists": 0,
-      "cleanSheets": 1
+      "assists": 1,
+      "cleanSheets": 2
     },
     "cup": {
-      "minutes": 150,
-      "appearances": 4,
-      "starts": 1,
-      "goals": 0,
-      "assists": 0,
-      "cleanSheets": 0
-    },
-    "continental": {
-      "minutes": 96,
-      "appearances": 4,
+      "minutes": 33,
+      "appearances": 2,
       "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
-    "international": {
-      "minutes": 265,
-      "appearances": 5,
-      "starts": 2,
+    "continental": {
+      "minutes": 218,
+      "appearances": 8,
+      "starts": 1,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": 0
+      "cleanSheets": 1
+    },
+    "international": {
+      "minutes": 0,
+      "appearances": 0,
+      "starts": 0,
+      "goals": 0,
+      "assists": 0,
+      "cleanSheets": null
     },
     "other": {
       "minutes": 0,

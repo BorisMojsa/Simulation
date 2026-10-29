@@ -2,10 +2,10 @@
   "careerId": "bug5-gk-1",
   "position": "GK",
   "seed": 42,
-  "rawRecords": 53,
-  "positiveMinutes": 20,
-  "zeroMinutes": 33,
-  "withEdition": 53,
+  "rawRecords": 59,
+  "positiveMinutes": 22,
+  "zeroMinutes": 37,
+  "withEdition": 59,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -13,17 +13,17 @@
   "evidenceTotalCleanSheets": 0,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
-    "FA Cup::2026:FA Cup",
-    "uefa-champions-league::2026-uefa-champions-league"
+    "uefa-champions-league::2026-uefa-champions-league",
+    "FA Cup::2026:FA Cup"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
   "goalsFromPositive": 0,
   "goalsFromLedger": 0,
-  "matchesWithEvents": 13,
+  "matchesWithEvents": 15,
   "eventGoalDisagree": 0,
-  "apps": 20,
+  "apps": 22,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:10",
@@ -33,7 +33,7 @@
       "minutes": 15,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 7.1
+      "rating": 5.6
     },
     {
       "matchId": "league:england-premier-league:md:50",
@@ -43,7 +43,7 @@
       "minutes": 18,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 5
+      "rating": 6.5
     }
   ],
   "sampleZero": [
@@ -62,28 +62,28 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 544,
-      "appearances": 13,
-      "starts": 4,
+      "minutes": 438,
+      "appearances": 15,
+      "starts": 2,
       "goals": 0,
       "assists": 0,
       "cleanSheets": 0
     },
     "cup": {
-      "minutes": 45,
+      "minutes": 98,
       "appearances": 2,
-      "starts": 0,
+      "starts": 1,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": null
+      "cleanSheets": 0
     },
     "continental": {
-      "minutes": 79,
+      "minutes": 165,
       "appearances": 5,
-      "starts": 0,
+      "starts": 1,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": null
+      "cleanSheets": 0
     },
     "international": {
       "minutes": 0,

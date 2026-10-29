@@ -2,10 +2,10 @@
   "careerId": "bug5-st-3",
   "position": "ST",
   "seed": 101,
-  "rawRecords": 58,
+  "rawRecords": 56,
   "positiveMinutes": 19,
-  "zeroMinutes": 39,
-  "withEdition": 58,
+  "zeroMinutes": 37,
+  "withEdition": 56,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -21,7 +21,7 @@
   "goalsAgree": true,
   "goalsFromPositive": 1,
   "goalsFromLedger": 1,
-  "matchesWithEvents": 13,
+  "matchesWithEvents": 14,
   "eventGoalDisagree": 0,
   "apps": 19,
   "samplePositive": [
@@ -33,7 +33,7 @@
       "minutes": 78,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.4
+      "rating": 6
     },
     {
       "matchId": "league:england-premier-league:md:20",
@@ -41,9 +41,9 @@
       "competitionId": "league:england-premier-league",
       "teamId": "club:england:arsenal",
       "minutes": 33,
-      "goals": 0,
+      "goals": 1,
       "cleanSheet": null,
-      "rating": 6.3
+      "rating": 7.6
     }
   ],
   "sampleZero": [
@@ -62,10 +62,10 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 476,
-      "appearances": 13,
+      "minutes": 501,
+      "appearances": 14,
       "starts": 3,
-      "goals": 0,
+      "goals": 1,
       "assists": 0,
       "cleanSheets": null
     },
@@ -73,13 +73,13 @@
       "minutes": 77,
       "appearances": 3,
       "starts": 0,
-      "goals": 1,
+      "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 57,
-      "appearances": 3,
+      "minutes": 32,
+      "appearances": 2,
       "starts": 0,
       "goals": 0,
       "assists": 0,

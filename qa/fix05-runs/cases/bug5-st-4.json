@@ -2,10 +2,10 @@
   "careerId": "bug5-st-4",
   "position": "ST",
   "seed": 505,
-  "rawRecords": 56,
+  "rawRecords": 58,
   "positiveMinutes": 14,
-  "zeroMinutes": 42,
-  "withEdition": 56,
+  "zeroMinutes": 44,
+  "withEdition": 58,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -33,7 +33,7 @@
       "minutes": 14,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.4
+      "rating": 6.3
     },
     {
       "matchId": "league:england-premier-league:md:40",
@@ -43,7 +43,7 @@
       "minutes": 81,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.6
+      "rating": 6.4
     }
   ],
   "sampleZero": [
@@ -66,7 +66,7 @@
       "appearances": 8,
       "starts": 1,
       "goals": 0,
-      "assists": 1,
+      "assists": 0,
       "cleanSheets": null
     },
     "cup": {

@@ -1,0 +1,5 @@
+OK  roundAbilityForDisplay nearest whole number
+OK  display change reconciles rounded endpoints
+OK  screenshot attribute cards
+OK  rawAbilityEndpoints reconstructs before from change
+abilityFormatting tests done
