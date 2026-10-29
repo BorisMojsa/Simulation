@@ -1,0 +1,15 @@
+
+CASE: B04
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B04-start.png
+  FAIL B04: recovery Accept control required
+
+Wrote /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/fix07-runs/browser-report.json
+{
+  "pass": false,
+  "results": [
+    [
+      "B04",
+      "FAIL"
+    ]
+  ]
+}

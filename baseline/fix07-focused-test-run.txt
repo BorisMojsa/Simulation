@@ -1,0 +1,178 @@
+TAP version 13
+# Subtest: A1: 38×90 capacity with 900 played → ~0.263; above 0.22
+ok 1 - A1: 38×90 capacity with 900 played → ~0.263; above 0.22
+  ---
+  duration_ms: 0.686542
+  type: 'test'
+  ...
+# Subtest: A2: 600/3420 below lowMinutesShare
+ok 2 - A2: 600/3420 below lowMinutesShare
+  ---
+  duration_ms: 0.117291
+  type: 'test'
+  ...
+# Subtest: A3: 28 healthy bench + 10 full appearances = 38 opportunities
+ok 3 - A3: 28 healthy bench + 10 full appearances = 38 opportunities
+  ---
+  duration_ms: 0.453709
+  type: 'test'
+  ...
+# Subtest: A4: unavailable fixtures excluded; 10 full → share 1
+ok 4 - A4: unavailable fixtures excluded; 10 full → share 1
+  ---
+  duration_ms: 0.108291
+  type: 'test'
+  ...
+# Subtest: A5: explicit zero minutes preserved
+ok 5 - A5: explicit zero minutes preserved
+  ---
+  duration_ms: 0.138583
+  type: 'test'
+  ...
+# Subtest: A6: no eligible fixtures → not usable for punitive low-minutes
+ok 6 - A6: no eligible fixtures → not usable for punitive low-minutes
+  ---
+  duration_ms: 0.045875
+  type: 'test'
+  ...
+# Subtest: A7: national fixtures excluded from club assessment
+ok 7 - A7: national fixtures excluded from club assessment
+  ---
+  duration_ms: 0.137458
+  type: 'test'
+  ...
+# Subtest: A8: competition slices league+cup+continental
+ok 8 - A8: competition slices league+cup+continental
+  ---
+  duration_ms: 0.102
+  type: 'test'
+  ...
+# Subtest: A9: 120-minute cup with 20 played → 20/120
+ok 9 - A9: 120-minute cup with 20 played → 20/120
+  ---
+  duration_ms: 0.194958
+  type: 'test'
+  ...
+# Subtest: A10: duplicate fixture counts once
+ok 10 - A10: duplicate fixture counts once
+  ---
+  duration_ms: 0.230541
+  type: 'test'
+  ...
+# Subtest: A11: old seasonLedger does not substitute current period
+ok 11 - A11: old seasonLedger does not substitute current period
+  ---
+  duration_ms: 0.109083
+  type: 'test'
+  ...
+# Subtest: A12: explicit ledger zero beats stale season minutes
+ok 12 - A12: explicit ledger zero beats stale season minutes
+  ---
+  duration_ms: 0.041209
+  type: 'test'
+  ...
+# Subtest: B1: healthy young cover with 600/3420 reaches development-loan
+ok 13 - B1: healthy young cover with 600/3420 reaches development-loan
+  ---
+  duration_ms: 12.829833
+  type: 'test'
+  ...
+# Subtest: B2: 900/3420 control does not require low-minute development discussion
+ok 14 - B2: 900/3420 control does not require low-minute development discussion
+  ---
+  duration_ms: 0.75775
+  type: 'test'
+  ...
+# Subtest: B3: development loan recommendations use configured 0.5 / 0.2 gates
+ok 15 - B3: development loan recommendations use configured 0.5 / 0.2 gates
+  ---
+  duration_ms: 4.358542
+  type: 'test'
+  ...
+# Subtest: B4: stay/decline preserves contract
+ok 16 - B4: stay/decline preserves contract
+  ---
+  duration_ms: 0.586583
+  type: 'test'
+  ...
+# Subtest: C1: one-year renewal extends end 1 → 2 (age 36)
+ok 17 - C1: one-year renewal extends end 1 → 2 (age 36)
+  ---
+  duration_ms: 2.14975
+  type: 'test'
+  ...
+# Subtest: C2: younger one-year extension also adds coverage
+ok 18 - C2: younger one-year extension also adds coverage
+  ---
+  duration_ms: 1.669166
+  type: 'test'
+  ...
+# Subtest: C3: early firm review latches; boundary phase can reevaluate
+ok 19 - C3: early firm review latches; boundary phase can reevaluate
+  ---
+  duration_ms: 0.706458
+  type: 'test'
+  ...
+# Subtest: C4: boundary review defers expiry until settlement
+ok 20 - C4: boundary review defers expiry until settlement
+  ---
+  duration_ms: 0.463042
+  type: 'test'
+  ...
+# Subtest: C5: simulateSeason stay path releases after final year without soft-lock
+ok 21 - C5: simulateSeason stay path releases after final year without soft-lock
+  ---
+  duration_ms: 93.035958
+  type: 'test'
+  ...
+# Subtest: D1: interest-gate empty is distinct from no eligible clubs
+ok 22 - D1: interest-gate empty is distinct from no eligible clubs
+  ---
+  duration_ms: 0.502
+  type: 'test'
+  ...
+# Subtest: D2: after one empty closed review, recovery finds validated offers
+ok 23 - D2: after one empty closed review, recovery finds validated offers
+  ---
+  duration_ms: 1.332666
+  type: 'test'
+  ...
+# Subtest: D3: frozen review does not reroll
+ok 24 - D3: frozen review does not reroll
+  ---
+  duration_ms: 2.872333
+  type: 'test'
+  ...
+# Subtest: D4: declining a valid offer breaks consecutive-empty streak
+ok 25 - D4: declining a valid offer breaks consecutive-empty streak
+  ---
+  duration_ms: 1.192041
+  type: 'test'
+  ...
+# Subtest: D5: snapshot round-trip preserves free-agent spell counters
+ok 26 - D5: snapshot round-trip preserves free-agent spell counters
+  ---
+  duration_ms: 6.451292
+  type: 'test'
+  ...
+# Subtest: E1: Hull 58 OVR seed 707 uses club opportunity denominator
+ok 27 - E1: Hull 58 OVR seed 707 uses club opportunity denominator
+  ---
+  duration_ms: 40.762417
+  type: 'test'
+  ...
+# Subtest: E2: Atalanta 72 OVR seed 707 assessment matches independent oracle
+ok 28 - E2: Atalanta 72 OVR seed 707 assessment matches independent oracle
+  ---
+  duration_ms: 84.100375
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 263.777292

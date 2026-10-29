@@ -1,0 +1,188 @@
+[
+  {
+    "id": "stale-ledger-arbitrary-period",
+    "expected": "unproven old ledger excluded; current legacy evidence partial or unknown",
+    "actual": {
+      "share": 1,
+      "eligibleMatches": 5,
+      "minutes": 450,
+      "assessment": {
+        "version": "playing-time-assessment-v1",
+        "periodId": "season:1",
+        "reviewId": "pta:scope:none:1:end",
+        "checkpoint": "end",
+        "checkpointDate": null,
+        "representedClubId": null,
+        "representedStintIds": [],
+        "clubMinutesPlayed": 450,
+        "opportunityCapacity": 450,
+        "eligibleFixtureCount": 5,
+        "availabilityExclusions": 0,
+        "unknownAvailabilityCount": 0,
+        "share": 1,
+        "source": "participation-ledger",
+        "completeness": "exact",
+        "byCompetition": {
+          "league": {
+            "label": "league",
+            "clubMinutesPlayed": 0,
+            "opportunityCapacity": 0,
+            "eligibleFixtureCount": 0,
+            "availabilityExclusions": 0,
+            "unknownAvailabilityCount": 0,
+            "share": null,
+            "completeness": "empty"
+          },
+          "domesticCup": {
+            "label": "domesticCup",
+            "clubMinutesPlayed": 0,
+            "opportunityCapacity": 0,
+            "eligibleFixtureCount": 0,
+            "availabilityExclusions": 0,
+            "unknownAvailabilityCount": 0,
+            "share": null,
+            "completeness": "empty"
+          },
+          "continental": {
+            "label": "continental",
+            "clubMinutesPlayed": 0,
+            "opportunityCapacity": 0,
+            "eligibleFixtureCount": 0,
+            "availabilityExclusions": 0,
+            "unknownAvailabilityCount": 0,
+            "share": null,
+            "completeness": "empty"
+          }
+        },
+        "byStint": [],
+        "conflicts": [],
+        "recordsExamined": 0
+      },
+      "usableForLowMinutes": true
+    },
+    "pass": false
+  },
+  {
+    "id": "legacy-combined-minute-leak",
+    "expectedClubOnly": 0.17543859649122806,
+    "actualShare": 0.30701754385964913,
+    "source": "legacy-league-standing",
+    "usable": true,
+    "pass": false
+  },
+  {
+    "id": "new-club-uses-old-club-sample",
+    "currentClub": "club:italy:atalanta",
+    "expected": "no current-club actual sample",
+    "decision": "development-loan",
+    "assessmentClub": "club:england:hull-city",
+    "share": 0.17543859649122806,
+    "eligible": 38,
+    "pass": false
+  },
+  {
+    "id": "released-employer-renewal-still-accepts",
+    "expected": "reject released-employer renewal without booking",
+    "before": {
+      "club": null,
+      "status": "released",
+      "employer": null,
+      "revision": "ctr:review07-stale-renewal:club:england:hull-city:1:0"
+    },
+    "accepted": true,
+    "after": {
+      "club": null,
+      "status": "active",
+      "employer": "club:england:hull-city",
+      "end": 2,
+      "playable": {
+        "ok": false,
+        "reason": "free-agent",
+        "mode": "free-agent"
+      }
+    },
+    "pass": false
+  },
+  {
+    "id": "declined-renewal-regeneration",
+    "expected": "same-window declined renewal remains closed",
+    "sameId": true,
+    "journalBefore": "declined",
+    "journalAfterRegenerate": "pending",
+    "accepted": true,
+    "end": 2,
+    "pass": false
+  },
+  {
+    "id": "pending-old-review-after-new-club-signing",
+    "expected": "new valid contract settles old pending review and is playable",
+    "accepted": true,
+    "club": "club:croatia:rudes",
+    "pendingStatus": "pending",
+    "pendingEmployer": "club:england:hull-city",
+    "playable": {
+      "ok": false,
+      "reason": "pending-contract-review",
+      "mode": "pending-review",
+      "reviewId": "review:review07-pending-sign:club:england:hull-city:ctr:review07-pending-sign:club:england:hull-city:1:0:1:boundary"
+    },
+    "nextAction": {
+      "id": "start-season",
+      "label": "Simulate next season",
+      "canSimulate": true
+    },
+    "pass": false
+  },
+  {
+    "id": "simulate-ignores-pending-review-gate",
+    "expected": "return pending review without simulating a second period",
+    "before": {
+      "age": 24,
+      "seasons": 1,
+      "playable": {
+        "ok": false,
+        "reason": "pending-contract-review",
+        "mode": "pending-review",
+        "reviewId": "review:review07-pending-sim:club:england:hull-city:ctr:review07-pending-sim:club:england:hull-city:1:0:1:boundary"
+      },
+      "review": "pending"
+    },
+    "after": {
+      "age": 25,
+      "seasons": 2,
+      "completedSeason": true,
+      "minutes": 16,
+      "contractStatus": "released"
+    },
+    "pass": false
+  },
+  {
+    "id": "free-agent-reroll-without-time-advance",
+    "expected": "same scheduled window must remain frozen until next scheduled search",
+    "age": 23,
+    "seasons": 0,
+    "first": {
+      "id": "fa-review:fa-spell:bug07-search-0:0:0:ordinary",
+      "offers": 0
+    },
+    "second": {
+      "id": "fa-review:fa-spell:bug07-search-0:0:0:recovery",
+      "offers": 2,
+      "stage": "recovery-success"
+    },
+    "pass": false
+  },
+  {
+    "id": "real-ET-substitute-capacity",
+    "seed": 2,
+    "decidedBy": "extraTime",
+    "played": 20,
+    "recordDuration": 90,
+    "recordCapacity": 90,
+    "actualCapacity": 90,
+    "actualShare": 0.2222222222222222,
+    "expectedCapacity": 120,
+    "expectedShare": 0.16666666666666666,
+    "pass": false
+  }
+]

@@ -1,0 +1,49 @@
+Fix 07 audit — 2 careers, quick=true
+  career C01-ST-hull-58
+  career C02-ST-atalanta-72
+  dedicated low-opp-hull-58: ok
+  dedicated low-opp-atalanta-72: ok
+  dedicated one-year-renewal: ok
+  dedicated fa-recovery: ok
+  dedicated exhausted-empty-control: ok
+  dedicated pause-restore-spell: ok
+  dedicated cross-league-loan-slices: ok
+{
+  "generatedAt": "2026-10-29T18:47:21.706Z",
+  "quick": true,
+  "careers": 2,
+  "periods": 4,
+  "dedicated": [
+    {
+      "id": "low-opp-hull-58",
+      "ok": true
+    },
+    {
+      "id": "low-opp-atalanta-72",
+      "ok": true
+    },
+    {
+      "id": "one-year-renewal",
+      "ok": true
+    },
+    {
+      "id": "fa-recovery",
+      "ok": true
+    },
+    {
+      "id": "exhausted-empty-control",
+      "ok": true
+    },
+    {
+      "id": "pause-restore-spell",
+      "ok": true
+    },
+    {
+      "id": "cross-league-loan-slices",
+      "ok": true
+    }
+  ],
+  "failures": [],
+  "pass": true
+}
+PASS: 4 period records + 7 dedicated cases

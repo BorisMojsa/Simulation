@@ -192,8 +192,18 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     endLoan(player, isFreeAgent(player) || !assertPlayableRegistration(player).ok ? "expiry" : "return");
   }
 
-  // Free agent / expired: no club football — train/wait and open a market review.
+  // Pending boundary review / free agent / expired: do not invent a senior period.
   const playable = assertPlayableRegistration(player);
+  if (!playable.ok && playable.mode === "pending-review") {
+    return {
+      season: null,
+      pendingContractReview: true,
+      review: player.pendingContractReview,
+      performanceScore: null,
+      nextAction: selectNextCareerAction(player),
+      playable,
+    };
+  }
   if (!playable.ok && playable.mode === "free-agent" && !opts.checkpoint) {
     const wait = advanceFreeAgentPeriod(player, { seasons: 1 });
     return {

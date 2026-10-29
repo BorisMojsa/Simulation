@@ -1,0 +1,41 @@
+
+CASE: B04
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B04-start.png
+  FAIL B04: ordinary empty window must close on wait
+
+CASE: B05
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B05-desk.png
+  PASS B05
+
+CASE: B06
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B06-offer.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B06-desk.png
+  PASS B06
+
+CASE: B07
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B07-restored.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B07-desk.png
+  PASS B07
+
+Wrote /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/fix07-runs/browser-report.json
+{
+  "pass": false,
+  "results": [
+    [
+      "B04",
+      "FAIL"
+    ],
+    [
+      "B05",
+      "PASS"
+    ],
+    [
+      "B06",
+      "PASS"
+    ],
+    [
+      "B07",
+      "PASS"
+    ]
+  ]
+}

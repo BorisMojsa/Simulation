@@ -1,0 +1,59 @@
+Fix 07 audit — 12 careers, quick=false
+  career C01-ST-hull-58
+  career C02-ST-atalanta-72
+  career C03-CM-cesena-64
+  career C04-CB-partizan-66
+  career C05-GK-hull-60
+  career C06-ST-reggiana-61
+  career C07-CM-atalanta-70
+  career C08-CB-hull-63
+  career C09-ST-fa-66
+  career C10-CM-fa-58
+  career C11-GK-atalanta-68
+  career C12-ST-partizan-74
+  dedicated low-opp-hull-58: ok
+  dedicated low-opp-atalanta-72: ok
+  dedicated one-year-renewal: ok
+  dedicated fa-recovery: ok
+  dedicated exhausted-empty-control: ok
+  dedicated pause-restore-spell: ok
+  dedicated cross-league-loan-slices: ok
+{
+  "generatedAt": "2026-10-29T18:47:33.693Z",
+  "quick": false,
+  "careers": 12,
+  "periods": 48,
+  "dedicated": [
+    {
+      "id": "low-opp-hull-58",
+      "ok": true
+    },
+    {
+      "id": "low-opp-atalanta-72",
+      "ok": true
+    },
+    {
+      "id": "one-year-renewal",
+      "ok": true
+    },
+    {
+      "id": "fa-recovery",
+      "ok": true
+    },
+    {
+      "id": "exhausted-empty-control",
+      "ok": true
+    },
+    {
+      "id": "pause-restore-spell",
+      "ok": true
+    },
+    {
+      "id": "cross-league-loan-slices",
+      "ok": true
+    }
+  ],
+  "failures": [],
+  "pass": true
+}
+PASS: 48 period records + 7 dedicated cases

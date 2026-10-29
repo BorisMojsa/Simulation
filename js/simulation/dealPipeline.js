@@ -287,6 +287,8 @@ export function buildValidatedOffer({
 }
 
 function ensureFreeAgentSpell(player) {
+  // Pending boundary expiry review is not free-agency market behaviour.
+  if (player?.pendingContractReview?.status === "pending") return null;
   if (!isFreeAgent(player)) return null;
   if (!player.freeAgentSpell || player.freeAgentSpell.status === "closed") {
     const seasonIndex = completedSeasons(player);
@@ -427,8 +429,23 @@ export function generatePipelineOffers(player, opts = {}) {
             ? `${employer.displayName ?? employer.name} want to talk about a new contract before yours expires.`
             : renewalProbe.offer.message,
       };
-      markOfferStatus(player, offer, "pending");
-      offers.push(offer);
+      const priorStatus = player.offerJournal?.[offer.offerId]?.status;
+      if (
+        priorStatus === "declined" ||
+        priorStatus === "expired" ||
+        priorStatus === "superseded" ||
+        priorStatus === "accepted"
+      ) {
+        // Same-window terminal outcomes stay closed; a later review needs a new offer id.
+        rejectionLog.push({
+          clubId: employer.clubId,
+          reasons: [`renewal-${priorStatus}`],
+          kind: "renewal-closed",
+        });
+      } else {
+        markOfferStatus(player, offer, "pending");
+        offers.push(offer);
+      }
     } else if (review.outcome === "temporary-reject") {
       rejectionLog.push({
         clubId: employer.clubId,
@@ -466,31 +483,57 @@ export function generatePipelineOffers(player, opts = {}) {
   const remYears =
     player.contractEndSeason == null ? 0 : Math.max(0, player.contractEndSeason - seasonIndex);
   const dealType = remYears <= 0 || player.club?.isAcademy ? "free_agent" : "permanent";
-  const freeAgentSearch = dealType === "free_agent" && isFreeAgent(player);
+  const freeAgentSearch =
+    dealType === "free_agent" &&
+    isFreeAgent(player) &&
+    player.pendingContractReview?.status !== "pending";
   const spell = freeAgentSearch ? ensureFreeAgentSpell(player) : null;
+  // Window identity is independent of recovery outcome; recovery applies only when
+  // opening a later scheduled search (new season index after wait/train).
+  const reviewId = freeAgentSearch
+    ? `fa-review:${spell.spellId}:${seasonIndex}`
+    : `market:${careerId}:${seasonIndex}:${reviewPhase}`;
+  diagnostics.reviewId = reviewId;
+  diagnostics.spellId = spell?.spellId || null;
+
+  if (spell && !opts.forceGenerate) {
+    const frozen = spell.frozenReviews?.[reviewId];
+    const closed = spell.closedReviewIds?.includes(reviewId);
+    if (frozen) {
+      return {
+        offers: frozen.offers,
+        rejectionLog: frozen.rejectionLog,
+        eligibleCount: frozen.eligibleCount,
+        leagues: LEAGUES,
+        diagnostics: frozen.diagnostics,
+        reviewId,
+        frozen: true,
+        closed: Boolean(closed),
+      };
+    }
+    if (closed) {
+      return {
+        offers: [],
+        rejectionLog: [],
+        eligibleCount: null,
+        leagues: LEAGUES,
+        diagnostics: {
+          ...diagnostics,
+          recoveryStage: "closed-window",
+          interestGateResult: "closed",
+        },
+        reviewId,
+        frozen: true,
+        closed: true,
+      };
+    }
+  }
+
   const recoveryMode =
     freeAgentSearch &&
     !opts.forceGenerate &&
     (opts.recoveryMode === true || (spell && spell.consecutiveEmptyReviews >= 1));
-  const reviewId = freeAgentSearch
-    ? `fa-review:${spell.spellId}:${seasonIndex}:${recoveryMode ? "recovery" : "ordinary"}`
-    : `market:${careerId}:${seasonIndex}:${reviewPhase}`;
-  diagnostics.reviewId = reviewId;
-  diagnostics.spellId = spell?.spellId || null;
   diagnostics.recoveryStage = recoveryMode ? "recovery" : "ordinary";
-
-  if (spell?.frozenReviews?.[reviewId] && !opts.forceGenerate) {
-    const frozen = spell.frozenReviews[reviewId];
-    return {
-      offers: frozen.offers,
-      rejectionLog: frozen.rejectionLog,
-      eligibleCount: frozen.eligibleCount,
-      leagues: LEAGUES,
-      diagnostics: frozen.diagnostics,
-      reviewId,
-      frozen: true,
-    };
-  }
 
   const ovr = safePlayerOverall(player);
   const interest = 0.18 + performanceScore / 220 + ovr / 280;
@@ -771,6 +814,16 @@ export function applyOfferToPlayer(player, offer, transactionId) {
     player.contractStatus = "active";
     player.freeAgentReason = null;
     bumpContractRevision(player);
+    // Any successful new employment supersedes a previous employer's pending review.
+    if (player.pendingContractReview?.status === "pending") {
+      player.pendingContractReview = {
+        ...player.pendingContractReview,
+        status: "settled",
+        settledChoice: "signed-elsewhere",
+        settledAtSeason: currentSeason,
+        settledClubId: offer.clubId,
+      };
+    }
 
     const departureDate = resolveDealSimulationDate(player, offer);
     const reg =

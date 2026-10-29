@@ -20,6 +20,29 @@ import { resolveValidatedClubSide, resolvePlayingStintAt } from "./playingRegist
 /** Season-level clean-sheet eligible roles (60-minute threshold). */
 const CLEAN_SHEET_ROLES = new Set(["GK", "CB", "RB", "LB", "CDM"]);
 
+/**
+ * Opportunity capacity for a finalized fixture.
+ * Extra time expands capacity to 120 when ET was actually played; shootouts alone do not.
+ */
+export function fixtureOpportunityCapacity(match, regulationDuration = 90) {
+  const reg = Number(regulationDuration) > 0 ? Number(regulationDuration) : 90;
+  const decidedBy = match?.decidedBy || null;
+  if (decidedBy === "extraTime") return 120;
+  if (decidedBy === "penalties") {
+    // Standard KO path runs ET before pens and stamps et goal fields (including 0-0).
+    // Direct-to-pens competitions omit those fields — keep regulation capacity.
+    if (
+      match?.etHomeGoals != null ||
+      match?.etAwayGoals != null ||
+      match?.expectedGoals?.etHome != null ||
+      match?.expectedGoals?.etAway != null
+    ) {
+      return 120;
+    }
+  }
+  return reg;
+}
+
 function expectedRatingForContext(player, teamEff, oppEff) {
   const base = Number(player.baseOverallRaw ?? player.rating) || 70;
   const teamQ = Number(teamEff?.overall) || 70;
@@ -146,6 +169,7 @@ export function processPlayerMatchDay({
   if (validatedSide && player && participation) {
     // After KO/ET/pens, sync local minutes + participation before exposure/form.
     const finalizedMinutes = Number(match.playerStats?.minutes);
+    const capacityAfterKo = fixtureOpportunityCapacity(match, matchDuration);
     if (Number.isFinite(finalizedMinutes) && finalizedMinutes >= 0) {
       minutes = finalizedMinutes;
       participation = { ...participation, minutes };
@@ -153,8 +177,15 @@ export function processPlayerMatchDay({
         ...(player.matchParticipation || {}),
         ...participation,
         date,
-        matchDuration: Math.max(matchDuration, minutes > 90 ? 120 : matchDuration),
+        matchDuration: capacityAfterKo,
         minutes,
+      };
+    } else if (capacityAfterKo !== matchDuration) {
+      player.matchParticipation = {
+        ...(player.matchParticipation || {}),
+        ...participation,
+        date,
+        matchDuration: capacityAfterKo,
       };
     }
 
@@ -242,6 +273,9 @@ export function processPlayerMatchDay({
         ? nationTeamId
         : sideClub.clubId || sideClub.name || null;
     match.playerClubId = validatedTeamId;
+    // Fixture opportunity capacity comes from whether ET was actually played —
+    // never from the user's own minutes exceeding 90.
+    const fixtureCapacity = fixtureOpportunityCapacity(match, matchDuration);
     ledgerRecord = {
       matchId: fixtureId || match.fixtureId || `${competitionId}:${date}`,
       date,
@@ -261,8 +295,8 @@ export function processPlayerMatchDay({
       selected: Boolean(participation.selected),
       started: Boolean(participation.started),
       minutes: playedMinutes,
-      availableMinutes: match.playerStats.minutes > 90 ? match.playerStats.minutes : matchDuration,
-      matchDuration,
+      availableMinutes: fixtureCapacity,
+      matchDuration: fixtureCapacity,
       available: Boolean(participation.available),
       nonParticipationReason: participation.nonParticipationReason || null,
       goals: ps.goals || 0,

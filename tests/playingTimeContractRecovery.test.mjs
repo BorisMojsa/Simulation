@@ -12,6 +12,7 @@ import { ensureTransferSave } from "../js/simulation/transferMigration.js";
 import {
   generatePipelineOffers,
   acceptPipelineOffer,
+  buildValidatedOffer,
   closeFreeAgentMarketReview,
 } from "../js/simulation/dealPipeline.js";
 import {
@@ -26,6 +27,9 @@ import { createWorldState, setWorldState, getWorldState } from "../js/simulation
 import { createRng, reseedCareerRng } from "../js/simulation/rng.js";
 import { simulateSeason } from "../js/simulation/seasonSimulator.js";
 import { allSeniorClubs } from "../js/simulation/seniorClubs.js";
+import { processPlayerMatchDay } from "../js/simulation/playerMatchDay.js";
+import { resolveKnockout } from "../js/simulation/matchEngine.js";
+import { generateTransferOffers } from "../js/simulation/transferMarket.js";
 import {
   ensureContractAuthority,
   evaluateRenewalReview,
@@ -36,6 +40,10 @@ import {
   settleBoundaryContractReview,
   declineWindowAndContinue,
   completedSeasons,
+  markOfferStatus,
+  assertPlayableRegistration,
+  selectNextCareerAction,
+  releaseToFreeAgency,
 } from "../js/simulation/contractLifecycle.js";
 import {
   serializeCareerSnapshot,
@@ -641,12 +649,23 @@ test("E1: Hull 58 OVR seed 707 uses club opportunity denominator", () => {
   attachClub(p, "Hull City", { contractEndSeason: 2, contractYears: 2 });
   reseedCareerRng(707);
   const data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, { autoDecisionPolicy: "stay" });
-  const a = data.season.playingTimeAssessment;
+  const s = data.season;
+  const a = s.playingTimeAssessment;
   assert.ok(a, "assessment persisted");
   assert.equal(a.source, "ledger-records");
-  assert.ok(Math.abs(a.share - 511 / 3780) < 1e-9, `share ${a.share}`);
-  assert.equal(a.eligibleFixtureCount, 42);
-  assert.equal(a.clubMinutesPlayed, 511);
+  const clubRows = (s.ledgerRecords || []).filter((r) => !r.isInternational && r.teamType !== "national");
+  const avail = clubRows.filter((r) => r.available === true);
+  const minutes = clubRows.reduce((sum, r) => sum + (Number(r.minutes) || 0), 0);
+  const capacity = avail.reduce(
+    (sum, r) => sum + (Number(r.availableMinutes) || Number(r.matchDuration) || 90),
+    0
+  );
+  assert.ok(capacity > 0, "capacity from eligible fixtures");
+  assert.ok(Math.abs(a.share - minutes / capacity) < 1e-9, `share ${a.share} vs ${minutes}/${capacity}`);
+  assert.equal(a.eligibleFixtureCount, avail.length);
+  assert.equal(a.clubMinutesPlayed, minutes);
+  // Low-minute Hull path remains below the development-loan share band.
+  assert.ok(a.share < 0.22, `expected low minutes, got ${a.share}`);
 });
 
 test("E2: Atalanta 72 OVR seed 707 assessment matches independent oracle", () => {
@@ -663,4 +682,236 @@ test("E2: Atalanta 72 OVR seed 707 assessment matches independent oracle", () =>
   assert.ok(Math.abs(a.share - minutes / capacity) < 1e-9);
   assert.equal(a.eligibleFixtureCount, avail.length);
   assert.ok(a.share < 0.22);
+});
+
+/* ------------------------------------------------------------------ */
+/* F. Review follow-up regressions (R1–R6)                             */
+/* ------------------------------------------------------------------ */
+
+test("F1: pending review blocks simulateSeason without aging", () => {
+  const p = basePlayer({ ovr: 72, age: 24, id: "review07-pending-sim" });
+  attachClub(p, "Hull City", { contractEndSeason: 1, contractYears: 1 });
+  p.seasons = [{ seasonNumber: 1, minutes: 1200, matches: 20 }];
+  openBoundaryContractReview(p, { performanceScore: 85, financeOk: true });
+  const before = { age: p.age, seasons: p.seasons.length };
+  const r = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: false,
+    autoDecisionPolicy: "stay",
+  });
+  assert.equal(p.age, before.age);
+  assert.equal(p.seasons.length, before.seasons);
+  assert.equal(r.season, null);
+  assert.equal(r.pendingContractReview, true);
+  assert.equal(selectNextCareerAction(p).canSimulate, false);
+});
+
+test("F2: accepting another club settles pending review and is playable", () => {
+  const p = basePlayer({ ovr: 72, age: 24, id: "review07-pending-sign" });
+  attachClub(p, "Hull City", { contractEndSeason: 1, contractYears: 1 });
+  p.seasons = [{ seasonNumber: 1, minutes: 1200, matches: 20 }];
+  openBoundaryContractReview(p, { performanceScore: 85, financeOk: true });
+  const c = allSeniorClubs().find((x) => x.name === "Rudeš");
+  const built = buildValidatedOffer({
+    player: p,
+    club: c,
+    dealType: "free_agent",
+    performanceScore: 85,
+    rng: createRng(708),
+  });
+  assert.equal(built.ok, true);
+  const r = acceptPipelineOffer(p, built.offer);
+  assert.equal(r.ok, true);
+  assert.equal(p.club?.clubId, c.clubId);
+  assert.notEqual(p.pendingContractReview?.status, "pending");
+  assert.equal(assertPlayableRegistration(p).ok, true);
+});
+
+test("F3: released-employer renewal is rejected without booking", () => {
+  const p = basePlayer({ ovr: 72, age: 36, id: "review07-stale-renewal" });
+  attachClub(p, "Hull City", { contractEndSeason: 1, contractYears: 1 });
+  const g = generatePipelineOffers(p, { performanceScore: 85, forceGenerate: true, rng: createRng(707) });
+  const offer = g.offers.find((o) => o.isRenewal);
+  assert.ok(offer);
+  releaseToFreeAgency(p, "contract-expired");
+  const r = acceptPipelineOffer(p, offer);
+  assert.equal(r.ok, false);
+  assert.equal(p.contractStatus, "released");
+  assert.equal(p.employmentClubId, null);
+});
+
+test("F4: declined same-window renewal stays closed on regenerate", () => {
+  const p = basePlayer({ ovr: 72, age: 36, id: "review07-declined-renewal" });
+  attachClub(p, "Hull City", { contractEndSeason: 1, contractYears: 1 });
+  const g = generatePipelineOffers(p, { performanceScore: 85, forceGenerate: true, rng: createRng(707) });
+  const offer = g.offers.find((o) => o.isRenewal);
+  assert.ok(offer);
+  markOfferStatus(p, offer, "declined");
+  const again = generatePipelineOffers(p, {
+    performanceScore: 85,
+    forceGenerate: true,
+    rng: createRng(707),
+  }).offers.find((o) => o.isRenewal);
+  assert.equal(p.offerJournal[offer.offerId].status, "declined");
+  if (again) {
+    const r = acceptPipelineOffer(p, again);
+    assert.equal(r.ok, false);
+  }
+  assert.equal(p.contractEndSeason, 1);
+});
+
+test("F5: new club decision does not consume prior club minutes", () => {
+  const p = basePlayer({ ovr: 72, age: 20, id: "review07-newclub" });
+  attachClub(p, "Atalanta", { contractEndSeason: 3, contractYears: 3 });
+  const old = allSeniorClubs().find((c) => c.name === "Hull City");
+  p.seasons = [
+    {
+      seasonId: "previous",
+      playingClubId: old.clubId,
+      clubId: old.clubId,
+      ledgerRecords: Array.from({ length: 38 }, (_, i) => ({
+        matchId: `old-${i}`,
+        teamId: old.clubId,
+        teamType: "club",
+        date: "2026-09-01",
+        competitionType: "league",
+        available: true,
+        minutes: i < 10 ? 60 : 0,
+        availableMinutes: 90,
+      })),
+    },
+  ];
+  const d = evaluateSquadDecision(p, { checkpoint: "pre-season", seasonIndex: 1 });
+  if (d) {
+    assert.equal(d.playingTimeAssessment?.representedClubId, p.club.clubId);
+    assert.notEqual(d.playingTimeAssessment?.representedClubId, old.clubId);
+  }
+});
+
+test("F6: unproven old ledger and mixed minutes stay non-punitive", () => {
+  const stale = clubMinutesShare(
+    {
+      seasons: [{ seasonNumber: 2, matches: 10, minutes: 600, standing: { matches: 38 } }],
+      seasonLedger: {
+        seasonId: "2025-26",
+        eligibleClubMatches: 5,
+        availableClubMinutes: 450,
+        clubMinutesPlayed: 450,
+      },
+    },
+    { persistAssessment: false }
+  );
+  assert.notEqual(stale.assessment?.source, "participation-ledger");
+
+  const mixed = clubMinutesShare(
+    {
+      seasons: [
+        {
+          matches: 15,
+          minutes: 1050,
+          clubMinutes: 600,
+          standing: { matches: 38 },
+          ledgerSummary: { club: { minutes: 600 }, international: { minutes: 450 } },
+        },
+      ],
+    },
+    { persistAssessment: false }
+  );
+  assert.ok(Math.abs(mixed.share - 600 / 3420) < 1e-12);
+});
+
+test("F7: closing FA review does not reroll same scheduled window", () => {
+  const p = basePlayer({ ovr: 66, age: 23, id: "bug07-search-0" });
+  const a = generatePipelineOffers(p, { performanceScore: 55 });
+  closeFreeAgentMarketReview(p, {
+    ...a,
+    interestGateDeclined: a.diagnostics.interestGateResult === "declined",
+  });
+  const b = generatePipelineOffers(p, { performanceScore: 55 });
+  assert.equal(a.reviewId, b.reviewId);
+  assert.equal(a.offers.length, b.offers.length);
+  assert.equal(b.frozen, true);
+});
+
+test("F8: production ET substitute uses 120 capacity", () => {
+  const league = LEAGUE_BY_ID.get("league:england-premier-league");
+  const home = league.clubs.find((c) => c.name === "Arsenal");
+  const away = league.clubs.find((c) => c.name === "Brentford");
+  const noInjury = { ...createRng(44), random: () => 0.99, chance: () => false };
+  let observed = null;
+  for (let seed = 1; seed <= 60; seed++) {
+    const p = basePlayer({ ovr: 85, age: 22, id: "review07-et" });
+    attachClub(p, "Arsenal", { contractEndSeason: 3, contractYears: 3 });
+    const sel = { ...createRng(43), random: () => 0.6, chance: () => true, int: () => 20 };
+    const r = processPlayerMatchDay({
+      home,
+      away,
+      player: p,
+      playerSide: "home",
+      date: "2026-09-01",
+      competition: "domesticCup",
+      competitionType: "domesticCup",
+      competitionId: "cup:review",
+      editionId: "2026",
+      fixtureId: `et-${seed}`,
+      teamType: "club",
+      rng: createRng(seed),
+      selRng: sel,
+      injuryRng: noInjury,
+      resolveKnockout,
+    });
+    if (["extraTime", "penalties"].includes(r.match.decidedBy) && r.ledgerRecord?.minutes === 20) {
+      const a = assessClubPlayingTime(p, { ledgerRecords: [r.ledgerRecord] });
+      observed = { decidedBy: r.match.decidedBy, capacity: a.opportunityCapacity, share: a.share };
+      break;
+    }
+  }
+  assert.ok(observed, "expected ET substitute in seeds 1..60");
+  assert.equal(observed.capacity, 120);
+  assert.ok(Math.abs(observed.share - 20 / 120) < 1e-12);
+});
+
+test("F9: post-season facade preserves pending boundary phase", async () => {
+  const { applySeniorScenarioPolicy } = await import("../js/simulation/seniorCareerScenarios.js");
+  const p = basePlayer({ ovr: 86, age: 24, id: "review07-ui-86" });
+  attachClub(p, "Hull City", { contractEndSeason: 1, contractYears: 1 });
+  reseedCareerRng(707);
+  let data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: true,
+    autoDecisionPolicy: null,
+  });
+  let guard = 0;
+  while (data.awaitingScenario || data.awaitingDecision) {
+    assert.ok(++guard < 60, "pause guard");
+    if (data.awaitingScenario) {
+      const pending = p.pendingSeniorScenario || data.pendingSeniorScenario;
+      applySeniorScenarioPolicy(p, pending, "balanced");
+      p.pendingSeniorScenario = null;
+    }
+    if (data.awaitingDecision) {
+      const d = p.pendingDecision || data.decision;
+      const choices = d.allowedChoices || d.choices.map((c) => c.id);
+      const pick =
+        ["stay-compete", "see-out", "acknowledge", "remain"].find((c) => choices.includes(c)) ||
+        choices[0];
+      const result = resolveSquadDecision(p, d, pick);
+      assert.equal(result.ok, true);
+    }
+    data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
+      pauseForDecisions: true,
+      autoDecisionPolicy: null,
+      checkpoint: data.checkpoint,
+    });
+  }
+  assert.equal(p.pendingContractReview?.status, "pending");
+  assert.equal(p.renewalReview?.reviewPhase, "boundary");
+  assert.equal(p.renewalReview?.outcome, "wants-renewal");
+  generateTransferOffers(
+    data.performanceScore,
+    p,
+    LEAGUES,
+    LEAGUE_LOOKUP,
+    data.season?.avgMatchRating ?? null
+  );
+  assert.equal(p.renewalReview?.reviewPhase, "boundary");
+  assert.equal(p.renewalReview?.outcome, "wants-renewal");
 });

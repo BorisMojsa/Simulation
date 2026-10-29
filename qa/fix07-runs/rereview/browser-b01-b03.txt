@@ -1,0 +1,34 @@
+
+CASE: B01
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B01-review.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B01-desk.png
+  PASS B01
+
+CASE: B02
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B02-offer.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B02-desk.png
+  PASS B02
+
+CASE: B03
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B03-start.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B03-desk.png
+  PASS B03
+
+Wrote /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/fix07-runs/browser-report.json
+{
+  "pass": true,
+  "results": [
+    [
+      "B01",
+      "PASS"
+    ],
+    [
+      "B02",
+      "PASS"
+    ],
+    [
+      "B03",
+      "PASS"
+    ]
+  ]
+}

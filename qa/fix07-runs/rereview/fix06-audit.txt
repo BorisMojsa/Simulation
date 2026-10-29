@@ -1,0 +1,43 @@
+Fix 06 injury/development exposure audit
+  ordinary: 24 season records / 8 careers (positions CB/CM/GK/ST, leagues 4) -> PASS
+  dedicated: 5 cases {"dedicated:pause-restore":2,"dedicated:move":2,"dedicated:summer-international":1} -> PASS
+  nonzero-missed ordinary records: 21, floor applied: 0
+  invariant 1 period validity / adjacency / no no-window fallback: ok
+  invariant 2 old/future injuries contribute zero: ok
+  invariant 3 missed days == independent interval union: ok
+  invariant 4 raw/applied fractions + 0.15 floor: ok
+  invariant 5 evidence == development input == persisted breakdown: ok
+  invariant 6 snapshot/resume + exact-once development: ok
+  invariant 7 finite attributes / valid registration: ok
+  invariant 0 harness/coverage: ok
+  ok   C01-ST-seed2-p1  oracle=0 prod=0 raw=1.0000 applied=1.0000 method=dated-overlap
+  ok   C01-ST-seed2-p2  oracle=5 prod=5 raw=0.9863 applied=0.9863 method=dated-overlap
+  ok   C01-ST-seed2-p3  oracle=10 prod=10 raw=0.9726 applied=0.9726 method=dated-overlap
+  ok   C02-GK-seed3-p1  oracle=0 prod=0 raw=1.0000 applied=1.0000 method=dated-overlap
+  ok   C02-GK-seed3-p2  oracle=12 prod=12 raw=0.9672 applied=0.9672 method=dated-overlap
+  ok   C02-GK-seed3-p3  oracle=44 prod=44 raw=0.8795 applied=0.8795 method=dated-overlap
+  ok   C03-CM-seed11-p1  oracle=24 prod=24 raw=0.9342 applied=0.9342 method=dated-overlap
+  ok   C03-CM-seed11-p2  oracle=30 prod=30 raw=0.9180 applied=0.9180 method=dated-overlap
+  ok   C03-CM-seed11-p3  oracle=104 prod=104 raw=0.7151 applied=0.7151 method=dated-overlap
+  ok   C04-CB-seed12-p1  oracle=52 prod=52 raw=0.8575 applied=0.8575 method=dated-overlap
+  ok   C04-CB-seed12-p2  oracle=20 prod=20 raw=0.9454 applied=0.9454 method=dated-overlap
+  ok   C04-CB-seed12-p3  oracle=13 prod=13 raw=0.9644 applied=0.9644 method=dated-overlap
+  ok   C05-ST-seed21-p1  oracle=60 prod=60 raw=0.8356 applied=0.8356 method=dated-overlap
+  ok   C05-ST-seed21-p2  oracle=24 prod=24 raw=0.9344 applied=0.9344 method=dated-overlap
+  ok   C05-ST-seed21-p3  oracle=67 prod=67 raw=0.8164 applied=0.8164 method=dated-overlap
+  ok   C06-CM-seed22-p1  oracle=32 prod=32 raw=0.9123 applied=0.9123 method=dated-overlap
+  ok   C06-CM-seed22-p2  oracle=12 prod=12 raw=0.9672 applied=0.9672 method=dated-overlap
+  ok   C06-CM-seed22-p3  oracle=13 prod=13 raw=0.9644 applied=0.9644 method=dated-overlap
+  ok   C07-CB-seed23-p1  oracle=54 prod=54 raw=0.8521 applied=0.8521 method=dated-overlap
+  ok   C07-CB-seed23-p2  oracle=20 prod=20 raw=0.9454 applied=0.9454 method=dated-overlap
+  ok   C07-CB-seed23-p3  oracle=57 prod=57 raw=0.8438 applied=0.8438 method=dated-overlap
+  ok   C08-GK-seed24-p1  oracle=17 prod=17 raw=0.9534 applied=0.9534 method=dated-overlap
+  ok   C08-GK-seed24-p2  oracle=18 prod=18 raw=0.9508 applied=0.9508 method=dated-overlap
+  ok   C08-GK-seed24-p3  oracle=0 prod=0 raw=1.0000 applied=1.0000 method=dated-overlap
+  ok   D-PR1-pause-restore-ST-seed640  oracle=0 prod=0 raw=1.0000 applied=1.0000 method=dated-overlap
+  ok   D-PR2-pause-restore-CM-seed641  oracle=63 prod=63 raw=0.8274 applied=0.8274 method=dated-overlap
+  ok   D-MV1-move-ST-seed660  oracle=44 prod=44 raw=0.8795 applied=0.8795 method=dated-overlap
+  ok   D-MV2-move-CB-seed661  oracle=15 prod=15 raw=0.9589 applied=0.9589 method=dated-overlap
+  ok   D-SI1-summer-international-ST-seed670  oracle=24 prod=24 raw=0.9342 applied=0.9342 method=dated-overlap
+
+PASS: all invariants hold. Wrote qa/fix06-runs/audit/summary.json and 29 case files.

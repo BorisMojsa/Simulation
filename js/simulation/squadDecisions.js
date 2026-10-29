@@ -72,7 +72,15 @@ export function evaluateSquadDecision(player, opts = {}) {
 
   const seasonIndex = opts.seasonIndex ?? player.seasons?.length ?? 0;
   const age = Number(player.age) || 20;
-  const minutes = clubMinutesShare(player, { ...opts, persistAssessment: true });
+  // Live squad decisions evaluate the current playing club — never a prior club's sample.
+  const currentClubId = player.playingClubId || player.club?.clubId || null;
+  const minutes = clubMinutesShare(player, {
+    ...opts,
+    persistAssessment: true,
+    clubId: opts.clubId || currentClubId,
+    representedClubId: opts.representedClubId || opts.clubId || currentClubId,
+    playingClubId: opts.playingClubId || opts.clubId || currentClubId,
+  });
   const injuredNow = player.health?.activeInjury && !isAvailable(player.health, opts.date);
 
   // Injury recovery — do not treat as failure to compete.

@@ -1,0 +1,361 @@
+TAP version 13
+# Subtest: undefined review does not produce definitive non-renewal notice
+ok 1 - undefined review does not produce definitive non-renewal notice
+  ---
+  duration_ms: 5.369833
+  type: 'test'
+  ...
+# Subtest: will-renew fixture: renewal exists for employer; no contradictory notice
+ok 2 - will-renew fixture: renewal exists for employer; no contradictory notice
+  ---
+  duration_ms: 4.3475
+  type: 'test'
+  ...
+# Subtest: will-not-renew fixture: non-renewal reason exists; no same-review renewal
+ok 3 - will-not-renew fixture: non-renewal reason exists; no same-review renewal
+  ---
+  duration_ms: 2.832458
+  type: 'test'
+  ...
+# Subtest: temporary finance rejection does not become firm non-renewal
+ok 4 - temporary finance rejection does not become firm non-renewal
+  ---
+  duration_ms: 0.560375
+  type: 'test'
+  ...
+# Subtest: audit reproduction: no renewal+non-renewal contradiction; expiry releases
+ok 5 - audit reproduction: no renewal+non-renewal contradiction; expiry releases
+  ---
+  duration_ms: 186.561375
+  type: 'test'
+  ...
+# Subtest: invalid decision choice does not mutate
+ok 6 - invalid decision choice does not mutate
+  ---
+  duration_ms: 0.624208
+  type: 'test'
+  ...
+# Subtest: cloned/replayed offer cannot extend twice or restore old employer
+ok 7 - cloned/replayed offer cannot extend twice or restore old employer
+  ---
+  duration_ms: 2.108
+  type: 'test'
+  ...
+# Subtest: stale employer renewal cannot switch transferred player back
+ok 8 - stale employer renewal cannot switch transferred player back
+  ---
+  duration_ms: 0.473916
+  type: 'test'
+  ...
+# Subtest: free agent / no offers: no crash, no old wage, useful next action
+ok 9 - free agent / no offers: no crash, no old wage, useful next action
+  ---
+  duration_ms: 0.737834
+  type: 'test'
+  ...
+# Subtest: league fixtures: no club/date double-booking
+ok 10 - league fixtures: no club/date double-booking
+  ---
+  duration_ms: 0.894334
+  type: 'test'
+  ...
+# Subtest: duplicate loan acceptance is rejected without mutating slots twice
+ok 11 - duplicate loan acceptance is rejected without mutating slots twice
+  ---
+  duration_ms: 0.654333
+  type: 'test'
+  ...
+# Subtest: unaffordable purchase stress case leaves loan intact
+ok 12 - unaffordable purchase stress case leaves loan intact
+  ---
+  duration_ms: 1.195
+  type: 'test'
+  ...
+# Subtest: lifecycle version exported
+ok 13 - lifecycle version exported
+  ---
+  duration_ms: 0.034875
+  type: 'test'
+  ...
+# OK  normalizeParticipationMinutes: explicit zero, omitted, invalid
+# OK  explicit zero minutes: no user goal/assist/card events or rating (100 seeds)
+# OK  omitted minutes still default to match duration for player fixtures
+# OK  zero-minute knockout remains unrated with no user events
+# OK  positive starter still produces user contributions under existing rates
+# OK  GK never receives outfield goal attribution
+# OK  knockout final events equal playerStats (1000 seeds, ET/pens exercised)
+# OK  witness seeds 6/169/462: events agree with stats after KO
+# OK  two-leg tie: second leg carries finalized KO stats; first leg regulation-only
+# OK  finalizePlayerMatchStats is idempotent with shared RNG stream
+# OK  substitute window: no user goals/assists/cards before entry (seed 6 witness)
+# OK  starter leaving early: no user events after exit window
+# OK  regulation simulateMatch caps overlong minutes at matchDuration
+# OK  byEdition keys by competitionId::editionId; trophy scoped to winning club
+# OK  ledger: null rating stays unrated; cleanSheet preserved; structured zero-minute
+# OK  ledger known-false clean sheet distinct from unknown
+# OK  pre-kickoff training injury zeros selected minutes
+# OK  accepted cross-league loan keeps distinct competition edition buckets
+# OK  awards use current league edition key; cross-league goals do not inflate Golden Boot
+# OK  direct penalties re-rate from final outcome; unchanged finalize is RNG no-op
+# OK  deferred continental second-leg ET syncs duration metadata and injury exposure
+# OK  match-day ET syncs participation and fatigue to final 120 minutes
+# OK  controlled pre-kickoff injury via applyInjury before simulate path
+# matchParticipationEvidence tests complete
+# Subtest: tests/matchParticipationEvidence.test.mjs
+ok 2 - tests/matchParticipationEvidence.test.mjs
+  ---
+  duration_ms: 286.630042
+  type: 'test'
+  ...
+# Subtest: A1: 38×90 capacity with 900 played → ~0.263; above 0.22
+ok 15 - A1: 38×90 capacity with 900 played → ~0.263; above 0.22
+  ---
+  duration_ms: 0.751709
+  type: 'test'
+  ...
+# Subtest: A2: 600/3420 below lowMinutesShare
+ok 16 - A2: 600/3420 below lowMinutesShare
+  ---
+  duration_ms: 0.11375
+  type: 'test'
+  ...
+# Subtest: A3: 28 healthy bench + 10 full appearances = 38 opportunities
+ok 17 - A3: 28 healthy bench + 10 full appearances = 38 opportunities
+  ---
+  duration_ms: 0.334
+  type: 'test'
+  ...
+# Subtest: A4: unavailable fixtures excluded; 10 full → share 1
+ok 18 - A4: unavailable fixtures excluded; 10 full → share 1
+  ---
+  duration_ms: 0.234833
+  type: 'test'
+  ...
+# Subtest: A5: explicit zero minutes preserved
+ok 19 - A5: explicit zero minutes preserved
+  ---
+  duration_ms: 0.083833
+  type: 'test'
+  ...
+# Subtest: A6: no eligible fixtures → not usable for punitive low-minutes
+ok 20 - A6: no eligible fixtures → not usable for punitive low-minutes
+  ---
+  duration_ms: 0.048125
+  type: 'test'
+  ...
+# Subtest: A7: national fixtures excluded from club assessment
+ok 21 - A7: national fixtures excluded from club assessment
+  ---
+  duration_ms: 0.106
+  type: 'test'
+  ...
+# Subtest: A8: competition slices league+cup+continental
+ok 22 - A8: competition slices league+cup+continental
+  ---
+  duration_ms: 0.108958
+  type: 'test'
+  ...
+# Subtest: A9: 120-minute cup with 20 played → 20/120
+ok 23 - A9: 120-minute cup with 20 played → 20/120
+  ---
+  duration_ms: 0.210833
+  type: 'test'
+  ...
+# Subtest: A10: duplicate fixture counts once
+ok 24 - A10: duplicate fixture counts once
+  ---
+  duration_ms: 0.235416
+  type: 'test'
+  ...
+# Subtest: A11: old seasonLedger does not substitute current period
+ok 25 - A11: old seasonLedger does not substitute current period
+  ---
+  duration_ms: 0.116917
+  type: 'test'
+  ...
+# Subtest: A12: explicit ledger zero beats stale season minutes
+ok 26 - A12: explicit ledger zero beats stale season minutes
+  ---
+  duration_ms: 0.042459
+  type: 'test'
+  ...
+# Subtest: B1: healthy young cover with 600/3420 reaches development-loan
+ok 27 - B1: healthy young cover with 600/3420 reaches development-loan
+  ---
+  duration_ms: 10.062209
+  type: 'test'
+  ...
+# Subtest: B2: 900/3420 control does not require low-minute development discussion
+ok 28 - B2: 900/3420 control does not require low-minute development discussion
+  ---
+  duration_ms: 2.107
+  type: 'test'
+  ...
+# Subtest: B3: development loan recommendations use configured 0.5 / 0.2 gates
+ok 29 - B3: development loan recommendations use configured 0.5 / 0.2 gates
+  ---
+  duration_ms: 8.933
+  type: 'test'
+  ...
+# Subtest: B4: stay/decline preserves contract
+ok 30 - B4: stay/decline preserves contract
+  ---
+  duration_ms: 0.798708
+  type: 'test'
+  ...
+# Subtest: C1: one-year renewal extends end 1 → 2 (age 36)
+ok 31 - C1: one-year renewal extends end 1 → 2 (age 36)
+  ---
+  duration_ms: 4.041166
+  type: 'test'
+  ...
+# Subtest: C2: younger one-year extension also adds coverage
+ok 32 - C2: younger one-year extension also adds coverage
+  ---
+  duration_ms: 2.617458
+  type: 'test'
+  ...
+# Subtest: C3: early firm review latches; boundary phase can reevaluate
+ok 33 - C3: early firm review latches; boundary phase can reevaluate
+  ---
+  duration_ms: 0.564875
+  type: 'test'
+  ...
+# Subtest: C4: boundary review defers expiry until settlement
+ok 34 - C4: boundary review defers expiry until settlement
+  ---
+  duration_ms: 0.589417
+  type: 'test'
+  ...
+# Subtest: C5: simulateSeason stay path releases after final year without soft-lock
+ok 35 - C5: simulateSeason stay path releases after final year without soft-lock
+  ---
+  duration_ms: 94.8275
+  type: 'test'
+  ...
+# Subtest: D1: interest-gate empty is distinct from no eligible clubs
+ok 36 - D1: interest-gate empty is distinct from no eligible clubs
+  ---
+  duration_ms: 0.550166
+  type: 'test'
+  ...
+# Subtest: D2: after one empty closed review, recovery finds validated offers
+ok 37 - D2: after one empty closed review, recovery finds validated offers
+  ---
+  duration_ms: 1.959542
+  type: 'test'
+  ...
+# Subtest: D3: frozen review does not reroll
+ok 38 - D3: frozen review does not reroll
+  ---
+  duration_ms: 4.261625
+  type: 'test'
+  ...
+# Subtest: D4: declining a valid offer breaks consecutive-empty streak
+ok 39 - D4: declining a valid offer breaks consecutive-empty streak
+  ---
+  duration_ms: 1.332375
+  type: 'test'
+  ...
+# Subtest: D5: snapshot round-trip preserves free-agent spell counters
+ok 40 - D5: snapshot round-trip preserves free-agent spell counters
+  ---
+  duration_ms: 8.572584
+  type: 'test'
+  ...
+# Subtest: E1: Hull 58 OVR seed 707 uses club opportunity denominator
+ok 41 - E1: Hull 58 OVR seed 707 uses club opportunity denominator
+  ---
+  duration_ms: 53.507
+  type: 'test'
+  ...
+# Subtest: E2: Atalanta 72 OVR seed 707 assessment matches independent oracle
+ok 42 - E2: Atalanta 72 OVR seed 707 assessment matches independent oracle
+  ---
+  duration_ms: 89.288333
+  type: 'test'
+  ...
+# Subtest: F1: pending review blocks simulateSeason without aging
+ok 43 - F1: pending review blocks simulateSeason without aging
+  ---
+  duration_ms: 0.481541
+  type: 'test'
+  ...
+# Subtest: F2: accepting another club settles pending review and is playable
+ok 44 - F2: accepting another club settles pending review and is playable
+  ---
+  duration_ms: 1.254792
+  type: 'test'
+  ...
+# Subtest: F3: released-employer renewal is rejected without booking
+ok 45 - F3: released-employer renewal is rejected without booking
+  ---
+  duration_ms: 1.403708
+  type: 'test'
+  ...
+# Subtest: F4: declined same-window renewal stays closed on regenerate
+ok 46 - F4: declined same-window renewal stays closed on regenerate
+  ---
+  duration_ms: 3.60675
+  type: 'test'
+  ...
+# Subtest: F5: new club decision does not consume prior club minutes
+ok 47 - F5: new club decision does not consume prior club minutes
+  ---
+  duration_ms: 0.488291
+  type: 'test'
+  ...
+# Subtest: F6: unproven old ledger and mixed minutes stay non-punitive
+ok 48 - F6: unproven old ledger and mixed minutes stay non-punitive
+  ---
+  duration_ms: 0.088916
+  type: 'test'
+  ...
+# Subtest: F7: closing FA review does not reroll same scheduled window
+ok 49 - F7: closing FA review does not reroll same scheduled window
+  ---
+  duration_ms: 0.351125
+  type: 'test'
+  ...
+# Subtest: F8: production ET substitute uses 120 capacity
+ok 50 - F8: production ET substitute uses 120 capacity
+  ---
+  duration_ms: 1.300584
+  type: 'test'
+  ...
+# Subtest: F9: post-season facade preserves pending boundary phase
+ok 51 - F9: post-season facade preserves pending boundary phase
+  ---
+  duration_ms: 51.720291
+  type: 'test'
+  ...
+# OK  every club has exactly one finance profile; no elite fallback for missing
+# OK  Serie B ordinary single-deal band rejects 100m and 8m vs 3m max
+# OK  generation does not spend; acceptance books once; duplicate blocked
+# OK  ordinary 55-60 OVR weak club: no elite SENIOR offers across seeds
+# OK  small fees below 500k possible; free agent fee 0
+# OK  under-18 contracts max 3 years
+# OK  first pro path retains wage and uses pipeline
+# OK  loan wage shares sum to 100%; decline keeps contract
+# OK  loan start/end return registration once
+# OK  international loan youth exemption needs age AND club-trained
+# OK  save migration is idempotent and preserves contract
+# OK  ledger survives export/import (reload)
+# OK  Ecuador/Czechia/Croatia/Serbia not excluded by tier floor
+# OK  finance profile version stamped
+# All transfer/loan pipeline tests passed.
+# Subtest: tests/transferLoanPipeline.test.mjs
+ok 4 - tests/transferLoanPipeline.test.mjs
+  ---
+  duration_ms: 390.687375
+  type: 'test'
+  ...
+1..52
+# tests 52
+# suites 0
+# pass 52
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 453.778042

@@ -1,0 +1,70 @@
+Fix 07 playing-time / contract / free-agent recovery audit
+  ordinary: 48 records / 12 careers (club 41, FA 7; positions CB/CM/GK/ST, leagues 14, nationalities 5, setups fit/low/reduced) -> PASS
+  policies: accept-suitable-free-agent-offer, beneficial-loan-first, renewal-first, stay; renewals 2, releases 7, FA signings 3, loans 12
+  dedicated: 8 cases {"dedicated:stay-opportunity":2,"dedicated:one-year-renewal":1,"dedicated:fa-recovery":1,"dedicated:fa-exhausted-control":1,"dedicated:pause-restore":1,"dedicated:cross-league-loan":2} -> PASS
+  invariant 1 opportunity arithmetic == independent ledger oracle: ok
+  invariant 2 clubMinutesShare / participationLedger / decisions agree: ok
+  invariant 3 international / other-club / unavailable / duplicate exclusions: ok
+  invariant 4 contract continuity (renewal, expiry, loan, stay): ok
+  invariant 5 free-agent spell counters and recovery: ok
+  invariant 6 snapshot / pause-restore: ok
+  invariant 7 finite numbers / registration: ok
+  invariant 0 harness / coverage: ok
+  ok   C01-ST-seed707-p1  [club-season/stay] oracle=0.1655 prod=0.1655 elig=39
+  ok   C01-ST-seed707-p2  [club-season/stay] oracle=0.1454 prod=0.1454 elig=47
+  ok   C01-ST-seed707-p3  [club-season/stay] oracle=0.1049 prod=0.1049 elig=40
+  ok   C01-ST-seed707-p4  [club-season/stay] oracle=0.0913 prod=0.0913 elig=47
+  ok   C02-CM-seed708-p1  [club-season/stay] oracle=0.1450 prod=0.1450 elig=55
+  ok   C02-CM-seed708-p2  [club-season/stay] oracle=0.1638 prod=0.1638 elig=50
+  ok   C02-CM-seed708-p3  [club-season/stay] oracle=0.1795 prod=0.1795 elig=39
+  ok   C02-CM-seed708-p4  [club-season/stay] oracle=0.1823 prod=0.1823 elig=39
+  ok   C03-CB-seed709-p1  [club-season/beneficial-loan-first] oracle=0.2873 prod=0.2873 elig=7
+  ok   C03-CB-seed709-p2  [club-season/beneficial-loan-first] oracle=0.5679 prod=0.5679 elig=9
+  ok   C03-CB-seed709-p3  [club-season/beneficial-loan-first] oracle=0.6778 prod=0.6778 elig=13
+  ok   C03-CB-seed709-p4  [club-season/beneficial-loan-first] oracle=0.3920 prod=0.3920 elig=18
+  ok   C04-GK-seed710-p1  [club-season/beneficial-loan-first] oracle=0.5385 prod=0.5385 elig=13
+  ok   C04-GK-seed710-p2  [club-season/beneficial-loan-first] oracle=0.4519 prod=0.4519 elig=36
+  ok   C04-GK-seed710-p3  [club-season/beneficial-loan-first] oracle=0.6347 prod=0.6347 elig=16
+  ok   C04-GK-seed710-p4  [club-season/beneficial-loan-first] oracle=0.5906 prod=0.5906 elig=19
+  ok   C05-ST-seed711-p1  [club-season/renewal-first] oracle=0.3297 prod=0.3297 elig=49
+  ok   C05-ST-seed711-p2  [club-season/renewal-first] oracle=0.3058 prod=0.3058 elig=38
+  ok   C05-ST-seed711-p3  [club-season/renewal-first] oracle=0.3987 prod=0.3987 elig=53
+  ok   C05-ST-seed711-p4  [club-season/renewal-first] oracle=0.3789 prod=0.3789 elig=46
+  ok   C06-CM-seed712-p1  [club-season/renewal-first] oracle=0.7108 prod=0.7108 elig=37
+  ok   C06-CM-seed712-p2  [free-agent-period/renewal-first] oracle=- prod=- elig=-
+  ok   C06-CM-seed712-p3  [free-agent-period/renewal-first] oracle=- prod=- elig=-
+  ok   C06-CM-seed712-p4  [free-agent-period/renewal-first] oracle=- prod=- elig=-
+  ok   C07-CB-seed713-p1  [club-season/accept-suitable-free-agent-offer] oracle=0.0906 prod=0.0906 elig=47
+  ok   C07-CB-seed713-p2  [club-season/accept-suitable-free-agent-offer] oracle=0.5056 prod=0.5056 elig=24
+  ok   C07-CB-seed713-p3  [club-season/accept-suitable-free-agent-offer] oracle=0.2889 prod=0.2889 elig=21
+  ok   C07-CB-seed713-p4  [club-season/accept-suitable-free-agent-offer] oracle=0.3619 prod=0.3619 elig=23
+  ok   C08-GK-seed714-p1  [club-season/accept-suitable-free-agent-offer] oracle=0.1285 prod=0.1285 elig=44
+  ok   C08-GK-seed714-p2  [club-season/accept-suitable-free-agent-offer] oracle=0.4933 prod=0.4933 elig=33
+  ok   C08-GK-seed714-p3  [club-season/accept-suitable-free-agent-offer] oracle=0.3673 prod=0.3673 elig=36
+  ok   C08-GK-seed714-p4  [club-season/accept-suitable-free-agent-offer] oracle=0.3321 prod=0.3321 elig=35
+  ok   C09-ST-seed715-p1  [club-season/stay] oracle=0.0838 prod=0.0838 elig=56
+  ok   C09-ST-seed715-p2  [club-season/stay] oracle=0.1247 prod=0.1247 elig=41
+  ok   C09-ST-seed715-p3  [club-season/stay] oracle=0.0900 prod=0.0900 elig=53
+  ok   C09-ST-seed715-p4  [club-season/stay] oracle=0.1570 prod=0.1570 elig=48
+  ok   C10-CM-seed716-p1  [club-season/beneficial-loan-first] oracle=0.6017 prod=0.6017 elig=13
+  ok   C10-CM-seed716-p2  [club-season/beneficial-loan-first] oracle=0.2865 prod=0.2865 elig=32
+  ok   C10-CM-seed716-p3  [club-season/beneficial-loan-first] oracle=0.6278 prod=0.6278 elig=6
+  ok   C10-CM-seed716-p4  [club-season/beneficial-loan-first] oracle=0.3299 prod=0.3299 elig=16
+  ok   C11-CB-seed717-p1  [club-season/renewal-first] oracle=0.6585 prod=0.6585 elig=30
+  ok   C11-CB-seed717-p2  [free-agent-period/renewal-first] oracle=- prod=- elig=-
+  ok   C11-CB-seed717-p3  [free-agent-period/renewal-first] oracle=- prod=- elig=-
+  ok   C11-CB-seed717-p4  [free-agent-period/renewal-first] oracle=- prod=- elig=-
+  ok   C12-GK-seed718-p1  [club-season/accept-suitable-free-agent-offer] oracle=0.1231 prod=0.1231 elig=57
+  ok   C12-GK-seed718-p2  [free-agent-period/accept-suitable-free-agent-offer] oracle=- prod=- elig=-
+  ok   C12-GK-seed718-p3  [club-season/accept-suitable-free-agent-offer] oracle=0.6864 prod=0.6864 elig=31
+  ok   C12-GK-seed718-p4  [club-season/accept-suitable-free-agent-offer] oracle=0.6688 prod=0.6688 elig=31
+  ok   D-S1-stay-opportunity-Hull City-ovr58-seed707  [club-season/stay] oracle=0.1341 prod=0.1341 elig=42
+  ok   D-S2-stay-opportunity-Atalanta-ovr72-seed707  [club-season/stay] oracle=0.1424 prod=0.1424 elig=44
+  ok   D-renewal-one-year-age36-seed707  [club-season/renewal-first] oracle=0.3458 prod=0.3458 elig=33
+  ok   D-fa-recovery-after-empty-bug07-search-0  [club-season/accept-suitable-free-agent-offer] oracle=0.5255 prod=0.5255 elig=31
+  ok   D-fa-exhausted-control  [free-agent-period/wait] oracle=- prod=- elig=-
+  ok   D-pause-restore-hull58-seed707  [club-season/pause→snapshot→restore→stay] oracle=0.1146 prod=0.1146 elig=32
+  ok   D-cross-league-loan-hull58-seed707  [club-season/accept-first-loan] oracle=0.3833 prod=0.3833 elig=12
+  ok   D-cross-league-loan-hull58-seed707-after-return  [club-season/stay] oracle=0.0879 prod=0.0879 elig=39
+
+PASS: all invariants hold. Wrote qa/fix07-runs/audit/summary.json and 56 case files under qa/fix07-runs/audit/cases.

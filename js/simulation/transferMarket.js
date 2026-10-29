@@ -58,10 +58,19 @@ export function generateTransferOffers(
     else if (avgMatchRating < 6.3) perf -= 10;
   }
 
+  const pendingBoundary =
+    player.pendingContractReview?.status === "pending" &&
+    (player.pendingContractReview?.reviewPhase === "boundary" ||
+      player.renewalReview?.reviewPhase === "boundary");
+
+  // Post-season facade must reuse the completed-evidence boundary review — never
+  // open an unrelated default in-season phase that overwrites firm boundary state.
   const result = generatePipelineOffers(player, {
     performanceScore: perf,
     leagues,
     forceGenerate: false,
+    reviewPhase: pendingBoundary ? "boundary" : "in-season",
+    forceReevaluate: false,
   });
 
   // Ensure ledgers exist for involved clubs (lazy init; no spend on generation).

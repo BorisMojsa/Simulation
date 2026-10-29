@@ -1,0 +1,1219 @@
+TAP version 13
+# OK  roundAbilityForDisplay nearest whole number
+# OK  display change reconciles rounded endpoints
+# OK  screenshot attribute cards
+# OK  rawAbilityEndpoints reconstructs before from change
+# abilityFormatting tests done
+# Subtest: tests/abilityFormatting.test.mjs
+ok 1 - tests/abilityFormatting.test.mjs
+  ---
+  duration_ms: 31.94475
+  type: 'test'
+  ...
+# ok - Healthy Aston Villa Academy continuation — no senior fixtures
+# ok - Second-division parent separation (Championship)
+# ok - Non-English association academy separation
+# ok - Real zero-offer review below 21 → continuation
+# ok - Sole failed offer below 21 → enrolled continuation (finance validation)
+# ok - Sole failed final offer → release without year
+# ok - One failed offer preserves still-valid alternative
+# ok - Declined final review rejects cloned offer replay; fresh FA offer can sign
+# ok - Parent first-pro deal graduates with coherent IDs
+# ok - Suitable non-parent first-pro deal
+# ok - Missing parent — no bare senior-flag flip
+# ok - Age 20→21 no offers → immediate release
+# ok - Final review with offers at 21 — accept graduates; decline releases
+# ok - Legacy academy at 21 and 35 — review/release without year
+# ok - Released graduate: empty market then FA path
+# ok - Repeated advance is exact-once for period id
+# ok - Snapshot round-trip preserves academy lifecycle
+# ok - Opening bootstrap produces valid continuation or graduate
+# ok - GK youth record supported
+# ok - Direct senior-generator guard + PL control 20/380/38
+# ok - Migration clears suppress stuck state for over-age
+# ok - Snapshot restore of pending review keeps offer identity
+# ok - R4: rejected parent shortcut preserves non-parent final alternatives
+# ok - R4: failed sole parent offer settles final release / below-21 continue
+# ok - R4: successful parent offer from review graduates once
+# 25 passed, 0 failed
+# Subtest: tests/academyContinuation.test.mjs
+ok 2 - tests/academyContinuation.test.mjs
+  ---
+  duration_ms: 1042.661458
+  type: 'test'
+  ...
+# OK  weighted sampling respects explicit weights
+# OK  invalid weights and empty results throw
+# OK  asymmetric-loss regression: narrative −3 is not several times larger than +3
+# OK  cumulative budget: five +3 moments cannot each take a fresh annual share
+# OK  whole-number feedback uses rounded endpoints
+# OK  all five position groups get five distinct scenario ids
+# OK  duplicate choice clicks do not apply twice
+# OK  opening moments respect shared annual allowance without forced +1 display jumps
+# OK  snapshot resume keeps cursor and does not reroll applied moments
+# OK  thoughtful policy improves more often than reckless on a small seeded batch
+# OK  skip path applies baseline once and is not richer than a full opening mean path
+# OK  legacy applyOpeningChoiceResult still returns a finite rating delta
+# OK  bank normalizes ids and dispositions; life scenarios exist
+# Done.
+# Subtest: tests/academyOpening.test.mjs
+ok 3 - tests/academyOpening.test.mjs
+  ---
+  duration_ms: 4446.317459
+  type: 'test'
+  ...
+# OK  academy first contract → parent promotion → renewal path
+# OK  winter pause → loan accept/refuse → resume → return → purchase option
+# OK  empty offers do not deadlock; policy stay clears window
+# OK  accept-transfer and accept-loan policies are deterministic
+# OK  Stay-at-club mid-season control clears decision and resumes season
+# OK  pause segment exposes partial league fixtures for the dashboard
+# All browser-flow smoke tests passed.
+# Subtest: tests/browserFlowSmoke.test.mjs
+ok 4 - tests/browserFlowSmoke.test.mjs
+  ---
+  duration_ms: 1394.449458
+  type: 'test'
+  ...
+# OK  ACADEMY_POOL has entries
+# OK  pickThreeAcademies returns up to 3 enriched offers
+# OK  England academies are home-heavy across many rolls
+# OK  Nations without a league still get abroad stories
+# OK  Serbia offers are mostly Serbian; distant continents are rare
+# OK  United States rarely pulls Balkan academies
+# OK  opening scenario bank has at least 77 stories
+# OK  pickScenariosForPosition returns 5 for each position code
+# OK  pickChoiceResult links text to delta
+# OK  Top corner screamer stays two-way; fair choices need not be identical ± mirrors
+# OK  rollAcademyStartingRating stays in 54–78 and 75+ is rare
+# OK  pickRandomBackstory returns string
+# OK  createPlayerIdentity + finalize + narrative season + first pro deal choice
+# OK  club rivals map covers Eternal Derby and El Clasico sides
+# OK  2. Bundesliga 2nd place promotes; bottom does not relegate
+# OK  Bundesliga bottom places relegate to 2. Bundesliga
+# All smoke tests passed.
+# Subtest: tests/careerFlowSmoke.test.mjs
+ok 5 - tests/careerFlowSmoke.test.mjs
+  ---
+  duration_ms: 633.276
+  type: 'test'
+  ...
+# OK  ensureAbilityBudgets: bare number normalizes; object record preserved
+# No club profile for "Opp". {
+#   name: 'Opp',
+#   displayName: 'Opp',
+#   clubId: 'opp',
+#   overall: 72,
+#   attack: 72,
+#   midfield: 70,
+#   defence: 70,
+#   goalkeeper: 70
+# }
+# No club profile for "LeagueOpp". {
+#   name: 'LeagueOpp',
+#   displayName: 'Opp',
+#   clubId: 'league-opp',
+#   overall: 72,
+#   attack: 72,
+#   midfield: 70,
+#   defence: 70,
+#   goalkeeper: 70
+# }
+# OK  cup injury blocks later league minutes (dated match-day chain)
+# OK  simulateChronologicalSeason returns interleaved competitions
+# OK  exceptional age-20 fixture: high budget can reach world-class
+# chronologicalSeason tests done
+# Subtest: tests/chronologicalSeason.test.mjs
+ok 6 - tests/chronologicalSeason.test.mjs
+  ---
+  duration_ms: 375.051208
+  type: 'test'
+  ...
+# OK  Arsenal to Brentford: no post-move Arsenal player continental/cup sides
+# OK  accepted-offer permanent move asserts destination fixture ownership
+# OK  cross-country accepted loan detaches parent continental player fixtures
+# OK  loan return and parent renewal preserve borrower then restore parent
+# OK  delayed registration blocks destination side before effective date
+# OK  snapshot round-trip preserves playing stints
+# OK  continental format ownership policy covers all eight club formats
+# OK  national team identity is unaffected by club side helper
+# OK  F01: undated free-agent signing records destination stint and league fixtures
+# OK  F02: in-field continental destination fixtures match ledger after resume
+# OK  F03: January cross-association move schedules winter destination cup rounds
+# OK  R1: direct R16 destination knockout fixtures match ledger in chrono order
+# OK  R2: cross-association loan keeps pre-move cup fixture history
+# OK  F04: empty trophies[] does not fall through to europeanCampaign.won
+# Subtest: tests/clubOwnershipTransfers.test.mjs
+ok 7 - tests/clubOwnershipTransfers.test.mjs
+  ---
+  duration_ms: 1633.655
+  type: 'test'
+  ...
+# Subtest: UEFA pre-season standing preserves Champions League qualification label
+ok 8 - UEFA pre-season standing preserves Champions League qualification label
+  ---
+  duration_ms: 0.555209
+  type: 'test'
+  ...
+# Subtest: UEFA position fallback grants CL when qualification label was null
+ok 9 - UEFA position fallback grants CL when qualification label was null
+  ---
+  duration_ms: 0.128666
+  type: 'test'
+  ...
+# Subtest: AFC/CAF club supplement and playable leagues are present
+ok 10 - AFC/CAF club supplement and playable leagues are present
+  ---
+  duration_ms: 0.190167
+  type: 'test'
+  ...
+# Subtest: Champions League campaign uses league phase with 36-team field when pool allows
+ok 11 - Champions League campaign uses league phase with 36-team field when pool allows
+  ---
+  duration_ms: 98.070958
+  type: 'test'
+  ...
+# Subtest: Libertadores uses group stage
+ok 12 - Libertadores uses group stage
+  ---
+  duration_ms: 48.957417
+  type: 'test'
+  ...
+# Subtest: World Cup 2026 config is 48 teams with best thirds; EURO is 24
+ok 13 - World Cup 2026 config is 48 teams with best thirds; EURO is 24
+  ---
+  duration_ms: 0.13125
+  type: 'test'
+  ...
+# Subtest: World Cup simulation builds power-of-two knockout without truncating qualifiers
+ok 14 - World Cup simulation builds power-of-two knockout without truncating qualifiers
+  ---
+  duration_ms: 68.479625
+  type: 'test'
+  ...
+# Subtest: league-phase schedule constraints
+    # Subtest: UCL/UEL: 1000 seeds produce valid 36-club schedules
+    ok 1 - UCL/UEL: 1000 seeds produce valid 36-club schedules
+      ---
+      duration_ms: 235.527042
+      type: 'test'
+      ...
+    # Subtest: UECL: 1000 seeds produce valid 36-club schedules
+    ok 2 - UECL: 1000 seeds produce valid 36-club schedules
+      ---
+      duration_ms: 152.9375
+      type: 'test'
+      ...
+    # Subtest: is deterministic for identical seed and field
+    ok 3 - is deterministic for identical seed and field
+      ---
+      duration_ms: 0.719792
+      type: 'test'
+      ...
+    1..3
+ok 15 - league-phase schedule constraints
+  ---
+  duration_ms: 389.599416
+  type: 'suite'
+  ...
+# Subtest: controlled four-win accounting
+    # Subtest: injected results produce P8 W4 D2 L2 Pts14 for Red Star and mirrored opponents
+    ok 1 - injected results produce P8 W4 D2 L2 Pts14 for Red Star and mirrored opponents
+      ---
+      duration_ms: 59.65125
+      type: 'test'
+      ...
+    1..1
+ok 16 - controlled four-win accounting
+  ---
+  duration_ms: 59.724459
+  type: 'suite'
+  ...
+# Subtest: chronology agrees with committed table
+    # Subtest: seed-3 Red Star viewer tallies match league-phase table
+    ok 1 - seed-3 Red Star viewer tallies match league-phase table
+      ---
+      duration_ms: 287.128167
+      type: 'test'
+      ...
+    1..1
+ok 17 - chronology agrees with committed table
+  ---
+  duration_ms: 287.231708
+  type: 'suite'
+  ...
+# Subtest: identity and duplicates
+    # Subtest: reprocessing a fixture is idempotent
+    ok 1 - reprocessing a fixture is idempotent
+      ---
+      duration_ms: 5.974
+      type: 'test'
+      ...
+    # Subtest: consecutive editions use disjoint match IDs
+    ok 2 - consecutive editions use disjoint match IDs
+      ---
+      duration_ms: 232.208167
+      type: 'test'
+      ...
+    1..2
+ok 18 - identity and duplicates
+  ---
+  duration_ms: 238.639125
+  type: 'suite'
+  ...
+# Subtest: playoff-only advancement
+    # Subtest: playoff round creates 8 winners and no speculative final
+    ok 1 - playoff round creates 8 winners and no speculative final
+      ---
+      duration_ms: 17.166958
+      type: 'test'
+      ...
+    1..1
+ok 19 - playoff-only advancement
+  ---
+  duration_ms: 17.223917
+  type: 'suite'
+  ...
+# Subtest: two-leg extra-time orientation
+    # Subtest: audit seed-4: Čukarički ET win is first-leg-relative away
+    ok 1 - audit seed-4: Čukarički ET win is first-leg-relative away
+      ---
+      duration_ms: 0.593708
+      type: 'test'
+      ...
+    1..1
+ok 20 - two-leg extra-time orientation
+  ---
+  duration_ms: 0.710583
+  type: 'suite'
+  ...
+# Subtest: JSON round-trip
+    # Subtest: rebuilds campaign after serialize/deserialize
+    ok 1 - rebuilds campaign after serialize/deserialize
+      ---
+      duration_ms: 63.47075
+      type: 'test'
+      ...
+    1..1
+ok 21 - JSON round-trip
+  ---
+  duration_ms: 63.512958
+  type: 'suite'
+  ...
+# Subtest: undefined review does not produce definitive non-renewal notice
+ok 22 - undefined review does not produce definitive non-renewal notice
+  ---
+  duration_ms: 9.697333
+  type: 'test'
+  ...
+# Subtest: will-renew fixture: renewal exists for employer; no contradictory notice
+ok 23 - will-renew fixture: renewal exists for employer; no contradictory notice
+  ---
+  duration_ms: 5.227041
+  type: 'test'
+  ...
+# Subtest: will-not-renew fixture: non-renewal reason exists; no same-review renewal
+ok 24 - will-not-renew fixture: non-renewal reason exists; no same-review renewal
+  ---
+  duration_ms: 2.70725
+  type: 'test'
+  ...
+# Subtest: temporary finance rejection does not become firm non-renewal
+ok 25 - temporary finance rejection does not become firm non-renewal
+  ---
+  duration_ms: 4.16275
+  type: 'test'
+  ...
+# Subtest: audit reproduction: no renewal+non-renewal contradiction; expiry releases
+ok 26 - audit reproduction: no renewal+non-renewal contradiction; expiry releases
+  ---
+  duration_ms: 344.740708
+  type: 'test'
+  ...
+# Subtest: invalid decision choice does not mutate
+ok 27 - invalid decision choice does not mutate
+  ---
+  duration_ms: 0.636209
+  type: 'test'
+  ...
+# Subtest: cloned/replayed offer cannot extend twice or restore old employer
+ok 28 - cloned/replayed offer cannot extend twice or restore old employer
+  ---
+  duration_ms: 2.046125
+  type: 'test'
+  ...
+# Subtest: stale employer renewal cannot switch transferred player back
+ok 29 - stale employer renewal cannot switch transferred player back
+  ---
+  duration_ms: 7.778208
+  type: 'test'
+  ...
+# Subtest: free agent / no offers: no crash, no old wage, useful next action
+ok 30 - free agent / no offers: no crash, no old wage, useful next action
+  ---
+  duration_ms: 0.859375
+  type: 'test'
+  ...
+# Subtest: league fixtures: no club/date double-booking
+ok 31 - league fixtures: no club/date double-booking
+  ---
+  duration_ms: 1.021166
+  type: 'test'
+  ...
+# Subtest: duplicate loan acceptance is rejected without mutating slots twice
+ok 32 - duplicate loan acceptance is rejected without mutating slots twice
+  ---
+  duration_ms: 0.704584
+  type: 'test'
+  ...
+# Subtest: unaffordable purchase stress case leaves loan intact
+ok 33 - unaffordable purchase stress case leaves loan intact
+  ---
+  duration_ms: 0.827458
+  type: 'test'
+  ...
+# Subtest: lifecycle version exported
+ok 34 - lifecycle version exported
+  ---
+  duration_ms: 0.036209
+  type: 'test'
+  ...
+# OK  10 Jan is review checkpoint for European leagues, not sole registration gate
+# OK  destination schedule is deterministic and non-empty
+# OK  cross-league reconcile attaches future destination fixtures only
+# OK  Norway January move uses future registration / next calendar fixtures
+# OK  accepted cross-league transfer mid-season yields destination appearances
+# OK  loan accept/refuse/return and wage share conservation
+# OK  pause/resume does not duplicate age or seasons
+# OK  Serie B fixture still rejects 100m and 8m vs 3m
+# OK  association windows exist for every playable league
+# All cross-league / accepted-deal career tests passed.
+# Subtest: tests/crossLeagueCareer.test.mjs
+ok 11 - tests/crossLeagueCareer.test.mjs
+  ---
+  duration_ms: 391.6355
+  type: 'test'
+  ...
+# Subtest: free-agent UI soft-lock
+    # Subtest: explicit free-agent payload shows recap + Continue; completion fires once
+    ok 1 - explicit free-agent payload shows recap + Continue; completion fires once
+      ---
+      duration_ms: 38.76775
+      type: 'test'
+      ...
+    # Subtest: deterministic empty-result fixture: first search empty; recovery may offer; desk stays searchable
+    ok 2 - deterministic empty-result fixture: first search empty; recovery may offer; desk stays searchable
+      ---
+      duration_ms: 34.930125
+      type: 'test'
+      ...
+    # Subtest: two successive empty periods produce two history entries without trapping overlay
+    ok 3 - two successive empty periods produce two history entries without trapping overlay
+      ---
+      duration_ms: 26.6435
+      type: 'test'
+      ...
+    # Subtest: offers after a free-agent period block next simulation until resolved; decline restores search
+    ok 4 - offers after a free-agent period block next simulation until resolved; decline restores search
+      ---
+      duration_ms: 7.429333
+      type: 'test'
+      ...
+    # Subtest: accepting a suitable free-agent offer uses the deal pipeline once
+    ok 5 - accepting a suitable free-agent offer uses the deal pipeline once
+      ---
+      duration_ms: 3.248709
+      type: 'test'
+      ...
+# Missing required season data: {
+#   season: { seasonNumber: 1, matches: 10 },
+#   league: undefined,
+#   standings: undefined
+# }
+# Season presentation failed: Error: Missing required season data
+#     at animateSeasonSequence (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/js/ui/seasonAnimation.js:549:11)
+#     at presentSeasonResult (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/js/ui/seasonAnimation.js:250:9)
+#     at showSeasonAnimation (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/js/ui/seasonAnimation.js:159:10)
+#     at file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/freeAgentUiSoftlock.test.mjs:354:9
+#     at waitForActual (node:assert:630:21)
+#     at Function.rejects (node:assert:767:31)
+#     at TestContext.<anonymous> (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/freeAgentUiSoftlock.test.mjs:352:18)
+#     at async Test.run (node:internal/test_runner/test:1054:7)
+#     at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)
+# Season presentation failed: Error: Invalid free-agent result: not-free-agent
+#     at presentSeasonResult (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/js/ui/seasonAnimation.js:244:13)
+#     at showSeasonAnimation (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/js/ui/seasonAnimation.js:159:10)
+#     at file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/freeAgentUiSoftlock.test.mjs:376:9
+#     at waitForActual (node:assert:630:21)
+#     at Function.rejects (node:assert:767:31)
+#     at TestContext.<anonymous> (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/freeAgentUiSoftlock.test.mjs:374:18)
+#     at async Test.run (node:internal/test_runner/test:1054:7)
+#     at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)
+    # Subtest: rapid repeated presentation completion does not duplicate history cards
+    ok 6 - rapid repeated presentation completion does not duplicate history cards
+      ---
+      duration_ms: 13.567583
+      type: 'test'
+      ...
+    # Subtest: final contracted season that expires still requires league data (not free-agent recap)
+    ok 7 - final contracted season that expires still requires league data (not free-agent recap)
+      ---
+      duration_ms: 0.5925
+      type: 'test'
+      ...
+    # Subtest: age-41 free-agent fixture reaches age-42 retirement without orphaned overlay requirement
+    ok 8 - age-41 free-agent fixture reaches age-42 retirement without orphaned overlay requirement
+      ---
+      duration_ms: 1.264416
+      type: 'test'
+      ...
+    # Subtest: invalid ordinary result rejects without calling success; recovery closes overlay
+    ok 9 - invalid ordinary result rejects without calling success; recovery closes overlay
+      ---
+      duration_ms: 2.345042
+      type: 'test'
+      ...
+    # Subtest: failed free-agent wait is not presented as a successful recap
+    ok 10 - failed free-agent wait is not presented as a successful recap
+      ---
+      duration_ms: 0.380583
+      type: 'test'
+      ...
+    # Subtest: older thin free-agent records render without undefined/NaN/fake rating or borrowed current age
+    ok 11 - older thin free-agent records render without undefined/NaN/fake rating or borrowed current age
+      ---
+      duration_ms: 0.37125
+      type: 'test'
+      ...
+    # Subtest: standings panel does not relabel prior club table as a free-agent campaign
+    ok 12 - standings panel does not relabel prior club table as a free-agent campaign
+      ---
+      duration_ms: 0.444667
+      type: 'test'
+      ...
+# Season presentation failed: Error: injected-completion-failure
+#     at file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/freeAgentUiSoftlock.test.mjs:496:13
+#     at FakeElement.<anonymous> (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/js/ui/seasonAnimation.js:405:47)
+#     at FakeElement.click (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/helpers/minimalDom.mjs:117:50)
+#     at TestContext.<anonymous> (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/freeAgentUiSoftlock.test.mjs:499:32)
+#     at async Test.run (node:internal/test_runner/test:1054:7)
+#     at async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)
+    # Subtest: injected async presentation failure recovers without unhandled rejection
+    ok 13 - injected async presentation failure recovers without unhandled rejection
+      ---
+      duration_ms: 12.826042
+      type: 'test'
+      ...
+    1..13
+ok 36 - free-agent UI soft-lock
+  ---
+  duration_ms: 144.086291
+  type: 'suite'
+  ...
+# OK  low-OVR top scorer wins Golden Boot
+# OK  high-OVR non-leader does not win Golden Boot
+# OK  Golden Boot ties are shared
+# OK  cup goals do not count for the league Golden Boot
+# OK  one player can win Golden Boot + Player of the Season + Team of the Season
+# OK  World Player of the Year does not suppress other awards
+# OK  keepers can win Golden Glove and the Team of the Season GK slot
+# OK  Golden Glove needs participation and does not go to outfield players
+# OK  Young Player eligibility uses age at season start
+# OK  Breakthrough: first substantial senior season; club moves do not reset it
+# OK  nominations are separate from selections and wins, and stay out of legacy names
+# OK  record shape and stable event ids
+# OK  deterministic with the same seed (including generated competitor field)
+# OK  competitor field is persisted, consistent with team goals, and not regenerated
+# OK  field generation does not depend on the user's season outcome
+# OK  evaluation does not consume the caller's rng stream
+# OK  individualAwards.js has no Math.random
+# OK  simulateIndividualAwards wrapper returns UI names (options and legacy forms)
+# OK  evidence: volume, seasonP vs reliability, shrinkage and recognition placeholders
+# OK  evidence: trophies carry participationWeight from minutes
+# OK  healthy training fraction: dated overlap, fallbacks, active flag is only partial
+# OK  evidence: competition strength and challenge are bounded
+# Subtest: tests/individualAwards.test.mjs
+ok 13 - tests/individualAwards.test.mjs
+  ---
+  duration_ms: 101.527125
+  type: 'test'
+  ...
+# OK  A: no records
+# OK  A: old recovered
+# OK  A: future injury
+# OK  A: internal injury
+# OK  A: carry-in
+# OK  A: carry-out
+# OK  A: entire period
+# OK  A: two overlapping
+# OK  A: adjacent
+# OK  A: exact boundaries
+# OK  A: duplicate active/history same event
+# OK  A: superseded distinct events union
+# OK  A: dated active injury is not automatically uncertain
+# OK  A: incomplete history copy yields to valid active copy
+# OK  A: ISO dates, Date, day 0
+# OK  A: leap-year annual length and adjacent boundaries
+# OK  A: invalid / reversed window and intervals
+# OK  A: estimator is read-only (no mutation / RNG)
+# OK  A: mixed known/unknown historical
+# OK  A: undated archived duration excluded; undated active fallback
+# OK  A: R1 invalid active duration cannot cancel known days
+# OK  A: R2 complete dated history survives incomplete active duplicate
+# OK  A: R2 incomplete history yields to complete dated active
+# OK  A: R2 invalid numeric fields on active do not erase dated history
+# OK  A: R3 date-only expectedReturnDate beats late recoveredDay
+# OK  A: malformed expectedReturnDate falls through truthfully
+# OK  B: late recovery observation charges availability days only
+# OK  B: return before period + observation after → zero in new period
+# OK  B: injury extending into next period contributes only overlap
+# OK  B: legacy late recoveredDay with valid expectedReturn
+# OK  B: durable damage retained while missed days are zero
+# OK  C: simulateSeason old injury → zero missed, credit 1 (seed 2)
+# OK  C: healthy control matches old-history development input
+# OK  C: carry-in injury clipped to period
+# OK  C: two consecutive periods — year-1 injury zero in year-2
+# OK  C: low minutes does not shrink training calendar
+# OK  C: GK uses same availability accounting
+# OK  C: requireDatedHealthWindow rejects bare seasonDays
+# OK  D: pause/resume preserves period and exact-once development
+# OK  D: legacy checkpoint without window fields completes via simulateSeason
+# OK  D: midseason transfer preserves original period window
+# Focused Fix 06 tests: 41 passed, 0 failed
+# Subtest: tests/injuryDevelopmentExposure.test.mjs
+ok 14 - tests/injuryDevelopmentExposure.test.mjs
+  ---
+  duration_ms: 2134.325
+  type: 'test'
+  ...
+# Subtest: pending calendar merge
+    # Subtest: preserves processed prefix and merges new events by date
+    ok 1 - preserves processed prefix and merges new events by date
+      ---
+      duration_ms: 1.151458
+      type: 'test'
+      ...
+    1..1
+ok 39 - pending calendar merge
+  ---
+  duration_ms: 1.850458
+  type: 'suite'
+  ...
+# Subtest: official third-place allocations
+    # Subtest: covers all 15 EURO Article 21 combinations without same-group WB pairing
+    ok 1 - covers all 15 EURO Article 21 combinations without same-group WB pairing
+      ---
+      duration_ms: 0.459583
+      type: 'test'
+      ...
+    # Subtest: covers all 495 FIFA Annex C combinations
+    ok 2 - covers all 495 FIFA Annex C combinations
+      ---
+      duration_ms: 1.820208
+      type: 'test'
+      ...
+    # Subtest: EURO/WC first knockout skeletons do not pair group winner with own runner-up
+    ok 3 - EURO/WC first knockout skeletons do not pair group winner with own runner-up
+      ---
+      duration_ms: 0.143917
+      type: 'test'
+      ...
+    1..3
+ok 40 - official third-place allocations
+  ---
+  duration_ms: 2.71075
+  type: 'suite'
+  ...
+# Subtest: N01 controlled Italy 1-2 Serbia group
+    # Subtest: committed scores, table, and qualification agree
+    ok 1 - committed scores, table, and qualification agree
+      ---
+      duration_ms: 13.883792
+      type: 'test'
+      ...
+    1..1
+ok 41 - N01 controlled Italy 1-2 Serbia group
+  ---
+  duration_ms: 13.963833
+  type: 'suite'
+  ...
+# Subtest: chronological national integrity cohort
+    # Subtest: 2026: zero score mismatches and monotonic ledger (100 seeds)
+    ok 1 - 2026: zero score mismatches and monotonic ledger (100 seeds)
+      ---
+      duration_ms: 9266.559917
+      type: 'test'
+      ...
+    # Subtest: 2028: zero score mismatches and monotonic ledger (100 seeds)
+    ok 2 - 2028: zero score mismatches and monotonic ledger (100 seeds)
+      ---
+      duration_ms: 5995.529458
+      type: 'test'
+      ...
+    1..2
+ok 42 - chronological national integrity cohort
+  ---
+  duration_ms: 15262.46425
+  type: 'suite'
+  ...
+# Subtest: preparation has no match side effects
+    # Subtest: prepareNationalEdition does not commit played matches or apply form
+    ok 1 - prepareNationalEdition does not commit played matches or apply form
+      ---
+      duration_ms: 0.476834
+      type: 'test'
+      ...
+    1..1
+ok 43 - preparation has no match side effects
+  ---
+  duration_ms: 0.538334
+  type: 'suite'
+  ...
+# OK  rebuildTableFromMatches is idempotent by fixtureId
+# OK  goal totals balance across the table
+# OK  buildScoreRevealPath is monotonic and never exceeds finals
+# OK  cosmetic reveal for missing events is deterministic
+# OK  formatMatchContribution covers striker, GK, and unused
+# OK  groupMatchesByMatchday separates player fixtures
+# OK  ensureLeagueMatchId is stable
+# OK  simulateSeason exposes leagueAllMatches on complete seasons
+# OK  pause payload surfaces partial league matches
+# Subtest: tests/leagueSimulationDashboard.test.mjs
+ok 16 - tests/leagueSimulationDashboard.test.mjs
+  ---
+  duration_ms: 477.374208
+  type: 'test'
+  ...
+# OK  Atalanta → PEC Zwolle resume returns 18-club Eredivisie table with Zwolle row
+# OK  same-league loan retains origin table context
+# OK  automatic acceptance path uses borrower league metadata
+# OK  snapshot restore keeps loan playing league after resume
+# OK  loan return restores parent playing context without rewriting history
+# OK  past destination matches seed standings but not player appearances
+# Subtest: tests/loanPlayingLeague.test.mjs
+ok 17 - tests/loanPlayingLeague.test.mjs
+  ---
+  duration_ms: 1356.622708
+  type: 'test'
+  ...
+# OK  normalizeParticipationMinutes: explicit zero, omitted, invalid
+# OK  explicit zero minutes: no user goal/assist/card events or rating (100 seeds)
+# OK  omitted minutes still default to match duration for player fixtures
+# OK  zero-minute knockout remains unrated with no user events
+# OK  positive starter still produces user contributions under existing rates
+# OK  GK never receives outfield goal attribution
+# OK  knockout final events equal playerStats (1000 seeds, ET/pens exercised)
+# OK  witness seeds 6/169/462: events agree with stats after KO
+# OK  two-leg tie: second leg carries finalized KO stats; first leg regulation-only
+# OK  finalizePlayerMatchStats is idempotent with shared RNG stream
+# OK  substitute window: no user goals/assists/cards before entry (seed 6 witness)
+# OK  starter leaving early: no user events after exit window
+# OK  regulation simulateMatch caps overlong minutes at matchDuration
+# OK  byEdition keys by competitionId::editionId; trophy scoped to winning club
+# OK  ledger: null rating stays unrated; cleanSheet preserved; structured zero-minute
+# OK  ledger known-false clean sheet distinct from unknown
+# OK  pre-kickoff training injury zeros selected minutes
+# OK  accepted cross-league loan keeps distinct competition edition buckets
+# OK  awards use current league edition key; cross-league goals do not inflate Golden Boot
+# OK  direct penalties re-rate from final outcome; unchanged finalize is RNG no-op
+# OK  deferred continental second-leg ET syncs duration metadata and injury exposure
+# OK  match-day ET syncs participation and fatigue to final 120 minutes
+# OK  controlled pre-kickoff injury via applyInjury before simulate path
+# matchParticipationEvidence tests complete
+# Subtest: tests/matchParticipationEvidence.test.mjs
+ok 18 - tests/matchParticipationEvidence.test.mjs
+  ---
+  duration_ms: 587.966166
+  type: 'test'
+  ...
+# OK  weight tables sum to 1 and validateWeights passes
+# OK  position aliases normalise
+# OK  RW fixture overall is 80.10
+# OK  overall is within attribute min/max and has no floor of 40
+# OK  GK shooting is irrelevant to GK overall
+# OK  potential is never 100 and has no +1 floor
+# OK  rating cache refresh follows attributes
+# OK  state delta: neutral = 0, clamped, morale bounded, adaptation decays
+# OK  injury: exposure sampling, idempotent apply, recovery, restoration
+# OK  ledger: exact-once, non-participation, aggregation, observation
+# OK  development: determinism, bounds, idempotent season, budget respected
+# FAIL development: annual cap, deconditioning is recoverable
+# AssertionError [ERR_ASSERTION]: learning 8.693485869706887
+#     at file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/playerAbility.test.mjs:299:10
+#     at test (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/playerAbility.test.mjs:41:5)
+#     at file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/playerAbility.test.mjs:286:1
+#     at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+#     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+#     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+#   generatedMessage: false,
+#   code: 'ERR_ASSERTION',
+#   actual: false,
+#   expected: true,
+#   operator: '==',
+#   diff: 'simple'
+# }
+# OK  starting attributes hit target; GK uses GK keys
+# FAIL academy growth mutates attributes and charges shared annual allowance
+# AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+#   assert.ok(big.realized <= 7 - r.realized + 1e-6)
+#     at file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/playerAbility.test.mjs:343:10
+#     at test (file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/playerAbility.test.mjs:41:5)
+#     at file:///Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/playerAbility.test.mjs:334:1
+#     at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+#     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+#     at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+#   generatedMessage: true,
+#   code: 'ERR_ASSERTION',
+#   actual: false,
+#   expected: true,
+#   operator: '==',
+#   diff: 'simple'
+# }
+# OK  forecast: cached by signature, does not touch career rng
+# OK  migration: idempotent, backs up legacy, GK proxy, no invented injuries
+# OK  module sources do not use Math.random
+# Subtest: tests/playerAbility.test.mjs
+not ok 19 - tests/playerAbility.test.mjs
+  ---
+  duration_ms: 151.653667
+  type: 'test'
+  location: '/Users/mojsa/Desktop/Simulation/.worktrees/fix07/tests/playerAbility.test.mjs:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# OK  healthy 18yo improves with variation
+# OK  low minutes grow much less than full minutes under matched performance
+# OK  high current ability grows slower than mid ability under matched inputs
+# OK  elite age-20 allowed when attributes support it
+# OK  no forced cliff at 34
+# OK  injury blocks availability across year boundary
+# OK  transfer to weaker context does not instantly strip base attrs
+# OK  forecast panel RNG does not alter development stream outcome
+# OK  lost call-up has no base OVR deduction helper path
+# behavior tests done
+# Subtest: tests/playerDevelopmentBehavior.test.mjs
+ok 20 - tests/playerDevelopmentBehavior.test.mjs
+  ---
+  duration_ms: 117.269125
+  type: 'test'
+  ...
+# OK  model version is player-development-v3
+# OK  signed performance and confidence: poor < neutral < good
+# OK  negative performance is not clamped to neutral via reliableSignal
+# OK  no inherited ceiling: archived budgets do not constrain growth
+# OK  earned exceptional season can reach +6 raw under shared annual allowance
+# OK  healthy training fraction uses season exposure, not only final injury flag
+# OK  Golden Boot goes to actual top scorer regardless of OVR
+# OK  high-OVR non-leader does not win Golden Boot
+# OK  individualAwards.js contains no Math.random
+# OK  migration preserves ability and deactivates ceilings
+# OK  buildSeasonEvidence separates confidence from signed performance
+# Done.
+# Subtest: tests/playerProgressionV3.test.mjs
+ok 21 - tests/playerProgressionV3.test.mjs
+  ---
+  duration_ms: 66.3035
+  type: 'test'
+  ...
+# Subtest: A1: 38×90 capacity with 900 played → ~0.263; above 0.22
+ok 50 - A1: 38×90 capacity with 900 played → ~0.263; above 0.22
+  ---
+  duration_ms: 0.915458
+  type: 'test'
+  ...
+# Subtest: A2: 600/3420 below lowMinutesShare
+ok 51 - A2: 600/3420 below lowMinutesShare
+  ---
+  duration_ms: 0.310041
+  type: 'test'
+  ...
+# Subtest: A3: 28 healthy bench + 10 full appearances = 38 opportunities
+ok 52 - A3: 28 healthy bench + 10 full appearances = 38 opportunities
+  ---
+  duration_ms: 0.805541
+  type: 'test'
+  ...
+# Subtest: A4: unavailable fixtures excluded; 10 full → share 1
+ok 53 - A4: unavailable fixtures excluded; 10 full → share 1
+  ---
+  duration_ms: 0.555417
+  type: 'test'
+  ...
+# Subtest: A5: explicit zero minutes preserved
+ok 54 - A5: explicit zero minutes preserved
+  ---
+  duration_ms: 0.245917
+  type: 'test'
+  ...
+# Subtest: A6: no eligible fixtures → not usable for punitive low-minutes
+ok 55 - A6: no eligible fixtures → not usable for punitive low-minutes
+  ---
+  duration_ms: 0.173917
+  type: 'test'
+  ...
+# Subtest: A7: national fixtures excluded from club assessment
+ok 56 - A7: national fixtures excluded from club assessment
+  ---
+  duration_ms: 0.184916
+  type: 'test'
+  ...
+# Subtest: A8: competition slices league+cup+continental
+ok 57 - A8: competition slices league+cup+continental
+  ---
+  duration_ms: 0.134208
+  type: 'test'
+  ...
+# Subtest: A9: 120-minute cup with 20 played → 20/120
+ok 58 - A9: 120-minute cup with 20 played → 20/120
+  ---
+  duration_ms: 0.369125
+  type: 'test'
+  ...
+# Subtest: A10: duplicate fixture counts once
+ok 59 - A10: duplicate fixture counts once
+  ---
+  duration_ms: 0.285459
+  type: 'test'
+  ...
+# Subtest: A11: old seasonLedger does not substitute current period
+ok 60 - A11: old seasonLedger does not substitute current period
+  ---
+  duration_ms: 0.148584
+  type: 'test'
+  ...
+# Subtest: A12: explicit ledger zero beats stale season minutes
+ok 61 - A12: explicit ledger zero beats stale season minutes
+  ---
+  duration_ms: 0.051875
+  type: 'test'
+  ...
+# Subtest: B1: healthy young cover with 600/3420 reaches development-loan
+ok 62 - B1: healthy young cover with 600/3420 reaches development-loan
+  ---
+  duration_ms: 19.409709
+  type: 'test'
+  ...
+# Subtest: B2: 900/3420 control does not require low-minute development discussion
+ok 63 - B2: 900/3420 control does not require low-minute development discussion
+  ---
+  duration_ms: 2.451833
+  type: 'test'
+  ...
+# Subtest: B3: development loan recommendations use configured 0.5 / 0.2 gates
+ok 64 - B3: development loan recommendations use configured 0.5 / 0.2 gates
+  ---
+  duration_ms: 6.012917
+  type: 'test'
+  ...
+# Subtest: B4: stay/decline preserves contract
+ok 65 - B4: stay/decline preserves contract
+  ---
+  duration_ms: 1.174166
+  type: 'test'
+  ...
+# Subtest: C1: one-year renewal extends end 1 → 2 (age 36)
+ok 66 - C1: one-year renewal extends end 1 → 2 (age 36)
+  ---
+  duration_ms: 14.309792
+  type: 'test'
+  ...
+# Subtest: C2: younger one-year extension also adds coverage
+ok 67 - C2: younger one-year extension also adds coverage
+  ---
+  duration_ms: 3.156208
+  type: 'test'
+  ...
+# Subtest: C3: early firm review latches; boundary phase can reevaluate
+ok 68 - C3: early firm review latches; boundary phase can reevaluate
+  ---
+  duration_ms: 2.077125
+  type: 'test'
+  ...
+# Subtest: C4: boundary review defers expiry until settlement
+ok 69 - C4: boundary review defers expiry until settlement
+  ---
+  duration_ms: 2.007833
+  type: 'test'
+  ...
+# Subtest: C5: simulateSeason stay path releases after final year without soft-lock
+ok 70 - C5: simulateSeason stay path releases after final year without soft-lock
+  ---
+  duration_ms: 188.042167
+  type: 'test'
+  ...
+# Subtest: D1: interest-gate empty is distinct from no eligible clubs
+ok 71 - D1: interest-gate empty is distinct from no eligible clubs
+  ---
+  duration_ms: 0.62875
+  type: 'test'
+  ...
+# Subtest: D2: after one empty closed review, recovery finds validated offers
+ok 72 - D2: after one empty closed review, recovery finds validated offers
+  ---
+  duration_ms: 4.720291
+  type: 'test'
+  ...
+# Subtest: D3: frozen review does not reroll
+ok 73 - D3: frozen review does not reroll
+  ---
+  duration_ms: 6.878125
+  type: 'test'
+  ...
+# Subtest: D4: declining a valid offer breaks consecutive-empty streak
+ok 74 - D4: declining a valid offer breaks consecutive-empty streak
+  ---
+  duration_ms: 3.115708
+  type: 'test'
+  ...
+# Subtest: D5: snapshot round-trip preserves free-agent spell counters
+ok 75 - D5: snapshot round-trip preserves free-agent spell counters
+  ---
+  duration_ms: 17.637125
+  type: 'test'
+  ...
+# Subtest: E1: Hull 58 OVR seed 707 uses club opportunity denominator
+ok 76 - E1: Hull 58 OVR seed 707 uses club opportunity denominator
+  ---
+  duration_ms: 113.067542
+  type: 'test'
+  ...
+# Subtest: E2: Atalanta 72 OVR seed 707 assessment matches independent oracle
+ok 77 - E2: Atalanta 72 OVR seed 707 assessment matches independent oracle
+  ---
+  duration_ms: 193.537292
+  type: 'test'
+  ...
+# Subtest: F1: pending review blocks simulateSeason without aging
+ok 78 - F1: pending review blocks simulateSeason without aging
+  ---
+  duration_ms: 6.921292
+  type: 'test'
+  ...
+# Subtest: F2: accepting another club settles pending review and is playable
+ok 79 - F2: accepting another club settles pending review and is playable
+  ---
+  duration_ms: 6.014917
+  type: 'test'
+  ...
+# Subtest: F3: released-employer renewal is rejected without booking
+ok 80 - F3: released-employer renewal is rejected without booking
+  ---
+  duration_ms: 2.047459
+  type: 'test'
+  ...
+# Subtest: F4: declined same-window renewal stays closed on regenerate
+ok 81 - F4: declined same-window renewal stays closed on regenerate
+  ---
+  duration_ms: 13.210959
+  type: 'test'
+  ...
+# Subtest: F5: new club decision does not consume prior club minutes
+ok 82 - F5: new club decision does not consume prior club minutes
+  ---
+  duration_ms: 1.355459
+  type: 'test'
+  ...
+# Subtest: F6: unproven old ledger and mixed minutes stay non-punitive
+ok 83 - F6: unproven old ledger and mixed minutes stay non-punitive
+  ---
+  duration_ms: 0.138375
+  type: 'test'
+  ...
+# Subtest: F7: closing FA review does not reroll same scheduled window
+ok 84 - F7: closing FA review does not reroll same scheduled window
+  ---
+  duration_ms: 0.46
+  type: 'test'
+  ...
+# Subtest: F8: production ET substitute uses 120 capacity
+ok 85 - F8: production ET substitute uses 120 capacity
+  ---
+  duration_ms: 9.148875
+  type: 'test'
+  ...
+# Subtest: F9: post-season facade preserves pending boundary phase
+ok 86 - F9: post-season facade preserves pending boundary phase
+  ---
+  duration_ms: 108.066583
+  type: 'test'
+  ...
+# OK  reference 65/20/15 shifts to 55/25/20 exactly
+# OK  four disposition senior targets match academy-derived table
+# OK  bank has 80 scenes, 3 choices, all three outcome classes
+# OK  normalize is idempotent (no second 10-point shift)
+# OK  category probability unchanged when adding another positive outcome
+# OK  positive/neutral/negative alter durable base OVR correctly
+# OK  event idempotency across different choice clones
+# OK  annual cap limits scene positive charge
+# OK  negative after positive does not refund allowance
+# OK  display endpoints use rounded difference
+# OK  GK scene uses GK attributes only
+# OK  every catalogue scene can resolve in a constructed context
+# OK  Monte Carlo category rates within tolerance
+# Done.
+# Subtest: tests/seniorCareerDevelopment.test.mjs
+ok 23 - tests/seniorCareerDevelopment.test.mjs
+  ---
+  duration_ms: 347.134541
+  type: 'test'
+  ...
+# OK  bank has at least 80 distinct scenario IDs with three choices
+# OK  normalize is idempotent and weighted pick works
+# OK  trigger keys are stable; false rolls stored; no reroll on reload
+# OK  independent competition editions each get one roll
+# OK  non-participant continental/international excluded from rolls
+# OK  partner eligibility gates relationship scenes
+# OK  resolve is idempotent; duplicate clicks do not stack effects
+# OK  balanced policy does not always pick ambitious max-reward label
+# OK  pause → choice → resume path preserves earlier results and applies once
+# OK  headless season with auto policy completes; scenes use balanced not always-max
+# OK  goalkeeper senior season path
+#     league: drawn=2983/10000 rate=0.2983
+#     cup: drawn=3020/10000 rate=0.3020
+#     continental: drawn=2918/10000 rate=0.2918
+#     international: drawn=2970/10000 rate=0.2970
+# OK  10k trigger calibration per competition type stays near 30%
+# OK  same trigger seed yields same scenario selection across interactive-shaped resolve
+# Senior career scenario tests done.
+# Subtest: tests/seniorCareerScenarios.test.mjs
+ok 24 - tests/seniorCareerScenarios.test.mjs
+  ---
+  duration_ms: 893.676458
+  type: 'test'
+  ...
+# OK  dashboard skip buttons use dedicated sim-* IDs
+# OK  cup/continental skip bar owns match-skip-btn IDs inside match viewer
+# OK  competition tab flicker removed from live league UI
+# OK  match card rail is a vertical newest-on-top column
+# All simulationDashboard UI contract tests passed.
+# Subtest: tests/simulationDashboardUi.test.mjs
+ok 25 - tests/simulationDashboardUi.test.mjs
+  ---
+  duration_ms: 37.229625
+  type: 'test'
+  ...
+# OK  ClubElo raw ratings survive import unchanged
+# OK  FootballDatabase secondary never bypasses conversion
+# OK  every club has exactly one selected baseline; no league-centre priors
+# OK  research-pack gap IDs remain covered exactly once
+# OK  derived subratings are not labelled as published observations
+# OK  Barcelona Spain and Ecuador names do not conflate
+# OK  identity special cases preserve reserve and continuity mappings
+# OK  publication dates are not invented as ratingAsOfDate
+# OK  rebuild is deterministic
+# OK  ClubElo transform is monotonic and distinct from legacy Opta mapping
+# OK  finance/reputation alone do not change verified match ability
+# OK  player OVR still raises expected performance
+# OK  career baseline freeze survives serialize with per-team provenance
+# OK  all 79 nations have selected published points; no 1180 priors
+# OK  Australia discrepancy retained with selected 1580.52
+# OK  Hungary Mali Venezuela use canonical confederations
+# OK  nation rebuild is deterministic
+# OK  career nation baseline freeze survives serialize and ignores bundled upgrades
+# OK  legacy career without baselineNations keeps prior freeze and is not upgraded
+# OK  coverage reports match profiles and calibration hashes
+# OK  FDB calibration LOO audit reproduces stored diagnostics
+# FIFA transform sample Spain→ 93
+# ClubElo transform sample 1900→ 85.14
+# Subtest: tests/strengthProvenance.test.mjs
+ok 26 - tests/strengthProvenance.test.mjs
+  ---
+  duration_ms: 373.517083
+  type: 'test'
+  ...
+# OK  all 490 clubs resolve to profiles
+# OK  alias resolution for renamed clubs
+# OK  City and Hull are not identical strength
+# OK  Bayern stronger than Paderborn; Serbia clubs not identical
+# OK  provenance labels exist
+# OK  financial tier alone does not change expected goals
+# OK  player OVR raises attack for ST and is bounded; absent player no effect
+# OK  GK quality lowers opposing xG more than adding striker quality
+# OK  underqualified replacement can reduce quality
+# OK  0-0 is possible and goal events reconcile
+# OK  neutral fixtures are symmetric under team swap
+# OK  penalties do not inflate match goals; ET is strength-sensitive
+# OK  generateLeagueTable is retired
+# OK  Serbia Croatia Czechia UEFA eligibility
+# OK  scripted progression helpers removed from europeanCompetition source
+# OK  world state round-trip
+# OK  league season uses shared engine; standings from fixtures
+# OK  Copa América eligible pool excludes Jordan
+# OK  nation profiles cover selectable nations
+# OK  international xG ordering uses published national points
+# OK  national player OVR affects only when selected; venue metadata respected
+# OK  confederation registry corrections and Copa América integrity
+#   equal-neutral N=4000: home=0.366 away=0.376 draw=0.258
+# OK  calibration: equal neutral teams ~even with draws
+#   gap-neutral N=3000: strongWin=0.895 weakWin=0.030 (Arsenal vs Birmingham)
+#   knockout-upset N=1200: weakerAdvances=0.131 (Lecce vs Roma)
+# OK  calibration: large gap favours stronger; knockout upset possible
+#   home-adv N=2500: homeVenue=0.670 neutral=0.627
+# OK  calibration: home advantage raises home win rate
+#   user-impact xG: lowST=1.339 highST=1.456 (vs Burnley)
+# OK  calibration: high-OVR user improves xG vs low-OVR (same club)
+# XG_MODEL coefficients: {
+#   BASE_XG: 1.25,
+#   SCALE: 18,
+#   K_ATT: 0.55,
+#   K_MID: 0.2,
+#   K_GK: 0.25,
+#   HOME_ADV: 0.12,
+#   ET_FRACTION: 0.3333333333333333,
+#   MAX_LAMBDA: 3.2,
+#   MIN_LAMBDA: 0.15
+# }
+# Nation profiles: 79
+# Subtest: tests/teamStrength.test.mjs
+ok 27 - tests/teamStrength.test.mjs
+  ---
+  duration_ms: 253.244958
+  type: 'test'
+  ...
+# OK  promoteAcademyGraduate books wage through pipeline; preserves player nationality
+# OK  skip/bootstrap empty offers do not throw
+# OK  pre-expiry renewal can appear with one year left
+# OK  auto policy completes season without January pause
+# OK  pauseForDecisions can await without aging or finalizing
+# OK  career snapshot JSON round-trip preserves wage and finance ledger
+# OK  worldState serialize round-trip keeps Maps
+# All transfer/loan follow-up tests passed.
+# Subtest: tests/transferLoanFollowup.test.mjs
+ok 28 - tests/transferLoanFollowup.test.mjs
+  ---
+  duration_ms: 462.32925
+  type: 'test'
+  ...
+# OK  every club has exactly one finance profile; no elite fallback for missing
+# OK  Serie B ordinary single-deal band rejects 100m and 8m vs 3m max
+# OK  generation does not spend; acceptance books once; duplicate blocked
+# OK  ordinary 55-60 OVR weak club: no elite SENIOR offers across seeds
+# OK  small fees below 500k possible; free agent fee 0
+# OK  under-18 contracts max 3 years
+# OK  first pro path retains wage and uses pipeline
+# OK  loan wage shares sum to 100%; decline keeps contract
+# OK  loan start/end return registration once
+# OK  international loan youth exemption needs age AND club-trained
+# OK  save migration is idempotent and preserves contract
+# OK  ledger survives export/import (reload)
+# OK  Ecuador/Czechia/Croatia/Serbia not excluded by tier floor
+# OK  finance profile version stamped
+# All transfer/loan pipeline tests passed.
+# Subtest: tests/transferLoanPipeline.test.mjs
+ok 29 - tests/transferLoanPipeline.test.mjs
+  ---
+  duration_ms: 499.101167
+  type: 'test'
+  ...
+1..93
+# tests 111
+# suites 13
+# pass 110
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 16086.006084

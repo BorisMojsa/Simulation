@@ -72,7 +72,8 @@ mkdirSync(CASES, { recursive: true });
 const START_YEAR = 2026;
 const EPS = 1e-12;
 const LOW_MINUTES_SHARE = 0.22; // literal brief value; cross-checked below
-const PINNED_HULL = Object.freeze({ minutes: 511, eligible: 42, capacity: 3780 });
+// Capacity includes fixture ET when actually played (one +30 for seed 707 Hull).
+const PINNED_HULL = Object.freeze({ minutes: 511, eligible: 42, capacity: 3810 });
 
 /* ------------------------------------------------------------------ */
 /* Generic helpers                                                     */

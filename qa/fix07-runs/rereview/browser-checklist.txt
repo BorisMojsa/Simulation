@@ -1,0 +1,80 @@
+
+CASE: B01
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B01-review.png
+  FAIL B01: driveToDesk timeout: {"debug":{"name":"Loan Fixture","age":20,"club":"Atalanta","clubId":"club:italy:atalanta","employmentClubId":"club:italy:atalanta","playingClubId":"club:italy:atalanta","playingStints":[{"stintId":"stint:seed:live-loan-fixture-v1:club:italy:atalanta","from":"2026-07-01","to":null,"playingClubId":"club:italy:atalanta","employmentClubId":"club:italy:atalanta","leagueId":"league:italy-serie-a","clubName":"Atalanta","kind":"seed","onLoan":false}],"seasonsCount":1,"careerHonors":{"leagueTitles":0,"europeanTitles":0,"domesticCups":0,"individualAwards":0,"internationalTitles":0},"lastSeasonHonors":null,"lastSeasonTrophies":[],"lastSeasonClubApps":15,"openPlayingStintClubId":"club:italy:atalanta","weeklyWage":4000,"contractEndSeason":4,"rating":62,"ovrDisplay":62,"isRetired":false,"freeAgent":false,"careerTotals":{"matches":15,"goals":0,"assists":0,"cleanSheets":0},"activeLoan":null,"pendingDecision":"development-loan","pendingOffers":[],"seasonCheckpoint":null,"seasons":1,"lastSeason":{"freeAgent":false,"age":20,"matches":15,"minutes":331,"goals":0,"assists":0,"cleanSheets":0,"evidenceCleanSheets":0,"evidenceByScope":{"league":{"minutes":272,"appearances":12,"starts":0,"goals":0,"assists":0,"cleanSheets":0},"cup":{"minutes":0,"appearances":0,"starts":0,"goals":0,"assists":0,"cleanSheets":null},"continental":{"minutes":59,"appearances":3,"starts":0,"goals":0,"assists":0,"cleanSheets":null},"international":{"minutes":0,"appearances":0,"starts":0,"goals":0,"assists":0,"cleanSheets":null},"other":{"minutes":0,"appearances":0,"starts":0,"goals":0,"assists":0,"cleanSheets":null}},"nonParticipation":{"total":34,"unused":34,"byReason":{"unused_substitute":15,"unused":15,"not_selected":17,"injured":2,"unavailable":0,"suspended":0,"rested":0,"unknown":0,"other":0}},"healthyTrainingFraction":0.9726027397260274,"rawHealthyTrainingFraction":0.9726027397260274,"developmentPeriod":{"periodId":"season-1","seasonId":"season-1","seasonIndex":0,"seasonStartYear":2026,"startDate":"2026-06-01","endExclusiveDate":"2027-06-01","startDay":20605,"endDay":20970,"days":365},"healthEvidence":{"method":"dated-overlap","partial":false,"injuredDays":10,"seasonDays":365,"injuryCount":1,"overlappingInjuryCount":1,"contributingEventIds":["league:italy-serie-a:md:10:train:2026-08-20"],"excludedUnknownCount":0,"excludedUnknownEventIds":[],"clippedIntervals":[{"eventId":"league:italy-serie-a:md:10:train:2026-08-20","active":false,"startDay":20685,"returnDay":20695,"clippedStartDay":20685,"clippedEndDay":20695,"clippedDays":10}],"rawHealthyTrainingFraction":0.9726027397260274,"appliedHealthyTrainingFraction":0.9726027397260274,"hasDatedWindow":true,"windowStartDay":20605,"windowEndDay":20970,"activeInjuryAtSeasonEnd":false},"developmentBreakdownHealthy":0.9726027397260274},"position":"CM","qaKo":null,"qaGk":null,"awardFieldKeys":["league:italy-serie-a::2026","season-1:world"],"nextAction":{"id":"resolve-decision","label":"Resolve squad discussion","canSimulate":false},"seasonActionInFlight":false,"dealBookingGuard":null,"isAcademy":false,"academyLifecycle":{"status":"inactive","periodCount":0,"pendingReviewId":null,"exitAge":21},"academyCareerTotals":null},"overlayHidden":false,"dashboardHidden":false,"continueSectionVisible":true,"continueBtnVisible":true,"continueBtnDisabled":false,"simulateDisabled":true,"simulateLabel":"Simulate Next Season","seasonActionInFlight":false,"nextAction":{"id":"resolve-decision","label":"Resolve squad discussion","canSimulate":false},"pendingDecision":"development-loan","pendingOffers":0}
+
+CASE: B02
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B02-offer.png
+  FAIL B02: driveToDesk timeout: {"debug":{"name":"Fix07 Renewal","age":37,"club":"Hull City","clubId":"club:england:hull-city","employmentClubId":"club:england:hull-city","playingClubId":"club:england:hull-city","playingStints":[{"stintId":"stint:seed:fix07-b02:club:england:hull-city","from":"2026-07-01","to":null,"playingClubId":"club:england:hull-city","employmentClubId":"club:england:hull-city","leagueId":"league:england-premier-league","clubName":"Hull City","kind":"seed","onLoan":false}],"seasonsCount":1,"careerHonors":{"leagueTitles":0,"europeanTitles":0,"domesticCups":0,"individualAwards":0,"internationalTitles":0},"lastSeasonHonors":"Relegated","lastSeasonTrophies":[],"lastSeasonClubApps":22,"openPlayingStintClubId":"club:england:hull-city","weeklyWage":96500,"contractEndSeason":2,"rating":71,"ovrDisplay":71,"isRetired":false,"freeAgent":false,"careerTotals":{"matches":22,"goals":4,"assists":0,"cleanSheets":0},"activeLoan":null,"pendingDecision":"non-renewal","pendingOffers":[],"seasonCheckpoint":null,"seasons":1,"lastSeason":{"freeAgent":false,"age":37,"matches":22,"minutes":1454,"goals":4,"assists":0,"cleanSheets":0,"evidenceCleanSheets":0,"evidenceByScope":{"league":{"minutes":1289,"appearances":20,"starts":14,"goals":3,"assists":0,"cleanSheets":0},"cup":{"minutes":165,"appearances":2,"starts":2,"goals":1,"assists":0,"cleanSheets":null},"continental":{"minutes":0,"appearances":0,"starts":0,"goals":0,"assists":0,"cleanSheets":null},"international":{"minutes":0,"appearances":0,"starts":0,"goals":0,"assists":0,"cleanSheets":null},"other":{"minutes":0,"appearances":0,"starts":0,"goals":0,"assists":0,"cleanSheets":null}},"nonParticipation":{"total":18,"unused":18,"byReason":{"unused_substitute":2,"unused":2,"not_selected":9,"injured":7,"unavailable":0,"suspended":0,"rested":0,"unknown":0,"other":0}},"healthyTrainingFraction":0.8493150684931507,"rawHealthyTrainingFraction":0.8493150684931507,"developmentPeriod":{"periodId":"season-1","seasonId":"season-1","seasonIndex":0,"seasonStartYear":2026,"startDate":"2026-06-01","endExclusiveDate":"2027-06-01","startDay":20605,"endDay":20970,"days":365},"healthEvidence":{"method":"dated-overlap","partial":false,"injuredDays":55,"seasonDays":365,"injuryCount":1,"overlappingInjuryCount":1,"contributingEventIds":["league:england-premier-league:md:217:inj"],"excludedUnknownCount":0,"excludedUnknownEventIds":[],"clippedIntervals":[{"eventId":"league:england-premier-league:md:217:inj","active":false,"startDay":20835,"returnDay":20890,"clippedStartDay":20835,"clippedEndDay":20890,"clippedDays":55}],"rawHealthyTrainingFraction":0.8493150684931507,"appliedHealthyTrainingFraction":0.8493150684931507,"hasDatedWindow":true,"windowStartDay":20605,"windowEndDay":20970,"activeInjuryAtSeasonEnd":false},"developmentBreakdownHealthy":0.8493150684931507},"position":"ST","qaKo":null,"qaGk":null,"awardFieldKeys":["league:england-premier-league::2026","season-1:world"],"nextAction":{"id":"resolve-decision","label":"Resolve squad discussion","canSimulate":false},"seasonActionInFlight":false,"dealBookingGuard":null,"isAcademy":false,"academyLifecycle":{"status":"inactive","periodCount":0,"pendingReviewId":null,"exitAge":21},"academyCareerTotals":null},"overlayHidden":false,"dashboardHidden":false,"continueSectionVisible":true,"continueBtnVisible":true,"continueBtnDisabled":false,"simulateDisabled":true,"simulateLabel":"Simulate Next Season","seasonActionInFlight":false,"nextAction":{"id":"resolve-decision","label":"Resolve squad discussion","canSimulate":false},"pendingDecision":"non-renewal","pendingOffers":0}
+
+CASE: B03
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B03-start.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B03-desk.png
+  PASS B03
+
+CASE: B04
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B04-start.png
+  FAIL B04: empty review closed
+
+CASE: B05
+  FAIL B05: page.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('#simulate-btn')
+    - locator resolved to <button disabled class="primary" id="simulate-btn">Simulate Next Season</button>
+  - attempting click action
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+    - waiting 20ms
+    2 × waiting for element to be visible, enabled and stable
+      - element is not enabled
+    - retrying click action
+      - waiting 100ms
+    58 × waiting for element to be visible, enabled and stable
+       - element is not enabled
+     - retrying click action
+       - waiting 500ms
+
+
+CASE: B06
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B06-offer.png
+  FAIL B06: driveToDesk timeout: {"debug":{"name":"Loan Fixture","age":20,"club":"TSC Bačka Topola","clubId":"club:serbia:tsc-backa-topola","employmentClubId":"club:italy:atalanta","playingClubId":"club:serbia:tsc-backa-topola","playingStints":[{"stintId":"stint:seed:live-loan-fixture-v1:club:italy:atalanta","from":"2026-07-01","to":"2027-01-10","playingClubId":"club:italy:atalanta","employmentClubId":"club:italy:atalanta","leagueId":"league:italy-serie-a","clubName":"Atalanta","kind":"seed","onLoan":false},{"stintId":"stint:loan_start:live-loan-fixture-v1:club:serbia:tsc-backa-topola:2027-01-10:1","from":"2027-01-10","to":null,"playingClubId":"club:serbia:tsc-backa-topola","employmentClubId":"club:italy:atalanta","leagueId":"league:serbia-superliga","clubName":"TSC Bačka Topola","kind":"loan_start","onLoan":true}],"seasonsCount":1,"careerHonors":{"leagueTitles":0,"europeanTitles":0,"domesticCups":0,"individualAwards":0,"internationalTitles":0},"lastSeasonHonors":null,"lastSeasonTrophies":[],"lastSeasonClubApps":17,"openPlayingStintClubId":"club:serbia:tsc-backa-topola","weeklyWage":3350,"contractEndSeason":4,"rating":62,"ovrDisplay":62,"isRetired":false,"freeAgent":false,"careerTotals":{"matches":17,"goals":0,"assists":0,"cleanSheets":0},"activeLoan":{"status":"active","parentClubId":"club:italy:atalanta","borrowingClubId":"club:serbia:tsc-backa-topola","startDate":"2027-01-10","endDate":"2027-05-31","transactionIds":["tx:loan-b:loan:live-loan-fixture-v1:club:serbia:tsc-backa-topola:2026","tx:loan-p:loan:live-loan-fixture-v1:club:serbia:tsc-backa-topola:2026"]},"pendingDecision":"loan-return","pendingOffers":[],"seasonCheckpoint":null,"seasons":1,"lastSeason":{"freeAgent":false,"age":20,"matches":17,"minutes":734,"goals":0,"assists":0,"cleanSheets":0,"evidenceCleanSheets":0,"evidenceByScope":{"league":{"minutes":675,"appearances":14,"starts":6,"goals":0,"assists":0,"cleanSheets":0},"cup":{"minutes":0,"appearances":0,"starts":0,"goals":0,"assists":0,"cleanSheets":null},"continental":{"minutes":59,"appearances":3,"starts":0,"goals":0,"assists":0,"cleanSheets":null},"international":{"minutes":0,"appearances":0,"starts":0,"goals":0,"assists":0,"cleanSheets":null},"other":{"minutes":0,"appearances":0,"starts":0,"goals":0,"assists":0,"cleanSheets":null}},"nonParticipation":{"total":24,"unused":24,"byReason":{"unused_substitute":9,"unused":9,"not_selected":10,"injured":5,"unavailable":0,"suspended":0,"rested":0,"unknown":0,"other":0}},"healthyTrainingFraction":0.863013698630137,"rawHealthyTrainingFraction":0.863013698630137,"developmentPeriod":{"periodId":"season-1","seasonId":"season-1","seasonIndex":0,"seasonStartYear":2026,"startDate":"2026-06-01","endExclusiveDate":"2027-06-01","startDay":20605,"endDay":20970,"days":365},"healthEvidence":{"method":"dated-overlap","partial":false,"injuredDays":50,"seasonDays":365,"injuryCount":2,"overlappingInjuryCount":2,"contributingEventIds":["league:italy-serie-a:md:10:train:2026-08-20","league:serbia-superliga:2027-03-25:DL:193:inj"],"excludedUnknownCount":0,"excludedUnknownEventIds":[],"clippedIntervals":[{"eventId":"league:italy-serie-a:md:10:train:2026-08-20","active":false,"startDay":20685,"returnDay":20695,"clippedStartDay":20685,"clippedEndDay":20695,"clippedDays":10},{"eventId":"league:serbia-superliga:2027-03-25:DL:193:inj","active":true,"startDay":20902,"returnDay":20942,"clippedStartDay":20902,"clippedEndDay":20942,"clippedDays":40}],"rawHealthyTrainingFraction":0.863013698630137,"appliedHealthyTrainingFraction":0.863013698630137,"hasDatedWindow":true,"windowStartDay":20605,"windowEndDay":20970,"activeInjuryAtSeasonEnd":true},"developmentBreakdownHealthy":0.863013698630137},"position":"CM","qaKo":null,"qaGk":null,"awardFieldKeys":["league:serbia-superliga::2026","season-1:world"],"nextAction":{"id":"resolve-decision","label":"Resolve squad discussion","canSimulate":false},"seasonActionInFlight":false,"dealBookingGuard":null,"isAcademy":false,"academyLifecycle":{"status":"inactive","periodCount":0,"pendingReviewId":null,"exitAge":21},"academyCareerTotals":null},"overlayHidden":false,"dashboardHidden":false,"continueSectionVisible":true,"continueBtnVisible":true,"continueBtnDisabled":false,"simulateDisabled":true,"simulateLabel":"Simulate Next Season","seasonActionInFlight":false,"nextAction":{"id":"resolve-decision","label":"Resolve squad discussion","canSimulate":false},"pendingDecision":"loan-return","pendingOffers":0}
+
+CASE: B07
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-playing-time-contract/B07-restored.png
+  FAIL B07: page.waitForTimeout: Target page, context or browser has been closed
+
+Wrote /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/fix07-runs/browser-report.json
+{
+  "pass": false,
+  "results": [
+    [
+      "B01",
+      "FAIL"
+    ],
+    [
+      "B02",
+      "FAIL"
+    ],
+    [
+      "B03",
+      "PASS"
+    ],
+    [
+      "B04",
+      "FAIL"
+    ],
+    [
+      "B05",
+      "FAIL"
+    ],
+    [
+      "B06",
+      "FAIL"
+    ],
+    [
+      "B07",
+      "FAIL"
+    ]
+  ]
+}

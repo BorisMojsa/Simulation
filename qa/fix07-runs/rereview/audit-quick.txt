@@ -1,0 +1,26 @@
+Fix 07 playing-time / contract / free-agent recovery audit (QUICK)
+  ordinary: 4 records / 2 careers (club 4, FA 0; positions ST, leagues 3, nationalities 2, setups fit/reduced) -> PASS
+  policies: renewal-first, stay; renewals 1, releases 0, FA signings 0, loans 0
+  dedicated: 8 cases {"dedicated:stay-opportunity":2,"dedicated:one-year-renewal":1,"dedicated:fa-recovery":1,"dedicated:fa-exhausted-control":1,"dedicated:pause-restore":1,"dedicated:cross-league-loan":2} -> PASS
+  invariant 1 opportunity arithmetic == independent ledger oracle: ok
+  invariant 2 clubMinutesShare / participationLedger / decisions agree: ok
+  invariant 3 international / other-club / unavailable / duplicate exclusions: ok
+  invariant 4 contract continuity (renewal, expiry, loan, stay): ok
+  invariant 5 free-agent spell counters and recovery: ok
+  invariant 6 snapshot / pause-restore: ok
+  invariant 7 finite numbers / registration: ok
+  invariant 0 harness / coverage: ok
+  ok   C01-ST-seed707-p1  [club-season/stay] oracle=0.1655 prod=0.1655 elig=39
+  ok   C01-ST-seed707-p2  [club-season/stay] oracle=0.1454 prod=0.1454 elig=47
+  ok   C05-ST-seed711-p1  [club-season/renewal-first] oracle=0.3297 prod=0.3297 elig=49
+  ok   C05-ST-seed711-p2  [club-season/renewal-first] oracle=0.3058 prod=0.3058 elig=38
+  ok   D-S1-stay-opportunity-Hull City-ovr58-seed707  [club-season/stay] oracle=0.1341 prod=0.1341 elig=42
+  ok   D-S2-stay-opportunity-Atalanta-ovr72-seed707  [club-season/stay] oracle=0.1424 prod=0.1424 elig=44
+  ok   D-renewal-one-year-age36-seed707  [club-season/renewal-first] oracle=0.3458 prod=0.3458 elig=33
+  ok   D-fa-recovery-after-empty-bug07-search-0  [club-season/accept-suitable-free-agent-offer] oracle=0.5255 prod=0.5255 elig=31
+  ok   D-fa-exhausted-control  [free-agent-period/wait] oracle=- prod=- elig=-
+  ok   D-pause-restore-hull58-seed707  [club-season/pause→snapshot→restore→stay] oracle=0.1146 prod=0.1146 elig=32
+  ok   D-cross-league-loan-hull58-seed707  [club-season/accept-first-loan] oracle=0.3833 prod=0.3833 elig=12
+  ok   D-cross-league-loan-hull58-seed707-after-return  [club-season/stay] oracle=0.0879 prod=0.0879 elig=39
+
+PASS: all invariants hold. Wrote qa/fix07-runs/audit/summary-quick.json and 12 case files under qa/fix07-runs/audit/cases-quick.

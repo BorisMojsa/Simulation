@@ -847,6 +847,21 @@ async function finalizeCompletedSeasonUi(seasonData) {
       ensureAcademyLifecycle(player);
       migrateAcademyLifecycle(player);
     }
+  } else if (player.pendingContractReview?.status === "pending") {
+    // Completed-evidence boundary review already owns the tray. Do not open an
+    // unrelated default market phase that overwrites firm renewal authority.
+    if (!player.pendingDecision && (player.pendingOffers?.length || 0) > 0) {
+      // Keep existing boundary renewal decision/offers from simulateSeason.
+    } else if (!player.pendingDecision) {
+      const offers = generateTransferOffers(
+        seasonData.performanceScore,
+        player,
+        LEAGUES,
+        LEAGUE_LOOKUP,
+        seasonData.season?.avgMatchRating ?? null
+      );
+      player.pendingOffers = offers;
+    }
   } else {
     const offers = generateTransferOffers(
       seasonData.performanceScore,

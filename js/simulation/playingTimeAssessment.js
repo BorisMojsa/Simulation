@@ -304,8 +304,16 @@ export function assessClubPlayingTime(player, opts = {}) {
     return base;
   }
 
+  const seasonClubId =
+    season?.playingClubId || season?.clubId || season?.club?.clubId || null;
+  const seasonClubMismatch =
+    Boolean(representedClubId) &&
+    Boolean(seasonClubId) &&
+    representedClubId !== seasonClubId;
+
   // Explicit participationLedger — only when scoped to this period/club.
-  const ledger = season?.participationLedger || null;
+  // A prior club's season must not feed the live club's opportunity sample.
+  const ledger = !seasonClubMismatch ? season?.participationLedger || null : null;
   const playerLedger = player?.seasonLedger || null;
   const candidate =
     (ledger && ledgerScoped(ledger, season, representedClubId) && ledger) ||
@@ -348,19 +356,69 @@ export function assessClubPlayingTime(player, opts = {}) {
       seasonId: season?.seasonId || null,
     });
   }
-
-  // Legacy league-only estimate: standing.matches as opportunity count when known.
-  const standingMatches = coerceFiniteOrNull(season?.standing?.matches);
-  const seasonMinutes = coerceFiniteOrNull(season?.minutes ?? season?.clubMinutes);
-  if (standingMatches != null && standingMatches > 0 && seasonMinutes != null && seasonMinutes >= 0) {
-    base.clubMinutesPlayed = seasonMinutes;
-    base.opportunityCapacity = standingMatches * 90;
-    base.eligibleFixtureCount = standingMatches;
-    finalizeSlice(base);
-    base.source = "legacy-league-standing";
-    base.completeness = "legacy-league-estimate";
+  if (seasonClubMismatch) {
+    base.conflicts.push({
+      kind: "prior-club-season-ignored-for-live-club",
+      seasonClubId,
+      representedClubId,
+    });
+    base.source = "none";
+    base.completeness = "empty";
     return base;
   }
+
+  // Legacy league-only estimate: standing.matches as opportunity count when known.
+  // Prefer proved club-only minutes; never divide combined club+international totals
+  // by league-only capacity.
+  const standingMatches = coerceFiniteOrNull(season?.standing?.matches);
+  const clubOnlyMinutes =
+    coerceFiniteOrNull(season?.clubMinutes) ??
+    coerceFiniteOrNull(season?.ledgerSummary?.club?.minutes);
+  const internationalMinutes = coerceFiniteOrNull(season?.ledgerSummary?.international?.minutes);
+  const combinedMinutes = coerceFiniteOrNull(season?.minutes);
+  if (standingMatches != null && standingMatches > 0) {
+    let seasonMinutes = null;
+    if (clubOnlyMinutes != null && clubOnlyMinutes >= 0) {
+      seasonMinutes = clubOnlyMinutes;
+    } else if (
+      combinedMinutes != null &&
+      combinedMinutes >= 0 &&
+      (internationalMinutes == null || internationalMinutes === 0)
+    ) {
+      seasonMinutes = combinedMinutes;
+    } else if (
+      combinedMinutes != null &&
+      internationalMinutes != null &&
+      internationalMinutes > 0
+    ) {
+      base.conflicts.push({
+        kind: "mixed-minute-populations",
+        combinedMinutes,
+        clubMinutes: clubOnlyMinutes,
+        internationalMinutes,
+        standingMatches,
+      });
+      base.source = "legacy-mixed-incomplete";
+      base.completeness = "incomplete";
+      base.share = null;
+      base.eligibleFixtureCount = 0;
+      base.opportunityCapacity = 0;
+      return base;
+    } else if (combinedMinutes != null && combinedMinutes >= 0) {
+      seasonMinutes = combinedMinutes;
+    }
+
+    if (seasonMinutes != null) {
+      base.clubMinutesPlayed = seasonMinutes;
+      base.opportunityCapacity = standingMatches * 90;
+      base.eligibleFixtureCount = standingMatches;
+      finalizeSlice(base);
+      base.source = "legacy-league-standing";
+      base.completeness = "legacy-league-estimate";
+      return base;
+    }
+  }
+  const seasonMinutes = combinedMinutes ?? clubOnlyMinutes;
 
   // No reliable denominator — never invent appearances × 90 as firm opportunity.
   const apps = coerceFiniteOrNull(season?.matches);
@@ -386,12 +444,20 @@ export function assessClubPlayingTime(player, opts = {}) {
 
 function ledgerScoped(ledger, season, clubId) {
   if (!ledger || typeof ledger !== "object") return false;
-  if (ledger.seasonId && season?.seasonId && ledger.seasonId !== season.seasonId) return false;
-  if (ledger.clubId && clubId && ledger.clubId !== clubId) return false;
-  if (ledger.playingClubId && clubId && ledger.playingClubId !== clubId) return false;
-  // Unscoped player.seasonLedger with a seasonId of "old" must not feed a current season.
-  if (ledger.seasonId && season && !season.seasonId && ledger.seasonId === "old") return false;
-  if (ledger.seasonId === "old" && season && season.seasonId !== "old") return false;
+  // Period membership must be proved. Missing or mismatched identity is uncertainty.
+  if (ledger.seasonId) {
+    if (!season?.seasonId) return false;
+    if (ledger.seasonId !== season.seasonId) return false;
+  } else if (season?.seasonId) {
+    return false;
+  }
+  const ledgerClub = ledger.clubId || ledger.playingClubId || null;
+  if (ledgerClub) {
+    if (clubId && ledgerClub !== clubId) return false;
+  } else if (clubId) {
+    // Requested club but ledger declares none — unproven membership.
+    return false;
+  }
   return true;
 }
 

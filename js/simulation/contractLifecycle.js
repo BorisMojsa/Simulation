@@ -324,14 +324,37 @@ export function isOfferExecutable(player, offer) {
       return { ok: false, reason: "closed-academy-review" };
     }
   }
-  // Stale employer renewal after a move.
+  // Renewal requires the live employer, open revision, and a genuinely open window.
   if (offer.isRenewal) {
+    if (player.contractStatus === "released" || (!player.club && !employmentClubId(player))) {
+      return { ok: false, reason: "released-employer-renewal" };
+    }
     const emp = employmentClubId(player);
-    if (emp && offer.clubId !== emp) {
+    if (!emp || offer.clubId !== emp) {
+      return { ok: false, reason: "stale-employer-renewal" };
+    }
+    if (
+      offer.employerClubIdAtIssue &&
+      offer.employerClubIdAtIssue !== emp
+    ) {
       return { ok: false, reason: "stale-employer-renewal" };
     }
     if (offer.contractRevision && offer.contractRevision !== player.contractRevision) {
       return { ok: false, reason: "stale-contract-revision" };
+    }
+    if (offer.renewalReviewId) {
+      const liveReview = player.renewalReview;
+      const pending = player.pendingContractReview;
+      const reviewMatches =
+        liveReview?.reviewId === offer.renewalReviewId &&
+        (liveReview.outcome === "wants-renewal" || liveReview.outcome === "temporary-reject");
+      const pendingMatches =
+        pending?.status === "pending" &&
+        (pending.reviewId === offer.renewalReviewId ||
+          pending.contractRevision === offer.contractRevision);
+      if (!reviewMatches && !pendingMatches) {
+        return { ok: false, reason: "closed-renewal-review" };
+      }
     }
   }
   // Career scope
@@ -386,12 +409,28 @@ export function releaseToFreeAgency(player, reason = "contract-expired") {
   player.contractStatus = "released";
   player.freeAgentReason = reason;
   player.freeAgentSinceSeason = completedSeasons(player);
+  // Close any pending boundary review and invalidate old employer renewals.
+  if (player.pendingContractReview?.status === "pending") {
+    player.pendingContractReview = {
+      ...player.pendingContractReview,
+      status: "settled",
+      settledChoice: "released",
+      settledAtSeason: completedSeasons(player),
+    };
+  }
+  for (const o of player.pendingOffers || []) {
+    if (o?.isRenewal && o.status !== "accepted") {
+      markOfferStatus(player, o, "superseded", { reason: "released-to-free-agency" });
+    }
+  }
+  player.pendingOffers = (player.pendingOffers || []).filter((o) => !o?.isRenewal);
   player.renewalReview = {
     outcome: "undecided",
     reason: "free-agent",
     employerClubId: null,
     contractRevision: player.contractRevision,
     reviewSeason: completedSeasons(player),
+    reviewPhase: "free-agent",
     reviewId: null,
   };
   delete player.renewalPlanned;
@@ -780,6 +819,15 @@ export function selectNextCareerAction(player) {
   }
   if (player.pendingOffers?.length > 0) {
     return { id: "resolve-offers", label: "Review offers", canSimulate: false };
+  }
+  if (player.pendingContractReview?.status === "pending") {
+    return {
+      id: "resolve-contract-review",
+      label: "Resolve contract review",
+      canSimulate: false,
+      mode: "pending-review",
+      reviewId: player.pendingContractReview.reviewId,
+    };
   }
   if (player.seasonCheckpoint?.status === "awaiting_decision") {
     return { id: "resume-season", label: "Continue season", canSimulate: true };

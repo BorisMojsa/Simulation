@@ -1,0 +1,41 @@
+
+CASE B01: Old injury, later healthy period
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B01-01-restored-desk.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B01-02-before-continue.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B01-03-after-desk.png
+  PASS B01
+
+CASE B02: Injury crossing the boundary (carry-in)
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B02-01-restored-desk.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B02-02-before-continue.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B02-03-after-desk.png
+  PASS B02
+
+CASE B03: Injury year followed by recovered year
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-01-restored-desk.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-02-y1-before-continue.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-03-y1-desk.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-04-y2-desk.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-05-y2-before-continue.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-06-y2-desk.png
+  PASS B03
+
+CASE B04: Pause, snapshot restore and move
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B04-01-paused-restored.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B04-02-restored-fresh-page.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B04-03-loan-accepted.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B04-04-before-continue.png
+  screenshot /Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B04-05-after-desk.png
+  PASS B04
+
+Fix 06 browser checklist summary: {
+  "pass": true,
+  "fullRun": true,
+  "report": "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/fix06-runs/browser-report.json",
+  "results": [
+    "PASS B01 Old injury, later healthy period",
+    "PASS B02 Injury crossing the boundary (carry-in)",
+    "PASS B03 Injury year followed by recovered year",
+    "PASS B04 Pause, snapshot restore and move"
+  ]
+}

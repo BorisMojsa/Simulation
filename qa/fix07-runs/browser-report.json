@@ -1,0 +1,96 @@
+{
+  "generatedAt": "2026-10-29T19:41:36.636Z",
+  "base": "http://127.0.0.1:8000",
+  "selected": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07"
+  ],
+  "fullRun": true,
+  "results": [
+    {
+      "name": "B01",
+      "status": "PASS",
+      "detail": {
+        "stay": "Stay and compete",
+        "loanOptsVisible": true,
+        "continueClicks": 9,
+        "age": 20
+      }
+    },
+    {
+      "name": "B02",
+      "status": "PASS",
+      "detail": {
+        "beforeEnd": 1,
+        "afterEnd": 2,
+        "seasons": 1
+      }
+    },
+    {
+      "name": "B03",
+      "status": "PASS",
+      "detail": {
+        "freeAgent": true,
+        "age": 29,
+        "seasons": 1,
+        "declined": false
+      }
+    },
+    {
+      "name": "B04",
+      "status": "PASS",
+      "detail": {
+        "signed": true,
+        "age": 25,
+        "club": "club:serbia:vojvodina"
+      }
+    },
+    {
+      "name": "B05",
+      "status": "PASS",
+      "detail": {
+        "ages": [
+          23,
+          24
+        ],
+        "finalAge": 25,
+        "windows": [
+          {
+            "age": 24,
+            "empty": 0,
+            "lastClosed": null
+          },
+          {
+            "age": 25,
+            "empty": 1,
+            "lastClosed": "empty-before-wait"
+          }
+        ]
+      }
+    },
+    {
+      "name": "B06",
+      "status": "PASS",
+      "detail": {
+        "parentId": "club:italy:atalanta",
+        "playing": "club:serbia:tsc-backa-topola",
+        "employment": "club:italy:atalanta"
+      }
+    },
+    {
+      "name": "B07",
+      "status": "PASS",
+      "detail": {
+        "offerId": "club:england:hull-city:renewal:2026:starter:193500:0",
+        "end": 2
+      }
+    }
+  ],
+  "runtimeErrors": [],
+  "pass": true
+}

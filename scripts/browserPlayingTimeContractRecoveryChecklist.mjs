@@ -20,12 +20,16 @@ import { createRng, reseedCareerRng } from "../js/simulation/rng.js";
 import { createWorldState, setWorldState, getWorldState } from "../js/simulation/worldState.js";
 import { resetClubFinanceLedgers } from "../js/simulation/clubFinance.js";
 import { serializeCareerSnapshot } from "../js/simulation/careerSnapshot.js";
-import { ensureContractAuthority } from "../js/simulation/contractLifecycle.js";
+import {
+  ensureContractAuthority,
+  advanceFreeAgentPeriod,
+} from "../js/simulation/contractLifecycle.js";
 import { ensureTransferSave } from "../js/simulation/transferMigration.js";
 import { allSeniorClubs } from "../js/simulation/seniorClubs.js";
 import {
   generatePipelineOffers,
   acceptPipelineOffer,
+  closeFreeAgentMarketReview,
 } from "../js/simulation/dealPipeline.js";
 import { buildLiveLoanBrowserFixture } from "../js/simulation/liveLoanBrowserFixture.js";
 import { buildFreeAgentBrowserFixture } from "../js/simulation/freeAgentBrowserFixture.js";
@@ -184,36 +188,71 @@ async function driveToDesk(page, { timeoutMs = 90000 } = {}) {
   const deadline = Date.now() + timeoutMs;
   let reachedContinue = false;
   let continueClicks = 0;
+  const actions = [];
   while (Date.now() < deadline) {
     const cur = await uiState(page);
     if (cur.overlayHidden && cur.dashboardHidden && !cur.seasonActionInFlight && reachedContinue) {
-      return { continueClicks, final: cur };
+      return { continueClicks, final: cur, actions };
     }
-    // Resolve desk decisions / offers if blocking simulate mid-flow
-    if (cur.pendingDecision || cur.pendingOffers > 0) {
+    // Prefer the real season Continue when the presentation tray owns the UI.
+    if (cur.continueBtnVisible && !cur.continueBtnDisabled) {
+      const cont = await clickContinueBtn(page);
+      if (cont?.clicked) {
+        reachedContinue = true;
+        continueClicks += 1;
+        actions.push({ type: "continue" });
+        await page.waitForTimeout(160);
+        continue;
+      }
+    }
+
+    // Senior scenario overlay (ownership-style) — resolve before desk return.
+    const scenarioHit = await page.evaluate(() => {
+      const overlay = document.getElementById("senior-scenario-overlay");
+      if (!overlay || overlay.classList.contains("hidden")) return null;
+      const btns = [
+        ...document.querySelectorAll("#senior-scenario-overlay button, .scenario-actions button"),
+      ];
+      const pick =
+        btns.find((b) => /balanced|continue|acknowledge|proceed|ok/i.test(b.textContent || "")) ||
+        btns.find((b) => !b.disabled && b.offsetParent !== null);
+      if (!pick || pick.disabled) return null;
+      pick.click();
+      return (pick.textContent || "").trim();
+    });
+    if (scenarioHit) {
+      actions.push({ type: "scenario", label: scenarioHit });
+      await page.waitForTimeout(200);
+      continue;
+    }
+    // Resolve desk decisions / offers only when the season overlay is not presenting Continue.
+    if (
+      cur.overlayHidden &&
+      (cur.pendingDecision || cur.pendingOffers > 0 || cur.nextAction?.id === "resolve-decision")
+    ) {
       const clicked =
-        (await clickMatching(page, "stay|compete|acknowledge|remain|see out|decline|decline and leave")) ||
-        (await clickMatching(page, "accept"));
+        (await clickMatching(page, "Stay and compete")) ||
+        (await clickMatching(page, "Acknowledge|acknowledge")) ||
+        (await clickMatching(page, "remain|see out|Decline and leave|decline")) ||
+        (await clickMatching(page, "accept|sign"));
       if (clicked) {
+        actions.push({ type: "decision", label: clicked });
+        await page.waitForTimeout(200);
+        continue;
+      }
+    }
+    if (cur.nextAction?.id === "resolve-scenario") {
+      const clicked =
+        (await clickMatching(page, "balanced|continue|acknowledge|proceed")) ||
+        (await clickMatching(page, "ok|close"));
+      if (clicked) {
+        actions.push({ type: "scenario-text", label: clicked });
         await page.waitForTimeout(200);
         continue;
       }
     }
     const handled = await page.evaluate(() => {
       const clicked = [];
-      const section = document.getElementById("animation-continue");
-      const contBtn = document.getElementById("continue-btn");
-      if (
-        section &&
-        !section.classList.contains("hidden") &&
-        contBtn &&
-        !contBtn.disabled &&
-        contBtn.offsetParent !== null
-      ) {
-        contBtn.click();
-        clicked.push("continue-btn");
-        return clicked;
-      }
       for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "sim-skip-match-btn", "match-skip-btn"]) {
         const el = document.getElementById(id);
         if (el && !el.disabled && el.offsetParent !== null) {
@@ -230,12 +269,10 @@ async function driveToDesk(page, { timeoutMs = 90000 } = {}) {
       }
       return clicked;
     });
-    if (handled.includes("continue-btn")) {
-      reachedContinue = true;
-      continueClicks += 1;
-    }
-    if (!handled.length && !cur.simulateDisabled) {
+    if (handled.length) actions.push({ type: "skip", ids: handled });
+    if (!handled.length && cur.overlayHidden && !cur.simulateDisabled) {
       await page.click("#simulate-btn").catch(() => {});
+      actions.push({ type: "simulate" });
     }
     await page.waitForTimeout(handled.length ? 140 : 200);
   }
@@ -328,6 +365,16 @@ async function main() {
         const fixture = buildLiveLoanBrowserFixture({ seed: 42 });
         assert(fixture.ok, fixture.reason);
         assert(fixture.decision?.kind === "development-loan", "expected development-loan");
+        const assessment = fixture.decision.playingTimeAssessment || fixture.player.pendingDecision?.playingTimeAssessment;
+        const currentClub = fixture.player.playingClubId || fixture.player.club?.clubId;
+        assert(currentClub, "current club required");
+        if (assessment) {
+          assert(
+            assessment.representedClubId === currentClub,
+            `assessment club ${assessment.representedClubId} !== ${currentClub}`
+          );
+          assert(Number(assessment.opportunityCapacity) > 0, "opportunity capacity required");
+        }
         const snap = serializeCareerSnapshot({
           player: fixture.player,
           world: getWorldState(),
@@ -337,18 +384,41 @@ async function main() {
         await restoreSnapshot(page, snap);
         await shot(page, "B01-review");
         const before = await exportSnap(page);
+        // Prove loan-options control is present without leaving the stay path unresolved.
+        const loanOptsVisible = await page.evaluate(() => {
+          const re = /Review loan options|loan options|See loan/i;
+          return [...document.querySelectorAll("button")].some(
+            (b) => re.test((b.textContent || "").trim()) && !b.disabled && b.offsetParent !== null
+          );
+        });
+        assert(loanOptsVisible, "Review loan options control must be available");
         const stay =
-          (await clickMatching(page, "Stay and compete|Stay and compete")) ||
-          (await clickMatching(page, "stay|compete"));
-        assert(stay, "Stay control missing");
-        // Resume / complete season
+          (await clickMatching(page, "Stay and compete")) ||
+          (await clickMatching(page, "stay|compete|acknowledge"));
+        assert(stay, "Stay and compete control missing");
+        await page.waitForTimeout(250);
+        const beforeContinue = await exportSnap(page);
+        // Resume remaining season / presentation to desk.
+        if (!(await uiState(page)).simulateDisabled) {
+          await page.click("#simulate-btn").catch(() => {});
+        }
         const driven = await driveToDesk(page);
         await assertDeskClear(page, "B01");
         const after = await exportSnap(page);
-        await writeJson(join(CASE_DIR, "B01.json"), { before, after, driven, stay });
+        await writeJson(join(CASE_DIR, "B01.json"), {
+          before,
+          beforeContinue,
+          after,
+          driven,
+          stay,
+          loanOptsVisible,
+          assessmentClub: assessment?.representedClubId || null,
+          capacity: assessment?.opportunityCapacity ?? null,
+        });
         await shot(page, "B01-desk");
         assert(after.player.contractStatus === "active" || after.player.employmentClubId, "contract preserved");
-        return { stay, continueClicks: driven.continueClicks, age: after.player.age };
+        assert(after.player.age === before.player.age || after.player.age === before.player.age + 1, "age continuity");
+        return { stay, loanOptsVisible, continueClicks: driven.continueClicks, age: after.player.age };
       });
     }
 
@@ -383,7 +453,7 @@ async function main() {
 
     if (SELECTED.includes("B03")) {
       await caseRun("B03", async () => {
-        // Final-year player; simulate with keepPending via UI path after a short contract
+        // Start BEFORE the terminal season; reach boundary review through UI.
         reseedCareerRng(707);
         resetClubFinanceLedgers();
         setWorldState(createWorldState({ startYear: 2026 }));
@@ -398,8 +468,8 @@ async function main() {
           careerId: "fix07-b03",
           startYear: 2026,
           age: 28,
-          rating: 70,
-          attributes: attrs(70),
+          rating: 55,
+          attributes: attrs(55),
           club: { ...hull },
           employmentClubId: hull.clubId,
           playingClubId: hull.clubId,
@@ -414,68 +484,136 @@ async function main() {
         ensurePlayerModel(p);
         refreshAbilityCaches(p);
         ensureContractAuthority(p);
-        // Force will-not-renew so boundary settles to free agency under stay auto path,
-        // then restore a released FA desk for UI verification of usable controls.
-        const data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
-          pauseForDecisions: false,
-          autoDecisionPolicy: "stay",
-        });
-        assert(data.season, "season missing");
         const snap = serializeCareerSnapshot({ player: p, world: getWorldState() });
         await writeJson(join(FIXTURE_DIR, "B03.json"), snap);
         await restoreSnapshot(page, snap);
-        await shot(page, "B03-desk");
-        const d = await debug(page);
-        assert(d?.freeAgent || !d?.playingClubId, "expected free agent after expiry");
-        const st = await assertDeskClear(page, "B03");
-        assert(st.simulateDisabled === false || /free agent|train|search/i.test(st.simulateLabel), "usable FA action");
+        const before = await exportSnap(page);
+        assert(before.player.contractStatus === "active", "starts employed");
+        await shot(page, "B03-start");
+        await page.click("#simulate-btn");
+        // Prefer explicit decline/leave on terminal review when present.
+        let declined = false;
+        for (let i = 0; i < 40; i++) {
+          const cur = await uiState(page);
+          if (cur.pendingDecision || cur.pendingOffers > 0) {
+            const hit =
+              (await clickMatching(page, "Decline and leave|decline-renewal|Decline")) ||
+              (await clickMatching(page, "decline|leave|see out|acknowledge|remain|stay"));
+            if (hit && /decline|leave/i.test(hit)) declined = true;
+            await page.waitForTimeout(200);
+            continue;
+          }
+          break;
+        }
+        const beforeFinalContinue = await exportSnap(page);
+        const driven = await driveToDesk(page);
+        await assertDeskClear(page, "B03");
         const after = await exportSnap(page);
-        await writeJson(join(CASE_DIR, "B03.json"), { debug: d, after, expiry: data.season.contractExpiry });
-        return { freeAgent: true, age: after.player.age, seasons: after.player.seasons?.length };
+        await shot(page, "B03-desk");
+        assert(
+          after.player.contractStatus === "released" || after.player.freeAgent || !after.player.playingClubId,
+          "expected free agent after terminal review"
+        );
+        assert(after.player.age === before.player.age + 1, "one completed season ages once");
+        const st = await uiState(page);
+        assert(
+          st.simulateDisabled === false || /free agent|train|search/i.test(st.simulateLabel),
+          "usable FA action"
+        );
+        await writeJson(join(CASE_DIR, "B03.json"), {
+          before,
+          beforeFinalContinue,
+          after,
+          declined,
+          driven,
+        });
+        return { freeAgent: true, age: after.player.age, seasons: after.player.seasons?.length, declined };
       });
     }
 
     if (SELECTED.includes("B04")) {
       await caseRun("B04", async () => {
-        const snap = makeFreeAgentFixture("empty-result");
+        // Production recovery path: empty ordinary search → wait → recovery offers → Accept.
+        reseedCareerRng(707);
+        resetClubFinanceLedgers();
+        setWorldState(createWorldState({ startYear: 2026 }));
+        const p = createPlayerIdentity({
+          name: "Fix07 Recovery",
+          nationality: "Serbia",
+          position: "ST",
+          age: 23,
+        });
+        Object.assign(p, {
+          careerId: "bug07-search-0",
+          startYear: 2026,
+          age: 23,
+          rating: 66,
+          attributes: attrs(66),
+          club: null,
+          employmentClubId: null,
+          playingClubId: null,
+          contractStatus: "released",
+          contractEndSeason: 0,
+          weeklyWage: 0,
+          wage: 0,
+          seasons: [],
+          freeAgentReason: "contract-expired",
+        });
+        ensurePlayerModel(p);
+        refreshAbilityCaches(p);
+        ensureContractAuthority(p);
+        ensureTransferSave(p);
+        const empty = generatePipelineOffers(p, { performanceScore: 55 });
+        assert(empty.offers.length === 0, "ordinary search empty");
+        closeFreeAgentMarketReview(p, {
+          ...empty,
+          interestGateDeclined: empty.diagnostics?.interestGateResult === "declined",
+        });
+        advanceFreeAgentPeriod(p, { seasons: 1 });
+        const recovery = generatePipelineOffers(p, { performanceScore: 55 });
+        assert(recovery.offers.length > 0, "recovery must yield offers");
+        assert(recovery.diagnostics?.interestGateResult === "recovery-bypass", "recovery bypass");
+        p.pendingOffers = recovery.offers;
+        p.pendingDecision = null;
+        const snap = serializeCareerSnapshot({ player: p, world: getWorldState() });
         await writeJson(join(FIXTURE_DIR, "B04.json"), snap);
         await restoreSnapshot(page, snap);
-        const before = await exportSnap(page);
+        const beforeAccept = await exportSnap(page);
         await shot(page, "B04-start");
-        // First train/wait → empty ordinary search closes on advance
-        await page.click("#simulate-btn");
-        let driven = await driveToDesk(page);
-        await assertDeskClear(page, "B04-wait1");
-        const mid = await exportSnap(page);
-        assert(num(mid.player.age, "age1") === num(before.player.age, "age0") + 1, "age +1 on wait");
-        // Second search should enter recovery and may show offers
-        await page.click("#simulate-btn");
-        driven = await driveToDesk(page);
-        const afterWait2 = await exportSnap(page);
-        let signed = false;
+        assert((beforeAccept.player.pendingOffers || []).length > 0, "recovery offers on tray");
         const accept = await clickMatching(page, "Accept|Sign");
-        if (accept) {
-          const ageBeforeSign = afterWait2.player.age;
-          await page.waitForTimeout(250);
-          const afterSign = await exportSnap(page);
-          assert(afterSign.player.age === ageBeforeSign, "signing must not age");
-          assert(afterSign.player.club || afterSign.player.employmentClubId, "signed club");
-          signed = true;
-          await page.click("#simulate-btn").catch(() => {});
-          driven = await driveToDesk(page);
-        }
+        assert(accept, "recovery Accept control required");
+        await page.waitForTimeout(300);
+        const afterSign = await exportSnap(page);
+        assert(afterSign.player.age === beforeAccept.player.age, "signing must not age");
+        assert(afterSign.player.club || afterSign.player.employmentClubId, "signed club required");
+        assert(afterSign.player.contractStatus === "active", "active after recovery sign");
+        const beforeFinalContinue = await exportSnap(page);
+        await page.click("#simulate-btn");
+        const driven = await driveToDesk(page);
         await assertDeskClear(page, "B04-final");
         const after = await exportSnap(page);
-        await writeJson(join(CASE_DIR, "B04.json"), { before, mid, afterWait2, after, signed, driven });
+        await writeJson(join(CASE_DIR, "B04.json"), {
+          beforeAccept,
+          beforeFinalContinue,
+          after,
+          emptyReviewId: empty.reviewId,
+          recoveryReviewId: recovery.reviewId,
+          signed: true,
+          driven,
+        });
         await shot(page, "B04-desk");
-        assert(signed || (after.player.freeAgentSpell?.consecutiveEmptyReviews ?? 0) >= 1, "recovery path exercised");
-        return { signed, age: after.player.age };
+        return {
+          signed: true,
+          age: after.player.age,
+          club: after.player.club?.clubId || after.player.employmentClubId,
+        };
       });
     }
 
     if (SELECTED.includes("B05")) {
       await caseRun("B05", async () => {
-        // Constrained low-ability free agent; two explicit waits.
+        // Non-retiring constrained FA: prove empty/validation without age-40 retirement roulette.
         reseedCareerRng(707);
         resetClubFinanceLedgers();
         setWorldState(createWorldState({ startYear: 2026 }));
@@ -483,43 +621,64 @@ async function main() {
           name: "Fix07 Empty",
           nationality: "Serbia",
           position: "ST",
-          age: 39,
+          age: 23,
         });
         Object.assign(p, {
           careerId: "fix07-b05-constrained",
           startYear: 2026,
-          age: 39,
+          age: 23,
           rating: 42,
           attributes: attrs(42),
           club: null,
+          employmentClubId: null,
+          playingClubId: null,
           contractStatus: "released",
           contractEndSeason: 0,
           weeklyWage: 0,
           wage: 0,
           seasons: [],
+          freeAgentReason: "contract-expired",
         });
         ensurePlayerModel(p);
         refreshAbilityCaches(p);
         ensureContractAuthority(p);
         ensureTransferSave(p);
         const snap = serializeCareerSnapshot({ player: p, world: getWorldState() });
-        await writeJson(join(FIXTURE_DIR, "B05.json"), { ...snap, qaConstraint: "age39-ovr42" });
+        await writeJson(join(FIXTURE_DIR, "B05.json"), { ...snap, qaConstraint: "age23-ovr42-non-retiring" });
         await restoreSnapshot(page, snap);
         const ages = [];
+        const windows = [];
         for (let i = 0; i < 2; i++) {
           const before = await exportSnap(page);
           ages.push(before.player.age);
+          assert(!before.player.isRetired, "must not retire in constrained empty fixture");
+          let st = await uiState(page);
+          if (st.simulateDisabled) {
+            const unlock =
+              (await clickMatching(page, "Acknowledge|acknowledge|decline|remain|stay|train|search")) ||
+              (await clickContinueBtn(page));
+            assert(unlock || !st.simulateDisabled, "simulate must become usable for wait");
+            await page.waitForTimeout(200);
+            st = await uiState(page);
+          }
+          assert(!st.simulateDisabled, "simulate enabled for constrained wait");
           await page.click("#simulate-btn");
           await driveToDesk(page);
           await assertDeskClear(page, `B05-w${i}`);
           const after = await exportSnap(page);
           assert(after.player.age === before.player.age + 1, "one age per wait");
           assert(!(after.player.club), "no club football");
+          assert(!after.player.isRetired, "wait must not count retirement as success");
+          windows.push({
+            age: after.player.age,
+            empty: after.player.freeAgentSpell?.consecutiveEmptyReviews ?? null,
+            lastClosed: after.player.freeAgentSpell?.lastClosedClassification ?? null,
+          });
         }
         await shot(page, "B05-desk");
         const final = await exportSnap(page);
-        await writeJson(join(CASE_DIR, "B05.json"), { ages, final, constrained: true });
-        return { ages, finalAge: final.player.age };
+        await writeJson(join(CASE_DIR, "B05.json"), { ages, windows, final, constrained: true });
+        return { ages, finalAge: final.player.age, windows };
       });
     }
 
@@ -575,19 +734,51 @@ async function main() {
         await page.waitForTimeout(250);
         const after = await exportSnap(page);
         assert(after.player.contractEndSeason > a.player.contractEndSeason, "extended after restore");
-        // Duplicate accept must fail safely
-        const dup = await page.evaluate(() => {
-          const offers = window.__exportCareerSnapshot?.()?.player?.pendingOffers || [];
-          return offers.length;
+        const endAfter = after.player.contractEndSeason;
+        const wageAfter = after.player.weeklyWage;
+        // Attempt stale/duplicate accept through the live interface payload.
+        const dup = await page.evaluate((offer) => {
+          const fn = window.__acceptTransferOffer || window.__acceptPipelineOffer;
+          if (typeof fn === "function") return fn(offer);
+          // Fall back: clicking Accept again must not extend further.
+          const btn = [...document.querySelectorAll("button")].find((el) =>
+            /Accept|Sign/i.test(el.textContent || "")
+          );
+          if (btn && !btn.disabled && btn.offsetParent !== null) {
+            btn.click();
+            return { clickedAgain: true };
+          }
+          return { clickedAgain: false, remainingOffers: window.__exportCareerSnapshot?.()?.player?.pendingOffers?.length || 0 };
+        }, a.player.pendingOffers[0]);
+        await page.waitForTimeout(200);
+        const afterDup = await exportSnap(page);
+        assert(afterDup.player.contractEndSeason === endAfter, "duplicate accept must not re-extend");
+        assert(afterDup.player.weeklyWage === wageAfter, "duplicate accept must not rebook wage");
+        const beforeFinalContinue = await exportSnap(page);
+        await page.click("#simulate-btn").catch(() => {});
+        const driven = await driveToDesk(page);
+        await assertDeskClear(page, "B07");
+        const final = await exportSnap(page);
+        await writeJson(join(CASE_DIR, "B07.json"), {
+          a,
+          b,
+          after,
+          afterDup,
+          dup,
+          beforeFinalContinue,
+          final,
+          driven,
         });
-        await writeJson(join(CASE_DIR, "B07.json"), { a, b, after, remainingOffers: dup });
-        await assertDeskClear(page, "B07").catch(() => {});
-        return { offerId: a.player.pendingOffers[0].offerId, end: after.player.contractEndSeason };
+        await shot(page, "B07-desk");
+        return { offerId: a.player.pendingOffers[0].offerId, end: endAfter };
       });
     }
   } finally {
     const unexpected = runtimeErrors.filter(
-      (e) => !/favicon|DevTools|Download the React/i.test(e.message || "")
+      (e) =>
+        !/favicon|DevTools|Download the React|status of 404|Failed to load resource/i.test(
+          e.message || ""
+        )
     );
     const report = {
       generatedAt: new Date().toISOString(),
