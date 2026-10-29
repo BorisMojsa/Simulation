@@ -1045,7 +1045,12 @@ async function main() {
             beforeFinalContinue: slimPlayer(negBeforeFinalContinue),
             after: slimPlayer(negAfter),
             declined: negDeclined,
-            driven: negDriven,
+            driven: {
+              continueClicks: negDriven?.continueClicks ?? null,
+              actions: negDriven?.actions || [],
+              beforeFinalContinue: slimPlayer(negDriven?.beforeFinalContinue),
+              final: slimPlayer(negDriven?.final),
+            },
             reviewOutcome: negAfter.player.pendingContractReview?.outcome || null,
             settledChoice: negAfter.player.pendingContractReview?.settledChoice || null,
           },
