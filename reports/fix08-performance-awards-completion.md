@@ -3,37 +3,33 @@
 Branch: `fix/08-user-rival-performance-individual-awards`  
 Accepted base: `52dc6014f0aa6ba372e8ebc453943e8e3023b7d1`
 
-## What changed
+## ReReview status
 
-### Scoped evidence (`seasonEvidence.js`)
-- Edition/scope lines now carry `ratedMinutes`, `ratingSum`, and minutes-weighted `rating`.
-- Unknown ratings stay unknown (not zero). Zero-minute rows remain non-appearances.
+Closes ChatGPT ReReview findings R1–R7 against commit `29e79d9` while remaining on Fix 08. See packaged `reports/r1-r7-closure.md`.
+
+## What changed
 
 ### League award candidates (`individualAwards.js`)
 - League TOTS / POTS / Young / Rookie / Boot / Glove use **league-edition** goals/assists/minutes/**rating**.
-- Cup/continental/international no longer inflate league candidate lines (Appendix A equal across three runs).
-- World Player of the Year uses an explicit whole-season line in `scoreSeasonLine` units; synthetic world candidates are scored with the same contract.
-- Rival opportunity: appearances first; minutes ≤ apps×90; CS ≤ apps; ratings recomputed after user-team caps.
-- Full-population `referenceMoments` persisted before compact retention.
-- Shared rating baseline `6.0` with user `computeMatchRating`; rival coefficients aligned for center parity.
-- Field version 2; version-1 fields remain reusable for completed seasons.
+- Category-aware `selectRivalIds` retention (eligibility + metric), post-adjustment selection, optional diagnostic population.
+- Field lifecycle: `stage` + `inputFingerprint`; unfinished caches refresh; completed history preserved.
+- `decisionTrace` covers every award category including rejected/ineligible outcomes.
+- Provenance flags: `tableApproximated` / `playerStatsApproximated`.
+- World Player of the Year uses an explicit whole-season line with league/competition gates.
 
 ### Match attribution (`matchEngine.js`)
-- Removed the 50% team-goal floor on the goals-while-playing denominator so short substitutes are not double-penalized.
+- Removed team-goal share floors (`0.5` and remaining `0.35`) so duration is not applied twice for short appearances.
+- `buildGoalEvents` exported for controlled regressions.
 
 ### Tests / harnesses
-- `tests/userRivalPerformanceAwards.test.mjs` (F01–F05, F08–F13, F15–F16, F20+)
-- `scripts/qaUserRivalPerformanceAwards.mjs`
-- `scripts/qaFix08Parity.mjs` (200 train + 200 holdout seeds per cell)
-- `scripts/qaFix08EngineCohort.mjs` (+ dedicated earned witnesses)
-- `scripts/browserUserRivalPerformanceAwardsChecklist.mjs`
-
-### Fixture note
-- Fix 07 F9/F11 boundary facade tests retargeted from seed 707 → **703** after intentional attribution change (invariant unchanged).
+- `tests/userRivalPerformanceAwards.test.mjs` — F-suite + R1–R3 regressions; meaningful F13/F15/F16/F20.
+- `scripts/qaFix08Parity.mjs` — matched season-equivalent cells, tolerances enforced, nonzero exit on fail.
+- `scripts/qaFix08EngineCohort.mjs` — default **48×3** across ≥3 leagues; decision traces; dedicated witnesses.
+- `scripts/browserUserRivalPerformanceAwardsChecklist.mjs` — real Continue journeys via `__exportCareerSnapshot`.
+- Base/final cohort comparison under `qa/fix08-runs/comparison/`.
 
 ## Known limitations
-- No full NPC database; rival fields remain approximate.
+- Synthetic rival field (no full NPC DB).
 - World field is a bounded synthetic approximation (documented).
-- Fix 11 overall/growth calibration is out of scope; downstream development may shift with performance evidence.
-- Minimal engine cohort is 8×3; expand with `FIX08_COHORT_FULL=1` for broader coverage.
-- Some F-ids (F06/F07/F14/F17–F19) remain partially covered by existing suites / dedicated witnesses rather than exhaustive new cases.
+- Fix 09–14 / growth / team xG / selection remain out of scope.
+- Full Node suite still exits 1 on the two documented ability assertions only.

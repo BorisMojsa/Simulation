@@ -161,12 +161,16 @@ export const AWARD_DEFS = Object.freeze({
 });
 
 const AWARD_ORDER = Object.values(AWARD_DEFS).map((d) => d.awardId);
-/** Current generation format. Version-1 fields remain reusable for completed seasons. */
+/** Current generation format. Version-1 completed finals remain reusable when fingerprint matches. */
 const FIELD_VERSION = 2;
 const COMPATIBLE_FIELD_VERSIONS = new Set([1, 2]);
 
 /** Match-rating baseline shared with `computeMatchRating` (user path starts at 6.0). */
 const RATING_BASELINE = 6.0;
+
+/** Supported field lifecycle stages. */
+const FIELD_STAGE_PARTIAL = "partial";
+const FIELD_STAGE_FINAL = "final";
 
 /** Position -> goal / assist base rates (relative weights, not calibrated to a league). */
 const SCORING_WEIGHT = { GK: 0, CB: 0.045, RB: 0.05, LB: 0.05, CDM: 0.06, CM: 0.1, CAM: 0.15, RW: 0.2, LW: 0.2, ST: 0.3 };
@@ -376,8 +380,10 @@ function generateTeamRoster(team, teamIdx, editionId, rng) {
   }
 
   // Ratings last, from the realised output. Baseline matches user `computeMatchRating` (6.0).
+  // Persist the rating noise draw so post-cap recomputation keeps the same sample.
   for (const p of players) {
-    p.rating = rivalRatingFromOutput(p, teamQ, gaussian(rng));
+    p.ratingNoise = gaussian(rng);
+    p.rating = rivalRatingFromOutput(p, teamQ, p.ratingNoise);
   }
 
   return { players, teamCleanSheets, ppg, position: team.position ?? null, teamQ };
@@ -388,10 +394,15 @@ function rivalRatingFromOutput(p, teamQ, noise = 0) {
   const per90 = Math.max(p.minutes, 1) / 90;
   const out = (w.g * p.goals + w.a * p.assists + w.cs * p.cleanSheets) / per90;
   const talent = Number.isFinite(p.talent) ? p.talent : 0;
-  // Coefficients chosen so field centers sit near user `computeMatchRating` (~6.0–6.4 quiet
-  // seasons) under ordinary team context — not a post-hoc award handicap.
+  // Role-aware centers: keepers sit under 6.0 without goals; defenders' clean-sheet
+  // output must not push strong-talent peers far above matched user CB ratings.
+  const isGk = p.group === "GK";
+  const isDef = p.group === "DEF";
+  const base = isGk ? RATING_BASELINE - 0.12 : isDef ? RATING_BASELINE : RATING_BASELINE + 0.06;
+  const outCoef = isGk ? 0.05 : isDef ? 0.1 : 0.16;
+  const talentCoef = isDef ? 0.06 : 0.1;
   return Number(
-    clamp(RATING_BASELINE + 0.18 * teamQ + 0.07 * out + 0.12 * talent + 0.12 * noise, 5.2, 8.2).toFixed(2)
+    clamp(base + 0.2 * teamQ + outCoef * out + talentCoef * talent + 0.1 * noise, 5.2, 8.2).toFixed(2)
   );
 }
 
@@ -413,14 +424,15 @@ function adjustUserTeam(roster, userContext) {
   };
   cap("goals", Math.max(0, num(teamGoals) - num(goals)));
   cap("assists", Math.max(0, Math.round(num(teamGoals) * 0.72) - num(assists)));
-  // Recompute ratings after capping so dependent scores are not stale.
+  // Recompute ratings after capping, retaining each player's original rating-noise draw.
   const teamQ = Number.isFinite(roster.teamQ)
     ? roster.teamQ
     : roster.ppg == null
       ? 0
       : (roster.ppg / 3 - 0.45) * 2;
   for (const p of roster.players) {
-    p.rating = rivalRatingFromOutput(p, teamQ, 0);
+    const noise = Number.isFinite(p.ratingNoise) ? p.ratingNoise : 0;
+    p.rating = rivalRatingFromOutput(p, teamQ, noise);
   }
 }
 
@@ -428,21 +440,82 @@ function lineOf(r) {
   return { group: r.group, minutes: r.minutes, goals: r.goals, assists: r.assists, cleanSheets: r.cleanSheets, rating: r.rating, teamPpg: r.teamPpg };
 }
 
-/** Ids of the strongest rivals per category (bounds save size). Uses stats only, never the user. */
-function selectRivalIds(rivals, possibleMinutes) {
+/**
+ * Retain rivals needed for every category decision using the same eligibility and
+ * metrics as evaluation. Raw-score leaders who fail participation must not hide
+ * eligible contenders.
+ */
+export function selectRivalIds(rivals, possibleMinutes, referenceMoments = null) {
   const keep = new Set();
   const add = (list, n) => list.slice(0, n).forEach((r) => keep.add(r.id));
   const score = (r) => scoreSeasonLine(lineOf(r), possibleMinutes);
-  for (const g of ["GK", "DEF", "MID", "FWD"]) add(sortDesc(rivals.filter((r) => r.group === g), score), 12);
-  add(sortDesc(rivals, (r) => r.goals), 10);
-  add(sortDesc(rivals.filter((r) => r.group === "GK"), (r) => r.cleanSheets), 6);
-  add(sortDesc(rivals.filter((r) => r.age <= 25), score), 10);
-  add(sortDesc(rivals.filter((r) => r.priorSeniorMinutes < AWARD_CONFIG.breakthroughPriorMinutesMax), score), 8);
+  const minTots = AWARD_CONFIG.minParticipation * possibleMinutes;
+  const minGlove = AWARD_CONFIG.goldenGloveMinParticipation * possibleMinutes;
+  const moments = referenceMoments?.byGroup || {};
+  const potsMetric = (r) => {
+    const m = moments[r.group] || { mean: 0, sd: 1 };
+    return (score(r) - m.mean) / Math.max(m.sd, 0.35);
+  };
+
+  // TOTS / role slots: participation-eligible, ranked by season score.
+  for (const g of ["GK", "DEF", "MID", "FWD"]) {
+    add(
+      sortDesc(
+        rivals.filter((r) => r.group === g && r.minutes >= minTots),
+        score
+      ),
+      12
+    );
+  }
+  // Golden Boot: goal leaders (no invented participation gate).
+  add(sortDesc(rivals, (r) => r.goals), 12);
+  // Golden Glove: participation-eligible keepers by clean sheets.
+  add(
+    sortDesc(
+      rivals.filter((r) => r.group === "GK" && r.minutes >= minGlove),
+      (r) => r.cleanSheets
+    ),
+    8
+  );
+  // POTS: participation-eligible by standardised score.
+  add(
+    sortDesc(
+      rivals.filter((r) => r.minutes >= minTots),
+      potsMetric
+    ),
+    12
+  );
+  // Young: start-age eligible + participation.
+  add(
+    sortDesc(
+      rivals.filter(
+        (r) => r.age != null && r.age <= AWARD_CONFIG.youthMaxAge && r.minutes >= minTots
+      ),
+      potsMetric
+    ),
+    10
+  );
+  // Rookie: prior-senior + breakthrough-minute eligibility.
+  add(
+    sortDesc(
+      rivals.filter(
+        (r) =>
+          r.priorSeniorMinutes < AWARD_CONFIG.breakthroughPriorMinutesMax &&
+          r.minutes >= AWARD_CONFIG.breakthroughMinutes
+      ),
+      potsMetric
+    ),
+    10
+  );
   return keep;
 }
 
+export function buildReferenceMoments(rivals, possibleMinutes) {
+  return buildReferenceMomentsInternal(rivals, possibleMinutes);
+}
+
 /** Full-population score moments for role standardization (retained before compacting). */
-function buildReferenceMoments(rivals, possibleMinutes) {
+function buildReferenceMomentsInternal(rivals, possibleMinutes) {
   const minMins = AWARD_CONFIG.minParticipation * possibleMinutes;
   const byGroup = {};
   for (const g of ["GK", "DEF", "MID", "FWD"]) {
@@ -461,9 +534,68 @@ function buildReferenceMoments(rivals, possibleMinutes) {
   };
 }
 
-function stripRival(r) {
-  const { u: _u, talent: _talent, starter: _starter, ...rest } = r; // generation-only fields
+function stripRival(r, { keepTalent = false } = {}) {
+  const { u: _u, talent, starter: _starter, ratingNoise: _rn, ...rest } = r;
+  if (keepTalent && Number.isFinite(talent)) return { ...rest, talent };
   return rest;
+}
+
+function fieldInputFingerprint(seasonContext, table, possibleMinutes) {
+  const user = seasonContext.user || {};
+  return {
+    possibleMinutes: num(possibleMinutes),
+    userGoals: num(user.goals),
+    userAssists: num(user.assists),
+    userPosition: user.position ?? null,
+    teams: table.length,
+    tablePlayedSum: table.reduce((s, r) => s + num(r.played), 0),
+    tableGoalsForSum: table.reduce((s, r) => s + num(r.goalsFor), 0),
+    tablePointsSum: table.reduce((s, r) => s + num(r.points), 0),
+  };
+}
+
+function fingerprintsEqual(a, b) {
+  if (!a || !b) return false;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * Reuse only when the supported lifecycle allows it.
+ * - Final fields with matching fingerprint: reuse (idempotent).
+ * - Partial fields: reuse only when fingerprint still matches; never lock a
+ *   partial field across changed final inputs.
+ * - Legacy v1 without stage: reuse only when stored possibleMinutes/userContext
+ *   match the requested fingerprint (completed-history compatibility).
+ */
+function shouldReuseAwardField(existing, fingerprint) {
+  if (!existing || !COMPATIBLE_FIELD_VERSIONS.has(existing.version)) return false;
+  if (existing.stage === FIELD_STAGE_FINAL && fingerprintsEqual(existing.inputFingerprint, fingerprint)) {
+    return true;
+  }
+  if (existing.stage === FIELD_STAGE_PARTIAL && fingerprintsEqual(existing.inputFingerprint, fingerprint)) {
+    return true;
+  }
+  if (existing.version === 1 && existing.stage == null) {
+    const legacy = {
+      possibleMinutes: num(existing.possibleMinutes),
+      userGoals: num(existing.userContext?.goals),
+      userAssists: num(existing.userContext?.assists),
+      userPosition: existing.userContext?.position ?? null,
+      teams: num(existing.teams),
+      tablePlayedSum: null,
+      tableGoalsForSum: null,
+      tablePointsSum: null,
+    };
+    // Legacy v1 lacks table sums — compare the overlapping keys only.
+    return (
+      legacy.possibleMinutes === fingerprint.possibleMinutes &&
+      legacy.userGoals === fingerprint.userGoals &&
+      legacy.userAssists === fingerprint.userAssists &&
+      String(legacy.userPosition) === String(fingerprint.userPosition) &&
+      legacy.teams === fingerprint.teams
+    );
+  }
+  return false;
 }
 
 function pruneFields(player) {
@@ -495,18 +627,31 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
     seasonContext.competitionEditionId ??
     resolveCompetitionEditionId([], scope, { seasonId, competitionKey: seasonContext.league?.leagueId });
   if (!player.awardFields || typeof player.awardFields !== "object") player.awardFields = {};
-  const existing = player.awardFields[editionId];
-  if (existing && COMPATIBLE_FIELD_VERSIONS.has(existing.version)) return existing;
 
   const stream = awardRng(rng, player, seasonId, `field:${editionId}`);
   const userClub = seasonContext.userClub || player.club || null;
   const standing = seasonContext.standing || null;
   const league = seasonContext.league || null;
   let table = Array.isArray(seasonContext.table) && seasonContext.table.length ? seasonContext.table : null;
-  let approximated = false;
+  let tableApproximated = false;
   if (!table) {
     table = synthesizeTable(league, standing, userClub, stream.fork("table"));
-    approximated = true;
+    tableApproximated = true;
+  }
+  // Generated player lines / clean sheets are always synthetic approximations.
+  const playerStatsApproximated = true;
+  const possibleMinutes = Math.max(...table.map((r) => num(r.played, 38))) * 90;
+  const stage =
+    seasonContext.fieldStage === FIELD_STAGE_PARTIAL ? FIELD_STAGE_PARTIAL : FIELD_STAGE_FINAL;
+  const fingerprint = fieldInputFingerprint(seasonContext, table, possibleMinutes);
+
+  const existing = player.awardFields[editionId];
+  if (shouldReuseAwardField(existing, fingerprint)) {
+    // Upgrade a matching partial to final when the same inputs are finalized.
+    if (existing.stage === FIELD_STAGE_PARTIAL && stage === FIELD_STAGE_FINAL) {
+      existing.stage = FIELD_STAGE_FINAL;
+    }
+    return existing;
   }
 
   const user = seasonContext.user || {};
@@ -516,32 +661,42 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
     isUserTeam: sameClub(row, userClub),
     roster: generateTeamRoster(row, teamIdx, editionId, stream.fork(`team:${teamIdx}`)),
   }));
-  const possibleMinutes = Math.max(...table.map((r) => num(r.played, 38))) * 90;
 
-  // 2) Choose which rivals to persist from the unadjusted stats, so the user's season cannot change the selection.
+  // 2) Adjust the user's club for consistency BEFORE selection so category retention
+  //    uses post-cap ratings/output (opponents unchanged).
+  let userTeamRow = null;
+  for (const { row, isUserTeam, roster } of rosters) {
+    if (!isUserTeam) continue;
+    userTeamRow = row;
+    adjustUserTeam(roster, {
+      goals: user.goals,
+      assists: user.assists,
+      position: user.position ?? player.position,
+      teamGoals: row.goalsFor,
+    });
+  }
+
   const flatten = () =>
     rosters.flatMap(({ roster, isUserTeam }) =>
       roster.players.map((p) => ({ ...p, teamPpg: roster.ppg, teamPosition: roster.position, userTeam: isUserTeam }))
     );
   const fullPopulation = flatten();
-  const keepIds = selectRivalIds(fullPopulation, possibleMinutes);
-  // Reference moments from the full pre-compression population (not the retained top sample).
-  const referenceMoments = buildReferenceMoments(fullPopulation, possibleMinutes);
-
-  // 3) Only now make the user's own club consistent with the user's real output.
-  let userTeamRow = null;
-  for (const { row, isUserTeam, roster } of rosters) {
-    if (!isUserTeam) continue;
-    userTeamRow = row;
-    adjustUserTeam(roster, { goals: user.goals, assists: user.assists, position: user.position ?? player.position, teamGoals: row.goalsFor });
-  }
-  const rivals = flatten().filter((r) => keepIds.has(r.id));
+  // Reference moments from the full post-adjustment population.
+  const referenceMoments = buildReferenceMomentsInternal(fullPopulation, possibleMinutes);
+  // 3) Retain by actual category eligibility/metrics so compact ≡ full decisions.
+  const keepIds = selectRivalIds(fullPopulation, possibleMinutes, referenceMoments);
+  const rivals = fullPopulation.filter((r) => keepIds.has(r.id));
   const field = {
     version: FIELD_VERSION,
+    stage,
+    inputFingerprint: fingerprint,
     editionId,
     scope,
     seasonId,
-    approximated,
+    approximated: tableApproximated || playerStatsApproximated,
+    tableApproximated,
+    playerStatsApproximated,
+    cleanSheetBasis: "poisson-approx",
     teams: table.length,
     possibleMinutes,
     populationSize: fullPopulation.length,
@@ -554,20 +709,41 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
       position: user.position ?? player.position ?? null,
       teamGoals: userTeamRow ? num(userTeamRow.goalsFor) : null,
     },
-    note: "Approximate NPC field: multinomial split of table goals, Poisson clean sheets, seeded priors. Placeholder names. Ratings use the shared 6.0 baseline.",
-    rivals: sortDesc(rivals, (r) => r.goals).map(stripRival),
+    note: "Approximate NPC field: multinomial split of table goals, Poisson clean sheets, seeded priors. Placeholder names. Ratings use the shared 6.0 baseline. Compact retention uses category eligibility metrics.",
+    rivals: sortDesc(rivals, (r) => r.goals).map((r) => stripRival(r)),
   };
+  // Optional full-population export for matched parity / compaction audits (not save-path).
+  if (seasonContext.retainDiagnosticPopulation) {
+    field.diagnosticPopulation = fullPopulation.map((r) => stripRival(r, { keepTalent: true }));
+    field.talentToAbility = {
+      formula: "impliedOverall = clamp(70 + 12 * talent, 55, 95)",
+      note: "Maps generation talent ~ N(0,1) onto an ability scale comparable to user rating/overall for matched cells.",
+    };
+  }
   player.awardFields[editionId] = field;
   pruneFields(player);
   return field;
 }
 
 /** World-class benchmark pool for World Player of the Year (seeded, user-independent). */
-export function ensureWorldAwardField(player, { seasonId } = {}, rng) {
+export function ensureWorldAwardField(player, { seasonId, fieldStage } = {}, rng) {
   if (!player.awardFields || typeof player.awardFields !== "object") player.awardFields = {};
   const editionId = `${seasonId ?? "season"}:world`;
+  const stage = fieldStage === FIELD_STAGE_PARTIAL ? FIELD_STAGE_PARTIAL : FIELD_STAGE_FINAL;
+  const sid = seasonId ?? "season";
+  const fingerprint = { seasonId: sid, scope: "world" };
   const existing = player.awardFields[editionId];
-  if (existing && COMPATIBLE_FIELD_VERSIONS.has(existing.version)) return existing;
+  if (
+    existing &&
+    COMPATIBLE_FIELD_VERSIONS.has(existing.version) &&
+    existing.scope === "world" &&
+    fingerprintsEqual(existing.inputFingerprint || fingerprint, fingerprint) &&
+    (existing.stage === FIELD_STAGE_FINAL || existing.stage == null || existing.stage === stage)
+  ) {
+    if (existing.stage === FIELD_STAGE_PARTIAL && stage === FIELD_STAGE_FINAL) existing.stage = FIELD_STAGE_FINAL;
+    if (existing.stage == null && stage === FIELD_STAGE_FINAL) existing.stage = FIELD_STAGE_FINAL;
+    return existing;
+  }
   const stream = awardRng(rng, player, seasonId, `field:${editionId}`);
   // Synthetic world candidates scored with the same season-line contract (not an opaque 4.4 mean).
   const worldPossible = 38 * 90;
@@ -595,9 +771,11 @@ export function ensureWorldAwardField(player, { seasonId } = {}, rng) {
   }).sort((a, b) => b.score - a.score);
   const field = {
     version: FIELD_VERSION,
+    stage,
+    inputFingerprint: fingerprint,
     editionId,
     scope: "world",
-    seasonId,
+    seasonId: sid,
     approximated: true,
     scoreUnits: "scoreSeasonLine",
     note: "Bounded synthetic world field in scoreSeasonLine units; not a full world simulation.",
@@ -765,7 +943,7 @@ function makeRecord({ def, seasonId, editionId, scope, playerId, status, rank, s
  * @param {string} [args.seasonId]
  * @param {number} [args.seasonStartAge] age at the start of the season (not after ageing)
  * @param {object} [args.options]        formation, youthMaxAge, goldenBootScope, competitionEditionId, priorSeasons, ...
- * @returns {{seasonId, records, awardNames, byAward, wins, selections, nominations, fields}}
+ * @returns {{seasonId, records, awardNames, byAward, decisionTrace, wins, selections, nominations, fields}}
  */
 export function evaluateSeasonAwards({
   player,
@@ -796,6 +974,16 @@ export function evaluateSeasonAwards({
   const formation = FORMATIONS[cfg.formation] || FORMATIONS["4-3-3"];
   const age = num(seasonStartAge ?? evidence.seasonStartAge ?? player.age, null);
   const records = [];
+  /** Every category gets an entry, including rejected / ineligible outcomes. */
+  const decisionTrace = Object.fromEntries(
+    AWARD_ORDER.map((awardId) => [
+      awardId,
+      { awardId, status: "pending", reason: null, rank: null, cutoff: null, evidence: null },
+    ])
+  );
+  const trace = (awardId, patch) => {
+    decisionTrace[awardId] = { ...decisionTrace[awardId], ...patch, awardId };
+  };
 
   const bootScope = competitionScopeOf(cfg.goldenBootScope ?? "league");
   const leagueCompetitionKey =
@@ -857,8 +1045,10 @@ export function evaluateSeasonAwards({
     priorSeniorMinutes: priorSeniorMinutesOf(player, seasonId, cfg.priorSeasons),
   };
 
-  const push = (def, editionId, scope, status, rank, shared, ev) =>
+  const push = (def, editionId, scope, status, rank, shared, ev, reason = null, cutoff = null) => {
     records.push(makeRecord({ def, seasonId, editionId, scope, playerId, status, rank, shared, evidence: ev }));
+    trace(def.awardId, { status, reason: reason || status, rank, cutoff, evidence: ev });
+  };
 
   /* 1. Golden Boot ------------------------------------------------- */
   {
@@ -880,8 +1070,15 @@ export function evaluateSeasonAwards({
       tiedWith: st.tied.map((t) => t.name),
       top: sortDesc(entries, (e) => e.goals).slice(0, 5).map((e) => ({ name: e.name, goals: e.goals })),
     };
-    if (goals > 0 && goals === leaderGoals) push(def, bootEditionId, bootScope, "won", st.rank, st.shared, ev);
-    else if (goals > 0 && st.rank <= cfg.goldenBootShortlist) push(def, bootEditionId, bootScope, "nominated", st.rank, st.shared, ev);
+    if (goals > 0 && goals === leaderGoals) {
+      push(def, bootEditionId, bootScope, "won", st.rank, st.shared, ev, "led-or-tied-goals", cfg.goldenBootShortlist);
+    } else if (goals > 0 && st.rank <= cfg.goldenBootShortlist) {
+      push(def, bootEditionId, bootScope, "nominated", st.rank, st.shared, ev, "within-shortlist", cfg.goldenBootShortlist);
+    } else if (goals <= 0) {
+      trace(def.awardId, { status: "ineligible", reason: "zero-goals", rank: st.rank, cutoff: cfg.goldenBootShortlist, evidence: ev });
+    } else {
+      trace(def.awardId, { status: "rejected", reason: "outside-shortlist", rank: st.rank, cutoff: cfg.goldenBootShortlist, evidence: ev });
+    }
   }
 
   /* 2. Golden Glove ------------------------------------------------ */
@@ -906,8 +1103,29 @@ export function evaluateSeasonAwards({
         tiedWith: st.tied.map((t) => t.name),
         top: sortDesc(entries, (e) => e.cleanSheets).slice(0, 5).map((e) => ({ name: e.name, cleanSheets: e.cleanSheets })),
       };
-      if (cs > 0 && cs === leader) push(def, leagueEditionId, "league", "won", st.rank, st.shared, ev);
-      else if (cs > 0 && st.rank <= cfg.goldenBootShortlist) push(def, leagueEditionId, "league", "nominated", st.rank, st.shared, ev);
+      if (cs > 0 && cs === leader) {
+        push(def, leagueEditionId, "league", "won", st.rank, st.shared, ev, "led-or-tied-clean-sheets", cfg.goldenBootShortlist);
+      } else if (cs > 0 && st.rank <= cfg.goldenBootShortlist) {
+        push(def, leagueEditionId, "league", "nominated", st.rank, st.shared, ev, "within-shortlist", cfg.goldenBootShortlist);
+      } else if (cs <= 0) {
+        trace(def.awardId, { status: "rejected", reason: "zero-clean-sheets", rank: st.rank, cutoff: cfg.goldenBootShortlist, evidence: ev });
+      } else {
+        trace(def.awardId, { status: "rejected", reason: "outside-shortlist", rank: st.rank, cutoff: cfg.goldenBootShortlist, evidence: ev });
+      }
+    } else {
+      const reason =
+        group !== "GK"
+          ? "not-goalkeeper"
+          : userLeagueEntry.cleanSheets == null
+            ? "missing-clean-sheet-evidence"
+            : "below-participation";
+      trace(def.awardId, {
+        status: "ineligible",
+        reason,
+        rank: null,
+        cutoff: Math.round(minMinutes),
+        evidence: { minutes: userLeagueEntry.minutes, minimumMinutes: Math.round(minMinutes), group },
+      });
     }
   }
 
@@ -934,8 +1152,21 @@ export function evaluateSeasonAwards({
         minutes: me.minutes,
         poolSize: ranked.length,
       };
-      if (idx < slots) push(def, leagueEditionId, "league", "selected", idx + 1, false, ev);
-      else if (idx < slots + 3) push(def, leagueEditionId, "league", "nominated", idx + 1, false, ev);
+      if (idx < slots) {
+        push(def, leagueEditionId, "league", "selected", idx + 1, false, ev, "within-formation-slots", slots);
+      } else if (idx < slots + 3) {
+        push(def, leagueEditionId, "league", "nominated", idx + 1, false, ev, "within-nomination-band", slots + 3);
+      } else {
+        trace(def.awardId, { status: "rejected", reason: "outside-nomination-band", rank: idx + 1, cutoff: slots + 3, evidence: ev });
+      }
+    } else {
+      trace(def.awardId, {
+        status: "ineligible",
+        reason: userLeagueEntry.minutes < minMinutesTots ? "below-participation" : "not-in-role-pool",
+        rank: null,
+        cutoff: Math.round(minMinutesTots),
+        evidence: { minutes: userLeagueEntry.minutes, roleGroup: group, poolSize: pool.length },
+      });
     }
   }
 
@@ -960,10 +1191,19 @@ export function evaluateSeasonAwards({
   const eligible = (e) => (e.isUser ? userLeagueEntry.minutes : e.minutes) >= minMinutesTots;
   const candidatePool = [...leagueRivals, userLeagueEntry].filter(eligible);
 
-  const rankedAward = (def, pool, extraEv = {}) => {
+  const rankedAward = (def, pool, extraEv = {}, eligibilityReason = null) => {
     const ranked = sortDesc(pool, potsMetric);
     const idx = ranked.findIndex((e) => e.isUser);
-    if (idx < 0) return null;
+    if (idx < 0) {
+      trace(def.awardId, {
+        status: "ineligible",
+        reason: eligibilityReason || "not-in-candidate-pool",
+        rank: null,
+        cutoff: cfg.shortlist,
+        evidence: { poolSize: ranked.length, minutes: userLeagueEntry.minutes, ...extraEv },
+      });
+      return null;
+    }
     const me = ranked[idx];
     const st = standingOf(ranked, playerId, potsMetric);
     const ev = {
@@ -980,24 +1220,58 @@ export function evaluateSeasonAwards({
       ...extraEv,
     };
     if (potsMetric(me) > 0) {
-      if (st.rank === 1) push(def, leagueEditionId, "league", "won", st.rank, st.shared, ev);
-      else if (st.rank <= cfg.shortlist) push(def, leagueEditionId, "league", "nominated", st.rank, st.shared, ev);
+      if (st.rank === 1) push(def, leagueEditionId, "league", "won", st.rank, st.shared, ev, "standardised-leader", cfg.shortlist);
+      else if (st.rank <= cfg.shortlist) {
+        push(def, leagueEditionId, "league", "nominated", st.rank, st.shared, ev, "within-shortlist", cfg.shortlist);
+      } else {
+        trace(def.awardId, { status: "rejected", reason: "outside-shortlist", rank: st.rank, cutoff: cfg.shortlist, evidence: ev });
+      }
+    } else {
+      trace(def.awardId, { status: "rejected", reason: "non-positive-standardised-score", rank: st.rank, cutoff: cfg.shortlist, evidence: ev });
     }
     return { st, ev, me };
   };
 
-  const pots = rankedAward(AWARD_DEFS.playerOfSeason, candidatePool);
+  const pots = rankedAward(
+    AWARD_DEFS.playerOfSeason,
+    candidatePool,
+    {},
+    userLeagueEntry.minutes < minMinutesTots ? "below-participation" : "not-in-candidate-pool"
+  );
   if (age != null) {
-    rankedAward(AWARD_DEFS.youngPlayer, candidatePool.filter((e) => e.age != null && e.age <= cfg.youthMaxAge), { age, maxAge: cfg.youthMaxAge });
+    rankedAward(
+      AWARD_DEFS.youngPlayer,
+      candidatePool.filter((e) => e.age != null && e.age <= cfg.youthMaxAge),
+      { age, maxAge: cfg.youthMaxAge },
+      age > cfg.youthMaxAge ? "above-youth-max-age" : "not-in-youth-pool"
+    );
+  } else {
+    trace(AWARD_DEFS.youngPlayer.awardId, {
+      status: "ineligible",
+      reason: "missing-season-start-age",
+      rank: null,
+      cutoff: cfg.youthMaxAge,
+      evidence: null,
+    });
   }
   {
     const isRookie = (e) =>
       e.priorSeniorMinutes < cfg.breakthroughPriorMinutesMax &&
       (e.isUser ? userLeagueEntry.minutes : e.minutes) >= cfg.breakthroughMinutes;
-    rankedAward(AWARD_DEFS.rookie, candidatePool.filter(isRookie), {
-      priorSeniorMinutes: userLeagueEntry.priorSeniorMinutes,
-      requiredMinutes: cfg.breakthroughMinutes,
-    });
+    const userIsRookie = isRookie(userLeagueEntry);
+    rankedAward(
+      AWARD_DEFS.rookie,
+      candidatePool.filter(isRookie),
+      {
+        priorSeniorMinutes: userLeagueEntry.priorSeniorMinutes,
+        requiredMinutes: cfg.breakthroughMinutes,
+      },
+      !userIsRookie
+        ? userLeagueEntry.priorSeniorMinutes >= cfg.breakthroughPriorMinutesMax
+          ? "prior-senior-minutes-exceeded"
+          : "below-breakthrough-minutes"
+        : "not-in-rookie-pool"
+    );
   }
 
   /* 7. World Player of the Year ------------------------------------ */
@@ -1026,19 +1300,33 @@ export function evaluateSeasonAwards({
       potsRank <= cfg.worldMinLeagueRank &&
       strength >= cfg.worldMinCompetitionStrength &&
       userLeagueEntry.minutes >= cfg.minParticipation * possibleMinutes;
+    const gateEv = {
+      score: Number(worldScore.toFixed(3)),
+      baseScore: Number(raw.toFixed(3)),
+      competitionStrength: strength,
+      eliteTrophyWeight: Number(eliteTrophyWeight.toFixed(3)),
+      leagueRank: potsRank,
+      bestRivalScore: worldField.candidates[0]?.score ?? null,
+      worldMinLeagueRank: cfg.worldMinLeagueRank,
+      worldMinCompetitionStrength: cfg.worldMinCompetitionStrength,
+    };
     if (gatePassed) {
       const entries = [...worldField.candidates, { id: playerId, name: userLeagueEntry.name, score: worldScore }];
       const st = standingOf(entries, playerId, (e) => e.score);
-      const ev = {
-        score: Number(worldScore.toFixed(3)),
-        baseScore: Number(raw.toFixed(3)),
-        competitionStrength: strength,
-        eliteTrophyWeight: Number(eliteTrophyWeight.toFixed(3)),
-        leagueRank: potsRank,
-        bestRivalScore: worldField.candidates[0]?.score ?? null,
-      };
-      if (st.rank === 1) push(def, worldField.editionId, "world", "won", 1, st.shared, ev);
-      else if (st.rank <= cfg.shortlist) push(def, worldField.editionId, "world", "nominated", st.rank, st.shared, ev);
+      if (st.rank === 1) push(def, worldField.editionId, "world", "won", 1, st.shared, gateEv, "world-leader", cfg.shortlist);
+      else if (st.rank <= cfg.shortlist) {
+        push(def, worldField.editionId, "world", "nominated", st.rank, st.shared, gateEv, "within-shortlist", cfg.shortlist);
+      } else {
+        trace(def.awardId, { status: "rejected", reason: "outside-shortlist", rank: st.rank, cutoff: cfg.shortlist, evidence: gateEv });
+      }
+    } else {
+      const reason =
+        potsRank == null || potsRank > cfg.worldMinLeagueRank
+          ? "league-pots-gate"
+          : strength < cfg.worldMinCompetitionStrength
+            ? "competition-strength-gate"
+            : "below-participation";
+      trace(def.awardId, { status: "ineligible", reason, rank: null, cutoff: cfg.worldMinLeagueRank, evidence: gateEv });
     }
   }
 
@@ -1047,6 +1335,7 @@ export function evaluateSeasonAwards({
     records,
     awardNames: awardRecordsToLegacyNames(records),
     byAward: Object.fromEntries(records.map((r) => [r.awardId, r])),
+    decisionTrace,
     wins: records.filter((r) => r.status === "won"),
     selections: records.filter((r) => r.status === "selected"),
     nominations: records.filter((r) => r.status === "nominated"),

@@ -115,7 +115,9 @@ function baseRivals(extra = []) {
 const STANDING = { position: 3, played: 38, points: 70, goalsFor: 70, goalsAgainst: 40 };
 
 function run(player, ledgerOpts, { rivals, evidenceCtx = {}, seasonStartAge = 25, options, standing = STANDING, seed = "seed" } = {}) {
-  installField(player, rivals);
+  // Pass rivals explicitly — fingerprint lifecycle no longer reuses incomplete
+  // install-only caches when evaluate would otherwise regenerate the field.
+  if (rivals) installField(player, rivals);
   const evidence = buildSeasonEvidence(player, {
     seasonId: SEASON,
     ledger: buildLedger(ledgerOpts),
@@ -132,6 +134,7 @@ function run(player, ledgerOpts, { rivals, evidenceCtx = {}, seasonStartAge = 25
     seasonId: SEASON,
     seasonStartAge,
     options,
+    rivals: rivals ? { version: 2, possibleMinutes: 3420, rivals } : undefined,
   });
 }
 
@@ -320,7 +323,7 @@ test("deterministic with the same seed (including generated competitor field)", 
   assert.notEqual(go("B").field, a.field);
 });
 
-test("competitor field is persisted, consistent with team goals, and not regenerated", () => {
+test("competitor field is persisted, consistent with team goals, and fingerprint-stable", () => {
   const p = makePlayer();
   const league = { name: "L", leagueId: "l", tier: 3, clubs: Array.from({ length: 12 }, (_, i) => ({ name: i === 0 ? "Test FC" : `C${i}`, clubId: i === 0 ? "club:Test FC" : `c${i}`, overall: 70 })) };
   const table = league.clubs.map((c, i) => ({ name: c.name, clubId: c.clubId, played: 22, goalsFor: 30 + i * 3, goalsAgainst: 25, points: 30 + i, position: i + 1 }));
@@ -328,7 +331,14 @@ test("competitor field is persisted, consistent with team goals, and not regener
   const rng = createStreamRng("f", "1");
   const field = ensureCompetitionAwardField(p, ctx, rng);
   assert.equal(p.awardFields.ed1, field);
-  assert.equal(ensureCompetitionAwardField(p, { ...ctx, user: { goals: 99, assists: 99, position: "GK" } }, createStreamRng("other", "seed")), field);
+  assert.equal(field.stage, "final");
+  assert.ok(field.inputFingerprint);
+  // Identical fingerprint: idempotent reuse.
+  assert.equal(ensureCompetitionAwardField(p, ctx, createStreamRng("other", "seed")), field);
+  // Changed user contributions: must refresh (R3) — not lock unfinished/wrong inputs.
+  const refreshed = ensureCompetitionAwardField(p, { ...ctx, user: { goals: 99, assists: 99, position: "GK" } }, createStreamRng("other", "seed"));
+  assert.notEqual(refreshed, field);
+  assert.equal(refreshed.userContext.goals, 99);
   const byClub = new Map();
   for (const r of field.rivals) byClub.set(r.club, (byClub.get(r.club) || 0) + r.goals);
   for (const row of table) assert.ok((byClub.get(row.name) || 0) <= row.goalsFor, `${row.name} rival goals within team total`);
@@ -346,7 +356,15 @@ test("field generation does not depend on the user's season outcome", () => {
     const f = ensureCompetitionAwardField(p, { seasonId: SEASON, competitionEditionId: "e", table, league, user: { goals, assists: 0, position: "ST" } }, createStreamRng("same", "seed"));
     return f.rivals.filter((r) => r.club !== "C5");
   };
-  assert.deepEqual(mk(0), mk(25)); // other clubs' rivals identical whatever the user did
+  // Retention sets may differ after post-adjust category selection, but every shared
+  // opponent id must keep identical generated lines (other clubs are user-independent).
+  const a = mk(0);
+  const b = mk(25);
+  const A = new Map(a.map((r) => [r.id, r]));
+  const B = new Map(b.map((r) => [r.id, r]));
+  const shared = [...A.keys()].filter((id) => B.has(id));
+  assert.ok(shared.length >= 8, `expected shared opponents, got ${shared.length}`);
+  for (const id of shared) assert.deepEqual(A.get(id), B.get(id));
 });
 
 test("evaluation does not consume the caller's rng stream", () => {
@@ -369,9 +387,15 @@ test("individualAwards.js has no Math.random", () => {
 
 test("simulateIndividualAwards wrapper returns UI names (options and legacy forms)", () => {
   const p = makePlayer();
-  installField(p, baseRivals([rival(100, { group: "FWD", goals: 12 })]));
+  const rivals = baseRivals([rival(100, { group: "FWD", goals: 12 })]);
   const evidence = buildSeasonEvidence(p, { seasonId: SEASON, ledger: buildLedger({ leagueGoals: 20 }), seasonStartAge: 25 });
-  const names = simulateIndividualAwards({ player: p, evidence, rng: createStreamRng("w", "a"), seasonId: SEASON });
+  const names = simulateIndividualAwards({
+    player: p,
+    evidence,
+    rng: createStreamRng("w", "a"),
+    seasonId: SEASON,
+    rivals: { version: 2, possibleMinutes: 3420, rivals },
+  });
   assert.ok(Array.isArray(names));
   assert.ok(names.includes("Golden Boot"));
   assert.ok(names.records.length >= 1);

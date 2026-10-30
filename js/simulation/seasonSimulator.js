@@ -21,7 +21,7 @@ import {
 } from "./leaguePhase.js";
 import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=89";
 import { findLeagueById } from "./destinationSchedule.js?v=81";
-import { evaluateSeasonAwards } from "./individualAwards.js?v=85";
+import { evaluateSeasonAwards } from "./individualAwards.js?v=86";
 import {
   buildSeasonEvidence,
   evidenceToDevelopmentContext,
@@ -905,6 +905,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     domesticCupCampaigns,
     individualAwards,
     awardRecords,
+    awardDecisionTrace: awardResult.decisionTrace || null,
     trophies,
     divisionMove: null,
     leagueMatches: chrono.playerMatches,

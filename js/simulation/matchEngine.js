@@ -134,16 +134,16 @@ function goalShareForPlayer(player, teamGoalsWhilePlaying, minutes, competition)
     playerAbilityFactor(player) *
     (competition === "cup" || competition === "domesticCup" ? 1.05 : 1) *
     1.0;
-  const expectedTeam = Math.max(teamGoalsWhilePlaying, 0.35);
-  return clamp(expectedUserGoals / expectedTeam, 0, 0.65);
+  // Denominator is the pitch-window team-goal estimate only. Do not floor at 0.35 —
+  // that re-introduces duration double-penalty for short appearances.
+  return clamp(expectedUserGoals / teamGoalsWhilePlaying, 0, 0.65);
 }
 
 function assistShareForPlayer(player, teamGoalsWhilePlaying, minutes) {
   if (!player || !(minutes > 0) || !(teamGoalsWhilePlaying > 0)) return 0;
   const expectedUserAssists =
     roleAssistRatePer90(player.position) * (minutes / 90) * playerAbilityFactor(player);
-  const expectedTeam = Math.max(teamGoalsWhilePlaying, 0.35);
-  return clamp(expectedUserAssists / expectedTeam, 0, 0.55);
+  return clamp(expectedUserAssists / teamGoalsWhilePlaying, 0, 0.55);
 }
 
 function scorerLabel(club, rng) {
@@ -220,7 +220,8 @@ function playerOnPitchAt(player, playerSide, team, minute, phase, minuteMin = 3,
   return minute >= enterAt && minute <= minuteMax;
 }
 
-function buildGoalEvents({
+/** Attribution of open-play goals/assists within a realized scoreline (exported for exposure QA). */
+export function buildGoalEvents({
   home,
   away,
   homeGoals,
