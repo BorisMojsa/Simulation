@@ -4,7 +4,8 @@
  *
  *   node baseline/Fix07BaselineCompare.mjs
  *
- * Env: FIX06_SHA (default 8313f27…), OUT_DIR (default qa/fix07-runs/baseline-compare)
+ * Env: FIX06_SHA (default 8313f27…), OUT_DIR (default qa/fix07-runs/baseline-compare),
+ *      FIX07_FINAL_SHA (optional explicit tested commit; required when working tree is dirty)
  */
 import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -14,7 +15,17 @@ import { spawnSync } from "node:child_process";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const FIX06_SHA = process.env.FIX06_SHA || "8313f27167c18c18079471a44b36878bd347638a";
-const finalSha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+const headSha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+const dirty = spawnSync("git", ["status", "--porcelain", "--", "js/", "baseline/", "league-data.js"], {
+  cwd: root,
+  encoding: "utf8",
+}).stdout.trim();
+const finalSha = process.env.FIX07_FINAL_SHA || (dirty ? null : headSha);
+if (!finalSha) {
+  throw new Error(
+    "Production/harness tree is dirty; set FIX07_FINAL_SHA to the tested commit or clean first"
+  );
+}
 const outDir = process.env.OUT_DIR || join(root, "qa/fix07-runs/baseline-compare");
 mkdirSync(outDir, { recursive: true });
 
@@ -112,6 +123,12 @@ const comparison = {
   node: process.version,
   fix06Sha: FIX06_SHA,
   finalSha,
+  headAtRun: headSha,
+  productionTreeClean: !dirty,
+  testedSourceNote:
+    finalSha === headSha && !dirty
+      ? "finalSha equals clean HEAD; cohort ran against this checkout"
+      : "finalSha is the explicit tested commit (FIX07_FINAL_SHA); verify checkout matches before trusting",
   commands: [
     `ROOT=<fix06-tree> FIX07_BASELINE_OUT=baseline-fix06.json node baseline/Fix07BaselineCohortRunner.mjs`,
     `ROOT=<final> FIX07_BASELINE_OUT=baseline-final.json node baseline/Fix07BaselineCohortRunner.mjs`,
@@ -129,6 +146,8 @@ writeFileSync(
 
 - Fix 06 modules: \`${FIX06_SHA}\` (extracted tree, corrected harness only)
 - Final: \`${finalSha}\`
+- HEAD at run: \`${headSha}\`
+- Production/harness tree clean: ${!dirty}
 - Initial employed careers: 12 / 12 (matched)
 - Periods: ${periods.length}
 
