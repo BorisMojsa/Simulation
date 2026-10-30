@@ -61,10 +61,14 @@ function readJson(p) {
   return existsSync(p) ? JSON.parse(readFileSync(p, "utf8")) : null;
 }
 
-const dirty = sh("git", ["status", "--porcelain"]).stdout.trim();
-if (dirty) {
-  console.error("Refusing to package a dirty tree. Commit intentional sources first.");
-  console.error(dirty.split("\n").slice(0, 40).join("\n"));
+const porcelain = sh("git", ["status", "--porcelain"]).stdout.trim();
+const dirtyTracked = porcelain
+  .split("\n")
+  .filter(Boolean)
+  .filter((line) => !line.startsWith("??"));
+if (dirtyTracked.length) {
+  console.error("Refusing to package with modified tracked files. Commit intentional sources first.");
+  console.error(dirtyTracked.slice(0, 40).join("\n"));
   process.exit(2);
 }
 
