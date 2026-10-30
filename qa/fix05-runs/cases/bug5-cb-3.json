@@ -2,27 +2,28 @@
   "careerId": "bug5-cb-3",
   "position": "CB",
   "seed": 111,
-  "rawRecords": 56,
-  "positiveMinutes": 21,
-  "zeroMinutes": 35,
-  "withEdition": 56,
+  "rawRecords": 59,
+  "positiveMinutes": 22,
+  "zeroMinutes": 37,
+  "withEdition": 59,
   "editionCoverage": 1,
   "rawCleanSheets": 3,
   "ledgerCleanSheets": 3,
-  "evidenceLeagueCleanSheets": 2,
+  "evidenceLeagueCleanSheets": 1,
   "evidenceTotalCleanSheets": 3,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
+    "FA Cup::2026:FA Cup",
     "uefa-champions-league::2026-uefa-champions-league"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 0,
-  "goalsFromLedger": 0,
-  "matchesWithEvents": 16,
+  "goalsFromPositive": 1,
+  "goalsFromLedger": 1,
+  "matchesWithEvents": 15,
   "eventGoalDisagree": 0,
-  "apps": 21,
+  "apps": 22,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:20",
@@ -32,7 +33,7 @@
       "minutes": 14,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.9
+      "rating": 6.7
     },
     {
       "matchId": "league:england-premier-league:md:30",
@@ -42,7 +43,7 @@
       "minutes": 21,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 7
+      "rating": 6.4
     }
   ],
   "sampleZero": [
@@ -61,24 +62,24 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 511,
-      "appearances": 16,
-      "starts": 3,
+      "minutes": 402,
+      "appearances": 15,
+      "starts": 2,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": 2
+      "cleanSheets": 1
     },
     "cup": {
-      "minutes": 0,
-      "appearances": 0,
-      "starts": 0,
-      "goals": 0,
+      "minutes": 99,
+      "appearances": 3,
+      "starts": 1,
+      "goals": 1,
       "assists": 0,
-      "cleanSheets": null
+      "cleanSheets": 1
     },
     "continental": {
-      "minutes": 144,
-      "appearances": 5,
+      "minutes": 164,
+      "appearances": 4,
       "starts": 1,
       "goals": 0,
       "assists": 0,

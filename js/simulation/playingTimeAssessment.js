@@ -386,7 +386,10 @@ export function assessClubPlayingTime(player, opts = {}) {
       coerceFiniteOrNull(season?.ledgerSummary?.league?.minutes) ??
       null;
 
-    if (nonLeagueClub.incomplete) {
+    // Trustworthy explicit league numerator wins before non-league subtraction gaps.
+    if (leagueOnlyHint != null && leagueOnlyHint >= 0) {
+      seasonMinutes = leagueOnlyHint;
+    } else if (nonLeagueClub.incomplete) {
       base.conflicts.push({
         kind: "legacy-non-league-incomplete",
         clubMinutes: clubOnlyMinutes,
@@ -400,13 +403,9 @@ export function assessClubPlayingTime(player, opts = {}) {
       base.eligibleFixtureCount = 0;
       base.opportunityCapacity = 0;
       return base;
-    }
-
-    if (nonLeagueClub.minutes > 0) {
+    } else if (nonLeagueClub.minutes > 0) {
       // League standing capacity cannot absorb cup/continental minutes.
-      if (leagueOnlyHint != null && leagueOnlyHint >= 0) {
-        seasonMinutes = leagueOnlyHint;
-      } else if (
+      if (
         clubOnlyMinutes != null &&
         clubOnlyMinutes >= nonLeagueClub.minutes &&
         Number.isFinite(clubOnlyMinutes - nonLeagueClub.minutes)
@@ -428,8 +427,6 @@ export function assessClubPlayingTime(player, opts = {}) {
         base.opportunityCapacity = 0;
         return base;
       }
-    } else if (leagueOnlyHint != null && leagueOnlyHint >= 0) {
-      seasonMinutes = leagueOnlyHint;
     } else if (clubOnlyMinutes != null && clubOnlyMinutes >= 0) {
       // Explicit club-only minutes are valid even when an international summary exists.
       seasonMinutes = clubOnlyMinutes;
@@ -528,9 +525,18 @@ function legacyNonLeagueClubMinutes(season) {
   let continentalMinutes = 0;
   const reasons = [];
   let incomplete = false;
+  /** Buckets that contributed minutes without fixture/match identity. */
+  const unidentifiedBuckets = new Set();
 
-  function addRows(rows, bucket) {
-    if (rows == null) return;
+  function addRows(rows, bucket, { missingRowsIsGap = false } = {}) {
+    if (rows == null) {
+      // Qualification / campaign presence without rows is missing evidence, not zero.
+      if (missingRowsIsGap) {
+        incomplete = true;
+        reasons.push(`missing-rows-${bucket}`);
+      }
+      return;
+    }
     if (!Array.isArray(rows)) {
       incomplete = true;
       reasons.push(`non-array-${bucket}`);
@@ -544,11 +550,16 @@ function legacyNonLeagueClubMinutes(season) {
       }
       const mins = coerceFiniteOrNull(row?.playerStats?.minutes ?? row?.minutes);
       if (mins == null) {
-        // Unknown minutes must not silently become zero.
-        if (row.played === true || row.playerStats?.played === true) {
-          incomplete = true;
-          reasons.push(`unknown-minutes-${bucket}`);
+        const played = row.played ?? row.playerStats?.played;
+        if (played === false) {
+          // Proved non-participation — treat as zero for this row.
+          continue;
         }
+        // Missing minutes with unknown or positive participation is uncertainty.
+        incomplete = true;
+        reasons.push(
+          played === true ? `unknown-minutes-${bucket}` : `unknown-participation-${bucket}`
+        );
         continue;
       }
       if (mins <= 0) continue;
@@ -556,6 +567,8 @@ function legacyNonLeagueClubMinutes(season) {
       if (id) {
         if (seen.has(id)) continue;
         seen.add(id);
+      } else {
+        unidentifiedBuckets.add(bucket);
       }
       if (bucket === "continental") continentalMinutes += mins;
       else domesticCupMinutes += mins;
@@ -574,7 +587,14 @@ function legacyNonLeagueClubMinutes(season) {
       }
     }
   }
-  if (season?.europeanCampaign?.qualified || season?.europeanCampaign?.playerMatches) {
+  // Unidentified primary ↔ campaign overlap cannot be proved without identities.
+  if (unidentifiedBuckets.has("primary-cup") && unidentifiedBuckets.has("domestic-campaign")) {
+    incomplete = true;
+    reasons.push("unidentified-overlap");
+  }
+  if (season?.europeanCampaign?.qualified) {
+    addRows(season?.europeanCampaign?.playerMatches, "continental", { missingRowsIsGap: true });
+  } else if (season?.europeanCampaign?.playerMatches != null) {
     addRows(season?.europeanCampaign?.playerMatches, "continental");
   }
 

@@ -2,10 +2,10 @@
   "careerId": "bug5-cm-2",
   "position": "CM",
   "seed": 303,
-  "rawRecords": 59,
+  "rawRecords": 56,
   "positiveMinutes": 20,
-  "zeroMinutes": 39,
-  "withEdition": 59,
+  "zeroMinutes": 36,
+  "withEdition": 56,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -19,8 +19,8 @@
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 1,
-  "goalsFromLedger": 1,
+  "goalsFromPositive": 0,
+  "goalsFromLedger": 0,
   "matchesWithEvents": 10,
   "eventGoalDisagree": 0,
   "apps": 20,
@@ -33,7 +33,7 @@
       "minutes": 78,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 5.6
+      "rating": 6.1
     },
     {
       "matchId": "cup:FA Cup:0:Round of 64",
@@ -43,7 +43,7 @@
       "minutes": 21,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.1
+      "rating": 6.5
     }
   ],
   "sampleZero": [
@@ -62,25 +62,25 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 394,
+      "minutes": 270,
       "appearances": 10,
-      "starts": 3,
+      "starts": 1,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "cup": {
-      "minutes": 124,
-      "appearances": 3,
+      "minutes": 102,
+      "appearances": 2,
       "starts": 1,
-      "goals": 1,
-      "assists": 1,
+      "goals": 0,
+      "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 162,
-      "appearances": 7,
-      "starts": 0,
+      "minutes": 308,
+      "appearances": 8,
+      "starts": 2,
       "goals": 0,
       "assists": 1,
       "cleanSheets": null

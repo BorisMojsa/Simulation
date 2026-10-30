@@ -1112,6 +1112,120 @@ test("F12: legacy continental and second-cup minutes do not mix into league shar
   assert.ok(Math.abs(overlap.share - 600 / 3420) < 1e-12, `overlap share ${overlap.share}`);
 });
 
+test("F14: legacy uncertainty — overlap, missing participation, and explicit league hint", () => {
+  const rows = Array.from({ length: 5 }, () => ({ playerStats: { minutes: 90, played: true } }));
+  const cases = [
+    {
+      id: "league-only-known-control",
+      season: {
+        minutes: 900,
+        clubMinutes: 900,
+        matches: 10,
+        standing: { matches: 38 },
+        europeanCampaign: { qualified: false },
+      },
+      expectedShare: 900 / 3420,
+      requireKnown: true,
+    },
+    {
+      id: "identified-overlap-control",
+      season: {
+        minutes: 1350,
+        clubMinutes: 1350,
+        matches: 15,
+        standing: { matches: 38 },
+        domesticCupResult: {
+          playerMatches: rows.map((r, i) => ({ ...r, fixtureId: `cup-${i}` })),
+        },
+        domesticCupCampaigns: [
+          { playerMatches: rows.map((r, i) => ({ ...r, fixtureId: `cup-${i}` })) },
+        ],
+        europeanCampaign: { qualified: false },
+      },
+      expectedShare: 900 / 3420,
+      requireKnown: true,
+    },
+    {
+      id: "unidentified-overlap-cannot-prove-subtraction",
+      season: {
+        minutes: 1350,
+        clubMinutes: 1350,
+        matches: 15,
+        standing: { matches: 38 },
+        domesticCupResult: { name: "Cup", playerMatches: rows },
+        domesticCupCampaigns: [{ name: "Cup", playerMatches: structuredClone(rows) }],
+        europeanCampaign: { qualified: false },
+      },
+      expectedShare: 900 / 3420,
+    },
+    {
+      id: "unknown-continental-minutes-without-played-flag",
+      season: {
+        minutes: 1050,
+        clubMinutes: 1050,
+        matches: 15,
+        standing: { matches: 38 },
+        europeanCampaign: {
+          qualified: true,
+          playerMatches: [{ fixtureId: "legacy-continental-unknown", playerStats: {} }],
+        },
+      },
+      requireUnknown: true,
+    },
+    {
+      id: "known-played-unknown-minutes-control",
+      season: {
+        minutes: 1050,
+        clubMinutes: 1050,
+        matches: 15,
+        standing: { matches: 38 },
+        europeanCampaign: {
+          qualified: true,
+          playerMatches: [{ fixtureId: "legacy-continental-unknown", playerStats: { played: true } }],
+        },
+      },
+      requireUnknown: true,
+    },
+    {
+      id: "qualified-campaign-with-missing-rows",
+      season: {
+        minutes: 1050,
+        clubMinutes: 1050,
+        matches: 15,
+        standing: { matches: 38 },
+        europeanCampaign: { qualified: true, playerMatches: null },
+      },
+      requireUnknown: true,
+    },
+    {
+      id: "explicit-league-minutes-remain-usable-with-unrelated-cup-gap",
+      season: {
+        leagueMinutes: 900,
+        minutes: 1350,
+        clubMinutes: 1350,
+        matches: 15,
+        standing: { matches: 38 },
+        domesticCupResult: {
+          playerMatches: [{ fixtureId: "cup-unknown", playerStats: { played: true } }],
+        },
+        europeanCampaign: { qualified: false },
+      },
+      expectedShare: 900 / 3420,
+      requireKnown: true,
+    },
+  ];
+
+  for (const c of cases) {
+    const r = clubMinutesShare({ seasons: [c.season] }, { persistAssessment: false });
+    const pass = c.requireUnknown
+      ? !r.usableForLowMinutes
+      : c.requireKnown
+        ? r.usableForLowMinutes && Math.abs(r.share - c.expectedShare) < 1e-12
+        : !r.usableForLowMinutes || Math.abs(r.share - c.expectedShare) < 1e-12;
+    assert.ok(pass, `${c.id}: share=${r.share} usable=${r.usableForLowMinutes} src=${r.assessment?.source}`);
+  }
+});
+
 test("F13: app finalizer keeps pending parent renewal over loan-return", async () => {
   const { readFileSync } = await import("node:fs");
   const vm = await import("node:vm");

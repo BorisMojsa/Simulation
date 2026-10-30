@@ -74,7 +74,13 @@ const jsonClone = (v) => JSON.parse(JSON.stringify(v));
 /** Compact player/review evidence for case JSON (full snaps blow string limits). */
 function slimPlayer(snapOrPlayer) {
   const p = snapOrPlayer?.player || snapOrPlayer;
-  if (!p) return null;
+  if (!p || typeof p !== "object" || (!("age" in p) && !("contractStatus" in p) && !p.careerId)) {
+    return null;
+  }
+  const offer =
+    (p.pendingOffers || []).find((o) => o?.isRenewal) ||
+    (p.pendingOffers || [])[0] ||
+    null;
   return {
     careerId: p.careerId || null,
     age: p.age ?? null,
@@ -82,16 +88,79 @@ function slimPlayer(snapOrPlayer) {
     employmentClubId: p.employmentClubId || null,
     playingClubId: p.playingClubId || null,
     contractEndSeason: p.contractEndSeason ?? null,
+    contractRevision: p.contractRevision ?? null,
+    weeklyWage: p.weeklyWage ?? null,
     seasons: p.seasons?.length ?? 0,
     pendingContractReview: p.pendingContractReview
       ? {
           status: p.pendingContractReview.status || null,
           outcome: p.pendingContractReview.outcome || null,
           settledChoice: p.pendingContractReview.settledChoice || null,
+          reviewId: p.pendingContractReview.reviewId || null,
+          offerId: p.pendingContractReview.offerId || null,
+        }
+      : null,
+    renewalOffer: offer
+      ? {
+          offerId: offer.offerId || null,
+          weeklyWage: offer.weeklyWage ?? offer.wage ?? null,
+          contractYears: offer.contractYears ?? offer.years ?? null,
+          isRenewal: Boolean(offer.isRenewal),
         }
       : null,
     activeLoanStatus: p.activeLoan?.status || null,
   };
+}
+
+/** Lossless player+finance stage for review; omit heavy world baseline maps. */
+function rawStageSnap(snap) {
+  if (!snap || typeof snap !== "object") return null;
+  const out = jsonClone(snap);
+  if (out.world && typeof out.world === "object") {
+    for (const k of [
+      "baselineClubs",
+      "baselineNations",
+      "clubs",
+      "nations",
+      "matches",
+      "ties",
+      "editions",
+      "fixtureLedger",
+      "formAppliedFixtures",
+      "form",
+      "standings",
+      "cupResults",
+      "qualification",
+      "leagueMemberships",
+    ]) {
+      delete out.world[k];
+    }
+    out.world.baselineClubsOmitted = true;
+    out.world.baselineNationsOmitted = true;
+  }
+  return out;
+}
+
+function assertContinuePairInvariants(beforeContinue, deskBeforeChoice, label) {
+  const a = beforeContinue?.player;
+  const b = deskBeforeChoice?.player;
+  assert(a && b, `${label}: continue pair snaps required`);
+  assert(a.age === b.age, `${label}: age must not change across Continue`);
+  assert(
+    (a.seasons?.length || 0) === (b.seasons?.length || 0),
+    `${label}: season history length must not change across Continue`
+  );
+  assert(a.contractRevision === b.contractRevision, `${label}: contractRevision stable`);
+  assert(a.contractEndSeason === b.contractEndSeason, `${label}: contractEndSeason stable`);
+  assert(a.weeklyWage === b.weeklyWage, `${label}: weeklyWage stable`);
+  assert(
+    a.pendingContractReview?.reviewId === b.pendingContractReview?.reviewId,
+    `${label}: reviewId stable`
+  );
+  assert(
+    a.pendingContractReview?.outcome === b.pendingContractReview?.outcome,
+    `${label}: review outcome stable`
+  );
 }
 
 async function loadPlaywright() {
@@ -218,12 +287,20 @@ async function driveToDesk(page, { timeoutMs = 90000 } = {}) {
   const actions = [];
   while (Date.now() < deadline) {
     const cur = await uiState(page);
-    if (cur.overlayHidden && cur.dashboardHidden && !cur.seasonActionInFlight && reachedContinue) {
+    const retired =
+      cur.debug?.isRetired === true || cur.nextAction?.id === "retired" || cur.nextAction?.id === "career-complete";
+    if (
+      cur.overlayHidden &&
+      cur.dashboardHidden &&
+      !cur.seasonActionInFlight &&
+      (reachedContinue || retired)
+    ) {
       return {
         continueClicks,
         final: cur,
         actions,
         beforeFinalContinue: driveToDesk._beforeFinalContinue || null,
+        retired: Boolean(retired),
       };
     }
     // Prefer the real season Continue when the presentation tray owns the UI.
@@ -946,14 +1023,27 @@ async function main() {
           }
         }
 
+        const b03StagePaths = {};
+        async function writeB03Stage(name, snap) {
+          const rel = `qa/fix07-runs/cases/B03-stages/${name}.json`;
+          await writeJson(join(root, rel), rawStageSnap(snap));
+          b03StagePaths[name] = rel;
+          return rel;
+        }
+
         await restoreSnapshot(page, positiveLiveStart);
         const posBefore = await exportSnap(page);
         assert(posBefore.player.contractStatus === "active", "positive live starts employed");
         assert(!(posBefore.player.pendingContractReview?.status === "pending"), "starts pre-review");
         assert(!(posBefore.player.seasons?.length >= 1), "positive live starts pre-completion");
+        await writeB03Stage("positive-decline-start", posBefore);
         await shot(page, "B03-positive-start");
         await resumePausedSeason("B03-positive-live");
         const posTray = await waitBoundaryTray("B03-positive-live");
+        assert(posTray.beforeFinalContinue && posTray.snap, "positive live continue pair required");
+        assertContinuePairInvariants(posTray.beforeFinalContinue, posTray.snap, "B03-positive-live");
+        await writeB03Stage("positive-decline-before-continue", posTray.beforeFinalContinue);
+        await writeB03Stage("positive-decline-desk-before-choice", posTray.snap);
         await shot(page, "B03-positive-tray");
         const posDecline =
           (await clickMatching(page, "Decline and leave|decline-renewal")) ||
@@ -961,9 +1051,11 @@ async function main() {
         assert(posDecline, "positive live Decline control required");
         await page.waitForTimeout(250);
         const posAfterDecline = await exportSnap(page);
+        await writeB03Stage("positive-decline-after-choice", posAfterDecline);
         assert(posAfterDecline.player.age === posBefore.player.age + 1, "positive live ages once");
         await clearDeskNoAdvance("B03-positive-live");
         const posAfter = await exportSnap(page);
+        await writeB03Stage("positive-decline-final-desk", posAfter);
         await shot(page, "B03-desk");
         assert(
           posAfter.player.contractStatus === "released" || !posAfter.player.employmentClubId,
@@ -980,37 +1072,55 @@ async function main() {
         await clearDeskNoAdvance("B03-positive-restore");
 
         await restoreSnapshot(page, positiveAcceptStart);
+        const posAcceptBefore = await exportSnap(page);
+        await writeB03Stage("positive-accept-start", posAcceptBefore);
         await resumePausedSeason("B03-positive-accept");
         const posAcceptTray = await waitBoundaryTray("B03-positive-accept");
+        assertContinuePairInvariants(
+          posAcceptTray.beforeFinalContinue,
+          posAcceptTray.snap,
+          "B03-positive-accept"
+        );
+        await writeB03Stage("positive-accept-before-continue", posAcceptTray.beforeFinalContinue);
+        await writeB03Stage("positive-accept-desk-before-choice", posAcceptTray.snap);
         const posAccept =
           (await clickMatching(page, "Accept Offer")) ||
           (await clickMatching(page, "^Accept$|Accept|Sign"));
         assert(posAccept, "positive live Accept control required");
         await page.waitForTimeout(250);
         const posAccepted = await exportSnap(page);
+        await writeB03Stage("positive-accept-after-choice", posAccepted);
         assert(posAccepted.player.contractStatus === "active", "accepted renewal stays active");
         assert(posAccepted.player.contractEndSeason > 1, "accepted renewal extends");
         assert(posAccepted.player.employmentClubId === hull.clubId, "employer preserved");
         await clearDeskNoAdvance("B03-positive-accept");
+        const posAcceptFinal = await exportSnap(page);
+        await writeB03Stage("positive-accept-final-desk", posAcceptFinal);
 
         await restoreSnapshot(page, cotermLiveMeta.snap);
         const cotermBefore = await exportSnap(page);
         assert(cotermBefore.player.activeLoan?.status === "active", "coterm starts on loan");
         assert(!(cotermBefore.player.seasons?.length >= 1), "coterm starts pre-completion");
+        await writeB03Stage("coterminal-decline-start", cotermBefore);
         await shot(page, "B03-coterminal-start");
         await resumePausedSeason("B03-coterminal-live");
         const cotermTray = await waitBoundaryTray("B03-coterminal-live");
         await shot(page, "B03-coterminal-tray");
         assert(cotermTray.continueClicks > 0, "coterm live must click final Continue");
-        assert(cotermTray.beforeFinalContinue, "coterm live beforeFinalContinue required");
+        assert(cotermTray.beforeFinalContinue && cotermTray.snap, "coterm live continue pair required");
+        assertContinuePairInvariants(cotermTray.beforeFinalContinue, cotermTray.snap, "B03-coterminal-live");
+        await writeB03Stage("coterminal-decline-before-continue", cotermTray.beforeFinalContinue);
+        await writeB03Stage("coterminal-decline-desk-before-choice", cotermTray.snap);
         const cotermDecline =
           (await clickMatching(page, "Decline and leave|decline-renewal")) ||
           (await clickMatching(page, "^Decline$|Decline"));
         assert(cotermDecline, "coterm live Decline required");
         await page.waitForTimeout(250);
         const cotermAfterDecline = await exportSnap(page);
+        await writeB03Stage("coterminal-decline-after-choice", cotermAfterDecline);
         await clearDeskNoAdvance("B03-coterminal-live");
         const cotermAfter = await exportSnap(page);
+        await writeB03Stage("coterminal-decline-final-desk", cotermAfter);
         await shot(page, "B03-coterminal-desk");
         assert(
           cotermAfter.player.pendingContractReview?.status === "settled" ||
@@ -1026,18 +1136,30 @@ async function main() {
         await clearDeskNoAdvance("B03-coterminal-restore");
 
         await restoreSnapshot(page, cotermAcceptStart.snap);
+        const cotermAcceptBefore = await exportSnap(page);
+        await writeB03Stage("coterminal-accept-start", cotermAcceptBefore);
         await resumePausedSeason("B03-coterminal-accept");
         const cotermAcceptTray = await waitBoundaryTray("B03-coterminal-accept");
+        assertContinuePairInvariants(
+          cotermAcceptTray.beforeFinalContinue,
+          cotermAcceptTray.snap,
+          "B03-coterminal-accept"
+        );
+        await writeB03Stage("coterminal-accept-before-continue", cotermAcceptTray.beforeFinalContinue);
+        await writeB03Stage("coterminal-accept-desk-before-choice", cotermAcceptTray.snap);
         const cotermAccept =
           (await clickMatching(page, "Accept Offer")) ||
           (await clickMatching(page, "^Accept$|Accept|Sign"));
         assert(cotermAccept, "coterm live Accept required");
         await page.waitForTimeout(250);
         const cotermAccepted = await exportSnap(page);
+        await writeB03Stage("coterminal-accept-after-choice", cotermAccepted);
         assert(cotermAccepted.player.contractStatus === "active", "coterm accept active");
         assert(cotermAccepted.player.employmentClubId === cotermAcceptStart.parent, "parent kept");
         assert(cotermAccepted.player.contractEndSeason > 1, "coterm accept extends");
         await clearDeskNoAdvance("B03-coterminal-accept");
+        const cotermAcceptFinal = await exportSnap(page);
+        await writeB03Stage("coterminal-accept-final-desk", cotermAcceptFinal);
 
         await writeJson(join(CASE_DIR, "B03.json"), {
           negative: {
@@ -1049,7 +1171,8 @@ async function main() {
               continueClicks: negDriven?.continueClicks ?? null,
               actions: negDriven?.actions || [],
               beforeFinalContinue: slimPlayer(negDriven?.beforeFinalContinue),
-              final: slimPlayer(negDriven?.final),
+              // UI desk state after drive — not a player snapshot.
+              finalUi: negDriven?.final || null,
             },
             reviewOutcome: negAfter.player.pendingContractReview?.outcome || null,
             settledChoice: negAfter.player.pendingContractReview?.settledChoice || null,
@@ -1057,6 +1180,7 @@ async function main() {
           positiveLive: {
             before: slimPlayer(posBefore),
             beforeFinalContinue: slimPlayer(posTray.beforeFinalContinue),
+            deskBeforeChoice: slimPlayer(posTray.snap),
             afterDecline: slimPlayer(posAfterDecline),
             after: slimPlayer(posAfter),
             declined: Boolean(posDecline),
@@ -1064,13 +1188,29 @@ async function main() {
             continueClicks: posTray.continueClicks,
             actions: posTray.actions,
             lead: posTray.lead,
+            stages: {
+              start: b03StagePaths["positive-decline-start"],
+              beforeContinue: b03StagePaths["positive-decline-before-continue"],
+              deskBeforeChoice: b03StagePaths["positive-decline-desk-before-choice"],
+              afterChoice: b03StagePaths["positive-decline-after-choice"],
+              finalDesk: b03StagePaths["positive-decline-final-desk"],
+            },
           },
           positiveAcceptLive: {
             beforeFinalContinue: slimPlayer(posAcceptTray.beforeFinalContinue),
+            deskBeforeChoice: slimPlayer(posAcceptTray.snap),
             after: slimPlayer(posAccepted),
+            finalDesk: slimPlayer(posAcceptFinal),
             continueClicks: posAcceptTray.continueClicks,
             actions: posAcceptTray.actions,
             offerId: posAcceptTray.offerId,
+            stages: {
+              start: b03StagePaths["positive-accept-start"],
+              beforeContinue: b03StagePaths["positive-accept-before-continue"],
+              deskBeforeChoice: b03StagePaths["positive-accept-desk-before-choice"],
+              afterChoice: b03StagePaths["positive-accept-after-choice"],
+              finalDesk: b03StagePaths["positive-accept-final-desk"],
+            },
           },
           positiveRestore: {
             before: slimPlayer(restorePosBefore),
@@ -1079,6 +1219,7 @@ async function main() {
           coterminalLive: {
             before: slimPlayer(cotermBefore),
             beforeFinalContinue: slimPlayer(cotermTray.beforeFinalContinue),
+            deskBeforeChoice: slimPlayer(cotermTray.snap),
             afterDecline: slimPlayer(cotermAfterDecline),
             after: slimPlayer(cotermAfter),
             declined: Boolean(cotermDecline),
@@ -1087,17 +1228,34 @@ async function main() {
             lead: cotermTray.lead,
             loanClub: cotermLiveMeta.loanClub,
             parent: cotermLiveMeta.parent,
+            stages: {
+              start: b03StagePaths["coterminal-decline-start"],
+              beforeContinue: b03StagePaths["coterminal-decline-before-continue"],
+              deskBeforeChoice: b03StagePaths["coterminal-decline-desk-before-choice"],
+              afterChoice: b03StagePaths["coterminal-decline-after-choice"],
+              finalDesk: b03StagePaths["coterminal-decline-final-desk"],
+            },
           },
           coterminalAcceptLive: {
             beforeFinalContinue: slimPlayer(cotermAcceptTray.beforeFinalContinue),
+            deskBeforeChoice: slimPlayer(cotermAcceptTray.snap),
             after: slimPlayer(cotermAccepted),
+            finalDesk: slimPlayer(cotermAcceptFinal),
             continueClicks: cotermAcceptTray.continueClicks,
             actions: cotermAcceptTray.actions,
             parent: cotermAcceptStart.parent,
+            stages: {
+              start: b03StagePaths["coterminal-accept-start"],
+              beforeContinue: b03StagePaths["coterminal-accept-before-continue"],
+              deskBeforeChoice: b03StagePaths["coterminal-accept-desk-before-choice"],
+              afterChoice: b03StagePaths["coterminal-accept-after-choice"],
+              finalDesk: b03StagePaths["coterminal-accept-final-desk"],
+            },
           },
           coterminalRestore: {
             declined: Boolean(restoreCotermDecline),
           },
+          stageFiles: b03StagePaths,
         });
         return {
           negativeOutcome: negAfter.player.pendingContractReview?.outcome || "released",
@@ -1106,6 +1264,7 @@ async function main() {
           coterminalLiveDeclined: Boolean(cotermDecline),
           coterminalLiveAccepted: cotermAccepted.player.contractEndSeason > 1,
           cotermContinueClicks: cotermTray.continueClicks,
+          b03StageCount: Object.keys(b03StagePaths).length,
         };
       });
     }

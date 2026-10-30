@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-29T23:46:15.656Z",
+  "generatedAt": "2026-10-30T03:58:30.957Z",
   "baseUrl": "http://127.0.0.1:8000",
   "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "results": [
@@ -52,7 +52,7 @@
         "academy": {
           "status": "pending-review",
           "periodCount": 1,
-          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvu6ywrs",
+          "pendingReviewId": "academy-review:academy-ui-fixture-v1:1:mvufzcsx",
           "exitAge": 21
         },
         "nextAction": {
@@ -144,27 +144,27 @@
       "status": "PASS",
       "detail": {
         "position": "GK",
-        "minutes": 628,
+        "minutes": 602,
         "evidenceByScope": {
           "league": {
-            "minutes": 422,
-            "appearances": 15,
+            "minutes": 343,
+            "appearances": 13,
             "starts": 1,
             "goals": 0,
             "assists": 0,
-            "cleanSheets": 0
+            "cleanSheets": 1
           },
           "cup": {
-            "minutes": 26,
-            "appearances": 2,
+            "minutes": 23,
+            "appearances": 1,
             "starts": 0,
             "goals": 0,
             "assists": 0,
             "cleanSheets": null
           },
           "continental": {
-            "minutes": 180,
-            "appearances": 5,
+            "minutes": 236,
+            "appearances": 7,
             "starts": 1,
             "goals": 0,
             "assists": 0,
@@ -187,8 +187,8 @@
             "cleanSheets": null
           }
         },
-        "cleanSheets": 0,
-        "evidenceLeagueCleanSheets": 0,
+        "cleanSheets": 1,
+        "evidenceLeagueCleanSheets": 1,
         "awardFieldKeys": [
           "league:england-premier-league::2026",
           "season-1:world"

@@ -138,13 +138,26 @@ function summarizePeriod(player, cfg, seasonIdx, kind, faAction, thrown) {
   const season = player.seasons?.[player.seasons.length - 1] || null;
   let share = null;
   let shareSource = null;
+  let assessmentCompleteness = null;
   try {
     const s = clubMinutesShare(player, { persistAssessment: false });
     share = s?.share ?? null;
     shareSource = s?.assessment?.source || s?.source || null;
+    assessmentCompleteness = s?.assessment?.completeness || null;
+    // Accepted Fix 06 clubMinutesShare has no assessment.source. A finite share
+    // with club minutes is legacy-reported exposure, not "unknown"/none.
+    if (!shareSource && kind === "club-season" && typeof share === "number" && Number.isFinite(share)) {
+      const mins = season?.minutes ?? season?.clubMinutes;
+      if (mins != null && Number(mins) >= 0) shareSource = "legacy-reported";
+    }
   } catch {
     share = null;
   }
+  const genuinelyUnmeasured =
+    !shareSource ||
+    shareSource === "none" ||
+    assessmentCompleteness === "empty" ||
+    kind === "free-agent-period";
   return {
     caseId: `${cfg.id}-${cfg.position}-seed${cfg.seed}-p${seasonIdx + 1}`,
     seed: cfg.seed,
@@ -165,9 +178,24 @@ function summarizePeriod(player, cfg, seasonIdx, kind, faAction, thrown) {
     standingMatches: season?.standing?.matches ?? null,
     share,
     shareSource,
+    assessmentCompleteness,
+    // Legacy-reported (Fix 06) or opportunity-sourced (Fix 07) — not compatibility 1.
+    legacyReportedShare:
+      shareSource === "legacy-reported" && typeof share === "number" && Number.isFinite(share)
+        ? share
+        : null,
+    opportunityShare:
+      shareSource &&
+      shareSource !== "none" &&
+      shareSource !== "legacy-reported" &&
+      typeof share === "number" &&
+      Number.isFinite(share)
+        ? share
+        : null,
     // Measured exposure only — source "none"/unknown must not count as share 1.
-    measuredShare:
-      shareSource && shareSource !== "none" && typeof share === "number" && Number.isFinite(share)
+    measuredShare: genuinelyUnmeasured
+      ? null
+      : typeof share === "number" && Number.isFinite(share)
         ? share
         : null,
     freeAgent: Boolean(isFreeAgent(player)),

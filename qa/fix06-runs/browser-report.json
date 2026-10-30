@@ -1,0 +1,511 @@
+{
+  "generatedAt": "2026-10-30T03:59:26.478Z",
+  "fix": "06",
+  "baseUrl": "http://127.0.0.1:8000",
+  "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "period": "Y = startYear + seasonIndex; [Y-06-01, (Y+1)-06-01)",
+  "selectedCases": [
+    "B01",
+    "B02",
+    "B03",
+    "B04"
+  ],
+  "fullRun": true,
+  "results": [
+    {
+      "id": "B01",
+      "name": "Old injury, later healthy period",
+      "status": "PASS",
+      "durationMs": 8959,
+      "detail": {
+        "seed": 603,
+        "restoreNextAction": {
+          "id": "start-season",
+          "label": "Simulate next season",
+          "canSimulate": true
+        },
+        "trace": {
+          "simulateClicks": 1,
+          "resumeClicks": 0,
+          "skipClicks": 8,
+          "scenarioClicks": 0,
+          "deskDecisions": [
+            "Decline offers and continue at Arsenal (4 seasons remaining)"
+          ],
+          "postCommitContinueClicks": 10,
+          "preCommitContinueClicks": 0
+        },
+        "before": {
+          "period": {
+            "seasonStartYear": 2026,
+            "seasonIndex": 0,
+            "startDate": "2026-06-01",
+            "endExclusiveDate": "2027-06-01",
+            "startDay": 20605,
+            "endDay": 20970,
+            "days": 365
+          },
+          "raw": 0.936986301369863,
+          "applied": 0.936986301369863,
+          "developmentBreakdownHealthy": 0.936986301369863,
+          "method": "dated-overlap+unknown-excluded",
+          "injuredDays": 23,
+          "injuryCount": 5,
+          "overlappingInjuryCount": 2,
+          "contributingEventIds": [
+            "uefa-champions-league:2026-uefa-champions-league:QF:club:germany:borussia-dortmund:club:england:arsenal:train:2027-04-09",
+            "league:england-premier-league:md:370:inj"
+          ],
+          "excludedUnknownEventIds": [
+            "fix06:B01:legacy-duration-only"
+          ],
+          "clippedIntervals": [
+            {
+              "eventId": "uefa-champions-league:2026-uefa-champions-league:QF:club:germany:borussia-dortmund:club:england:arsenal:train:2027-04-09",
+              "active": false,
+              "startDay": 20917,
+              "returnDay": 20937,
+              "clippedStartDay": 20917,
+              "clippedEndDay": 20937,
+              "clippedDays": 20
+            },
+            {
+              "eventId": "league:england-premier-league:md:370:inj",
+              "active": false,
+              "startDay": 20956,
+              "returnDay": 20959,
+              "clippedStartDay": 20956,
+              "clippedEndDay": 20959,
+              "clippedDays": 3
+            }
+          ]
+        },
+        "after": {
+          "overlayHidden": true,
+          "dashboardHidden": true,
+          "seasonActionInFlight": false,
+          "nextAction": {
+            "id": "resolve-decision",
+            "label": "Resolve squad discussion",
+            "canSimulate": false
+          },
+          "lastSeason": {
+            "healthyTrainingFraction": 0.936986301369863,
+            "rawHealthyTrainingFraction": 0.936986301369863,
+            "developmentBreakdownHealthy": 0.936986301369863,
+            "developmentPeriod": {
+              "periodId": "season-1",
+              "seasonId": "season-1",
+              "seasonIndex": 0,
+              "seasonStartYear": 2026,
+              "startDate": "2026-06-01",
+              "endExclusiveDate": "2027-06-01",
+              "startDay": 20605,
+              "endDay": 20970,
+              "days": 365
+            }
+          }
+        },
+        "snapshotFiles": {
+          "initial": "qa/fixtures/fix06/B01-initial.json",
+          "beforeContinue": "qa/fix06-runs/cases/B01-before-continue.json",
+          "afterDesk": "qa/fix06-runs/cases/B01-after-desk.json"
+        },
+        "oldInjuryIds": [
+          "fix06:B01:old-2025-09",
+          "fix06:B01:old-raw-100-400",
+          "fix06:B01:legacy-duration-only"
+        ],
+        "newOverlappingEventIds": [
+          "uefa-champions-league:2026-uefa-champions-league:QF:club:germany:borussia-dortmund:club:england:arsenal:train:2027-04-09",
+          "league:england-premier-league:md:370:inj"
+        ],
+        "zeroNewOverlap": false,
+        "legacyNoWindowWouldBe": 0
+      },
+      "runtimeErrors": [],
+      "runtimeWarnings": []
+    },
+    {
+      "id": "B02",
+      "name": "Injury crossing the boundary (carry-in)",
+      "status": "PASS",
+      "durationMs": 9064,
+      "detail": {
+        "seed": 604,
+        "restoreNextAction": {
+          "id": "start-season",
+          "label": "Simulate next season",
+          "canSimulate": true
+        },
+        "trace": {
+          "simulateClicks": 1,
+          "resumeClicks": 0,
+          "skipClicks": 12,
+          "scenarioClicks": 4,
+          "deskDecisions": [
+            "Decline offers and continue at Arsenal (4 seasons remaining)"
+          ],
+          "postCommitContinueClicks": 9,
+          "preCommitContinueClicks": 0
+        },
+        "before": {
+          "period": {
+            "seasonStartYear": 2026,
+            "seasonIndex": 0,
+            "startDate": "2026-06-01",
+            "endExclusiveDate": "2027-06-01",
+            "startDay": 20605,
+            "endDay": 20970,
+            "days": 365
+          },
+          "raw": 0.8575342465753425,
+          "applied": 0.8575342465753425,
+          "developmentBreakdownHealthy": 0.8575342465753425,
+          "method": "dated-overlap",
+          "injuredDays": 52,
+          "injuryCount": 2,
+          "overlappingInjuryCount": 2,
+          "contributingEventIds": [
+            "fix06:B02:carry-in-2026-05",
+            "uefa-champions-league:2026-uefa-champions-league:league:md3:club:england:arsenal:club:portugal:porto:train:2026-10-22"
+          ],
+          "excludedUnknownEventIds": [],
+          "clippedIntervals": [
+            {
+              "eventId": "fix06:B02:carry-in-2026-05",
+              "active": false,
+              "startDay": 20583,
+              "returnDay": 20644,
+              "clippedStartDay": 20605,
+              "clippedEndDay": 20644,
+              "clippedDays": 39
+            },
+            {
+              "eventId": "uefa-champions-league:2026-uefa-champions-league:league:md3:club:england:arsenal:club:portugal:porto:train:2026-10-22",
+              "active": false,
+              "startDay": 20748,
+              "returnDay": 20761,
+              "clippedStartDay": 20748,
+              "clippedEndDay": 20761,
+              "clippedDays": 13
+            }
+          ]
+        },
+        "after": {
+          "overlayHidden": true,
+          "dashboardHidden": true,
+          "seasonActionInFlight": false,
+          "nextAction": {
+            "id": "resolve-decision",
+            "label": "Resolve squad discussion",
+            "canSimulate": false
+          },
+          "lastSeason": {
+            "healthyTrainingFraction": 0.8575342465753425,
+            "rawHealthyTrainingFraction": 0.8575342465753425,
+            "developmentBreakdownHealthy": 0.8575342465753425,
+            "developmentPeriod": {
+              "periodId": "season-1",
+              "seasonId": "season-1",
+              "seasonIndex": 0,
+              "seasonStartYear": 2026,
+              "startDate": "2026-06-01",
+              "endExclusiveDate": "2027-06-01",
+              "startDay": 20605,
+              "endDay": 20970,
+              "days": 365
+            }
+          }
+        },
+        "snapshotFiles": {
+          "initial": "qa/fixtures/fix06/B02-initial.json",
+          "beforeContinue": "qa/fix06-runs/cases/B02-before-continue.json",
+          "afterDesk": "qa/fix06-runs/cases/B02-after-desk.json"
+        },
+        "carryInEventId": "fix06:B02:carry-in-2026-05",
+        "carryInClippedDays": 39,
+        "carryInWhere": "history",
+        "recoveredDay": 20677,
+        "availabilityReturnDay": 20644
+      },
+      "runtimeErrors": [],
+      "runtimeWarnings": []
+    },
+    {
+      "id": "B03",
+      "name": "Injury year followed by recovered year",
+      "status": "PASS",
+      "durationMs": 17595,
+      "detail": {
+        "seed": 605,
+        "deskObstaclesBeforeYear2": [
+          "Decline offers and continue at Arsenal (3 seasons remaining)"
+        ],
+        "year1": {
+          "trace": {
+            "simulateClicks": 1,
+            "resumeClicks": 0,
+            "skipClicks": 12,
+            "scenarioClicks": 4,
+            "deskDecisions": [
+              "Decline offers and continue at Arsenal (4 seasons remaining)"
+            ],
+            "postCommitContinueClicks": 9,
+            "preCommitContinueClicks": 0
+          },
+          "period": {
+            "seasonStartYear": 2026,
+            "seasonIndex": 0,
+            "startDate": "2026-06-01",
+            "endExclusiveDate": "2027-06-01",
+            "startDay": 20605,
+            "endDay": 20970,
+            "days": 365
+          },
+          "raw": 0.04109589041095896,
+          "applied": 0.15,
+          "developmentBreakdownHealthy": 0.15,
+          "method": "dated-overlap",
+          "injuredDays": 350,
+          "injuryCount": 2,
+          "overlappingInjuryCount": 2,
+          "contributingEventIds": [
+            "fix06:B03:year1-injury",
+            "league:england-premier-league:md:190:train:2027-01-02"
+          ],
+          "excludedUnknownEventIds": [],
+          "clippedIntervals": [
+            {
+              "eventId": "fix06:B03:year1-injury",
+              "active": false,
+              "startDay": 20619,
+              "returnDay": 20819,
+              "clippedStartDay": 20619,
+              "clippedEndDay": 20819,
+              "clippedDays": 200
+            },
+            {
+              "eventId": "league:england-premier-league:md:190:train:2027-01-02",
+              "active": true,
+              "startDay": 20820,
+              "returnDay": 21031,
+              "clippedStartDay": 20820,
+              "clippedEndDay": 20970,
+              "clippedDays": 150
+            }
+          ]
+        },
+        "year2": {
+          "trace": {
+            "simulateClicks": 1,
+            "resumeClicks": 0,
+            "skipClicks": 8,
+            "scenarioClicks": 0,
+            "deskDecisions": [
+              "Decline offers and continue at Arsenal (3 seasons remaining)"
+            ],
+            "postCommitContinueClicks": 10,
+            "preCommitContinueClicks": 0
+          },
+          "period": {
+            "seasonStartYear": 2027,
+            "seasonIndex": 1,
+            "startDate": "2027-06-01",
+            "endExclusiveDate": "2028-06-01",
+            "startDay": 20970,
+            "endDay": 21336,
+            "days": 366
+          },
+          "raw": 0.7896174863387978,
+          "applied": 0.7896174863387978,
+          "developmentBreakdownHealthy": 0.7896174863387978,
+          "method": "dated-overlap",
+          "injuredDays": 77,
+          "injuryCount": 3,
+          "overlappingInjuryCount": 2,
+          "contributingEventIds": [
+            "league:england-premier-league:md:190:train:2027-01-02",
+            "league:england-premier-league:md:310:train:2028-04-03"
+          ],
+          "excludedUnknownEventIds": [],
+          "clippedIntervals": [
+            {
+              "eventId": "league:england-premier-league:md:190:train:2027-01-02",
+              "active": false,
+              "startDay": 20820,
+              "returnDay": 21031,
+              "clippedStartDay": 20970,
+              "clippedEndDay": 21031,
+              "clippedDays": 61
+            },
+            {
+              "eventId": "league:england-premier-league:md:310:train:2028-04-03",
+              "active": false,
+              "startDay": 21277,
+              "returnDay": 21293,
+              "clippedStartDay": 21277,
+              "clippedEndDay": 21293,
+              "clippedDays": 16
+            }
+          ]
+        },
+        "year1ClosedIntoHistory": true,
+        "year2ChargedYear1Injury": false,
+        "snapshotFiles": {
+          "initial": "qa/fixtures/fix06/B03-initial.json",
+          "y1BeforeContinue": "qa/fix06-runs/cases/B03-y1-before-continue.json",
+          "y1AfterDesk": "qa/fix06-runs/cases/B03-y1-after-desk.json",
+          "y2BeforeContinue": "qa/fix06-runs/cases/B03-y2-before-continue.json",
+          "y2AfterDesk": "qa/fix06-runs/cases/B03-y2-after-desk.json"
+        }
+      },
+      "runtimeErrors": [],
+      "runtimeWarnings": []
+    },
+    {
+      "id": "B04",
+      "name": "Pause, snapshot restore and move",
+      "status": "PASS",
+      "durationMs": 19255,
+      "detail": {
+        "seed": 42,
+        "pauseDate": "2027-01-10",
+        "pauseDay": 20828,
+        "checkpointDevelopmentPeriod": {
+          "periodId": "season-1",
+          "seasonId": "season-1",
+          "seasonIndex": 0,
+          "seasonStartYear": 2026,
+          "startDate": "2026-06-01",
+          "endExclusiveDate": "2027-06-01",
+          "startDay": 20605,
+          "endDay": 20970,
+          "days": 365
+        },
+        "pausedPendingDecision": "development-loan",
+        "accepted": {
+          "clicked": "accept-loan",
+          "label": "ACCEPT LOAN DECLINE"
+        },
+        "afterMove": {
+          "playingClubId": "club:serbia:tsc-backa-topola",
+          "employmentClubId": "club:italy:atalanta",
+          "activeLoan": {
+            "status": "active",
+            "parentClubId": "club:italy:atalanta",
+            "borrowingClubId": "club:serbia:tsc-backa-topola",
+            "startDate": "2027-01-10",
+            "endDate": "2027-05-31",
+            "transactionIds": [
+              "tx:loan-b:loan:live-loan-fixture-v1:club:serbia:tsc-backa-topola:2026",
+              "tx:loan-p:loan:live-loan-fixture-v1:club:serbia:tsc-backa-topola:2026"
+            ]
+          }
+        },
+        "trace": {
+          "simulateClicks": 0,
+          "resumeClicks": 0,
+          "skipClicks": 6,
+          "scenarioClicks": 0,
+          "deskDecisions": [],
+          "postCommitContinueClicks": 10,
+          "preCommitContinueClicks": 0
+        },
+        "before": {
+          "period": {
+            "seasonStartYear": 2026,
+            "seasonIndex": 0,
+            "startDate": "2026-06-01",
+            "endExclusiveDate": "2027-06-01",
+            "startDay": 20605,
+            "endDay": 20970,
+            "days": 365
+          },
+          "raw": 0.7808219178082192,
+          "applied": 0.7808219178082192,
+          "developmentBreakdownHealthy": 0.7808219178082192,
+          "method": "dated-overlap",
+          "injuredDays": 80,
+          "injuryCount": 3,
+          "overlappingInjuryCount": 3,
+          "contributingEventIds": [
+            "league:italy-serie-a:md:10:train:2026-08-20",
+            "fix06:B04:pre-pause-history",
+            "fix06:B04:across-pause-active"
+          ],
+          "excludedUnknownEventIds": [],
+          "clippedIntervals": [
+            {
+              "eventId": "league:italy-serie-a:md:10:train:2026-08-20",
+              "active": false,
+              "startDay": 20685,
+              "returnDay": 20695,
+              "clippedStartDay": 20685,
+              "clippedEndDay": 20695,
+              "clippedDays": 10
+            },
+            {
+              "eventId": "fix06:B04:pre-pause-history",
+              "active": false,
+              "startDay": 20731,
+              "returnDay": 20771,
+              "clippedStartDay": 20731,
+              "clippedEndDay": 20771,
+              "clippedDays": 40
+            },
+            {
+              "eventId": "fix06:B04:across-pause-active",
+              "active": false,
+              "startDay": 20818,
+              "returnDay": 20848,
+              "clippedStartDay": 20818,
+              "clippedEndDay": 20848,
+              "clippedDays": 30
+            }
+          ]
+        },
+        "after": {
+          "overlayHidden": true,
+          "dashboardHidden": true,
+          "seasonActionInFlight": false,
+          "nextAction": {
+            "id": "resolve-decision",
+            "label": "Resolve squad discussion",
+            "canSimulate": false
+          }
+        },
+        "snapshotFiles": {
+          "initial": "qa/fixtures/fix06/B04-initial.json",
+          "pausedExport": "qa/fix06-runs/cases/B04-paused-export.json",
+          "beforeContinue": "qa/fix06-runs/cases/B04-before-continue.json",
+          "afterDesk": "qa/fix06-runs/cases/B04-after-desk.json"
+        }
+      },
+      "runtimeErrors": [],
+      "runtimeWarnings": []
+    }
+  ],
+  "casesReached": 4,
+  "casesFailed": 0,
+  "screenshots": [
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B01-01-restored-desk.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B01-02-before-continue.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B01-03-after-desk.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B02-01-restored-desk.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B02-02-before-continue.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B02-03-after-desk.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-01-restored-desk.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-02-y1-before-continue.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-03-y1-desk.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-04-y2-desk.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-05-y2-before-continue.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B03-06-y2-desk.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B04-01-paused-restored.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B04-02-restored-fresh-page.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B04-03-loan-accepted.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B04-04-before-continue.png",
+    "/Users/mojsa/Desktop/Simulation/.worktrees/fix07/qa/screenshots/checklist-injury-development/B04-05-after-desk.png"
+  ],
+  "pass": true
+}
