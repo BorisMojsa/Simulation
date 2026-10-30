@@ -1226,6 +1226,74 @@ test("F14: legacy uncertainty — overlap, missing participation, and explicit l
   }
 });
 
+test("F15: partial fixture-identity domestic cup overlap is not silently subtracted", () => {
+  const rows = (prefix = null) =>
+    Array.from({ length: 5 }, (_, i) => ({
+      ...(prefix ? { fixtureId: `${prefix}-${i}` } : {}),
+      playerStats: { minutes: 90, played: true },
+    }));
+  const camp = (records) => ({ name: "Same Cup", playerMatches: records });
+  const cases = [
+    {
+      id: "both-sides-identified-control",
+      requireKnown: true,
+      total: 1350,
+      primary: camp(rows("same")),
+      campaigns: [camp(rows("same"))],
+      expectedLeague: 900,
+    },
+    {
+      id: "identified-primary-unidentified-alias",
+      total: 1350,
+      primary: camp(rows("same")),
+      campaigns: [camp(rows())],
+      expectedLeague: 900,
+    },
+    {
+      id: "unidentified-primary-identified-alias",
+      total: 1350,
+      primary: camp(rows()),
+      campaigns: [camp(rows("same"))],
+      expectedLeague: 900,
+    },
+    {
+      id: "unidentified-aliases-without-primary-field",
+      total: 1350,
+      campaigns: [camp(rows()), camp(rows())],
+      expectedLeague: 900,
+    },
+    {
+      id: "two-distinct-identified-cups-control",
+      requireKnown: true,
+      total: 1800,
+      primary: camp(rows("cup-one")),
+      campaigns: [camp(rows("cup-one")), { name: "Second Cup", playerMatches: rows("cup-two") }],
+      expectedLeague: 900,
+    },
+  ];
+
+  for (const c of cases) {
+    const season = {
+      matches: c.total === 1800 ? 20 : 15,
+      minutes: c.total,
+      clubMinutes: c.total,
+      standing: { matches: 38 },
+      domesticCupResult: c.primary,
+      domesticCupCampaigns: c.campaigns,
+      europeanCampaign: { qualified: false },
+    };
+    const r = clubMinutesShare({ seasons: [season] }, { persistAssessment: false });
+    const expectedShare = c.expectedLeague / 3420;
+    const pass = c.requireKnown
+      ? r.usableForLowMinutes && Math.abs(r.share - expectedShare) < 1e-12
+      : !r.usableForLowMinutes || Math.abs(r.share - expectedShare) < 1e-12;
+    assert.ok(
+      pass,
+      `${c.id}: share=${r.share} usable=${r.usableForLowMinutes} src=${r.assessment?.source}`
+    );
+  }
+});
+
 test("F13: app finalizer keeps pending parent renewal over loan-return", async () => {
   const { readFileSync } = await import("node:fs");
   const vm = await import("node:vm");

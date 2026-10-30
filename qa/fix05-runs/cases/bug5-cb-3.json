@@ -2,28 +2,27 @@
   "careerId": "bug5-cb-3",
   "position": "CB",
   "seed": 111,
-  "rawRecords": 59,
-  "positiveMinutes": 22,
-  "zeroMinutes": 37,
-  "withEdition": 59,
+  "rawRecords": 56,
+  "positiveMinutes": 21,
+  "zeroMinutes": 35,
+  "withEdition": 56,
   "editionCoverage": 1,
-  "rawCleanSheets": 3,
-  "ledgerCleanSheets": 3,
-  "evidenceLeagueCleanSheets": 1,
-  "evidenceTotalCleanSheets": 3,
+  "rawCleanSheets": 1,
+  "ledgerCleanSheets": 1,
+  "evidenceLeagueCleanSheets": 0,
+  "evidenceTotalCleanSheets": 1,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
-    "FA Cup::2026:FA Cup",
     "uefa-champions-league::2026-uefa-champions-league"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
   "goalsAgree": true,
-  "goalsFromPositive": 1,
-  "goalsFromLedger": 1,
-  "matchesWithEvents": 15,
+  "goalsFromPositive": 0,
+  "goalsFromLedger": 0,
+  "matchesWithEvents": 17,
   "eventGoalDisagree": 0,
-  "apps": 22,
+  "apps": 21,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:20",
@@ -33,7 +32,7 @@
       "minutes": 14,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.7
+      "rating": 5.3
     },
     {
       "matchId": "league:england-premier-league:md:30",
@@ -43,7 +42,7 @@
       "minutes": 21,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.4
+      "rating": 6.3
     }
   ],
   "sampleZero": [
@@ -62,25 +61,25 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 402,
-      "appearances": 15,
+      "minutes": 466,
+      "appearances": 17,
       "starts": 2,
       "goals": 0,
       "assists": 0,
-      "cleanSheets": 1
+      "cleanSheets": 0
     },
     "cup": {
-      "minutes": 99,
-      "appearances": 3,
-      "starts": 1,
-      "goals": 1,
+      "minutes": 0,
+      "appearances": 0,
+      "starts": 0,
+      "goals": 0,
       "assists": 0,
-      "cleanSheets": 1
+      "cleanSheets": null
     },
     "continental": {
-      "minutes": 164,
+      "minutes": 189,
       "appearances": 4,
-      "starts": 1,
+      "starts": 2,
       "goals": 0,
       "assists": 0,
       "cleanSheets": 1

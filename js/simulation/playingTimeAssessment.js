@@ -515,94 +515,133 @@ function ledgerScoped(ledger, season, clubId, opts = {}) {
 }
 
 /**
- * Sum proved non-league club minutes from legacy season campaign views.
- * Deduplicates overlapping primary cup / campaign / continental fixture rows.
- * Incomplete or unprovable rows yield incomplete=true (unknown, not zero).
+ * Inspect a legacy playerMatches list. Returns contribution metadata; never invents IDs.
+ * Incomplete/unprovable participation or minutes set incomplete on the accumulator.
  */
-function legacyNonLeagueClubMinutes(season) {
-  const seen = new Set();
-  let domesticCupMinutes = 0;
-  let continentalMinutes = 0;
-  const reasons = [];
-  let incomplete = false;
-  /** Buckets that contributed minutes without fixture/match identity. */
-  const unidentifiedBuckets = new Set();
-
-  function addRows(rows, bucket, { missingRowsIsGap = false } = {}) {
-    if (rows == null) {
-      // Qualification / campaign presence without rows is missing evidence, not zero.
-      if (missingRowsIsGap) {
-        incomplete = true;
-        reasons.push(`missing-rows-${bucket}`);
-      }
-      return;
+function inspectLegacyMatchRows(rows, bucket, acc, { missingRowsIsGap = false } = {}) {
+  const out = {
+    labeledMinutes: new Map(), // id -> minutes
+    unidentifiedMinutes: 0,
+    hasPositive: false,
+    hasUnidentifiedPositive: false,
+  };
+  if (rows == null) {
+    if (missingRowsIsGap) {
+      acc.incomplete = true;
+      acc.reasons.push(`missing-rows-${bucket}`);
     }
-    if (!Array.isArray(rows)) {
-      incomplete = true;
-      reasons.push(`non-array-${bucket}`);
-      return;
+    return out;
+  }
+  if (!Array.isArray(rows)) {
+    acc.incomplete = true;
+    acc.reasons.push(`non-array-${bucket}`);
+    return out;
+  }
+  for (const row of rows) {
+    if (!row || typeof row !== "object") {
+      acc.incomplete = true;
+      acc.reasons.push(`invalid-row-${bucket}`);
+      continue;
     }
-    for (const row of rows) {
-      if (!row || typeof row !== "object") {
-        incomplete = true;
-        reasons.push(`invalid-row-${bucket}`);
-        continue;
-      }
-      const mins = coerceFiniteOrNull(row?.playerStats?.minutes ?? row?.minutes);
-      if (mins == null) {
-        const played = row.played ?? row.playerStats?.played;
-        if (played === false) {
-          // Proved non-participation — treat as zero for this row.
-          continue;
-        }
-        // Missing minutes with unknown or positive participation is uncertainty.
-        incomplete = true;
-        reasons.push(
-          played === true ? `unknown-minutes-${bucket}` : `unknown-participation-${bucket}`
-        );
-        continue;
-      }
-      if (mins <= 0) continue;
-      const id = row.fixtureId || row.matchId || null;
-      if (id) {
-        if (seen.has(id)) continue;
-        seen.add(id);
-      } else {
-        unidentifiedBuckets.add(bucket);
-      }
-      if (bucket === "continental") continentalMinutes += mins;
-      else domesticCupMinutes += mins;
+    const mins = coerceFiniteOrNull(row?.playerStats?.minutes ?? row?.minutes);
+    if (mins == null) {
+      const played = row.played ?? row.playerStats?.played;
+      if (played === false) continue;
+      acc.incomplete = true;
+      acc.reasons.push(
+        played === true ? `unknown-minutes-${bucket}` : `unknown-participation-${bucket}`
+      );
+      continue;
+    }
+    if (mins <= 0) continue;
+    out.hasPositive = true;
+    const id = row.fixtureId || row.matchId || null;
+    if (id) {
+      // Same view repeating an id — keep first contribution only.
+      if (!out.labeledMinutes.has(id)) out.labeledMinutes.set(id, mins);
+    } else {
+      out.hasUnidentifiedPositive = true;
+      out.unidentifiedMinutes += mins;
     }
   }
+  return out;
+}
 
-  addRows(season?.domesticCupResult?.playerMatches, "primary-cup");
+/**
+ * Sum proved non-league club minutes from legacy season campaign views.
+ * Domestic primary/campaign views may alias; only fixture/match identity proves
+ * distinct fixtures. Partial or missing identity across multiple views is unknown.
+ */
+function legacyNonLeagueClubMinutes(season) {
+  const reasons = [];
+  const acc = { incomplete: false, reasons };
+  let continentalMinutes = 0;
+
+  /** @type {{ label: string, rows: any }[]} */
+  const domesticViews = [];
+  if (season?.domesticCupResult?.playerMatches != null) {
+    domesticViews.push({ label: "primary-cup", rows: season.domesticCupResult.playerMatches });
+  }
   const campaigns = season?.domesticCupCampaigns;
   if (campaigns != null) {
     if (!Array.isArray(campaigns)) {
-      incomplete = true;
+      acc.incomplete = true;
       reasons.push("non-array-domesticCupCampaigns");
     } else {
-      for (const camp of campaigns) {
-        addRows(camp?.playerMatches, "domestic-campaign");
-      }
+      campaigns.forEach((camp, i) => {
+        if (camp?.playerMatches != null) {
+          domesticViews.push({ label: `domestic-campaign:${i}`, rows: camp.playerMatches });
+        }
+      });
     }
   }
-  // Unidentified primary ↔ campaign overlap cannot be proved without identities.
-  if (unidentifiedBuckets.has("primary-cup") && unidentifiedBuckets.has("domestic-campaign")) {
-    incomplete = true;
+
+  const viewStats = domesticViews.map((v) => ({
+    label: v.label,
+    ...inspectLegacyMatchRows(v.rows, v.label, acc),
+  }));
+  const positiveViews = viewStats.filter((v) => v.hasPositive);
+
+  let domesticCupMinutes = 0;
+  if (positiveViews.length > 1 && positiveViews.some((v) => v.hasUnidentifiedPositive)) {
+    // Multiple domestic views with at least one unidentified contribution — overlap unproved.
+    acc.incomplete = true;
     reasons.push("unidentified-overlap");
+  } else if (positiveViews.length === 0) {
+    domesticCupMinutes = 0;
+  } else if (positiveViews.length === 1) {
+    // Single view: unidentified minutes are fine (no cross-view alias risk).
+    const v = positiveViews[0];
+    for (const mins of v.labeledMinutes.values()) domesticCupMinutes += mins;
+    domesticCupMinutes += v.unidentifiedMinutes;
+  } else {
+    // All positive views are fully identified — dedupe across views by fixture/match id.
+    const seen = new Map();
+    for (const v of positiveViews) {
+      for (const [id, mins] of v.labeledMinutes) {
+        if (!seen.has(id)) seen.set(id, mins);
+      }
+    }
+    for (const mins of seen.values()) domesticCupMinutes += mins;
   }
+
   if (season?.europeanCampaign?.qualified) {
-    addRows(season?.europeanCampaign?.playerMatches, "continental", { missingRowsIsGap: true });
+    const cont = inspectLegacyMatchRows(season?.europeanCampaign?.playerMatches, "continental", acc, {
+      missingRowsIsGap: true,
+    });
+    for (const mins of cont.labeledMinutes.values()) continentalMinutes += mins;
+    continentalMinutes += cont.unidentifiedMinutes;
   } else if (season?.europeanCampaign?.playerMatches != null) {
-    addRows(season?.europeanCampaign?.playerMatches, "continental");
+    const cont = inspectLegacyMatchRows(season?.europeanCampaign?.playerMatches, "continental", acc);
+    for (const mins of cont.labeledMinutes.values()) continentalMinutes += mins;
+    continentalMinutes += cont.unidentifiedMinutes;
   }
 
   return {
     minutes: domesticCupMinutes + continentalMinutes,
     domesticCupMinutes,
     continentalMinutes,
-    incomplete,
+    incomplete: acc.incomplete,
     reasons,
   };
 }

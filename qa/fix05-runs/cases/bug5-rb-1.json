@@ -2,15 +2,15 @@
   "careerId": "bug5-rb-1",
   "position": "RB",
   "seed": 33,
-  "rawRecords": 58,
-  "positiveMinutes": 36,
-  "zeroMinutes": 22,
-  "withEdition": 58,
+  "rawRecords": 61,
+  "positiveMinutes": 38,
+  "zeroMinutes": 23,
+  "withEdition": 61,
   "editionCoverage": 1,
-  "rawCleanSheets": 5,
-  "ledgerCleanSheets": 5,
-  "evidenceLeagueCleanSheets": 3,
-  "evidenceTotalCleanSheets": 5,
+  "rawCleanSheets": 6,
+  "ledgerCleanSheets": 6,
+  "evidenceLeagueCleanSheets": 2,
+  "evidenceTotalCleanSheets": 6,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
     "FA Cup::2026:FA Cup",
@@ -21,9 +21,9 @@
   "goalsAgree": true,
   "goalsFromPositive": 0,
   "goalsFromLedger": 0,
-  "matchesWithEvents": 21,
+  "matchesWithEvents": 23,
   "eventGoalDisagree": 0,
-  "apps": 36,
+  "apps": 38,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:20",
@@ -33,7 +33,7 @@
       "minutes": 85,
       "goals": 0,
       "cleanSheet": true,
-      "rating": 6.6
+      "rating": 7
     },
     {
       "matchId": "league:england-premier-league:md:30",
@@ -43,7 +43,7 @@
       "minutes": 17,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6.2
+      "rating": 6.9
     }
   ],
   "sampleZero": [
@@ -62,24 +62,24 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 792,
-      "appearances": 21,
+      "minutes": 841,
+      "appearances": 23,
       "starts": 5,
+      "goals": 0,
+      "assists": 0,
+      "cleanSheets": 2
+    },
+    "cup": {
+      "minutes": 314,
+      "appearances": 6,
+      "starts": 3,
       "goals": 0,
       "assists": 0,
       "cleanSheets": 3
     },
-    "cup": {
-      "minutes": 249,
-      "appearances": 5,
-      "starts": 2,
-      "goals": 0,
-      "assists": 1,
-      "cleanSheets": 1
-    },
     "continental": {
-      "minutes": 318,
-      "appearances": 10,
+      "minutes": 302,
+      "appearances": 9,
       "starts": 1,
       "goals": 0,
       "assists": 0,

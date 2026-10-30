@@ -2,10 +2,10 @@
   "careerId": "bug5-cm-3",
   "position": "CM",
   "seed": 707,
-  "rawRecords": 49,
-  "positiveMinutes": 22,
-  "zeroMinutes": 27,
-  "withEdition": 49,
+  "rawRecords": 51,
+  "positiveMinutes": 23,
+  "zeroMinutes": 28,
+  "withEdition": 51,
   "editionCoverage": 1,
   "rawCleanSheets": 0,
   "ledgerCleanSheets": 0,
@@ -13,7 +13,8 @@
   "evidenceTotalCleanSheets": null,
   "evidenceEditionKeys": [
     "league:england-premier-league::2026",
-    "uefa-champions-league::2026-uefa-champions-league"
+    "uefa-champions-league::2026-uefa-champions-league",
+    "FA Cup::2026:FA Cup"
   ],
   "editionKeyOk": true,
   "duplicateMatchIds": 0,
@@ -22,7 +23,7 @@
   "goalsFromLedger": 0,
   "matchesWithEvents": 16,
   "eventGoalDisagree": 0,
-  "apps": 22,
+  "apps": 23,
   "samplePositive": [
     {
       "matchId": "league:england-premier-league:md:40",
@@ -32,10 +33,10 @@
       "minutes": 86,
       "goals": 0,
       "cleanSheet": null,
-      "rating": 6
+      "rating": 7
     },
     {
-      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:italy:atalanta:club:england:arsenal",
+      "matchId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:england:arsenal:club:england:west-ham-united",
       "editionId": "2026-uefa-champions-league",
       "competitionId": "uefa-champions-league",
       "teamId": "club:england:arsenal",
@@ -61,25 +62,25 @@
   ],
   "evidenceByScope": {
     "league": {
-      "minutes": 434,
+      "minutes": 476,
       "appearances": 16,
-      "starts": 1,
+      "starts": 2,
       "goals": 0,
       "assists": 2,
       "cleanSheets": null
     },
     "cup": {
-      "minutes": 0,
-      "appearances": 0,
+      "minutes": 34,
+      "appearances": 1,
       "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null
     },
     "continental": {
-      "minutes": 180,
+      "minutes": 130,
       "appearances": 6,
-      "starts": 1,
+      "starts": 0,
       "goals": 0,
       "assists": 0,
       "cleanSheets": null

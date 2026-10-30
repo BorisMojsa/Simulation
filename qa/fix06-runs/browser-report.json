@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-30T03:59:26.478Z",
+  "generatedAt": "2026-10-30T15:49:58.792Z",
   "fix": "06",
   "baseUrl": "http://127.0.0.1:8000",
   "chrome": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -16,7 +16,7 @@
       "id": "B01",
       "name": "Old injury, later healthy period",
       "status": "PASS",
-      "durationMs": 8959,
+      "durationMs": 8555,
       "detail": {
         "seed": 603,
         "restoreNextAction": {
@@ -130,7 +130,7 @@
       "id": "B02",
       "name": "Injury crossing the boundary (carry-in)",
       "status": "PASS",
-      "durationMs": 9064,
+      "durationMs": 8903,
       "detail": {
         "seed": 604,
         "restoreNextAction": {
@@ -236,7 +236,7 @@
       "id": "B03",
       "name": "Injury year followed by recovered year",
       "status": "PASS",
-      "durationMs": 17595,
+      "durationMs": 17325,
       "detail": {
         "seed": 605,
         "deskObstaclesBeforeYear2": [
@@ -367,7 +367,7 @@
       "id": "B04",
       "name": "Pause, snapshot restore and move",
       "status": "PASS",
-      "durationMs": 19255,
+      "durationMs": 18906,
       "detail": {
         "seed": 42,
         "pauseDate": "2027-01-10",
