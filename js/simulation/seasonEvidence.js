@@ -127,7 +127,26 @@ function deepFreeze(obj) {
 }
 
 function emptyScopeLine() {
-  return { minutes: 0, appearances: 0, starts: 0, goals: 0, assists: 0, cleanSheets: null };
+  return {
+    minutes: 0,
+    appearances: 0,
+    starts: 0,
+    goals: 0,
+    assists: 0,
+    cleanSheets: null,
+    // Rated averages use only observations with a known rating; unknown stays unknown.
+    ratedMinutes: 0,
+    ratingSum: 0,
+    rating: null,
+  };
+}
+
+/** Finalize minutes-weighted rating for a scope/edition line (null when no rated minutes). */
+function finalizeScopeLineRating(line) {
+  if (!line) return line;
+  if (line.ratedMinutes > 0) line.rating = line.ratingSum / line.ratedMinutes;
+  else line.rating = null;
+  return line;
 }
 
 /** Stable fallback edition id when the caller supplies no competition editions. */
@@ -819,23 +838,31 @@ function scopeLinesFromMatches(matches) {
   for (const m of matches) {
     const minutes = num(m.minutes);
     if (!(minutes > 0)) continue;
+    const capped = Math.min(minutes, 150);
     const scope = competitionScopeOf(m.competitionType ?? m.scope, Boolean(m.international ?? m.isInternational));
     const lines = [byScope[scope]];
     const editionId = m.competitionEditionId ?? m.editionId ?? null;
     const key = evidenceEditionKey(m.competitionId, editionId);
     if (key) lines.push((byEdition[key] ||= emptyScopeLine()));
+    const rating = m.rating != null && Number.isFinite(Number(m.rating)) ? Number(m.rating) : null;
     for (const line of lines) {
-      line.minutes += Math.min(minutes, 150);
+      line.minutes += capped;
       line.appearances += 1;
       line.starts += m.started ? 1 : 0;
       line.goals += Math.max(0, num(m.goals));
       line.assists += Math.max(0, num(m.assists));
+      if (rating != null) {
+        line.ratedMinutes += capped;
+        line.ratingSum += rating * capped;
+      }
       if (typeof m.cleanSheet === "boolean") {
         line.cleanSheets = (line.cleanSheets ?? 0) + (m.cleanSheet ? 1 : 0);
         flaggedCleanSheets = true;
       }
     }
   }
+  for (const line of Object.values(byScope)) finalizeScopeLineRating(line);
+  for (const line of Object.values(byEdition)) finalizeScopeLineRating(line);
   return { byScope, byEdition, flaggedCleanSheets };
 }
 

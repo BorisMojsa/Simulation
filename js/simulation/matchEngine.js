@@ -246,22 +246,13 @@ function buildGoalEvents({
   // path so season-level streams stay aligned; attribution stays gated on real minutes.
   const shareMinutes = minutes > 0 ? minutes : player ? 90 : 0;
   const playerTeamGoals = playerSide === "home" ? homeGoals : playerSide === "away" ? awayGoals : 0;
-  // Approximate goals while player is on pitch by minute share (no on-pitch timestamps).
-  const goalsWhilePlaying = Math.max(
-    0,
-    Math.round(playerTeamGoals * clamp(shareMinutes / Math.max(minuteMax, 90), 0, 1))
-  );
-  const gShare = goalShareForPlayer(
-    player,
-    Math.max(goalsWhilePlaying, playerTeamGoals * 0.5),
-    shareMinutes,
-    competition
-  );
-  const aShare = assistShareForPlayer(
-    player,
-    Math.max(goalsWhilePlaying, playerTeamGoals * 0.5),
-    shareMinutes
-  );
+  // Goals while on pitch ≈ team goals × minute share (continuous). Do not floor the
+  // denominator at 50% of team goals: that double-penalizes short substitutes whose
+  // share numerators already scale by minutes/90 and who are also gated by onPitch.
+  const pitchFraction = clamp(shareMinutes / Math.max(minuteMax, 90), 0, 1);
+  const goalsWhilePlaying = Math.max(playerTeamGoals * pitchFraction, playerTeamGoals > 0 ? 1e-6 : 0);
+  const gShare = goalShareForPlayer(player, goalsWhilePlaying, shareMinutes, competition);
+  const aShare = assistShareForPlayer(player, goalsWhilePlaying, shareMinutes);
 
   rng.shuffle(schedule).forEach((scoringSide) => {
     const minute = rng.int(minuteMin, minuteMax);

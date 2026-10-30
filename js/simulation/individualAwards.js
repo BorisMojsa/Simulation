@@ -161,7 +161,12 @@ export const AWARD_DEFS = Object.freeze({
 });
 
 const AWARD_ORDER = Object.values(AWARD_DEFS).map((d) => d.awardId);
-const FIELD_VERSION = 1;
+/** Current generation format. Version-1 fields remain reusable for completed seasons. */
+const FIELD_VERSION = 2;
+const COMPATIBLE_FIELD_VERSIONS = new Set([1, 2]);
+
+/** Match-rating baseline shared with `computeMatchRating` (user path starts at 6.0). */
+const RATING_BASELINE = 6.0;
 
 /** Position -> goal / assist base rates (relative weights, not calibrated to a league). */
 const SCORING_WEIGHT = { GK: 0, CB: 0.045, RB: 0.05, LB: 0.05, CDM: 0.06, CM: 0.1, CAM: 0.15, RW: 0.2, LW: 0.2, ST: 0.3 };
@@ -238,8 +243,9 @@ export function scoreSeasonLine(line, possibleMinutes) {
   const minutes = Math.max(0, num(line.minutes));
   const per90 = Math.max(minutes, 1) / 90;
   const output = (w.g * num(line.goals) + w.a * num(line.assists) + w.cs * num(line.cleanSheets)) / per90;
-  const rating = line.rating == null ? 6.5 : num(line.rating, 6.5);
-  const ratingPart = 2 * (rating - 6.5);
+  // Unknown rating uses the shared baseline (same as user match-rating start), not a rival-only 6.5.
+  const rating = line.rating == null ? RATING_BASELINE : num(line.rating, RATING_BASELINE);
+  const ratingPart = 2 * (rating - RATING_BASELINE);
   const teamPart = line.teamPpg == null ? 0 : 1.5 * (clamp(num(line.teamPpg) / 3, 0, 1) - 0.45);
   const availability = clamp(minutes / Math.max(1, 0.8 * possibleMinutes), 0, 1);
   return (ratingPart + output + teamPart) * Math.sqrt(availability);
@@ -319,6 +325,10 @@ function generateTeamRoster(team, teamIdx, editionId, rng) {
     const rookieProb = age <= 22 ? 0.4 : age <= 24 ? 0.1 : 0.02;
     const priorSeniorMinutes =
       priorRoll < rookieProb ? Math.round(priorAmount * 800) : Math.round(1500 + priorAmount * 18000);
+    // Appearances first; minutes must fit appearances × 90 (no invented ET for league rows).
+    const matches = Math.max(0, Math.min(played, Math.round(played * u)));
+    const minutes = Math.min(matches * 90, Math.round(played * 90 * u));
+    const starts = Math.min(matches, starter ? matches : Math.max(0, Math.round(matches * 0.35)));
     return {
       id: `rival:${editionId}:${teamIdx}:${slot}`,
       name: `${team.name} ${pos}${slot + 1}`,
@@ -331,8 +341,9 @@ function generateTeamRoster(team, teamIdx, editionId, rng) {
       u,
       talent,
       priorSeniorMinutes,
-      minutes: Math.round(played * 90 * u),
-      matches: Math.round(played * u * 0.95),
+      minutes,
+      matches,
+      starts,
       goals: 0,
       assists: 0,
       cleanSheets: 0,
@@ -360,17 +371,28 @@ function generateTeamRoster(team, teamIdx, editionId, rng) {
   for (const p of players) {
     if (p.group !== "GK" && p.group !== "DEF") continue;
     for (let c = 0; c < teamCleanSheets; c++) if (rng.random() < p.u * 0.97) p.cleanSheets += 1;
+    // A keeper/defender cannot earn more clean sheets than appearances.
+    p.cleanSheets = Math.min(p.cleanSheets, p.matches);
   }
 
-  // Ratings last, from the realised output.
+  // Ratings last, from the realised output. Baseline matches user `computeMatchRating` (6.0).
   for (const p of players) {
-    const w = ROLE_OUTPUT[p.group];
-    const per90 = Math.max(p.minutes, 1) / 90;
-    const out = (w.g * p.goals + w.a * p.assists + w.cs * p.cleanSheets) / per90;
-    p.rating = Number(clamp(6.5 + 0.3 * teamQ + 0.1 * out + 0.25 * p.talent + 0.18 * gaussian(rng), 5.8, 8.4).toFixed(2));
+    p.rating = rivalRatingFromOutput(p, teamQ, gaussian(rng));
   }
 
-  return { players, teamCleanSheets, ppg, position: team.position ?? null };
+  return { players, teamCleanSheets, ppg, position: team.position ?? null, teamQ };
+}
+
+function rivalRatingFromOutput(p, teamQ, noise = 0) {
+  const w = ROLE_OUTPUT[p.group] || ROLE_OUTPUT.MID;
+  const per90 = Math.max(p.minutes, 1) / 90;
+  const out = (w.g * p.goals + w.a * p.assists + w.cs * p.cleanSheets) / per90;
+  const talent = Number.isFinite(p.talent) ? p.talent : 0;
+  // Coefficients chosen so field centers sit near user `computeMatchRating` (~6.0–6.4 quiet
+  // seasons) under ordinary team context — not a post-hoc award handicap.
+  return Number(
+    clamp(RATING_BASELINE + 0.18 * teamQ + 0.07 * out + 0.12 * talent + 0.12 * noise, 5.2, 8.2).toFixed(2)
+  );
 }
 
 function adjustUserTeam(roster, userContext) {
@@ -391,6 +413,15 @@ function adjustUserTeam(roster, userContext) {
   };
   cap("goals", Math.max(0, num(teamGoals) - num(goals)));
   cap("assists", Math.max(0, Math.round(num(teamGoals) * 0.72) - num(assists)));
+  // Recompute ratings after capping so dependent scores are not stale.
+  const teamQ = Number.isFinite(roster.teamQ)
+    ? roster.teamQ
+    : roster.ppg == null
+      ? 0
+      : (roster.ppg / 3 - 0.45) * 2;
+  for (const p of roster.players) {
+    p.rating = rivalRatingFromOutput(p, teamQ, 0);
+  }
 }
 
 function lineOf(r) {
@@ -408,6 +439,26 @@ function selectRivalIds(rivals, possibleMinutes) {
   add(sortDesc(rivals.filter((r) => r.age <= 25), score), 10);
   add(sortDesc(rivals.filter((r) => r.priorSeniorMinutes < AWARD_CONFIG.breakthroughPriorMinutesMax), score), 8);
   return keep;
+}
+
+/** Full-population score moments for role standardization (retained before compacting). */
+function buildReferenceMoments(rivals, possibleMinutes) {
+  const minMins = AWARD_CONFIG.minParticipation * possibleMinutes;
+  const byGroup = {};
+  for (const g of ["GK", "DEF", "MID", "FWD"]) {
+    const group = rivals.filter((r) => r.group === g);
+    const eligible = group.filter((r) => r.minutes >= minMins);
+    const scores = group.map((r) => scoreSeasonLine(lineOf(r), possibleMinutes));
+    const n = scores.length;
+    const mean = n ? scores.reduce((s, v) => s + v, 0) / n : 0;
+    const sd = n > 1 ? Math.sqrt(scores.reduce((s, v) => s + (v - mean) ** 2, 0) / (n - 1)) : 1;
+    byGroup[g] = { n, mean, sd: Math.max(sd, 0.35), eligibleN: eligible.length };
+  }
+  return {
+    populationSize: rivals.length,
+    byGroup,
+    note: "Moments from the full generated population before top-contender retention.",
+  };
 }
 
 function stripRival(r) {
@@ -445,7 +496,7 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
     resolveCompetitionEditionId([], scope, { seasonId, competitionKey: seasonContext.league?.leagueId });
   if (!player.awardFields || typeof player.awardFields !== "object") player.awardFields = {};
   const existing = player.awardFields[editionId];
-  if (existing && existing.version === FIELD_VERSION) return existing;
+  if (existing && COMPATIBLE_FIELD_VERSIONS.has(existing.version)) return existing;
 
   const stream = awardRng(rng, player, seasonId, `field:${editionId}`);
   const userClub = seasonContext.userClub || player.club || null;
@@ -472,7 +523,10 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
     rosters.flatMap(({ roster, isUserTeam }) =>
       roster.players.map((p) => ({ ...p, teamPpg: roster.ppg, teamPosition: roster.position, userTeam: isUserTeam }))
     );
-  const keepIds = selectRivalIds(flatten(), possibleMinutes);
+  const fullPopulation = flatten();
+  const keepIds = selectRivalIds(fullPopulation, possibleMinutes);
+  // Reference moments from the full pre-compression population (not the retained top sample).
+  const referenceMoments = buildReferenceMoments(fullPopulation, possibleMinutes);
 
   // 3) Only now make the user's own club consistent with the user's real output.
   let userTeamRow = null;
@@ -490,6 +544,8 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
     approximated,
     teams: table.length,
     possibleMinutes,
+    populationSize: fullPopulation.length,
+    referenceMoments,
     userContext: {
       clubId: userClub?.clubId ?? null,
       club: userClub?.name ?? null,
@@ -498,7 +554,7 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
       position: user.position ?? player.position ?? null,
       teamGoals: userTeamRow ? num(userTeamRow.goalsFor) : null,
     },
-    note: "Approximate NPC field: multinomial split of table goals, Poisson clean sheets, seeded priors. Placeholder names.",
+    note: "Approximate NPC field: multinomial split of table goals, Poisson clean sheets, seeded priors. Placeholder names. Ratings use the shared 6.0 baseline.",
     rivals: sortDesc(rivals, (r) => r.goals).map(stripRival),
   };
   player.awardFields[editionId] = field;
@@ -511,14 +567,42 @@ export function ensureWorldAwardField(player, { seasonId } = {}, rng) {
   if (!player.awardFields || typeof player.awardFields !== "object") player.awardFields = {};
   const editionId = `${seasonId ?? "season"}:world`;
   const existing = player.awardFields[editionId];
-  if (existing && existing.version === FIELD_VERSION) return existing;
+  if (existing && COMPATIBLE_FIELD_VERSIONS.has(existing.version)) return existing;
   const stream = awardRng(rng, player, seasonId, `field:${editionId}`);
-  const candidates = Array.from({ length: AWARD_CONFIG.worldCandidates }, (_, i) => ({
-    id: `rival:${editionId}:${i}`,
-    name: `World candidate ${i + 1}`,
-    score: Number((AWARD_CONFIG.worldScoreMean + AWARD_CONFIG.worldScoreSd * gaussian(stream)).toFixed(3)),
-  })).sort((a, b) => b.score - a.score);
-  const field = { version: FIELD_VERSION, editionId, scope: "world", seasonId, approximated: true, candidates };
+  // Synthetic world candidates scored with the same season-line contract (not an opaque 4.4 mean).
+  const worldPossible = 38 * 90;
+  const candidates = Array.from({ length: AWARD_CONFIG.worldCandidates }, (_, i) => {
+    const groups = ["GK", "DEF", "MID", "FWD"];
+    const group = groups[i % 4];
+    const talent = 0.8 + 0.5 * Math.abs(gaussian(stream));
+    const minutes = Math.round(worldPossible * (0.72 + 0.2 * stream.random()));
+    const line = {
+      group,
+      minutes,
+      goals: group === "FWD" ? Math.round(18 + 8 * talent) : group === "MID" ? Math.round(8 + 5 * talent) : group === "DEF" ? Math.round(2 + 2 * talent) : 0,
+      assists: group === "GK" ? 0 : Math.round(4 + 6 * talent * (group === "MID" || group === "FWD" ? 1 : 0.4)),
+      cleanSheets: group === "GK" || group === "DEF" ? Math.round(10 + 6 * talent) : 0,
+      rating: Number((RATING_BASELINE + 0.55 + 0.35 * talent + 0.12 * gaussian(stream)).toFixed(2)),
+      teamPpg: 1.8 + 0.4 * talent,
+    };
+    return {
+      id: `rival:${editionId}:${i}`,
+      name: `World candidate ${i + 1}`,
+      group,
+      score: Number(scoreSeasonLine(line, worldPossible).toFixed(3)),
+      line,
+    };
+  }).sort((a, b) => b.score - a.score);
+  const field = {
+    version: FIELD_VERSION,
+    editionId,
+    scope: "world",
+    seasonId,
+    approximated: true,
+    scoreUnits: "scoreSeasonLine",
+    note: "Bounded synthetic world field in scoreSeasonLine units; not a full world simulation.",
+    candidates,
+  };
   player.awardFields[editionId] = field;
   pruneFields(player);
   return field;
@@ -566,7 +650,17 @@ export function normalizeSuppliedRivals(supplied, editionId, possibleMinutes = 3
 /* ------------------------------------------------------------------ */
 
 function emptyEditionLine() {
-  return { minutes: 0, appearances: 0, starts: 0, goals: 0, assists: 0, cleanSheets: null };
+  return {
+    minutes: 0,
+    appearances: 0,
+    starts: 0,
+    goals: 0,
+    assists: 0,
+    cleanSheets: null,
+    ratedMinutes: 0,
+    ratingSum: 0,
+    rating: null,
+  };
 }
 
 function editionLine(evidence, editionId, scope) {
@@ -756,7 +850,9 @@ export function evaluateSeasonAwards({
     goals: num(leagueLine.goals),
     assists: num(leagueLine.assists),
     cleanSheets: leagueLine.cleanSheets,
-    rating: evidence.minutesWeightedRating ?? null,
+    // League awards use the league-edition rating only — never whole-season combined rating.
+    rating: leagueLine.rating ?? null,
+    ratedMinutes: leagueLine.ratedMinutes ?? null,
     teamPpg: ppg,
     priorSeniorMinutes: priorSeniorMinutesOf(player, seasonId, cfg.priorSeasons),
   };
@@ -845,26 +941,24 @@ export function evaluateSeasonAwards({
 
   /* 4-6. POTS / Young POTS / Rookie ---------------------------------- */
   // Group-standardised so positions with big raw outputs do not swamp keepers/defenders.
-  // Mean/sd come from the rival field only, so the user's season never moves a rival's number.
+  // Prefer full-population reference moments when present; else eligible retained rivals.
   const groupStats = {};
   for (const g of ["GK", "DEF", "MID", "FWD"]) {
-    const scores = leagueRivals.filter((r) => r.group === g && r.minutes >= minMinutesTots).map((r) => scored(r));
-    const mean = scores.length ? scores.reduce((s, v) => s + v, 0) / scores.length : 0;
-    const sd = scores.length > 1 ? Math.sqrt(scores.reduce((s, v) => s + (v - mean) ** 2, 0) / (scores.length - 1)) : 1;
-    groupStats[g] = { mean, sd: Math.max(sd, 0.35) };
+    const ref = leagueField.referenceMoments?.byGroup?.[g];
+    if (ref && Number.isFinite(ref.mean) && Number.isFinite(ref.sd)) {
+      groupStats[g] = { mean: ref.mean, sd: Math.max(ref.sd, 0.35), source: "population" };
+    } else {
+      const scores = leagueRivals.filter((r) => r.group === g && r.minutes >= minMinutesTots).map((r) => scored(r));
+      const mean = scores.length ? scores.reduce((s, v) => s + v, 0) / scores.length : 0;
+      const sd = scores.length > 1 ? Math.sqrt(scores.reduce((s, v) => s + (v - mean) ** 2, 0) / (scores.length - 1)) : 1;
+      groupStats[g] = { mean, sd: Math.max(sd, 0.35), source: "retained" };
+    }
   }
   const potsMetric = (e) => (scored(e) - groupStats[e.group].mean) / groupStats[e.group].sd;
 
-  // Whole-season contribution: the user's totals across every competition, as rates.
-  const userSeasonEntry = {
-    ...userLeagueEntry,
-    minutes: Math.max(num(evidence.minutes), userLeagueEntry.minutes),
-    goals: Math.max(num(total.goals), userLeagueEntry.goals),
-    assists: Math.max(num(total.assists), userLeagueEntry.assists),
-    cleanSheets: total.cleanSheets ?? userLeagueEntry.cleanSheets,
-  };
+  // League POTS / Young / Rookie compare the same league-edition line as rivals.
   const eligible = (e) => (e.isUser ? userLeagueEntry.minutes : e.minutes) >= minMinutesTots;
-  const candidatePool = [...leagueRivals, userSeasonEntry].filter(eligible);
+  const candidatePool = [...leagueRivals, userLeagueEntry].filter(eligible);
 
   const rankedAward = (def, pool, extraEv = {}) => {
     const ranked = sortDesc(pool, potsMetric);
@@ -915,7 +1009,16 @@ export function evaluateSeasonAwards({
       .filter((t) => t.scope === "continental" || t.scope === "international" || t.kind === "continental" || t.kind === "international")
       .reduce((s, t) => s + num(t.participationWeight, 0.5), 0);
     const potsRank = pots?.st?.rank ?? null;
-    const raw = scored(userSeasonEntry);
+    // Explicit whole-season world line (documented broader evidence), separate from league awards.
+    const userWorldEntry = {
+      ...userLeagueEntry,
+      minutes: Math.max(num(evidence.minutes), userLeagueEntry.minutes),
+      goals: Math.max(num(total.goals), userLeagueEntry.goals),
+      assists: Math.max(num(total.assists), userLeagueEntry.assists),
+      cleanSheets: total.cleanSheets ?? userLeagueEntry.cleanSheets,
+      rating: evidence.minutesWeightedRating ?? userLeagueEntry.rating,
+    };
+    const raw = scored(userWorldEntry);
     const champion = evidence.clubFinish && typeof evidence.clubFinish === "object" && evidence.clubFinish.champion;
     const worldScore = raw + 1.5 * (strength - 0.5) + 0.8 * eliteTrophyWeight + (champion ? 0.4 : 0);
     const gatePassed =
