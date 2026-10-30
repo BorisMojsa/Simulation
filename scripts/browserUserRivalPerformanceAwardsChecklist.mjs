@@ -345,18 +345,25 @@ function awardSummary(player) {
 /**
  * Drive one senior season through real UI to desk, capturing pre-Continue snapshot.
  */
-async function driveSeasonToDesk(page, { seasonsBefore, timeoutMs = 180000, shotPrefix = null } = {}) {
+async function driveSeasonToDesk(
+  page,
+  { seasonsBefore, timeoutMs = 180000, shotPrefix = null, deskPolicy = "stay", alreadyRunning = false } = {}
+) {
   const trace = {
     simulateClicks: 0,
     skipClicks: 0,
     postCommitContinueClicks: 0,
     preCommitContinueClicks: 0,
     deskDecisions: [],
+    deskPolicy,
+    alreadyRunning,
   };
   const ui0 = await uiState(page);
-  assert(ui0.simulateDisabled === false, "simulate must be enabled", ui0);
-  await page.click("#simulate-btn");
-  trace.simulateClicks += 1;
+  if (!alreadyRunning) {
+    assert(ui0.simulateDisabled === false, "simulate must be enabled", ui0);
+    await page.click("#simulate-btn");
+    trace.simulateClicks += 1;
+  }
 
   let beforeContinue = null;
   const deadline = Date.now() + timeoutMs;
@@ -388,7 +395,7 @@ async function driveSeasonToDesk(page, { seasonsBefore, timeoutMs = 180000, shot
 
     const holdContinue = !beforeContinue;
     const act = await page.evaluate(
-      ({ seasonsBefore: sb, hold }) => {
+      ({ seasonsBefore: sb, hold, deskPolicy: policy }) => {
         const clicked = [];
         const d = window.__getLiveCareerDebug?.() || {};
         const nowCommitted = (d.seasonsCount ?? 0) > sb;
@@ -436,9 +443,29 @@ async function driveSeasonToDesk(page, { seasonsBefore, timeoutMs = 180000, shot
         const midSeasonDesk = overlayHidden && dashboardHidden && !nowCommitted;
         if (midSeasonDesk) {
           const host = document.getElementById("transfer-offers");
-          const buttons = host
-            ? [...host.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null)
-            : [];
+          const root = host || document.body;
+          const buttons = [...root.querySelectorAll("button")].filter(
+            (b) => !b.disabled && b.offsetParent !== null
+          );
+          if (policy === "accept-cross-league") {
+            const loanTray =
+              buttons.find((b) => /review loan options|see loan|loan options/i.test(b.textContent || "")) ||
+              null;
+            if (loanTray) {
+              loanTray.click();
+              clicked.push(`desk-decision:${(loanTray.textContent || "").trim()}`);
+              return clicked;
+            }
+            const accept =
+              buttons.find((b) => /accept loan|accept offer|accept transfer|sign for/i.test(b.textContent || "")) ||
+              buttons.find((b) => /^accept$/i.test((b.textContent || "").trim())) ||
+              buttons.find((b) => /accept|sign/i.test(b.textContent || "") && !/decline|stay|continue at/i.test(b.textContent || ""));
+            if (accept) {
+              accept.click();
+              clicked.push(`desk-decision:${(accept.textContent || "").trim()}`);
+              return clicked;
+            }
+          }
           const stayBtn =
             buttons.find((b) => /decline offers and continue at/i.test(b.textContent || "")) ||
             buttons.find((b) =>
@@ -458,7 +485,7 @@ async function driveSeasonToDesk(page, { seasonsBefore, timeoutMs = 180000, shot
         }
         return clicked;
       },
-      { seasonsBefore, hold: holdContinue }
+      { seasonsBefore, hold: holdContinue, deskPolicy }
     );
 
     for (const c of act) {
@@ -569,33 +596,103 @@ const cases = {
   },
 
   async B04(page, guards) {
-    const snap = buildSnap({ id: "fix08-b04", position: "ST", ovr: 76, club: "Hull City", seed: 8810 });
-    await writeCase("B04-initial.json", slimEvidence(snap));
-    await restore(page, snap);
-    await shot(page, "B04-01-start");
-    const beforeSeason = await exportSnapshot(page);
-    await writeCase("B04-before-season.json", slimEvidence(beforeSeason));
+    // Production live-loan fixture: mid-season development loan with validated offers.
+    const loaded = await page.evaluate(() => {
+      const r = window.__loadLiveLoanBrowserFixture?.();
+      const d = window.__getLiveCareerDebug?.() || {};
+      return {
+        ok: Boolean(r?.ok),
+        reason: r?.reason || null,
+        offerCount: r?.loanOffers ?? null,
+        kind: r?.kind || null,
+        employmentClubId: r?.employmentClubId || d.employmentClubId || null,
+      };
+    });
+    assert(loaded.ok, "live-loan fixture must load", loaded);
+    assert((loaded.offerCount || 0) >= 1, "live-loan fixture must expose loan offers", loaded);
+    await shot(page, "B04-01-loan-desk");
+    const beforeAccept = await exportSnapshot(page);
+    await writeCase("B04-before-accept.json", slimEvidence(beforeAccept));
+    const employmentBefore = beforeAccept.player?.employmentClubId || null;
+    const playingBefore = beforeAccept.player?.playingClubId || null;
+    const seasonsBefore = (beforeAccept.player?.seasons || []).length;
 
-    // Fresh-page restore branch comparison.
+    // Fresh-page restore branch of the pre-accept checkpoint.
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
     await page.waitForFunction(() => typeof window.__restoreCareerSnapshot === "function", null, {
       timeout: 60000,
     });
-    await restore(page, snap);
+    await restore(page, beforeAccept);
     const afterFresh = await exportSnapshot(page);
     await writeCase("B04-fresh-restore.json", slimEvidence(afterFresh));
-    assert(afterFresh.player?.name === beforeSeason.player?.name, "fresh restore identity");
-    assert((afterFresh.player?.seasons || []).length === 0, "fresh restore must not invent seasons");
+    assert(afterFresh.player?.employmentClubId === employmentBefore, "fresh restore employment");
+    assert((afterFresh.player?.seasons || []).length === seasonsBefore, "fresh restore seasons");
 
-    const driven = await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B04" });
+    // Real UI accept of a loan offer.
+    const opened = await page.evaluate(() => {
+      const btn = [...document.querySelectorAll("button")].find(
+        (b) => !b.disabled && /review loan options|see loan|loan options/i.test(b.textContent || "")
+      );
+      if (!btn) return null;
+      btn.click();
+      return (btn.textContent || "").trim();
+    });
+    if (opened) await page.waitForTimeout(250);
+    await shot(page, "B04-02-loan-tray");
+    const accepted = await page.evaluate(() => {
+      const btn = [...document.querySelectorAll("button")].find(
+        (b) =>
+          !b.disabled &&
+          /accept loan|accept offer|accept/i.test(b.textContent || "") &&
+          !/decline|stay|continue at/i.test(b.textContent || "")
+      );
+      if (!btn) return null;
+      btn.click();
+      return (btn.textContent || "").trim();
+    });
+    assert(accepted, "B04 must click a real Accept loan/offer control");
+    await page.waitForTimeout(400);
+    const afterAccept = await exportSnapshot(page);
+    await writeCase("B04-after-accept.json", slimEvidence(afterAccept));
+    const playingAfterAccept = afterAccept.player?.playingClubId || null;
+    assert(
+      playingAfterAccept && playingAfterAccept !== employmentBefore,
+      "loan accept must move playing club off employer",
+      { employmentBefore, playingAfterAccept, accepted }
+    );
+    await shot(page, "B04-03-loan-accepted");
+
+    // After loan accept the season is already mid-flight — drive skips to desk.
+    const driven = await driveSeasonToDesk(page, {
+      seasonsBefore,
+      shotPrefix: "B04",
+      deskPolicy: "stay",
+      alreadyRunning: true,
+      timeoutMs: 240000,
+    });
     const desk = await exportSnapshot(page);
     await writeCase("B04-desk.json", slimEvidence(desk));
     const sum = awardSummary(desk.player);
-    assert(sum.seasons >= 1, "B04 must complete a season after restore");
-    assert(sum.fieldKeys.every((k) => typeof k === "string"), "award field keys present");
+    assert(sum.seasons >= seasonsBefore + 1, "B04 must complete the loan season");
+    assert(sum.fieldKeys.length >= 1, "award fields present after loan season", sum);
+    const editionKeys = sum.fieldKeys.filter((k) => /league:/i.test(k));
+    assert(editionKeys.length >= 1, "league edition field present", sum);
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, sum, continued: true, freshRestore: true };
+    return {
+      ok: true,
+      sum,
+      continued: true,
+      freshRestore: true,
+      loanAccepted: true,
+      acceptedLabel: accepted,
+      employmentBefore,
+      playingBefore,
+      playingAfterAccept,
+      playingAtDesk: desk.player?.playingClubId || null,
+      editionKeys,
+      deskDecisions: driven.trace.deskDecisions,
+    };
   },
 
   async B05(page, guards) {
