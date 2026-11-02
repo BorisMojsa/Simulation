@@ -215,6 +215,7 @@ function rawSeasonEvidence(p, data, meta) {
       note: f?.note ?? null,
       scoreUnits: f?.scoreUnits ?? null,
       talentToAbility: f?.talentToAbility ?? null,
+      clubBudgets: f?.clubBudgets ?? null,
     };
     if (f?.scope === "world") {
       return {
@@ -344,12 +345,22 @@ for (const fx of fixtures) {
       ovr: fx.ovr,
       band: fx.band,
       fixtureHash,
+      initialSnapshotPath: `snapshots/${fx.id}-initial.json`,
+      initialSnapshotHash,
       completion: completed,
       ageBefore: age0 + period,
       ageAfter: p.age,
     };
     const row = { ...meta, ...summary };
-    const raw = rawSeasonEvidence(p, data, meta);
+    const raw = rawSeasonEvidence(p, data, {
+      ...meta,
+      wins: summary.wins || [],
+      selections: summary.selections || [],
+      nominations: summary.nominations || [],
+      minutes: summary.minutes ?? null,
+      goals: summary.goals ?? null,
+      assists: summary.assists ?? null,
+    });
     records.push(row);
     writeFileSync(join(outDir, "ledgers", `${fx.id}-p${period}.json`), JSON.stringify(raw, null, 2));
     writeFileSync(join(outDir, `${fx.id}-p${period}.json`), JSON.stringify(row, null, 2));

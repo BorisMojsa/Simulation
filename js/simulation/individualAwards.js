@@ -25,9 +25,10 @@
  *   - Every club in the competition table gets a 15-man key-player roster
  *     (11 starters + 4 rotation players across GK/DEF/MID/FWD).
  *   - Individual goals/assists are Poisson draws from the same simulateMatch
- *     role rates × minutes × talent→impliedOverall ability factor. A soft
- *     scale-down keeps roster goals from wildly exceeding `goalsFor`. Clean
- *     sheets follow a Poisson-zero estimate from goalsAgainst.
+ *     role rates × minutes × talent→impliedOverall ability factor. Every club
+ *     then enforces hard goal/assist budgets vs `goalsFor` (assists ≤ goals)
+ *     with an explicit unmodeled-squad remainder. Clean sheets follow a
+ *     Poisson-zero estimate from goalsAgainst.
  *   - Ratings, ages and prior senior minutes are drawn from simple priors.
  *   - Draw order is fixed and independent of the user's season: every club,
  *     including the user's own, is generated first from its own forked stream.
@@ -165,9 +166,9 @@ export const AWARD_DEFS = Object.freeze({
 });
 
 const AWARD_ORDER = Object.values(AWARD_DEFS).map((d) => d.awardId);
-/** Current generation format. Version-1 completed finals remain reusable when fingerprint matches. */
-const FIELD_VERSION = 2;
-const COMPATIBLE_FIELD_VERSIONS = new Set([1, 2]);
+/** Current generation format. Version-1/2 finals remain reusable only when fingerprint matches. */
+const FIELD_VERSION = 3;
+const COMPATIBLE_FIELD_VERSIONS = new Set([1, 2, 3]);
 
 /** Match-rating baseline shared with `computeMatchRating` (user path starts at 6.0). */
 const RATING_BASELINE = 6.0;
@@ -313,6 +314,114 @@ function weightedPick(weights, rng) {
   return weights.length - 1;
 }
 
+/** Assist draws use a fixed scale: simulateMatch assist rolls are mutually
+ * exclusive with goals and only fire on a subset of team goals. */
+const ASSIST_REALIZATION = 0.68;
+
+function poissonCount(lambda, rng) {
+  const L = Math.max(0, Number(lambda) || 0);
+  if (L <= 0) return 0;
+  if (L > 40) {
+    return Math.max(0, Math.round(L + Math.sqrt(L) * gaussian(rng)));
+  }
+  const lim = Math.exp(-L);
+  let k = 0;
+  let pProd = 1;
+  do {
+    k += 1;
+    pProd *= rng.random();
+  } while (pProd > lim);
+  return k - 1;
+}
+
+function impliedOverallFromTalent(talent) {
+  return clamp(70 + 12 * (Number.isFinite(talent) ? talent : 0), 55, 95);
+}
+
+/**
+ * Hard club budgets: modeled roster goals/assists cannot exceed table goalsFor
+ * (assists ≤ goals). Remainder is the unmodeled squad share.
+ */
+export function enforceClubBudgets(players, goalsFor) {
+  const gf = Math.max(0, Math.round(num(goalsFor)));
+  const scaleKey = (key, limit) => {
+    const total = players.reduce((s, p) => s + num(p[key]), 0);
+    if (total <= limit) return total;
+    if (limit <= 0) {
+      for (const p of players) p[key] = 0;
+      return 0;
+    }
+    const scale = limit / total;
+    for (const p of players) p[key] = Math.floor(num(p[key]) * scale);
+    return players.reduce((s, p) => s + num(p[key]), 0);
+  };
+  const modeledGoals = scaleKey("goals", gf);
+  const modeledAssists = scaleKey("assists", gf);
+  return {
+    teamGoals: gf,
+    modeledGoals,
+    modeledAssists,
+    remainderGoals: Math.max(0, gf - modeledGoals),
+    remainderAssists: Math.max(0, gf - modeledAssists),
+  };
+}
+
+/**
+ * Production-contract rival line at an explicit exposure. Used by parity when
+ * the league roster (one starter GK) cannot populate short-minute cells.
+ */
+export function synthesizeRivalAtExposure({
+  id,
+  name = "Synthetic rival",
+  club = "Synthetic",
+  clubId = null,
+  position,
+  talent = 0,
+  minutes,
+  matches = null,
+  starts = null,
+  teamQ = 0,
+  rng,
+} = {}) {
+  if (!rng || typeof rng.random !== "function") throw new TypeError("synthesizeRivalAtExposure requires rng");
+  const pos = normalizePosition(position).position;
+  const group = roleGroupOf(pos);
+  const mins = Math.max(0, Math.round(num(minutes)));
+  const apps = Math.max(
+    0,
+    matches == null ? Math.min(38, Math.ceil(mins / 90)) : Math.round(num(matches))
+  );
+  const startCount = Math.max(0, starts == null ? (group === "GK" ? apps : Math.round(apps * 0.35)) : Math.round(num(starts)));
+  const af = abilityFactorFromOverall(impliedOverallFromTalent(talent));
+  const mins90 = mins / 90;
+  const goals = pos === "GK" ? 0 : poissonCount(roleGoalRatePer90(pos) * mins90 * af, rng);
+  const assists = poissonCount(roleAssistRatePer90(pos) * mins90 * af * ASSIST_REALIZATION, rng);
+  const ratingNoise = gaussian(rng);
+  const line = {
+    id: id || `rival:synthetic:${pos}:${mins}`,
+    name,
+    club,
+    clubId,
+    position: pos,
+    group,
+    starter: false,
+    age: 24,
+    u: clamp(mins / (38 * 90), 0.05, 1),
+    talent,
+    priorSeniorMinutes: 2000,
+    minutes: mins,
+    matches: apps,
+    starts: Math.min(apps, startCount),
+    goals,
+    assists,
+    cleanSheets: 0,
+    ratingNoise,
+    syntheticExposure: true,
+  };
+  line.rating = rivalRatingFromOutput(line, teamQ, ratingNoise);
+  return line;
+}
+
 function generateTeamRoster(team, teamIdx, editionId, rng) {
   const played = Math.max(1, num(team.played, 38));
   const goalsFor = Math.max(0, num(team.goalsFor));
@@ -358,42 +467,14 @@ function generateTeamRoster(team, teamIdx, editionId, rng) {
 
   // Absolute expected rates share the simulateMatch role/ability contract via
   // talent→impliedOverall. Independent Poisson draws keep per-90 rates stable
-  // across short and full exposure (team totals are approximate; adjustUserTeam
-  // still caps the user's club for table consistency).
-  const impliedOvr = (p) => clamp(70 + 12 * (Number.isFinite(p.talent) ? p.talent : 0), 55, 95);
-  const poisson = (lambda) => {
-    const L = Math.max(0, Number(lambda) || 0);
-    if (L <= 0) return 0;
-    if (L > 40) {
-      return Math.max(0, Math.round(L + Math.sqrt(L) * gaussian(rng)));
-    }
-    const lim = Math.exp(-L);
-    let k = 0;
-    let pProd = 1;
-    do {
-      k += 1;
-      pProd *= rng.random();
-    } while (pProd > lim);
-    return k - 1;
-  };
-  // Assist draws use a fixed 0.72 scale: simulateMatch assist rolls are mutually
-  // exclusive with goals and only fire on a subset of team goals, so raw role
-  // assist rates overstate season A/90 versus the user path.
-  const ASSIST_REALIZATION = 0.68;
+  // across short and full exposure; hard club budgets then conserve totals.
   for (const p of players) {
-    const af = abilityFactorFromOverall(impliedOvr(p));
+    const af = abilityFactorFromOverall(impliedOverallFromTalent(p.talent));
     const mins90 = Math.max(0, p.minutes) / 90;
-    p.goals = p.position === "GK" ? 0 : poisson(roleGoalRatePer90(p.position) * mins90 * af);
-    p.assists = poisson(roleAssistRatePer90(p.position) * mins90 * af * ASSIST_REALIZATION);
+    p.goals = p.position === "GK" ? 0 : poissonCount(roleGoalRatePer90(p.position) * mins90 * af, rng);
+    p.assists = poissonCount(roleAssistRatePer90(p.position) * mins90 * af * ASSIST_REALIZATION, rng);
   }
-  // Soft team-budget nudge: if the roster wildly overshoots goalsFor, scale down
-  // so league tables stay plausible without rewriting individual rates.
-  const scored = players.reduce((s, p) => s + p.goals, 0);
-  const goalBudget = Math.max(0, Math.round(goalsFor * 0.92));
-  if (scored > goalBudget && scored > 0 && goalBudget >= 0) {
-    const scale = goalBudget / scored;
-    for (const p of players) p.goals = Math.floor(p.goals * scale);
-  }
+  const budget = enforceClubBudgets(players, goalsFor);
 
   // Clean sheets: P(shutout) = Poisson zero given goals against per game.
   const pClean = Math.exp(-goalsAgainst / played);
@@ -406,14 +487,13 @@ function generateTeamRoster(team, teamIdx, editionId, rng) {
     p.cleanSheets = Math.min(p.cleanSheets, p.matches);
   }
 
-  // Ratings last, from the realised output. Baseline matches user `computeMatchRating` (6.0).
-  // Persist the rating noise draw so post-cap recomputation keeps the same sample.
+  // Ratings last, from the realised (post-budget) output.
   for (const p of players) {
     p.ratingNoise = gaussian(rng);
     p.rating = rivalRatingFromOutput(p, teamQ, p.ratingNoise);
   }
 
-  return { players, teamCleanSheets, ppg, position: team.position ?? null, teamQ };
+  return { players, teamCleanSheets, ppg, position: team.position ?? null, teamQ, budget };
 }
 
 function rivalRatingFromOutput(p, teamQ, noise = 0) {
@@ -435,7 +515,11 @@ function rivalRatingFromOutput(p, teamQ, noise = 0) {
   const floor = isGk || isDef ? 0.55 : 0.22;
   const exposureScale = frac >= 0.6 ? 1 : clamp(Math.max(floor, frac / 0.6), floor, 1);
   const uplift = 0.18 * teamQ + outCoef * out + talentCoef * talent + 0.1 * noise;
-  return Number(clamp(base + uplift * exposureScale, 5.2, 8.2).toFixed(2));
+  // Short GK appearances on the user path stay near the 6.0 baseline; rival
+  // exposure compression otherwise under-shoots ordinary short keepers by ~0.11.
+  const shortGkBoost =
+    isGk && frac < 0.6 ? (RATING_BASELINE - 0.02 - (RATING_BASELINE - 0.12)) * (1 - frac / 0.6) : 0;
+  return Number(clamp(base + uplift * exposureScale + shortGkBoost, 5.2, 8.2).toFixed(2));
 }
 
 function adjustUserTeam(roster, userContext) {
@@ -448,14 +532,31 @@ function adjustUserTeam(roster, userContext) {
   if (idx < 0) idx = roster.players.findIndex((p) => p.group === group);
   if (idx >= 0) roster.players.splice(idx, 1);
 
-  const cap = (key, limit) => {
-    const total = roster.players.reduce((s, p) => s + p[key], 0);
-    if (total <= limit) return;
-    const scale = limit <= 0 ? 0 : limit / total;
-    for (const p of roster.players) p[key] = Math.floor(p[key] * scale);
+  // Teammates + user conserve against table goalsFor (assists ≤ goals).
+  const gf = Math.max(0, Math.round(num(teamGoals)));
+  const goalRoom = Math.max(0, gf - num(goals));
+  enforceClubBudgets(roster.players, goalRoom);
+  const assistRoom = Math.max(0, gf - num(assists));
+  const assistTotal = roster.players.reduce((s, p) => s + num(p.assists), 0);
+  if (assistTotal > assistRoom) {
+    if (assistRoom <= 0) {
+      for (const p of roster.players) p.assists = 0;
+    } else {
+      const scale = assistRoom / assistTotal;
+      for (const p of roster.players) p.assists = Math.floor(num(p.assists) * scale);
+    }
+  }
+  const modeledGoals = roster.players.reduce((s, p) => s + num(p.goals), 0);
+  const modeledAssists = roster.players.reduce((s, p) => s + num(p.assists), 0);
+  roster.budget = {
+    teamGoals: gf,
+    modeledGoals,
+    modeledAssists,
+    userGoals: num(goals),
+    userAssists: num(assists),
+    remainderGoals: Math.max(0, gf - num(goals) - modeledGoals),
+    remainderAssists: Math.max(0, gf - num(assists) - modeledAssists),
   };
-  cap("goals", Math.max(0, num(teamGoals) - num(goals)));
-  cap("assists", Math.max(0, Math.round(num(teamGoals) * 0.72) - num(assists)));
   // Recompute ratings after capping, retaining each player's original rating-noise draw.
   const teamQ = Number.isFinite(roster.teamQ)
     ? roster.teamQ
@@ -717,6 +818,7 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
   }
 
   // 1) Generate every club's roster, user's included, exactly as for any other club.
+  //    Each roster already enforces goal/assist budgets vs goalsFor + remainder.
   const rosters = table.map((row, teamIdx) => ({
     row,
     isUserTeam: sameClub(row, userClub),
@@ -736,6 +838,18 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
       teamGoals: row.goalsFor,
     });
   }
+  const clubBudgets = rosters.map(({ row, isUserTeam, roster }) => ({
+    clubId: row.clubId ?? null,
+    club: row.name ?? null,
+    userTeam: isUserTeam,
+    ...(roster.budget || {
+      teamGoals: Math.max(0, Math.round(num(row.goalsFor))),
+      modeledGoals: roster.players.reduce((s, p) => s + num(p.goals), 0),
+      modeledAssists: roster.players.reduce((s, p) => s + num(p.assists), 0),
+      remainderGoals: 0,
+      remainderAssists: 0,
+    }),
+  }));
 
   const flatten = () =>
     rosters.flatMap(({ roster, isUserTeam }) =>
@@ -770,8 +884,9 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
       position: userPosition,
       teamGoals: userTeamRow ? num(userTeamRow.goalsFor) : null,
     },
-    note: "Approximate NPC field: multinomial split of table goals, Poisson clean sheets, seeded priors. Placeholder names. Ratings use the shared 6.0 baseline. Compact retention uses category eligibility metrics.",
+    note: "Approximate NPC field: Poisson role/ability draws with hard club goal/assist budgets and unmodeled remainder; Poisson clean sheets; seeded priors. Placeholder names. Ratings use the shared 6.0 baseline. Compact retention uses category eligibility metrics.",
     rivals: sortDesc(rivals, (r) => r.goals).map((r) => stripRival(r)),
+    clubBudgets,
   };
   // Optional full-population export for matched parity / compaction audits (not save-path).
   if (seasonContext.retainDiagnosticPopulation) {

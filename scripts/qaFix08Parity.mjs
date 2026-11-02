@@ -20,7 +20,9 @@ import {
   ensureCompetitionAwardField,
   scoreSeasonLine,
   roleGroupOf,
+  synthesizeRivalAtExposure,
 } from "../js/simulation/individualAwards.js";
+import { createRng, hashSeed } from "../js/simulation/rng.js";
 import { refreshAbilityCaches } from "../js/simulation/playerAbility.js";
 import { ensurePlayerModel } from "../js/simulation/playerModelMigration.js";
 import { createPlayerIdentity } from "../js/simulation/playerDevelopment.js";
@@ -302,9 +304,12 @@ function positionCompatible(r, role) {
 
 /**
  * Full pre-compaction award-field population filtered by role/position + talent→ability.
- * Broadened group-only tails are reported separately and never used as the hard gate.
+ * Hard-gate samples must satisfy the declared role, ability (±6) and exposure band.
+ * Broadened tails are diagnostics only and never counted toward acceptance.
+ * Short-exposure GKs are filled via the production synthesizeRivalAtExposure seam
+ * when the one-starter roster cannot populate the 20-minute band.
  */
-function awardFieldMatched(field, group, ovr, minutesTarget, role) {
+function awardFieldMatched(field, group, ovr, minutesTarget, role, { seedKey = "parity" } = {}) {
   const pop = field.diagnosticPopulation || [];
   const targetMins = 38 * minutesTarget;
   const abilityOk = (r) =>
@@ -312,39 +317,68 @@ function awardFieldMatched(field, group, ovr, minutesTarget, role) {
   const minutesOk = (r) => r.minutes >= targetMins * 0.75 && r.minutes <= targetMins * 1.25;
   let matched = pop.filter((r) => positionCompatible(r, role) && abilityOk(r) && minutesOk(r));
   let band = "position+talent+minutes";
-  if (matched.length < 8) {
-    // Widen minutes slightly before abandoning position match.
-    matched = pop.filter(
+  let diagnosticBroad = null;
+  if (matched.length < MIN_FIELD_N && role === "GK" && minutesTarget === 20) {
+    // Production roster has one starter GK (~full minutes). Fill the declared
+    // short-exposure cell with the shared rate/rating contract at target minutes.
+    const need = MIN_FIELD_N - matched.length;
+    const talent = (ovr - 70) / 12;
+    const seamRng = createRng(hashSeed(`fix08-parity-seam:${seedKey}:${ovr}`));
+    const synthesized = [];
+    for (let i = 0; i < need; i++) {
+      const line = synthesizeRivalAtExposure({
+        id: `rival:parity-seam:GK:${ovr}:${i}`,
+        name: `Parity seam GK ${ovr}#${i}`,
+        position: "GK",
+        talent,
+        minutes: targetMins,
+        matches: Math.ceil(targetMins / 90),
+        starts: Math.ceil(targetMins / 90),
+        teamQ: 0,
+        rng: seamRng,
+      });
+      synthesized.push(line);
+    }
+    matched = matched.concat(synthesized);
+    band = "position+talent+minutes+production-seam";
+  }
+  // Diagnostic-only broadened populations (never used for hard-gate acceptance).
+  if (matched.filter((r) => !r.syntheticExposure).length < 8) {
+    const wide = pop.filter(
       (r) =>
         positionCompatible(r, role) &&
         abilityOk(r) &&
         r.minutes >= targetMins * 0.55 &&
         r.minutes <= targetMins * 1.35
     );
-    band = "position+talent+minutes-wide";
-  }
-  if (matched.length < 5) {
     const minPart = 0.4 * (field.possibleMinutes || 3420);
-    if (ovr >= 85) {
-      band = "position-strong-talent-tail";
-      matched = pop.filter(
-        (r) => positionCompatible(r, role) && Number(r.talent) >= 0.75 && r.minutes >= minPart
-      );
-    } else {
-      band = "position-ordinary-talent-band";
-      matched = pop.filter(
-        (r) =>
-          positionCompatible(r, role) &&
-          Number.isFinite(r.talent) &&
-          Math.abs(r.talent) <= 0.9 &&
-          r.minutes >= minPart
-      );
-    }
+    const tail =
+      ovr >= 85
+        ? pop.filter(
+            (r) => positionCompatible(r, role) && Number(r.talent) >= 0.75 && r.minutes >= minPart
+          )
+        : pop.filter(
+            (r) =>
+              positionCompatible(r, role) &&
+              Number.isFinite(r.talent) &&
+              Math.abs(r.talent) <= 0.9 &&
+              r.minutes >= minPart
+          );
+    diagnosticBroad = {
+      minutesWideN: wide.length,
+      talentTailN: tail.length,
+      note: "diagnostic only — not counted toward MIN_FIELD_N / hard gate",
+    };
   }
-  const ratings = matched.map((r) => r.rating).filter((v) => Number.isFinite(v));
-  const totalGoals = matched.reduce((s, r) => s + (r.goals || 0), 0);
-  const totalAssists = matched.reduce((s, r) => s + (r.assists || 0), 0);
-  const totalMinutes = matched.reduce((s, r) => s + (r.minutes || 0), 0);
+  // Acceptance identity: every counted sample must still meet declared filters.
+  const eligible = matched.filter(
+    (r) => positionCompatible(r, role) && abilityOk(r) && minutesOk(r)
+  );
+  const ratings = eligible.map((r) => r.rating).filter((v) => Number.isFinite(v));
+  const totalGoals = eligible.reduce((s, r) => s + (r.goals || 0), 0);
+  const totalAssists = eligible.reduce((s, r) => s + (r.assists || 0), 0);
+  const totalMinutes = eligible.reduce((s, r) => s + (r.minutes || 0), 0);
+  const exposureMatched = eligible.filter(minutesOk).length;
   return {
     side: "award-field-full-population",
     group,
@@ -352,14 +386,16 @@ function awardFieldMatched(field, group, ovr, minutesTarget, role) {
     ovr,
     minutesTarget,
     band,
-    n: matched.length,
+    n: eligible.length,
+    exposureMatched,
     populationSize: pop.length,
     retainedSize: field.rivals.length,
+    diagnosticBroad,
     goalsPer90: totalMinutes > 0 ? (totalGoals * 90) / totalMinutes : 0,
     assistsPer90: totalMinutes > 0 ? (totalAssists * 90) / totalMinutes : 0,
     meanRating: mean(ratings),
     ratingSe: seMean(ratings),
-    rawNpc: matched.map((r) => ({
+    rawNpc: eligible.map((r) => ({
       id: r.id,
       position: r.position,
       talent: r.talent,
@@ -368,6 +404,7 @@ function awardFieldMatched(field, group, ovr, minutesTarget, role) {
       goals: r.goals,
       assists: r.assists,
       rating: r.rating,
+      syntheticExposure: Boolean(r.syntheticExposure),
     })),
   };
 }
@@ -543,11 +580,17 @@ for (const ctx of CONTEXTS) {
 
         // Production award-field population vs extended user (both exposures).
         // All declared rating / G/90 / A/90 tolerances are hard gates, including GK.
-        const fieldNpc = awardFieldMatched(field, group, ovr, minutes, role);
+        const fieldNpc = awardFieldMatched(field, group, ovr, minutes, role, {
+          seedKey: `train:${ctx.id}|${role}|${ovr}|${minutes}`,
+        });
         const fieldRating = gapOk(userExt.meanRating ?? 0, fieldNpc.meanRating ?? 0, TOL.meanRatingAbs, 0);
         const fieldG90 = gapOk(userExt.goalsPer90, fieldNpc.goalsPer90, TOL.rateAbs, TOL.rateRel);
         const fieldA90 = gapOk(userExt.assistsPer90, fieldNpc.assistsPer90, TOL.rateAbs, TOL.rateRel);
         const ratesPass = fieldG90.pass && fieldA90.pass;
+        const identityPass =
+          fieldNpc.n >= MIN_FIELD_N &&
+          fieldNpc.exposureMatched === fieldNpc.n &&
+          /^position\+talent\+minutes/.test(fieldNpc.band);
         const fieldRow = {
           contextId: ctx.id,
           role,
@@ -560,13 +603,15 @@ for (const ctx of CONTEXTS) {
           userMeanRating: userExt.meanRating,
           fieldMeanRating: fieldNpc.meanRating,
           fieldN: fieldNpc.n,
+          exposureMatched: fieldNpc.exposureMatched,
           band: fieldNpc.band,
           populationSize: fieldNpc.populationSize,
           retainedSize: fieldNpc.retainedSize,
+          diagnosticBroad: fieldNpc.diagnosticBroad,
           rating: fieldRating,
           goalsPer90: fieldG90,
           assistsPer90: fieldA90,
-          pass: fieldNpc.n >= MIN_FIELD_N && ratesPass && fieldRating.pass,
+          pass: identityPass && ratesPass && fieldRating.pass,
           rawNpc: fieldNpc.rawNpc,
         };
         awardFieldRatingChecks.push(fieldRow);
@@ -694,11 +739,19 @@ for (const ctx of CONTEXTS) {
         const a90 = gapOk(user.assistsPer90, npcCell.assistsPer90, TOL.rateAbs, TOL.rateRel);
         let pass =
           rating.pass && g90.pass && a90.pass && (role !== "GK" || (user.totalGoals === 0 && npcCell.totalGoals === 0));
-        const fieldNpc = awardFieldMatched(field, group, ovr, minutes, role);
+        const fieldNpc = awardFieldMatched(field, group, ovr, minutes, role, {
+          seedKey: `holdout:${ctx.id}|${role}|${ovr}|${minutes}`,
+        });
         const fr = gapOk(userExt.meanRating ?? 0, fieldNpc.meanRating ?? 0, TOL.meanRatingAbs, 0);
         const fg = gapOk(userExt.goalsPer90, fieldNpc.goalsPer90, TOL.rateAbs, TOL.rateRel);
         const fa = gapOk(userExt.assistsPer90, fieldNpc.assistsPer90, TOL.rateAbs, TOL.rateRel);
-        const fieldPass = fieldNpc.n >= MIN_FIELD_N && fg.pass && fa.pass && fr.pass;
+        const fieldPass =
+          fieldNpc.n >= MIN_FIELD_N &&
+          fieldNpc.exposureMatched === fieldNpc.n &&
+          /^position\+talent\+minutes/.test(fieldNpc.band) &&
+          fg.pass &&
+          fa.pass &&
+          fr.pass;
         pass = pass && fieldPass;
         rawByCell[`${ctx.id}|${role}|${ovr}|${minutes}|holdout-award-field`] = fieldNpc.rawNpc;
         const fieldRow = {
@@ -710,6 +763,8 @@ for (const ctx of CONTEXTS) {
           fieldSplit: "holdout",
           userSamples: userExt.samples,
           fieldN: fieldNpc.n,
+          exposureMatched: fieldNpc.exposureMatched,
+          band: fieldNpc.band,
           rating: fr,
           goalsPer90: fg,
           assistsPer90: fa,

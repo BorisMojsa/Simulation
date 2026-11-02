@@ -998,6 +998,57 @@ test("R3: fingerprint includes club identity and per-team rows", () => {
   assert.equal(refreshed.userContext.teamGoals, 65);
 });
 
+test("club budgets: assists never exceed goalsFor for any club including zero-goal", () => {
+  const table = Array.from({ length: 20 }, (_, i) => ({
+    name: `C${i}`,
+    clubId: `c${i}`,
+    played: 38,
+    goalsFor: i === 1 ? 0 : 40 + (i % 7),
+    goalsAgainst: 40,
+    points: 20 + i,
+    position: i + 1,
+  }));
+  const player = {
+    name: "budget-control",
+    position: "ST",
+    club: table[0],
+    awardFields: {},
+  };
+  const field = ensureCompetitionAwardField(
+    player,
+    {
+      seasonId: "s1",
+      competitionEditionId: "budget::2026",
+      scope: "league",
+      table,
+      user: { goals: 0, assists: 0, position: "ST" },
+      retainDiagnosticPopulation: true,
+    },
+    createRng(5)
+  );
+  assert.equal(field.clubBudgets?.length, 20);
+  const byClub = new Map();
+  for (const r of field.diagnosticPopulation) {
+    if (r.clubId === field.inputFingerprint.userClubId) continue;
+    byClub.set(r.clubId, (byClub.get(r.clubId) || 0) + (r.assists || 0));
+  }
+  const teamGoals = Object.fromEntries(table.map((t) => [t.clubId, t.goalsFor]));
+  for (const [clubId, assists] of byClub) {
+    assert.ok(
+      assists <= teamGoals[clubId],
+      `club ${clubId}: assists ${assists} > goals ${teamGoals[clubId]}`
+    );
+  }
+  const zeroAssists = field.diagnosticPopulation
+    .filter((r) => r.clubId === "c1")
+    .reduce((s, r) => s + r.assists, 0);
+  assert.equal(zeroAssists, 0, "zero-goal club must have zero modeled assists");
+  const c1Budget = field.clubBudgets.find((b) => b.clubId === "c1");
+  assert.equal(c1Budget.teamGoals, 0);
+  assert.equal(c1Budget.modeledAssists, 0);
+  assert.equal(c1Budget.remainderGoals, 0);
+});
+
 test("R3: fingerprint uses resolved player.club when userClub override is omitted", () => {
   const table = Array.from({ length: 20 }, (_, i) => ({
     name: `C${i}`,
