@@ -97,7 +97,7 @@ function slimClub(club, eff) {
  * Role goal rate per 90 (expected individual output), not a share of every team goal.
  * Bounded relative ability / chance / opposition factors.
  */
-function roleGoalRatePer90(position) {
+export function roleGoalRatePer90(position) {
   const pos = position || "CM";
   if (pos === "GK") return 0;
   if (pos === "ST") return 0.42;
@@ -107,7 +107,7 @@ function roleGoalRatePer90(position) {
   return 0.16;
 }
 
-function roleAssistRatePer90(position) {
+export function roleAssistRatePer90(position) {
   const pos = position || "CM";
   if (pos === "GK") return 0.02;
   if (["CAM", "CM", "RW", "LW", "RM", "LM"].includes(pos)) return 0.28;
@@ -117,12 +117,17 @@ function roleAssistRatePer90(position) {
   return 0.14;
 }
 
-function playerAbilityFactor(player) {
+export function playerAbilityFactor(player) {
   const ovr =
     Number.isFinite(player?.currentOverallRaw)
       ? player.currentOverallRaw
       : Number(player?.currentOverall ?? player?.rating) || 70;
   return clamp(0.75 + (ovr - 70) / 80, 0.55, 1.35);
+}
+
+/** Ability factor from a plain overall/rating number (rival talent→ability map). */
+export function abilityFactorFromOverall(ovr) {
+  return clamp(0.75 + (Number(ovr) - 70) / 80, 0.55, 1.35);
 }
 
 function goalShareForPlayer(player, teamGoalsWhilePlaying, minutes, competition) {

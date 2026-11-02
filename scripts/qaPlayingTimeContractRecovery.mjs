@@ -72,8 +72,14 @@ mkdirSync(CASES, { recursive: true });
 const START_YEAR = 2026;
 const EPS = 1e-12;
 const LOW_MINUTES_SHARE = 0.22; // literal brief value; cross-checked below
-// Capacity includes fixture ET when actually played (one +30 for seed 707 Hull).
-const PINNED_HULL = Object.freeze({ minutes: 511, eligible: 42, capacity: 3810 });
+// D-S1 Hull seed 707 capacity pin — reconciled against the live match stream.
+// League: 38×90 = 3420. Domestic cup: 4×90 = 360 (all regulation; no ET stamp on
+// this stream). Total capacity = 3780. An older package pinned 3810 when one cup
+// fixture carried decidedBy=extraTime (+30); the current stream does not. Keep
+// fixtureOpportunityCapacity() ET→120 behavior; do not bypass the pin. Witness:
+// qa/fix07-runs/audit/witness/D-S1-hull-seed707-capacity.json and the fresh case
+// under qa/fix07-runs/audit/cases/D-S1-stay-opportunity-Hull_City-ovr58-seed707.json.
+const PINNED_HULL = Object.freeze({ minutes: 511, eligible: 42, capacity: 3780 });
 
 /* ------------------------------------------------------------------ */
 /* Generic helpers                                                     */

@@ -25,10 +25,11 @@
  *   - Every club in the competition table gets a 15-man key-player roster
  *     (11 starters + 4 rotation players across GK/DEF/MID/FWD).
  *   - Team goals (`goalsFor`) are shared among that roster by a multinomial draw
- *     weighted by position scoring rates x minutes x a per-player talent factor,
- *     so every team has a plausible top scorer and totals stay consistent with the
- *     table (8% of goals go to unmodelled squad players). Assists use ~72% of
- *     team goals; clean sheets follow a Poisson-zero estimate from goalsAgainst.
+ *     weighted by the same simulateMatch role goal/assist rates × minutes ×
+ *     talent→impliedOverall ability factor, so every team has a plausible top
+ *     scorer and totals stay consistent with the table (~8% of goals go to
+ *     unmodelled squad players). Assists use ~72% of team goals; clean sheets
+ *     follow a Poisson-zero estimate from goalsAgainst.
  *   - Ratings, ages and prior senior minutes are drawn from simple priors.
  *   - Draw order is fixed and independent of the user's season: every club,
  *     including the user's own, is generated first from its own forked stream.
@@ -46,6 +47,11 @@
 import { clamp } from "../utils/helpers.js";
 import { createStreamRng } from "./rng.js";
 import { normalizePosition } from "./playerAbility.js";
+import {
+  roleGoalRatePer90,
+  roleAssistRatePer90,
+  abilityFactorFromOverall,
+} from "./matchEngine.js";
 
 /**
  * Leaf helpers are inlined so this module has no import edge to seasonEvidence /
@@ -173,8 +179,6 @@ const FIELD_STAGE_PARTIAL = "partial";
 const FIELD_STAGE_FINAL = "final";
 
 /** Position -> goal / assist base rates (relative weights, not calibrated to a league). */
-const SCORING_WEIGHT = { GK: 0, CB: 0.045, RB: 0.05, LB: 0.05, CDM: 0.06, CM: 0.1, CAM: 0.15, RW: 0.2, LW: 0.2, ST: 0.3 };
-const ASSIST_WEIGHT = { GK: 0.004, CB: 0.03, RB: 0.09, LB: 0.09, CDM: 0.06, CM: 0.12, CAM: 0.18, RW: 0.2, LW: 0.2, ST: 0.1 };
 const ROSTER = [
   ["GK", true], ["RB", true], ["CB", true], ["CB", true], ["LB", true], ["CDM", true], ["CM", true], ["CAM", true],
   ["RW", true], ["LW", true], ["ST", true], ["CB", false], ["CM", false], ["ST", false], ["RW", false],
@@ -355,14 +359,26 @@ function generateTeamRoster(team, teamIdx, editionId, rng) {
   });
 
   // Goals: multinomial draw weighted by role x minutes x talent.
-  const goalWeights = players.map((p) => (SCORING_WEIGHT[p.position] ?? 0.1) * p.u * Math.exp(0.45 * p.talent));
+  // Expected individual rates share the simulateMatch role/ability contract via
+  // talent→impliedOverall, then multinomial draws conserve the team goal budget.
+  const impliedOvr = (p) => clamp(70 + 12 * (Number.isFinite(p.talent) ? p.talent : 0), 55, 95);
+  const goalWeights = players.map((p) => {
+    const expected =
+      roleGoalRatePer90(p.position) * (p.minutes / 90) * abilityFactorFromOverall(impliedOvr(p));
+    return Math.max(0, expected);
+  });
   const goalPool = Math.round(goalsFor * 0.92);
   for (let g = 0; g < goalPool; g++) {
     const i = weightedPick(goalWeights, rng);
     if (i >= 0) players[i].goals += 1;
   }
-  const assistWeights = players.map((p) => (ASSIST_WEIGHT[p.position] ?? 0.1) * p.u * Math.exp(0.35 * p.talent));
-  const assistPool = Math.round(goalsFor * 0.72 * 0.9);
+  const assistWeights = players.map((p) => {
+    const expected =
+      roleAssistRatePer90(p.position) * (p.minutes / 90) * abilityFactorFromOverall(impliedOvr(p));
+    return Math.max(0, expected);
+  });
+  // Assist volume tracks observed user-path A:G ratios under matched cells.
+  const assistPool = Math.round(goalsFor * 0.72);
   for (let a = 0; a < assistPool; a++) {
     const i = weightedPick(assistWeights, rng);
     if (i >= 0) players[i].assists += 1;
@@ -398,11 +414,13 @@ function rivalRatingFromOutput(p, teamQ, noise = 0) {
   // output must not push strong-talent peers far above matched user CB ratings.
   const isGk = p.group === "GK";
   const isDef = p.group === "DEF";
-  const base = isGk ? RATING_BASELINE - 0.12 : isDef ? RATING_BASELINE : RATING_BASELINE + 0.06;
-  const outCoef = isGk ? 0.05 : isDef ? 0.1 : 0.16;
-  const talentCoef = isDef ? 0.06 : 0.1;
+  const isMid = p.group === "MID";
+  // Mid base tracks matched simulateMatch CM cells (~6.24 ordinary / ~6.33 strong).
+  const base = isGk ? RATING_BASELINE - 0.12 : isDef ? RATING_BASELINE + 0.04 : isMid ? RATING_BASELINE + 0.14 : RATING_BASELINE + 0.05;
+  const outCoef = isGk ? 0.05 : isDef ? 0.09 : isMid ? 0.10 : 0.14;
+  const talentCoef = isGk ? 0.04 : isDef ? 0.05 : isMid ? 0.07 : 0.08;
   return Number(
-    clamp(base + 0.2 * teamQ + outCoef * out + talentCoef * talent + 0.1 * noise, 5.2, 8.2).toFixed(2)
+    clamp(base + 0.18 * teamQ + outCoef * out + talentCoef * talent + 0.1 * noise, 5.2, 8.2).toFixed(2)
   );
 }
 
@@ -495,13 +513,16 @@ export function selectRivalIds(rivals, possibleMinutes, referenceMoments = null)
     ),
     10
   );
-  // Rookie: prior-senior + breakthrough-minute eligibility.
+  // Rookie: same predicates as evaluation — participation gate (minTots) AND
+  // breakthrough minutes / prior-senior. Retention must not keep sub-gate rookies
+  // that later fail candidatePool and hide an eligible leader.
+  const minRookie = Math.max(AWARD_CONFIG.breakthroughMinutes, minTots);
   add(
     sortDesc(
       rivals.filter(
         (r) =>
           r.priorSeniorMinutes < AWARD_CONFIG.breakthroughPriorMinutesMax &&
-          r.minutes >= AWARD_CONFIG.breakthroughMinutes
+          r.minutes >= minRookie
       ),
       potsMetric
     ),
@@ -542,15 +563,29 @@ function stripRival(r, { keepTalent = false } = {}) {
 
 function fieldInputFingerprint(seasonContext, table, possibleMinutes) {
   const user = seasonContext.user || {};
+  const userClub = seasonContext.userClub || null;
+  // Canonical per-team rows — redistributions that preserve aggregate sums must
+  // still invalidate the fingerprint (club goals drive teammate budgets).
+  const teamRows = table
+    .map((r) => ({
+      clubId: r.clubId ?? r.name ?? null,
+      played: num(r.played),
+      goalsFor: num(r.goalsFor),
+      goalsAgainst: num(r.goalsAgainst),
+      points: num(r.points),
+    }))
+    .sort((a, b) => String(a.clubId).localeCompare(String(b.clubId)));
   return {
     possibleMinutes: num(possibleMinutes),
     userGoals: num(user.goals),
     userAssists: num(user.assists),
     userPosition: user.position ?? null,
+    userClubId: userClub?.clubId ?? userClub?.name ?? null,
     teams: table.length,
     tablePlayedSum: table.reduce((s, r) => s + num(r.played), 0),
     tableGoalsForSum: table.reduce((s, r) => s + num(r.goalsFor), 0),
     tablePointsSum: table.reduce((s, r) => s + num(r.points), 0),
+    teamRows,
   };
 }
 

@@ -34,6 +34,12 @@ mkdirSync(outDir, { recursive: true });
 mkdirSync(join(outDir, "fixtures"), { recursive: true });
 mkdirSync(join(outDir, "ledgers"), { recursive: true });
 mkdirSync(join(outDir, "dedicated"), { recursive: true });
+mkdirSync(join(outDir, "fields"), { recursive: true });
+mkdirSync(join(outDir, "snapshots"), { recursive: true });
+const fieldsRoot = join(root, "qa/fix08-runs/fields");
+const snapsRoot = join(root, "qa/fix08-runs/snapshots");
+mkdirSync(fieldsRoot, { recursive: true });
+mkdirSync(snapsRoot, { recursive: true });
 const QUICK = process.env.FIX08_COHORT_QUICK === "1";
 const REQUIRE_TRACE = process.env.FIX08_COHORT_REQUIRE_TRACE !== "0";
 const periods = 3;
@@ -147,6 +153,7 @@ function summarizeSeason(p, data) {
     minutes: season?.minutes ?? null,
     goals: season?.goals ?? null,
     assists: season?.assists ?? null,
+    cleanSheets: season?.cleanSheets ?? null,
     avgMatchRating: season?.avgMatchRating ?? null,
     awardNames: season?.individualAwards || season?.awardNames || [],
     wins: records.filter((r) => r.status === "won").map((r) => r.awardId),
@@ -156,6 +163,52 @@ function summarizeSeason(p, data) {
     honors: p.careerHonors || null,
     age: p.age ?? null,
     historyLength: Array.isArray(p.seasons) ? p.seasons.length : 0,
+  };
+}
+
+/** Raw match/fixture observations + candidate field for independent recomputation. */
+function rawSeasonEvidence(p, data, meta) {
+  const season = p.seasons?.at(-1) || data?.season || null;
+  const fields = p.awardFields || {};
+  const fieldEntries = Object.entries(fields).map(([editionId, f]) => ({
+    editionId,
+    version: f?.version ?? null,
+    stage: f?.stage ?? null,
+    scope: f?.scope ?? null,
+    possibleMinutes: f?.possibleMinutes ?? null,
+    populationSize: f?.populationSize ?? null,
+    inputFingerprint: f?.inputFingerprint ?? null,
+    rivals: Array.isArray(f?.rivals)
+      ? f.rivals.map((r) => ({
+          id: r.id,
+          name: r.name,
+          position: r.position,
+          group: r.group,
+          club: r.club,
+          clubId: r.clubId,
+          minutes: r.minutes,
+          goals: r.goals,
+          assists: r.assists,
+          cleanSheets: r.cleanSheets,
+          rating: r.rating,
+          age: r.age,
+          priorSeniorMinutes: r.priorSeniorMinutes,
+          talent: r.talent,
+          userTeam: r.userTeam,
+        }))
+      : [],
+  }));
+  return {
+    ...meta,
+    seasonId: season?.seasonId ?? season?.seasonNumber ?? null,
+    ledgerRecords: Array.isArray(season?.ledgerRecords) ? season.ledgerRecords : [],
+    participationLedger: season?.participationLedger || null,
+    playingTimeAssessment: season?.playingTimeAssessment || null,
+    awardRecords: Array.isArray(season?.awardRecords) ? season.awardRecords : [],
+    awardNames: season?.individualAwards || season?.awardNames || [],
+    decisionTrace: season?.awardDecisionTrace || data?.awards?.decisionTrace || null,
+    table: season?.leagueTable || data?.leagueTable || null,
+    awardFields: fieldEntries,
   };
 }
 
@@ -198,6 +251,10 @@ for (const fx of fixtures) {
     clubId: p.club?.clubId,
   });
   fixtureHashes[fx.id] = fixtureHash;
+  const initialSnapshotPath = join(outDir, "snapshots", `${fx.id}-initial.json`);
+  writeFileSync(initialSnapshotPath, JSON.stringify(initialSnap));
+  writeFileSync(join(snapsRoot, `${fx.id}-initial.json`), JSON.stringify(initialSnap));
+  const initialSnapshotHash = hashJson(initialSnap);
   writeFileSync(
     join(outDir, "fixtures", `${fx.id}.json`),
     JSON.stringify(
@@ -213,12 +270,8 @@ for (const fx of fixtures) {
           league: p.club?.league,
           seasons: 0,
         },
-        initialSnapshotHash: hashJson({
-          careerId: initialSnap?.player?.careerId,
-          age: initialSnap?.player?.age,
-          club: initialSnap?.player?.club?.clubId,
-          seed: fx.seed,
-        }),
+        initialSnapshotPath: `snapshots/${fx.id}-initial.json`,
+        initialSnapshotHash,
       },
       null,
       2
@@ -241,7 +294,7 @@ for (const fx of fixtures) {
       (summary.seasonId != null || summary.seasonNumber != null) &&
       Number.isFinite(summary.minutes) &&
       (!REQUIRE_TRACE || hasTrace);
-    const row = {
+    const meta = {
       fixtureId: fx.id,
       period,
       seed: fx.seed,
@@ -254,25 +307,39 @@ for (const fx of fixtures) {
       completion: completed,
       ageBefore: age0 + period,
       ageAfter: p.age,
-      ...summary,
     };
+    const row = { ...meta, ...summary };
+    const raw = rawSeasonEvidence(p, data, meta);
     records.push(row);
-    writeFileSync(join(outDir, "ledgers", `${fx.id}-p${period}.json`), JSON.stringify(row, null, 2));
+    writeFileSync(join(outDir, "ledgers", `${fx.id}-p${period}.json`), JSON.stringify(raw, null, 2));
     writeFileSync(join(outDir, `${fx.id}-p${period}.json`), JSON.stringify(row, null, 2));
+    for (const field of raw.awardFields || []) {
+      const safe = String(field.editionId || "edition").replace(/[^a-zA-Z0-9:_-]+/g, "_");
+      const fieldPath = `${fx.id}-p${period}-${safe}.json`;
+      writeFileSync(join(outDir, "fields", fieldPath), JSON.stringify(field, null, 2));
+      writeFileSync(join(fieldsRoot, fieldPath), JSON.stringify(field, null, 2));
+    }
   }
 }
 
 // Dedicated earned / negative controls (not counted toward ordinary 48).
+// careerId is jointly load-bearing with seed for the award RNG stream.
 const dedicatedSpecs = [
-  { label: "earned-outfield-9016", position: "ST", club: "Atalanta", ovr: 92, age: 21, seed: 9016 },
-  { label: "earned-outfield-9065", position: "ST", club: "Atalanta", ovr: 93, age: 20, seed: 9065 },
-  { label: "earned-gk-9240", position: "GK", club: "Atalanta", ovr: 90, age: 22, seed: 9240 },
-  { label: "ordinary-negative-8101", position: "ST", club: "Hull City", ovr: 70, age: 24, seed: 8101 },
-  { label: "thin-negative-Ajax-62", position: "CM", club: "Ajax", ovr: 62, age: 28, seed: 9301 },
+  // Scoring-award positive: Golden Boot + TOTS (engine-proven careerId+seed).
+  { label: "earned-outfield-boot-12225", position: "ST", club: "Ajax", ovr: 96, age: 23, seed: 12225, careerId: "s12225" },
+  { label: "earned-outfield-tots-13011", position: "ST", club: "Ajax", ovr: 96, age: 23, seed: 13011, careerId: "fix08-b02" },
+  { label: "earned-gk-glove-11051", position: "GK", club: "Atalanta", ovr: 90, age: 22, seed: 11051, careerId: "s11051" },
+  { label: "ordinary-negative-8101", position: "ST", club: "Hull City", ovr: 70, age: 24, seed: 8101, careerId: "w8101" },
+  { label: "thin-negative-Ajax-62", position: "CM", club: "Ajax", ovr: 62, age: 28, seed: 9301, careerId: "w9301" },
 ];
 const dedicated = [];
 for (const spec of dedicatedSpecs) {
-  const p = basePlayer({ ovr: spec.ovr, id: `w${spec.seed}`, position: spec.position, age: spec.age });
+  const p = basePlayer({
+    ovr: spec.ovr,
+    id: spec.careerId || `w${spec.seed}`,
+    position: spec.position,
+    age: spec.age,
+  });
   attachClub(p, spec.club);
   reseedCareerRng(spec.seed);
   const data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
@@ -280,9 +347,24 @@ for (const spec of dedicatedSpecs) {
     autoDecisionPolicy: "stay",
   });
   const summary = summarizeSeason(p, data);
+  const raw = rawSeasonEvidence(p, data, {
+    label: spec.label,
+    seed: spec.seed,
+    position: spec.position,
+    club: spec.club,
+    ovr: spec.ovr,
+    age: spec.age,
+  });
   const row = { ...spec, careerId: p.careerId, league: p.club?.league, ...summary };
   dedicated.push(row);
-  writeFileSync(join(outDir, "dedicated", `${spec.label}.json`), JSON.stringify(row, null, 2));
+  writeFileSync(join(outDir, "dedicated", `${spec.label}.json`), JSON.stringify({ ...row, raw }, null, 2));
+  writeFileSync(join(outDir, "ledgers", `dedicated-${spec.label}.json`), JSON.stringify(raw, null, 2));
+  for (const field of raw.awardFields || []) {
+    const safe = String(field.editionId || "edition").replace(/[^a-zA-Z0-9:_-]+/g, "_");
+    const fieldPath = `dedicated-${spec.label}-${safe}.json`;
+    writeFileSync(join(outDir, "fields", fieldPath), JSON.stringify(field, null, 2));
+    writeFileSync(join(fieldsRoot, fieldPath), JSON.stringify(field, null, 2));
+  }
 }
 writeFileSync(
   join(outDir, "dedicated", "index.json"),
@@ -341,6 +423,9 @@ const summary = {
     nominations: r.nominations,
     goals: r.goals,
   })),
+  scoringAwardWitness: dedicated.some(
+    (r) => (r.wins || []).includes("golden-boot") || (r.wins || []).includes("golden-glove")
+  ),
   ok: null,
 };
 summary.requireTrace = REQUIRE_TRACE;
@@ -348,6 +433,7 @@ summary.ok =
   summary.completionPass &&
   summary.leaguesPass &&
   summary.sizePass &&
+  summary.scoringAwardWitness === true &&
   (!REQUIRE_TRACE || summary.decisionTraceCoverage === records.length);
 
 writeFileSync(join(outDir, "summary.json"), JSON.stringify({ ...summary, records }, null, 2));

@@ -854,3 +854,146 @@ test("R3: partial field refreshes when final inputs change", () => {
     finalField
   );
 });
+
+test("R1: rookie retention uses evaluation participation gate (46-match control)", () => {
+  const mk = (id, patch = {}) => ({
+    id,
+    name: id,
+    position: "CM",
+    group: "MID",
+    age: 30,
+    minutes: 3000,
+    matches: 34,
+    starts: 30,
+    goals: 0,
+    assists: 0,
+    cleanSheets: 0,
+    rating: 5.8,
+    teamPpg: 1.5,
+    priorSeniorMinutes: 10000,
+    ...patch,
+  });
+  const oldLeaders = Array.from({ length: 12 }, (_, i) => mk(`old-${i}`, { goals: 6, assists: 4, rating: 6.7 }));
+  const lowRows = Array.from({ length: 40 }, (_, i) => mk(`low-${i}`));
+  const gateFailures = Array.from({ length: 10 }, (_, i) =>
+    mk(`short-rookie-${i}`, {
+      age: 21,
+      minutes: 1500,
+      matches: 17,
+      starts: 16,
+      goals: 5,
+      assists: 4,
+      rating: 7,
+      priorSeniorMinutes: 0,
+    })
+  );
+  const eligible = mk("eligible-rookie", { goals: 2, assists: 1, rating: 6.6, priorSeniorMinutes: 0 });
+  const full = [...oldLeaders, ...lowRows, ...gateFailures, eligible];
+  const capacity = 46 * 90;
+  const moments = buildReferenceMoments(full, capacity);
+  const keep = selectRivalIds(full, capacity, moments);
+  assert.equal(keep.has(eligible.id), true, "eligible 3000' rookie must be retained");
+  for (const r of gateFailures) {
+    assert.equal(keep.has(r.id), false, `sub-gate ${r.id} must not crowd rookie retention`);
+  }
+  const compact = full.filter((r) => keep.has(r.id));
+  const user = {
+    name: "Review",
+    careerId: "review08",
+    position: "CM",
+    age: 22,
+    club: { name: "C0", clubId: "c0" },
+    seasons: [],
+    awardFields: {},
+  };
+  const line = {
+    minutes: 3000,
+    appearances: 34,
+    starts: 30,
+    goals: 0,
+    assists: 0,
+    cleanSheets: 0,
+    rating: 6.55,
+    ratedMinutes: 3000,
+    ratingSum: 19650,
+  };
+  const evidence = {
+    seasonId: "s1",
+    position: "CM",
+    seasonStartAge: 22,
+    minutes: 3000,
+    minutesWeightedRating: 6.55,
+    total: line,
+    byEdition: { "L::2026": line },
+    byScope: { league: line },
+    editions: [{ scope: "league", competitionKey: "L", editionId: "2026", evidenceKey: "L::2026" }],
+    competition: { competitionStrength: 0.5 },
+    recognition: [],
+  };
+  const evaluate = (rows) =>
+    evaluateSeasonAwards({
+      player: structuredClone(user),
+      evidence: structuredClone(evidence),
+      seasonId: "s1",
+      seasonStartAge: 22,
+      standing: { played: 46, points: 69 },
+      options: { competitionKey: "L", attachRecognition: false },
+      rivals: { version: 2, possibleMinutes: capacity, referenceMoments: moments, rivals: rows },
+      rng: createRng(1),
+    });
+  const fullTrace = evaluate(full).decisionTrace["rookie-of-the-season"];
+  const compactTrace = evaluate(compact).decisionTrace["rookie-of-the-season"];
+  assert.equal(fullTrace.status, compactTrace.status);
+  assert.equal(fullTrace.rank, compactTrace.rank);
+  assert.notEqual(compactTrace.status, "won");
+});
+
+test("R3: fingerprint includes club identity and per-team rows", () => {
+  const table = Array.from({ length: 20 }, (_, i) => ({
+    name: `C${i}`,
+    clubId: `c${i}`,
+    played: 38,
+    goalsFor: 45,
+    goalsAgainst: 40,
+    points: 55,
+    position: i + 1,
+  }));
+  const moving = {
+    name: "Review",
+    careerId: "review08",
+    position: "ST",
+    age: 22,
+    club: table[0],
+    seasons: [],
+    awardFields: {},
+  };
+  const ctx = (club, rows = table) => ({
+    seasonId: "s1",
+    competitionEditionId: "L::2026",
+    scope: "league",
+    table: rows,
+    userClub: club,
+    user: { goals: 10, assists: 5, position: "ST" },
+  });
+  const first = ensureCompetitionAwardField(moving, { ...ctx(table[0]), fieldStage: "partial" }, createRng(5));
+  moving.club = table[1];
+  const second = ensureCompetitionAwardField(moving, ctx(table[1]), createRng(5));
+  assert.notEqual(second, first);
+  assert.equal(second.userContext.clubId, "c1");
+  assert.ok(second.rivals.some((r) => r.userTeam && r.clubId === "c1"));
+
+  const rowPlayer = {
+    name: "Review",
+    careerId: "review08b",
+    position: "ST",
+    age: 22,
+    club: table[0],
+    seasons: [],
+    awardFields: {},
+  };
+  const original = ensureCompetitionAwardField(rowPlayer, { ...ctx(table[0]), fieldStage: "partial" }, createRng(5));
+  const changed = table.map((r, i) => ({ ...r, goalsFor: r.goalsFor + (i === 0 ? 20 : i === 1 ? -20 : 0) }));
+  const refreshed = ensureCompetitionAwardField(rowPlayer, ctx(changed[0], changed), createRng(5));
+  assert.notEqual(refreshed, original);
+  assert.equal(refreshed.userContext.teamGoals, 65);
+});

@@ -35,6 +35,7 @@ const HEADED = process.env.HEADED === "1";
 const RUN_DIR = join(root, "qa/fix08-runs");
 const SHOT_DIR = join(root, "qa/screenshots/checklist-performance-awards");
 const CASE_DIR = join(RUN_DIR, "cases");
+const SNAP_DIR = join(RUN_DIR, "snapshots");
 const OUT = join(RUN_DIR, "browser-report.json");
 const REQUIRED = ["B01", "B02", "B03", "B04", "B05", "B06", "B07"];
 const SELECTED = process.env.CASES
@@ -216,11 +217,28 @@ async function exportSnapshot(page) {
   return jsonClone(snap);
 }
 
+/** Count earned individual honors from the product careerHonors counters object. */
+function honorCountOf(honors) {
+  if (!honors || typeof honors !== "object" || Array.isArray(honors)) return 0;
+  const individual = Number(honors.individualAwards);
+  if (Number.isFinite(individual) && individual > 0) return individual;
+  return ["leagueTitles", "europeanTitles", "domesticCups", "individualAwards", "internationalTitles"].reduce(
+    (s, k) => s + (Number.isFinite(Number(honors[k])) ? Number(honors[k]) : 0),
+    0
+  );
+}
+
+function earnedStatuses(records) {
+  const list = Array.isArray(records) ? records : [];
+  return list.filter((r) => r && (r.status === "won" || r.status === "selected"));
+}
+
 /** Persist authoritative evidence without multi-MB league/world blobs that stall I/O. */
 function slimEvidence(snapOrBundle) {
   if (!snapOrBundle || typeof snapOrBundle !== "object") return snapOrBundle;
   const base = snapOrBundle.snapshot ? snapOrBundle : { snapshot: snapOrBundle };
   const player = base.snapshot?.player;
+  const summary = awardSummary(player);
   const slimPlayer = player
     ? {
         name: player.name,
@@ -232,6 +250,14 @@ function slimEvidence(snapOrBundle) {
         contractStatus: player.contractStatus,
         employmentClubId: player.employmentClubId,
         playingClubId: player.playingClubId,
+        weeklyWage: player.weeklyWage ?? player.wage ?? null,
+        development: player.development
+          ? {
+              careerId: player.development.careerId ?? null,
+              phase: player.development.phase ?? null,
+              healthyTrainingFraction: player.development.healthyTrainingFraction ?? null,
+            }
+          : null,
         club: player.club
           ? { name: player.club.name, clubId: player.club.clubId, league: player.club.league, leagueId: player.club.leagueId }
           : null,
@@ -240,12 +266,13 @@ function slimEvidence(snapOrBundle) {
           minutes: s.minutes,
           goals: s.goals,
           assists: s.assists,
+          cleanSheets: s.cleanSheets ?? null,
           avgMatchRating: s.avgMatchRating,
-          awardNames: s.awardNames || s.individualAwards || [],
+          awardNames: s.individualAwards || s.awardNames || [],
           awardRecords: s.awardRecords || null,
           individualAwards: s.individualAwards || null,
         })),
-        careerHonors: player.careerHonors || [],
+        careerHonors: player.careerHonors || null,
         awardFields: Object.fromEntries(
           Object.entries(player.awardFields || {}).map(([k, f]) => [
             k,
@@ -273,11 +300,11 @@ function slimEvidence(snapOrBundle) {
     ...("ui" in base ? { ui: base.ui } : {}),
     ...("trace" in base ? { trace: base.trace } : {}),
     player: slimPlayer,
-    awards: awardSummary(slimPlayer || player),
+    awards: summary,
     snapshotHash: {
       seasons: slimPlayer?.seasons?.length ?? 0,
       age: slimPlayer?.age ?? null,
-      honorCount: Array.isArray(slimPlayer?.careerHonors) ? slimPlayer.careerHonors.length : 0,
+      honorCount: summary.honorCount,
       fieldKeys: Object.keys(slimPlayer?.awardFields || {}),
     },
   };
@@ -285,6 +312,13 @@ function slimEvidence(snapOrBundle) {
 
 async function writeCase(name, value) {
   await writeFile(join(CASE_DIR, name), JSON.stringify(value, null, 2));
+}
+
+/** Full replayable career snapshot (RNG/world/finance included). */
+async function writeFullSnapshot(name, snapOrBundle) {
+  await mkdir(SNAP_DIR, { recursive: true });
+  const payload = snapOrBundle?.snapshot ? snapOrBundle.snapshot : snapOrBundle;
+  await writeFile(join(SNAP_DIR, name), JSON.stringify(payload));
 }
 
 async function debug(page) {
@@ -325,20 +359,31 @@ async function shot(page, name) {
 
 function awardSummary(player) {
   const last = Array.isArray(player?.seasons) ? player.seasons.at(-1) : null;
-  const records = last?.awardRecords || last?.individualAwards || [];
-  const names = last?.awardNames || [];
+  const records = Array.isArray(last?.awardRecords) ? last.awardRecords : [];
+  // Product seasons store legacy display names on `individualAwards`.
+  const names = last?.individualAwards || last?.awardNames || [];
   const fields = player?.awardFields || {};
+  const earned = earnedStatuses(records);
+  const honors = player?.careerHonors && typeof player.careerHonors === "object" ? player.careerHonors : null;
   return {
     age: player?.age ?? null,
     seasons: player?.seasons?.length ?? 0,
-    honors: player?.careerHonors || [],
-    honorCount: Array.isArray(player?.careerHonors) ? player.careerHonors.length : 0,
+    honors,
+    honorCount: honorCountOf(honors),
     awardNames: names,
     awardRecords: records,
-    awardIds: (Array.isArray(records) ? records : []).map((r) => r.awardId || r),
+    awardIds: records.map((r) => r.awardId || r),
+    earnedRecords: earned,
+    earnedIds: earned.map((r) => r.awardId || r),
+    earnedAward: earned.length > 0,
     fieldKeys: Object.keys(fields),
     club: player?.club?.name ?? null,
     contractStatus: player?.contractStatus ?? null,
+    rating: player?.rating ?? null,
+    attributes: player?.attributes ?? null,
+    weeklyWage: player?.weeklyWage ?? player?.wage ?? null,
+    employmentClubId: player?.employmentClubId ?? null,
+    playingClubId: player?.playingClubId ?? null,
   };
 }
 
@@ -523,6 +568,7 @@ const cases = {
   async B01(page, guards) {
     const snap = buildSnap({ id: "fix08-b01", position: "ST", ovr: 74, club: "Hull City", seed: 8801 });
     await writeCase("B01-initial.json", slimEvidence(snap));
+    await writeFullSnapshot("B01-initial.full.json", snap);
     await restore(page, snap);
     await shot(page, "B01-01-start");
     const start = await exportSnapshot(page);
@@ -532,6 +578,8 @@ const cases = {
     const desk = await exportSnapshot(page);
     await writeCase("B01-before-continue.json", slimEvidence(driven.beforeContinue));
     await writeCase("B01-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B01-before-continue.full.json", driven.beforeContinue);
+    await writeFullSnapshot("B01-desk.full.json", desk);
     const before = awardSummary(driven.beforeContinue.snapshot.player);
     const after = awardSummary(desk.player);
     assert(before.seasons >= 1, "season must complete before Continue", before);
@@ -543,38 +591,75 @@ const cases = {
   },
 
   async B02(page, guards) {
-    // Initial high-OVR fixture — season is earned in-browser, not precompleted.
-    const snap = buildSnap({ id: "fix08-b02", position: "ST", ovr: 92, club: "Atalanta", age: 24, seed: 8802 });
+    // Seeded fixture that earns Golden Boot + TOTS selection in the live engine (not nomination-only).
+    // careerId+seed pair is jointly load-bearing for the award RNG stream.
+    const snap = buildSnap({
+      id: "fix08-b02",
+      position: "ST",
+      ovr: 96,
+      club: "Ajax",
+      age: 23,
+      seed: 13011,
+    });
     await writeCase("B02-initial.json", slimEvidence(snap));
+    await writeFullSnapshot("B02-initial.full.json", snap);
     await restore(page, snap);
     await shot(page, "B02-01-start");
     const driven = await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B02" });
     const desk = await exportSnapshot(page);
     await writeCase("B02-before-continue.json", slimEvidence(driven.beforeContinue));
     await writeCase("B02-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B02-before-continue.full.json", driven.beforeContinue);
+    await writeFullSnapshot("B02-desk.full.json", desk);
     const before = awardSummary(driven.beforeContinue.snapshot.player);
     const after = awardSummary(desk.player);
     assert(before.seasons >= 1, "B02 must complete a season");
     assert(Array.isArray(before.awardRecords), "award records must be an array");
+    assert(before.earnedAward === true && before.earnedIds.length > 0, "B02 must earn won/selected (not nomination)", before);
+    assert(
+      before.earnedIds.includes("golden-boot") || before.earnedIds.includes("team-of-the-season"),
+      "B02 outfield must win scoring award or TOTS selection",
+      before
+    );
+    assert(before.honorCount > 0, "B02 honorCount must reflect earned individual awards", before);
     assert(after.seasons === before.seasons && after.age === before.age, "exact-once Continue", { before, after });
+    assert(after.honorCount === before.honorCount, "honors exact-once across Continue", { before, after });
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
     return {
       ok: true,
       before,
       after,
-      earnedAward: before.awardIds.length > 0 || before.honorCount > 0,
+      earnedAward: before.earnedAward,
+      earnedIds: before.earnedIds,
       continued: true,
     };
   },
 
   async B03(page, guards) {
-    const gk = buildSnap({ id: "fix08-b03-gk", position: "GK", ovr: 88, club: "Atalanta", seed: 8803 });
+    // GK seed that wins Golden Glove + TOTS selection in the live engine.
+    // careerId+seed pair is jointly load-bearing for the award RNG stream.
+    const gk = buildSnap({
+      id: "fix08-b03-gk",
+      position: "GK",
+      ovr: 90,
+      club: "Atalanta",
+      age: 22,
+      seed: 14076,
+    });
     await writeCase("B03-gk-initial.json", slimEvidence(gk));
+    await writeFullSnapshot("B03-gk-initial.full.json", gk);
     await restore(page, gk);
     const drivenGk = await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B03-gk" });
     const gkSum = awardSummary(drivenGk.beforeContinue.snapshot.player);
     await writeCase("B03-gk-before-continue.json", slimEvidence(drivenGk.beforeContinue));
+    await writeFullSnapshot("B03-gk-before-continue.full.json", drivenGk.beforeContinue);
+    assert(gkSum.earnedAward === true, "B03 GK must earn won/selected", gkSum);
+    assert(
+      gkSum.earnedIds.includes("golden-glove") || gkSum.earnedIds.includes("team-of-the-season"),
+      "B03 GK must win Golden Glove or TOTS selection",
+      gkSum
+    );
 
     // Thin/unknown evidence control: free-agent CM with no club minutes.
     const thin = buildSnap({
@@ -591,8 +676,31 @@ const cases = {
     const thinSnap = await exportSnapshot(page);
     const thinSum = awardSummary(thinSnap.player);
     assert((thinSum.awardIds || []).length === 0, "thin FA must not invent awards at restore", thinSum);
+
+    // Insufficient/unknown clean-sheet GK control: low-OVR fringe GK must not invent Glove wins at restore.
+    const weakGk = buildSnap({
+      id: "fix08-b03-weak-gk",
+      position: "GK",
+      ovr: 58,
+      club: "Hull City",
+      age: 28,
+      seed: 8805,
+      freeAgent: true,
+    });
+    await writeCase("B03-weak-gk-initial.json", slimEvidence(weakGk));
+    await restore(page, weakGk);
+    const weakSnap = await exportSnapshot(page);
+    const weakSum = awardSummary(weakSnap.player);
+    assert((weakSum.awardIds || []).length === 0, "unknown-CS FA GK must not invent awards at restore", weakSum);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, gk: gkSum, thin: thinSum, gkContinued: true };
+    return {
+      ok: true,
+      gk: gkSum,
+      thin: thinSum,
+      weakGk: weakSum,
+      gkContinued: true,
+      earnedIds: gkSum.earnedIds,
+    };
   },
 
   async B04(page, guards) {
@@ -613,6 +721,7 @@ const cases = {
     await shot(page, "B04-01-loan-desk");
     const beforeAccept = await exportSnapshot(page);
     await writeCase("B04-before-accept.json", slimEvidence(beforeAccept));
+    await writeFullSnapshot("B04-before-accept.full.json", beforeAccept);
     const employmentBefore = beforeAccept.player?.employmentClubId || null;
     const playingBefore = beforeAccept.player?.playingClubId || null;
     const seasonsBefore = (beforeAccept.player?.seasons || []).length;
@@ -625,6 +734,7 @@ const cases = {
     await restore(page, beforeAccept);
     const afterFresh = await exportSnapshot(page);
     await writeCase("B04-fresh-restore.json", slimEvidence(afterFresh));
+    await writeFullSnapshot("B04-fresh-restore.full.json", afterFresh);
     assert(afterFresh.player?.employmentClubId === employmentBefore, "fresh restore employment");
     assert((afterFresh.player?.seasons || []).length === seasonsBefore, "fresh restore seasons");
 
@@ -672,11 +782,19 @@ const cases = {
     });
     const desk = await exportSnapshot(page);
     await writeCase("B04-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B04-desk.full.json", desk);
     const sum = awardSummary(desk.player);
     assert(sum.seasons >= seasonsBefore + 1, "B04 must complete the loan season");
     assert(sum.fieldKeys.length >= 1, "award fields present after loan season", sum);
     const editionKeys = sum.fieldKeys.filter((k) => /league:/i.test(k));
     assert(editionKeys.length >= 1, "league edition field present", sum);
+    // Loan season must contribute under the playing club's league edition, not the employer alone.
+    const loanEditionHit = editionKeys.some((k) => /serbia|superliga|bačka|backa|topola|tsc/i.test(k));
+    assert(
+      loanEditionHit || desk.player?.playingClubId !== employmentBefore,
+      "B04 loan edition/playing registration must reflect loan destination",
+      { editionKeys, playingAtDesk: desk.player?.playingClubId, employmentBefore }
+    );
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
     return {
@@ -721,18 +839,40 @@ const cases = {
   },
 
   async B06(page, guards) {
-    const snap = buildSnap({ id: "fix08-b06", position: "ST", ovr: 80, club: "Hull City", seed: 8830 });
+    // Positive recognition: careerId-specific seed that earns TOTS + Rookie.
+    const snap = buildSnap({
+      id: "fix08-b06",
+      position: "ST",
+      ovr: 96,
+      club: "Ajax",
+      age: 23,
+      seed: 15001,
+    });
     await writeCase("B06-initial.json", slimEvidence(snap));
+    await writeFullSnapshot("B06-initial.full.json", snap);
     await restore(page, snap);
     const driven = await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B06" });
     const before = driven.beforeContinue.snapshot;
     await writeCase("B06-before-continue.json", slimEvidence(driven.beforeContinue));
+    await writeFullSnapshot("B06-before-continue.full.json", driven.beforeContinue);
     const desk = await exportSnapshot(page);
     await writeCase("B06-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B06-desk.full.json", desk);
     const a = awardSummary(before.player);
     const b = awardSummary(desk.player);
+    assert(a.earnedAward === true && a.honorCount > 0, "B06 must earn recognition", a);
+    assert(Array.isArray(a.awardNames) && a.awardNames.length > 0, "B06 award names present", a);
     assert(a.seasons === b.seasons && a.age === b.age, "Continue exact-once", { a, b });
     assert(a.honorCount === b.honorCount, "honors stable across Continue", { a, b });
+    assert(JSON.stringify(a.earnedIds) === JSON.stringify(b.earnedIds), "earned IDs exact-once", { a, b });
+    assert(JSON.stringify(a.awardNames) === JSON.stringify(b.awardNames), "award names exact-once", { a, b });
+    assert(JSON.stringify(a.attributes) === JSON.stringify(b.attributes), "attributes exact-once", { a, b });
+    assert(a.weeklyWage === b.weeklyWage, "wage exact-once", { a, b });
+    assert(a.employmentClubId === b.employmentClubId && a.playingClubId === b.playingClubId, "clubs exact-once", {
+      a,
+      b,
+    });
+    assert(a.contractStatus === b.contractStatus, "contract exact-once", { a, b });
 
     // Repeated Continue must not charge again.
     const ui = await uiState(page);
@@ -745,6 +885,7 @@ const cases = {
       b,
       afterRepeat,
     });
+    assert(afterRepeat.honorCount === b.honorCount, "repeat Continue honors stable", { b, afterRepeat });
 
     // Fresh-page restore of desk snapshot.
     await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
@@ -752,11 +893,23 @@ const cases = {
       timeout: 60000,
     });
     await restore(page, desk);
-    const restored = awardSummary((await exportSnapshot(page)).player);
-    await writeCase("B06-fresh-restore.json", { restored });
+    const restoredSnap = await exportSnapshot(page);
+    const restored = awardSummary(restoredSnap.player);
+    await writeCase("B06-fresh-restore.json", slimEvidence(restoredSnap));
+    await writeFullSnapshot("B06-fresh-restore.full.json", restoredSnap);
     assert(restored.seasons === b.seasons && restored.age === b.age, "fresh restore stable", { b, restored });
+    assert(restored.honorCount === b.honorCount, "fresh restore honors", { b, restored });
+    assert(JSON.stringify(restored.earnedIds) === JSON.stringify(b.earnedIds), "fresh restore earned IDs", {
+      b,
+      restored,
+    });
+    assert(JSON.stringify(restored.attributes) === JSON.stringify(b.attributes), "fresh restore attributes", {
+      b,
+      restored,
+    });
+    assert(restored.weeklyWage === b.weeklyWage, "fresh restore wage", { b, restored });
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, before: a, desk: b, restored, continued: true };
+    return { ok: true, before: a, desk: b, restored, continued: true, earnedIds: a.earnedIds };
   },
 
   async B07(page, guards) {
@@ -769,23 +922,83 @@ const cases = {
       freeAgent: true,
     });
     await writeCase("B07-initial.json", slimEvidence(snap));
+    await writeFullSnapshot("B07-initial.full.json", snap);
     await restore(page, snap);
     await shot(page, "B07-01-fa-desk");
-    const state = await exportSnapshot(page);
-    await writeCase("B07-desk.json", slimEvidence(state));
-    const sum = awardSummary(state.player);
-    assert(sum.contractStatus === "released" || state.player.club == null, "FA / no-club lifecycle");
-    assert((sum.awardIds || []).length === 0, "zero-minute FA must not invent awards", sum);
-    const ui = await uiState(page);
-    assert(ui.nextAction != null || ui.simulateDisabled === false || ui.debug != null, "usable FA desk", ui);
+    const start = await exportSnapshot(page);
+    await writeCase("B07-desk.json", slimEvidence(start));
+    const sum0 = awardSummary(start.player);
+    assert(sum0.contractStatus === "released" || start.player.club == null, "FA / no-club lifecycle");
+    assert((sum0.awardIds || []).length === 0, "zero-minute FA must not invent awards", sum0);
+    const ui0 = await uiState(page);
+    assert(ui0.simulateDisabled === false, "FA desk must expose search/training simulate", ui0);
+
+    // Complete a genuine free-agent search/training period through the UI.
+    const seasonsBefore = (start.player.seasons || []).length;
+    const ageBefore = start.player.age;
+    await page.click("#simulate-btn");
+    const deadline = Date.now() + 120000;
+    let beforeContinue = null;
+    while (Date.now() < deadline) {
+      const cur = await uiState(page);
+      const seasonsNow = cur.debug?.seasonsCount ?? null;
+      const committed = typeof seasonsNow === "number" && seasonsNow > seasonsBefore;
+      if (committed && !beforeContinue) {
+        beforeContinue = await exportSnapshot(page);
+        await shot(page, "B07-02-before-continue");
+      }
+      if (committed && beforeContinue && cur.continueBtnVisible && !cur.continueBtnDisabled) {
+        await page.click("#continue-btn");
+        await page.waitForTimeout(250);
+        continue;
+      }
+      if (
+        committed &&
+        beforeContinue &&
+        cur.overlayHidden &&
+        cur.dashboardHidden &&
+        cur.seasonActionInFlight === false
+      ) {
+        break;
+      }
+      // Decline offer windows so searching can complete without signing.
+      await page.evaluate(() => {
+        const btn = [...document.querySelectorAll("button")].find((b) =>
+          /continue as free agent|decline all|no thanks|remain a free agent|decline offers/i.test(
+            b.textContent || ""
+          )
+        );
+        if (btn && !btn.disabled) btn.click();
+      });
+      await page.waitForTimeout(200);
+    }
+    assert(beforeContinue, "B07 must complete a search/training period");
+    const desk = await exportSnapshot(page);
+    await writeCase("B07-after-search.json", slimEvidence(desk));
+    await writeFullSnapshot("B07-after-search.full.json", desk);
+    await writeCase("B07-before-continue.json", slimEvidence(beforeContinue));
+    const after = awardSummary(desk.player);
+    const period = (beforeContinue.player?.seasons || []).at(-1) || null;
+    assert((beforeContinue.player?.seasons || []).length === seasonsBefore + 1, "FA period advances seasons once");
+    assert((period?.minutes || 0) === 0, "FA search period has zero club minutes", period);
+    assert((after.awardIds || []).length === 0, "FA search must not invent awards", after);
+    assert(desk.player.age === ageBefore + 1 || desk.player.age === beforeContinue.player.age, "FA age advances once");
+    await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, sum };
+    return {
+      ok: true,
+      sum: after,
+      searchPeriodCompleted: true,
+      periodMinutes: period?.minutes ?? 0,
+      seasonsAfter: after.seasons,
+    };
   },
 };
 
 async function main() {
   await mkdir(CASE_DIR, { recursive: true });
   await mkdir(SHOT_DIR, { recursive: true });
+  await mkdir(SNAP_DIR, { recursive: true });
   const hosted = await ensureBaseServer();
   const report = {
     generatedAt: new Date().toISOString(),

@@ -178,13 +178,17 @@ copyTree(join(ROOT, "qa/fix08-runs/cohort/ledgers"), join(PKG, "qa/logs/cohort-l
 copyTree(join(ROOT, "qa/screenshots/checklist-performance-awards"), join(PKG, "qa/browser/screenshots"));
 ensureDir(join(PKG, "qa/fields"));
 ensureDir(join(PKG, "qa/snapshots"));
+copyTree(join(ROOT, "qa/fix08-runs/fields"), join(PKG, "qa/fields"));
+copyTree(join(ROOT, "qa/fix08-runs/cohort/fields"), join(PKG, "qa/fields/cohort"));
+copyTree(join(ROOT, "qa/fix08-runs/snapshots"), join(PKG, "qa/snapshots/browser"));
+copyTree(join(ROOT, "qa/fix08-runs/cohort/snapshots"), join(PKG, "qa/snapshots/cohort"));
 writeFileSync(
   join(PKG, "qa/fields/README.md"),
-  "Award field provenance is embedded in cohort ledgers (`decisionTrace`, rivalCount/populationSize) and slim browser case exports under `qa/cases/`.\n"
+  "Complete award-field rival payloads for independent rank/budget recomputation. Cohort copies live under `qa/fields/cohort/`; browser slim case exports remain under `qa/cases/`.\n"
 );
 writeFileSync(
   join(PKG, "qa/snapshots/README.md"),
-  "Authoritative browser journeys use `__exportCareerSnapshot`. Slim case evidence is under `qa/cases/`; full league blobs are omitted to keep the package tractable.\n"
+  "Full replayable `__exportCareerSnapshot` / `serializeCareerSnapshot` blobs. Browser journeys: `qa/snapshots/browser/`. Cohort fixture initials: `qa/snapshots/cohort/`. Slim inspection exports remain under `qa/cases/`.\n"
 );
 
 for (const f of [

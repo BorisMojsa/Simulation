@@ -206,7 +206,7 @@ function runUserCell(role, ovr, minutes, ctx, seeds, label) {
   };
 }
 
-function buildDiagnosticField(ctx) {
+function buildDiagnosticField(ctx, seedKey = "0") {
   const player = {
     name: "parity-field",
     position: "ST",
@@ -226,15 +226,36 @@ function buildDiagnosticField(ctx) {
     player,
     {
       seasonId: "parity",
-      competitionEditionId: `parity::${ctx.id}`,
+      competitionEditionId: `parity::${ctx.id}::${seedKey}`,
       scope: "league",
       table,
       userClub: table[0],
       user: { goals: 8, assists: 4, position: "ST" },
       retainDiagnosticPopulation: true,
     },
-    createStreamRng("parity", `field:${ctx.id}`)
+    createStreamRng("parity", `field:${ctx.id}:${seedKey}`)
   );
+}
+
+/** Merge several independently seeded diagnostic populations for denser matched cells. */
+function buildMergedDiagnosticField(ctx, copies = 6) {
+  const populations = [];
+  let retained = 0;
+  let template = null;
+  for (let i = 0; i < copies; i++) {
+    const f = buildDiagnosticField(ctx, String(i));
+    if (!template) template = f;
+    populations.push(...(f.diagnosticPopulation || []).map((r) => ({ ...r, id: `${r.id}#${i}` })));
+    retained += f.rivals.length;
+  }
+  return {
+    ...template,
+    diagnosticPopulation: populations,
+    populationSize: populations.length,
+    rivals: template.rivals,
+    retainedSize: retained,
+    mergedCopies: copies,
+  };
 }
 
 /**
@@ -247,29 +268,53 @@ function runNpcCell(role, ovr, minutes, ctx, seeds, label) {
   return runUserCell(role, ovr, minutes, ctx, npcSeeds, `${label}-npc`);
 }
 
-/** Full pre-compaction award-field population filtered by role + talent→ability map. */
-function awardFieldMatched(field, group, ovr, minutesTarget) {
+/** Position-compatible rival filter (exact role; do not mix CAM into CM or wingers into ST). */
+function positionCompatible(r, role) {
+  if (role === "ST") return r.position === "ST";
+  if (role === "CM") return r.position === "CM";
+  if (role === "CB") return r.position === "CB";
+  if (role === "GK") return r.position === "GK";
+  return true;
+}
+
+/**
+ * Full pre-compaction award-field population filtered by role/position + talent→ability.
+ * Broadened group-only tails are reported separately and never used as the hard gate.
+ */
+function awardFieldMatched(field, group, ovr, minutesTarget, role) {
   const pop = field.diagnosticPopulation || [];
   const targetMins = 38 * minutesTarget;
-  const inBand = (r) =>
-    r.group === group &&
-    Number.isFinite(r.talent) &&
-    Math.abs(impliedOverall(r.talent) - ovr) <= TOL.abilityBand &&
-    r.minutes >= targetMins * 0.75 &&
-    r.minutes <= targetMins * 1.25;
-  let matched = pop.filter(inBand);
-  let band = "talent+minutes";
-  // Sparse cells: use talent tails rather than the whole role (avoids comparing an
-  // OVR-90 user to the ordinary majority of the synthetic population).
+  const abilityOk = (r) =>
+    Number.isFinite(r.talent) && Math.abs(impliedOverall(r.talent) - ovr) <= TOL.abilityBand;
+  const minutesOk = (r) => r.minutes >= targetMins * 0.75 && r.minutes <= targetMins * 1.25;
+  let matched = pop.filter((r) => positionCompatible(r, role) && abilityOk(r) && minutesOk(r));
+  let band = "position+talent+minutes";
+  if (matched.length < 8) {
+    // Widen minutes slightly before abandoning position match.
+    matched = pop.filter(
+      (r) =>
+        positionCompatible(r, role) &&
+        abilityOk(r) &&
+        r.minutes >= targetMins * 0.55 &&
+        r.minutes <= targetMins * 1.35
+    );
+    band = "position+talent+minutes-wide";
+  }
   if (matched.length < 5) {
     const minPart = 0.4 * (field.possibleMinutes || 3420);
     if (ovr >= 85) {
-      band = "strong-talent-tail";
-      matched = pop.filter((r) => r.group === group && Number(r.talent) >= 0.75 && r.minutes >= minPart);
-    } else {
-      band = "ordinary-talent-band";
+      band = "position-strong-talent-tail";
       matched = pop.filter(
-        (r) => r.group === group && Number.isFinite(r.talent) && Math.abs(r.talent) <= 0.9 && r.minutes >= minPart
+        (r) => positionCompatible(r, role) && Number(r.talent) >= 0.75 && r.minutes >= minPart
+      );
+    } else {
+      band = "position-ordinary-talent-band";
+      matched = pop.filter(
+        (r) =>
+          positionCompatible(r, role) &&
+          Number.isFinite(r.talent) &&
+          Math.abs(r.talent) <= 0.9 &&
+          r.minutes >= minPart
       );
     }
   }
@@ -280,6 +325,7 @@ function awardFieldMatched(field, group, ovr, minutesTarget) {
   return {
     side: "award-field-full-population",
     group,
+    role,
     ovr,
     minutesTarget,
     band,
@@ -290,6 +336,16 @@ function awardFieldMatched(field, group, ovr, minutesTarget) {
     assistsPer90: totalMinutes > 0 ? (totalAssists * 90) / totalMinutes : 0,
     meanRating: mean(ratings),
     ratingSe: seMean(ratings),
+    rawNpc: matched.map((r) => ({
+      id: r.id,
+      position: r.position,
+      talent: r.talent,
+      impliedOverall: impliedOverall(r.talent),
+      minutes: r.minutes,
+      goals: r.goals,
+      assists: r.assists,
+      rating: r.rating,
+    })),
   };
 }
 
@@ -328,7 +384,7 @@ for (const ctx of CONTEXTS) {
 
 const fields = {};
 for (const ctx of CONTEXTS) {
-  fields[ctx.id] = buildDiagnosticField(ctx);
+  fields[ctx.id] = buildMergedDiagnosticField(ctx, 8);
 }
 
 const matchedComparisons = [];
@@ -389,22 +445,25 @@ for (const ctx of CONTEXTS) {
         matchedComparisons.push(row);
         checks.push({ id: `matched-${ctx.id}-${role}-${ovr}-${minutes}`, pass: row.pass, detail: row });
 
-        // Award-field centers vs user (full population, talent-mapped). Equal-team
-        // context is the hard coefficient gate; other contexts are reported only —
-        // multi-context rate/rating acceptance is enforced via shared simulateMatch.
+        // Production award-field population vs user (position + talent-mapped).
+        // All declared rating / G/90 / A/90 tolerances are hard gates for both contexts.
         if (minutes === 90) {
-          const fieldNpc = awardFieldMatched(field, group, ovr, minutes);
+          const fieldNpc = awardFieldMatched(field, group, ovr, minutes, role);
           const fieldRating = gapOk(user.meanRating ?? 0, fieldNpc.meanRating ?? 0, TOL.meanRatingAbs, 0);
+          const fieldG90 = gapOk(user.goalsPer90, fieldNpc.goalsPer90, TOL.rateAbs, TOL.rateRel);
+          const fieldA90 = gapOk(user.assistsPer90, fieldNpc.assistsPer90, TOL.rateAbs, TOL.rateRel);
           // GK match ratings barely move with OVR; strong-talent keepers are not a
-          // matched ability cell for the user path. Gate ordinary GK only.
-          const hardGate = ctx.id === "equal-75" && !(role === "GK" && ovr >= 85);
+          // matched ability cell for the rating gate. Rates still apply.
+          const ratingGate = !(role === "GK" && ovr >= 85);
+          const ratesPass = fieldG90.pass && fieldA90.pass;
+          const ratingPass = !ratingGate || fieldRating.pass;
           const fieldRow = {
             contextId: ctx.id,
             role,
             group,
             ovr,
             minutes,
-            hardGate,
+            hardGate: true,
             userMeanRating: user.meanRating,
             fieldMeanRating: fieldNpc.meanRating,
             fieldN: fieldNpc.n,
@@ -412,18 +471,17 @@ for (const ctx of CONTEXTS) {
             populationSize: fieldNpc.populationSize,
             retainedSize: fieldNpc.retainedSize,
             rating: fieldRating,
-            goalsPer90: gapOk(user.goalsPer90, fieldNpc.goalsPer90, TOL.rateAbs, TOL.rateRel),
-            assistsPer90: gapOk(user.assistsPer90, fieldNpc.assistsPer90, TOL.rateAbs, TOL.rateRel),
-            pass: fieldNpc.n >= 3 && fieldRating.pass,
+            goalsPer90: fieldG90,
+            assistsPer90: fieldA90,
+            pass: fieldNpc.n >= 5 && ratesPass && ratingPass,
+            rawNpc: fieldNpc.rawNpc,
           };
           awardFieldRatingChecks.push(fieldRow);
-          if (hardGate) {
-            checks.push({
-              id: `award-field-rating-${ctx.id}-${role}-${ovr}`,
-              pass: fieldRow.pass,
-              detail: fieldRow,
-            });
-          }
+          checks.push({
+            id: `award-field-${ctx.id}-${role}-${ovr}`,
+            pass: fieldRow.pass,
+            detail: { ...fieldRow, rawNpc: undefined },
+          });
         }
       }
     }
@@ -519,13 +577,26 @@ const summary = {
   pass: failed.length === 0,
 };
 
-writeFileSync(join(outDir, "parity-summary.json"), JSON.stringify(summary, null, 2));
+writeFileSync(
+  join(outDir, "parity-summary.json"),
+  JSON.stringify(
+    {
+      ...summary,
+      awardFieldRatingChecks: awardFieldRatingChecks.map(({ rawNpc: _r, ...rest }) => rest),
+    },
+    null,
+    2
+  )
+);
 writeFileSync(
   join(outDir, "raw-samples.json"),
   JSON.stringify(
     {
-      note: "Per-cell season-equivalent raw samples (user + shared-model NPC).",
+      note: "Per-cell season-equivalent raw samples (user + shared-model NPC) and award-field matched rivals.",
       rawByCell,
+      awardFieldMatchedRaw: Object.fromEntries(
+        awardFieldRatingChecks.map((r) => [`${r.contextId}|${r.role}|${r.ovr}`, r.rawNpc || []])
+      ),
     },
     null,
     2
@@ -535,19 +606,43 @@ writeFileSync(
 // Holdout: shared-model matched contract (untouched seeds; must also pass).
 const holdoutMatched = [];
 for (const ctx of CONTEXTS) {
-  for (const { role } of ROLE_CELLS) {
+  const field = fields[ctx.id];
+  for (const { role, group } of ROLE_CELLS) {
     for (const ovr of ABILITIES) {
       for (const minutes of MINUTES) {
         const user = holdout.find(
           (c) => c.contextId === ctx.id && c.role === role && c.ovr === ovr && c.minutes === minutes
         );
         const npcCell = runNpcCell(role, ovr, minutes, ctx, HOLDOUT_SEEDS, "holdout");
+        rawByCell[`${ctx.id}|${role}|${ovr}|${minutes}|holdout-npc`] = npcCell.raw;
         delete npcCell.raw;
         const rating = gapOk(user.meanRating ?? 0, npcCell.meanRating ?? 0, TOL.meanRatingAbs, 0);
         const g90 = gapOk(user.goalsPer90, npcCell.goalsPer90, TOL.rateAbs, TOL.rateRel);
         const a90 = gapOk(user.assistsPer90, npcCell.assistsPer90, TOL.rateAbs, TOL.rateRel);
-        const pass = rating.pass && g90.pass && a90.pass && (role !== "GK" || (user.totalGoals === 0 && npcCell.totalGoals === 0));
-        holdoutMatched.push({ contextId: ctx.id, role, ovr, minutes, rating, goalsPer90: g90, assistsPer90: a90, pass });
+        let pass =
+          rating.pass && g90.pass && a90.pass && (role !== "GK" || (user.totalGoals === 0 && npcCell.totalGoals === 0));
+        let fieldPass = null;
+        if (minutes === 90) {
+          const fieldNpc = awardFieldMatched(field, group, ovr, minutes, role);
+          const fr = gapOk(user.meanRating ?? 0, fieldNpc.meanRating ?? 0, TOL.meanRatingAbs, 0);
+          const fg = gapOk(user.goalsPer90, fieldNpc.goalsPer90, TOL.rateAbs, TOL.rateRel);
+          const fa = gapOk(user.assistsPer90, fieldNpc.assistsPer90, TOL.rateAbs, TOL.rateRel);
+          const ratingGate = !(role === "GK" && ovr >= 85);
+          fieldPass = fieldNpc.n >= 5 && fg.pass && fa.pass && (!ratingGate || fr.pass);
+          pass = pass && fieldPass;
+          rawByCell[`${ctx.id}|${role}|${ovr}|holdout-award-field`] = fieldNpc.rawNpc;
+        }
+        holdoutMatched.push({
+          contextId: ctx.id,
+          role,
+          ovr,
+          minutes,
+          rating,
+          goalsPer90: g90,
+          assistsPer90: a90,
+          fieldPass,
+          pass,
+        });
         checks.push({ id: `holdout-matched-${ctx.id}-${role}-${ovr}-${minutes}`, pass });
       }
     }
