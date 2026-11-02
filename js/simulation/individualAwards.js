@@ -24,12 +24,10 @@
  *
  *   - Every club in the competition table gets a 15-man key-player roster
  *     (11 starters + 4 rotation players across GK/DEF/MID/FWD).
- *   - Team goals (`goalsFor`) are shared among that roster by a multinomial draw
- *     weighted by the same simulateMatch role goal/assist rates × minutes ×
- *     talent→impliedOverall ability factor, so every team has a plausible top
- *     scorer and totals stay consistent with the table (~8% of goals go to
- *     unmodelled squad players). Assists use ~72% of team goals; clean sheets
- *     follow a Poisson-zero estimate from goalsAgainst.
+ *   - Individual goals/assists are Poisson draws from the same simulateMatch
+ *     role rates × minutes × talent→impliedOverall ability factor. A soft
+ *     scale-down keeps roster goals from wildly exceeding `goalsFor`. Clean
+ *     sheets follow a Poisson-zero estimate from goalsAgainst.
  *   - Ratings, ages and prior senior minutes are drawn from simple priors.
  *   - Draw order is fixed and independent of the user's season: every club,
  *     including the user's own, is generated first from its own forked stream.
@@ -358,30 +356,43 @@ function generateTeamRoster(team, teamIdx, editionId, rng) {
     };
   });
 
-  // Goals: multinomial draw weighted by role x minutes x talent.
-  // Expected individual rates share the simulateMatch role/ability contract via
-  // talent→impliedOverall, then multinomial draws conserve the team goal budget.
+  // Absolute expected rates share the simulateMatch role/ability contract via
+  // talent→impliedOverall. Independent Poisson draws keep per-90 rates stable
+  // across short and full exposure (team totals are approximate; adjustUserTeam
+  // still caps the user's club for table consistency).
   const impliedOvr = (p) => clamp(70 + 12 * (Number.isFinite(p.talent) ? p.talent : 0), 55, 95);
-  const goalWeights = players.map((p) => {
-    const expected =
-      roleGoalRatePer90(p.position) * (p.minutes / 90) * abilityFactorFromOverall(impliedOvr(p));
-    return Math.max(0, expected);
-  });
-  const goalPool = Math.round(goalsFor * 0.92);
-  for (let g = 0; g < goalPool; g++) {
-    const i = weightedPick(goalWeights, rng);
-    if (i >= 0) players[i].goals += 1;
+  const poisson = (lambda) => {
+    const L = Math.max(0, Number(lambda) || 0);
+    if (L <= 0) return 0;
+    if (L > 40) {
+      return Math.max(0, Math.round(L + Math.sqrt(L) * gaussian(rng)));
+    }
+    const lim = Math.exp(-L);
+    let k = 0;
+    let pProd = 1;
+    do {
+      k += 1;
+      pProd *= rng.random();
+    } while (pProd > lim);
+    return k - 1;
+  };
+  // Assist draws use a fixed 0.72 scale: simulateMatch assist rolls are mutually
+  // exclusive with goals and only fire on a subset of team goals, so raw role
+  // assist rates overstate season A/90 versus the user path.
+  const ASSIST_REALIZATION = 0.68;
+  for (const p of players) {
+    const af = abilityFactorFromOverall(impliedOvr(p));
+    const mins90 = Math.max(0, p.minutes) / 90;
+    p.goals = p.position === "GK" ? 0 : poisson(roleGoalRatePer90(p.position) * mins90 * af);
+    p.assists = poisson(roleAssistRatePer90(p.position) * mins90 * af * ASSIST_REALIZATION);
   }
-  const assistWeights = players.map((p) => {
-    const expected =
-      roleAssistRatePer90(p.position) * (p.minutes / 90) * abilityFactorFromOverall(impliedOvr(p));
-    return Math.max(0, expected);
-  });
-  // Assist volume tracks observed user-path A:G ratios under matched cells.
-  const assistPool = Math.round(goalsFor * 0.72);
-  for (let a = 0; a < assistPool; a++) {
-    const i = weightedPick(assistWeights, rng);
-    if (i >= 0) players[i].assists += 1;
+  // Soft team-budget nudge: if the roster wildly overshoots goalsFor, scale down
+  // so league tables stay plausible without rewriting individual rates.
+  const scored = players.reduce((s, p) => s + p.goals, 0);
+  const goalBudget = Math.max(0, Math.round(goalsFor * 0.92));
+  if (scored > goalBudget && scored > 0 && goalBudget >= 0) {
+    const scale = goalBudget / scored;
+    for (const p of players) p.goals = Math.floor(p.goals * scale);
   }
 
   // Clean sheets: P(shutout) = Poisson zero given goals against per game.
@@ -419,9 +430,12 @@ function rivalRatingFromOutput(p, teamQ, noise = 0) {
   const base = isGk ? RATING_BASELINE - 0.12 : isDef ? RATING_BASELINE + 0.04 : isMid ? RATING_BASELINE + 0.14 : RATING_BASELINE + 0.05;
   const outCoef = isGk ? 0.05 : isDef ? 0.09 : isMid ? 0.10 : 0.14;
   const talentCoef = isGk ? 0.04 : isDef ? 0.05 : isMid ? 0.07 : 0.08;
-  return Number(
-    clamp(base + 0.18 * teamQ + outCoef * out + talentCoef * talent + 0.1 * noise, 5.2, 8.2).toFixed(2)
-  );
+  // Partial seasons compress uplift; ≥60% minutes keep full scale for starters.
+  const frac = clamp((Number(p.minutes) || 0) / (38 * 90), 0, 1);
+  const floor = isGk || isDef ? 0.55 : 0.22;
+  const exposureScale = frac >= 0.6 ? 1 : clamp(Math.max(floor, frac / 0.6), floor, 1);
+  const uplift = 0.18 * teamQ + outCoef * out + talentCoef * talent + 0.1 * noise;
+  return Number(clamp(base + uplift * exposureScale, 5.2, 8.2).toFixed(2));
 }
 
 function adjustUserTeam(roster, userContext) {
@@ -561,9 +575,14 @@ function stripRival(r, { keepTalent = false } = {}) {
   return rest;
 }
 
-function fieldInputFingerprint(seasonContext, table, possibleMinutes) {
-  const user = seasonContext.user || {};
-  const userClub = seasonContext.userClub || null;
+/**
+ * Fingerprint the resolved generation inputs (not merely optional raw args).
+ * Callers must pass the same userClub / userPosition actually used for generation.
+ */
+function fieldInputFingerprint(resolved, table, possibleMinutes) {
+  const user = resolved.user || {};
+  const userClub = resolved.userClub || null;
+  const userPosition = resolved.userPosition ?? user.position ?? null;
   // Canonical per-team rows — redistributions that preserve aggregate sums must
   // still invalidate the fingerprint (club goals drive teammate budgets).
   const teamRows = table
@@ -579,7 +598,7 @@ function fieldInputFingerprint(seasonContext, table, possibleMinutes) {
     possibleMinutes: num(possibleMinutes),
     userGoals: num(user.goals),
     userAssists: num(user.assists),
-    userPosition: user.position ?? null,
+    userPosition: userPosition ?? null,
     userClubId: userClub?.clubId ?? userClub?.name ?? null,
     teams: table.length,
     tablePlayedSum: table.reduce((s, r) => s + num(r.played), 0),
@@ -664,7 +683,11 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
   if (!player.awardFields || typeof player.awardFields !== "object") player.awardFields = {};
 
   const stream = awardRng(rng, player, seasonId, `field:${editionId}`);
+  const user = seasonContext.user || {};
+  // Resolve optional overrides the same way generation does — fingerprint must
+  // key on these effective values, not only raw seasonContext.userClub.
   const userClub = seasonContext.userClub || player.club || null;
+  const userPosition = user.position ?? player.position ?? null;
   const standing = seasonContext.standing || null;
   const league = seasonContext.league || null;
   let table = Array.isArray(seasonContext.table) && seasonContext.table.length ? seasonContext.table : null;
@@ -678,7 +701,11 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
   const possibleMinutes = Math.max(...table.map((r) => num(r.played, 38))) * 90;
   const stage =
     seasonContext.fieldStage === FIELD_STAGE_PARTIAL ? FIELD_STAGE_PARTIAL : FIELD_STAGE_FINAL;
-  const fingerprint = fieldInputFingerprint(seasonContext, table, possibleMinutes);
+  const fingerprint = fieldInputFingerprint(
+    { user, userClub, userPosition },
+    table,
+    possibleMinutes
+  );
 
   const existing = player.awardFields[editionId];
   if (shouldReuseAwardField(existing, fingerprint)) {
@@ -689,7 +716,6 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
     return existing;
   }
 
-  const user = seasonContext.user || {};
   // 1) Generate every club's roster, user's included, exactly as for any other club.
   const rosters = table.map((row, teamIdx) => ({
     row,
@@ -706,7 +732,7 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
     adjustUserTeam(roster, {
       goals: user.goals,
       assists: user.assists,
-      position: user.position ?? player.position,
+      position: userPosition,
       teamGoals: row.goalsFor,
     });
   }
@@ -741,7 +767,7 @@ export function ensureCompetitionAwardField(player, seasonContext = {}, rng) {
       club: userClub?.name ?? null,
       goals: num(user.goals),
       assists: num(user.assists),
-      position: user.position ?? player.position ?? null,
+      position: userPosition,
       teamGoals: userTeamRow ? num(userTeamRow.goalsFor) : null,
     },
     note: "Approximate NPC field: multinomial split of table goals, Poisson clean sheets, seeded priors. Placeholder names. Ratings use the shared 6.0 baseline. Compact retention uses category eligibility metrics.",
@@ -1051,6 +1077,7 @@ export function evaluateSeasonAwards({
         standing,
         userClub: player.club,
         user: { goals: lineForUser.goals, assists: lineForUser.assists, position: evidence.position ?? player.position },
+        retainDiagnosticPopulation: Boolean(cfg.retainDiagnosticPopulation),
       },
       rng
     );

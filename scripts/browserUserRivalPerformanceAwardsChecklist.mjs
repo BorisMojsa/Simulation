@@ -183,6 +183,10 @@ async function launch(base) {
     if (/\.(png|jpe?g|gif|svg|ico|woff2?)(\?|$)/i.test(url)) return;
     guards.failedRequests.push({ url, error: req.failure()?.errorText || "failed" });
   });
+  page.on("dialog", async (dialog) => {
+    guards.warnings.push({ type: "dialog", message: dialog.message() });
+    await dialog.dismiss().catch(() => {});
+  });
   let lastErr = null;
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
@@ -440,7 +444,7 @@ async function driveSeasonToDesk(
 
     const holdContinue = !beforeContinue;
     const act = await page.evaluate(
-      ({ seasonsBefore: sb, hold, deskPolicy: policy }) => {
+      ({ seasonsBefore: sb, hold, deskPolicy: policy, allowRearm, deskDecisionCount }) => {
         const clicked = [];
         const d = window.__getLiveCareerDebug?.() || {};
         const nowCommitted = (d.seasonsCount ?? 0) > sb;
@@ -451,6 +455,95 @@ async function driveSeasonToDesk(
           if (choice) {
             choice.click();
             clicked.push("scenario");
+            return clicked;
+          }
+        }
+        const overlay = document.getElementById("season-animation-overlay");
+        const dashboard = document.getElementById("simulation-dashboard");
+        const overlayHidden = !overlay || overlay.classList.contains("hidden");
+        const dashboardHidden = !dashboard || dashboard.classList.contains("hidden");
+        const deskClear = overlayHidden && dashboardHidden;
+
+        // Mid-season squad discussion lives on the transfer tray after the
+        // dashboard closes. Never treat #sim-skip-phase-btn ("Skip remaining")
+        // as a stay choice — /remain/ matches that label.
+        const needsDecision =
+          d.nextAction?.id === "resolve-decision" ||
+          d.seasonCheckpoint === "awaiting_decision" ||
+          Boolean(d.pendingDecision);
+        if (needsDecision && deskClear) {
+          const tray = document.getElementById("transfer-offers") || document.body;
+          const trayButtons = [...tray.querySelectorAll("button")].filter(
+            (b) => !b.disabled && b.offsetParent !== null
+          );
+          const decisionActions = [
+            ...tray.querySelectorAll("[data-decision-actions] button, .career-decision-card button"),
+          ].filter((b) => !b.disabled && b.offsetParent !== null);
+          const pool = decisionActions.length ? decisionActions : trayButtons;
+          const isSkipLike = (t) => /skip remaining|skip phase|skip match|skip season/i.test(t);
+          const decisionBtn =
+            pool.find((b) => /^stay and compete$/i.test((b.textContent || "").trim())) ||
+            pool.find((b) => /^continue the season$/i.test((b.textContent || "").trim())) ||
+            pool.find((b) => /^focus on recovery$/i.test((b.textContent || "").trim())) ||
+            pool.find((b) => /^keep working$/i.test((b.textContent || "").trim())) ||
+            pool.find((b) => /^remain at the club$/i.test((b.textContent || "").trim())) ||
+            pool.find((b) => /^see out the contract$/i.test((b.textContent || "").trim())) ||
+            pool.find((b) =>
+              /^(acknowledge|see it out|remain|stay|understood|got it)$/i.test((b.textContent || "").trim())
+            ) ||
+            pool.find((b) => {
+              const t = (b.textContent || "").trim();
+              if (isSkipLike(t)) return false;
+              if (/review loan|see loan|decline offers|accept|sign for|seek a|request a permanent|ask to be sold/i.test(t))
+                return false;
+              return /stay and compete|continue the season|focus on recovery|keep working|see it out|remain at the club|^acknowledge$/i.test(
+                t
+              );
+            });
+          if (decisionBtn) {
+            decisionBtn.click();
+            clicked.push(`desk-decision:${(decisionBtn.textContent || "").trim()}`);
+            return clicked;
+          }
+          if (policy === "accept-cross-league") {
+            const loanTray =
+              trayButtons.find((b) => /review loan options|see loan|loan options/i.test(b.textContent || "")) ||
+              null;
+            if (loanTray) {
+              loanTray.click();
+              clicked.push(`desk-decision:${(loanTray.textContent || "").trim()}`);
+              return clicked;
+            }
+            const accept =
+              trayButtons.find((b) => /accept loan|accept offer|accept transfer|sign for/i.test(b.textContent || "")) ||
+              trayButtons.find((b) => /^accept$/i.test((b.textContent || "").trim()));
+            if (accept) {
+              accept.click();
+              clicked.push(`desk-decision:${(accept.textContent || "").trim()}`);
+              return clicked;
+            }
+          }
+          // Decision card not painted yet — wait; do not mash skip/continue.
+          return clicked;
+        }
+
+        if (
+          deskClear &&
+          (d.nextAction?.id === "resolve-scenario" || d.seasonCheckpoint === "awaiting_scenario")
+        ) {
+          const senior = document.getElementById("senior-scenario-overlay");
+          if (!senior || senior.classList.contains("hidden")) {
+            const sceneBtn = [...document.querySelectorAll("button")].find((b) => {
+              const t = (b.textContent || "").trim();
+              if (b.disabled || b.offsetParent === null) return false;
+              if (/skip remaining|decline offers|review loan/i.test(t)) return false;
+              return /balanced|continue|acknowledge|proceed|^ok$/i.test(t);
+            });
+            if (sceneBtn) {
+              sceneBtn.click();
+              clicked.push(`scenario:${(sceneBtn.textContent || "").trim()}`);
+              return clicked;
+            }
           }
         }
 
@@ -473,19 +566,20 @@ async function driveSeasonToDesk(
           return clicked;
         }
 
-        for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "sim-skip-match-btn", "match-skip-btn"]) {
-          const el = document.getElementById(id);
-          if (el && !el.disabled && el.offsetParent !== null) {
-            el.click();
-            clicked.push(id);
+        // Skip match/phase animations while the dashboard is open. Once the desk
+        // is clear, skip controls must not run — a pending decision is resolved
+        // via the transfer tray, not Skip remaining.
+        if (!deskClear) {
+          for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "sim-skip-match-btn", "match-skip-btn"]) {
+            const el = document.getElementById(id);
+            if (el && !el.disabled && el.offsetParent !== null) {
+              el.click();
+              clicked.push(id);
+            }
           }
         }
 
-        const overlay = document.getElementById("season-animation-overlay");
-        const dashboard = document.getElementById("simulation-dashboard");
-        const overlayHidden = !overlay || overlay.classList.contains("hidden");
-        const dashboardHidden = !dashboard || dashboard.classList.contains("hidden");
-        const midSeasonDesk = overlayHidden && dashboardHidden && !nowCommitted;
+        const midSeasonDesk = deskClear && !nowCommitted && !needsDecision;
         if (midSeasonDesk) {
           const host = document.getElementById("transfer-offers");
           const root = host || document.body;
@@ -512,25 +606,35 @@ async function driveSeasonToDesk(
             }
           }
           const stayBtn =
+            buttons.find((b) => /^stay and compete$/i.test((b.textContent || "").trim())) ||
             buttons.find((b) => /decline offers and continue at/i.test(b.textContent || "")) ||
-            buttons.find((b) =>
-              /stay|compete|acknowledge|decline offers and continue|see it out|remain|continue at/i.test(
-                b.textContent || ""
-              )
-            );
-          if (stayBtn) {
+            buttons.find((b) => /^acknowledge$|^see it out$|^remain$/i.test((b.textContent || "").trim()));
+          if (stayBtn && deskDecisionCount === 0) {
             stayBtn.click();
             clicked.push(`desk-decision:${(stayBtn.textContent || "").trim()}`);
+            return clicked;
           }
           const sim = document.getElementById("simulate-btn");
-          if (sim && !sim.disabled && /continue season/i.test(sim.textContent || "")) {
-            sim.click();
-            clicked.push("resume-season");
+          const simLabel = (sim?.textContent || "").trim();
+          if (sim && !sim.disabled) {
+            if (/continue season|resume/i.test(simLabel)) {
+              sim.click();
+              clicked.push("resume-season");
+            } else if (allowRearm && /simulate/i.test(simLabel)) {
+              sim.click();
+              clicked.push("rearm-simulate");
+            }
           }
         }
         return clicked;
       },
-      { seasonsBefore, hold: holdContinue, deskPolicy }
+      {
+        seasonsBefore,
+        hold: holdContinue,
+        deskPolicy,
+        allowRearm: trace.deskDecisions.length > 0,
+        deskDecisionCount: trace.deskDecisions.length,
+      }
     );
 
     for (const c of act) {

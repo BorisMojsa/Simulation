@@ -42,6 +42,10 @@ mkdirSync(fieldsRoot, { recursive: true });
 mkdirSync(snapsRoot, { recursive: true });
 const QUICK = process.env.FIX08_COHORT_QUICK === "1";
 const REQUIRE_TRACE = process.env.FIX08_COHORT_REQUIRE_TRACE !== "0";
+// Retain full pre-compaction award populations for independent rank recomputation.
+if (process.env.FIX08_RETAIN_FIELD_POPULATION == null) {
+  process.env.FIX08_RETAIN_FIELD_POPULATION = "1";
+}
 const periods = 3;
 
 const POSITIONS = ["ST", "LW", "RW", "CAM", "CM", "CDM", "RB", "CB", "LB", "GK", "CF", "LM"];
@@ -166,38 +170,73 @@ function summarizeSeason(p, data) {
   };
 }
 
+function rivalExport(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    position: r.position,
+    group: r.group,
+    club: r.club,
+    clubId: r.clubId,
+    minutes: r.minutes,
+    matches: r.matches,
+    starts: r.starts,
+    goals: r.goals,
+    assists: r.assists,
+    cleanSheets: r.cleanSheets,
+    rating: r.rating,
+    age: r.age,
+    priorSeniorMinutes: r.priorSeniorMinutes,
+    talent: r.talent,
+    userTeam: r.userTeam,
+    teamPpg: r.teamPpg,
+  };
+}
+
 /** Raw match/fixture observations + candidate field for independent recomputation. */
 function rawSeasonEvidence(p, data, meta) {
   const season = p.seasons?.at(-1) || data?.season || null;
   const fields = p.awardFields || {};
-  const fieldEntries = Object.entries(fields).map(([editionId, f]) => ({
-    editionId,
-    version: f?.version ?? null,
-    stage: f?.stage ?? null,
-    scope: f?.scope ?? null,
-    possibleMinutes: f?.possibleMinutes ?? null,
-    populationSize: f?.populationSize ?? null,
-    inputFingerprint: f?.inputFingerprint ?? null,
-    rivals: Array.isArray(f?.rivals)
-      ? f.rivals.map((r) => ({
-          id: r.id,
-          name: r.name,
-          position: r.position,
-          group: r.group,
-          club: r.club,
-          clubId: r.clubId,
-          minutes: r.minutes,
-          goals: r.goals,
-          assists: r.assists,
-          cleanSheets: r.cleanSheets,
-          rating: r.rating,
-          age: r.age,
-          priorSeniorMinutes: r.priorSeniorMinutes,
-          talent: r.talent,
-          userTeam: r.userTeam,
-        }))
-      : [],
-  }));
+  const fieldEntries = Object.entries(fields).map(([editionId, f]) => {
+    const base = {
+      editionId,
+      version: f?.version ?? null,
+      stage: f?.stage ?? null,
+      scope: f?.scope ?? null,
+      seasonId: f?.seasonId ?? null,
+      possibleMinutes: f?.possibleMinutes ?? null,
+      populationSize: f?.populationSize ?? null,
+      inputFingerprint: f?.inputFingerprint ?? null,
+      userContext: f?.userContext ?? null,
+      approximated: f?.approximated ?? null,
+      tableApproximated: f?.tableApproximated ?? null,
+      playerStatsApproximated: f?.playerStatsApproximated ?? null,
+      cleanSheetBasis: f?.cleanSheetBasis ?? null,
+      note: f?.note ?? null,
+      scoreUnits: f?.scoreUnits ?? null,
+      talentToAbility: f?.talentToAbility ?? null,
+    };
+    if (f?.scope === "world") {
+      return {
+        ...base,
+        candidates: Array.isArray(f.candidates) ? f.candidates : [],
+        // World fields do not use league rival rosters; keep empty for schema clarity.
+        rivals: [],
+      };
+    }
+    const compact = Array.isArray(f?.rivals) ? f.rivals.map(rivalExport) : [];
+    const full = Array.isArray(f?.diagnosticPopulation)
+      ? f.diagnosticPopulation.map(rivalExport)
+      : null;
+    return {
+      ...base,
+      referenceMoments: f?.referenceMoments ?? null,
+      rivals: compact,
+      diagnosticPopulation: full,
+      compactRivalCount: compact.length,
+      fullPopulationCount: full ? full.length : f?.populationSize ?? null,
+    };
+  });
   return {
     ...meta,
     seasonId: season?.seasonId ?? season?.seasonNumber ?? null,
@@ -207,7 +246,8 @@ function rawSeasonEvidence(p, data, meta) {
     awardRecords: Array.isArray(season?.awardRecords) ? season.awardRecords : [],
     awardNames: season?.individualAwards || season?.awardNames || [],
     decisionTrace: season?.awardDecisionTrace || data?.awards?.decisionTrace || null,
-    table: season?.leagueTable || data?.leagueTable || null,
+    // Production simulateSeason exposes the awards table on standings.table.
+    table: data?.standings?.table || season?.leagueTable || data?.leagueTable || null,
     awardFields: fieldEntries,
   };
 }
@@ -328,7 +368,7 @@ const dedicatedSpecs = [
   // Scoring-award positive: Golden Boot + TOTS (engine-proven careerId+seed).
   { label: "earned-outfield-boot-12225", position: "ST", club: "Ajax", ovr: 96, age: 23, seed: 12225, careerId: "s12225" },
   { label: "earned-outfield-tots-13011", position: "ST", club: "Ajax", ovr: 96, age: 23, seed: 13011, careerId: "fix08-b02" },
-  { label: "earned-gk-glove-11051", position: "GK", club: "Atalanta", ovr: 90, age: 22, seed: 11051, careerId: "s11051" },
+  { label: "earned-gk-glove-14076", position: "GK", club: "Atalanta", ovr: 90, age: 22, seed: 14076, careerId: "fix08-b03-gk" },
   { label: "ordinary-negative-8101", position: "ST", club: "Hull City", ovr: 70, age: 24, seed: 8101, careerId: "w8101" },
   { label: "thin-negative-Ajax-62", position: "CM", club: "Ajax", ovr: 62, age: 28, seed: 9301, careerId: "w9301" },
 ];

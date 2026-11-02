@@ -997,3 +997,35 @@ test("R3: fingerprint includes club identity and per-team rows", () => {
   assert.notEqual(refreshed, original);
   assert.equal(refreshed.userContext.teamGoals, 65);
 });
+
+test("R3: fingerprint uses resolved player.club when userClub override is omitted", () => {
+  const table = Array.from({ length: 20 }, (_, i) => ({
+    name: `C${i}`,
+    clubId: `c${i}`,
+    played: 38,
+    goalsFor: 45,
+    goalsAgainst: 40,
+    points: 55,
+    position: i + 1,
+  }));
+  const player = {
+    name: "fallback",
+    position: "ST",
+    club: table[0],
+    awardFields: {},
+  };
+  const ctx = {
+    seasonId: "s1",
+    competitionEditionId: "L::2026",
+    scope: "league",
+    table,
+    user: { goals: 10, assists: 5, position: "ST" },
+  };
+  const first = ensureCompetitionAwardField(player, { ...ctx, fieldStage: "partial" }, createRng(5));
+  assert.equal(first.inputFingerprint.userClubId, "c0");
+  player.club = table[1];
+  const final = ensureCompetitionAwardField(player, ctx, createRng(5));
+  assert.notEqual(final, first, "effective club change must invalidate unfinished field");
+  assert.equal(final.userContext.clubId, "c1");
+  assert.equal(final.inputFingerprint.userClubId, "c1");
+});

@@ -750,6 +750,14 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     rng: awardRng,
     seasonId,
     seasonStartAge,
+    options: {
+      // Cohort / QA exporters may retain the full pre-compaction population.
+      // Guard process: this module also runs in the browser career desk.
+      retainDiagnosticPopulation:
+        typeof process !== "undefined" &&
+        process.env &&
+        process.env.FIX08_RETAIN_FIELD_POPULATION === "1",
+    },
   });
   const individualAwards = awardResult.awardNames || [];
   const awardRecords = awardResult.records || [];

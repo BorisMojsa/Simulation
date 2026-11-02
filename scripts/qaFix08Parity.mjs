@@ -32,6 +32,15 @@ mkdirSync(outDir, { recursive: true });
 /** Predeclared before coefficient work; do not reshuffle to chase a pass. */
 const TRAIN_SEEDS = Object.freeze(Array.from({ length: 200 }, (_, i) => 91000 + i));
 const HOLDOUT_SEEDS = Object.freeze(Array.from({ length: 200 }, (_, i) => 92000 + i));
+/** Predeclared user-sample extensions (retains TRAIN/HOLDOUT; never replaces them). */
+const EXTRA_USER_SEEDS = Object.freeze([
+  ...Array.from({ length: 1000 }, (_, i) => 93000 + i),
+  ...Array.from({ length: 1000 }, (_, i) => 94000 + i),
+]);
+/** Disjoint production-field population seeds (train vs holdout never overlap). */
+const FIELD_TRAIN_SEED_KEYS = Object.freeze(Array.from({ length: 512 }, (_, i) => `t${i}`));
+const FIELD_HOLDOUT_SEED_KEYS = Object.freeze(Array.from({ length: 512 }, (_, i) => `h${i}`));
+const MIN_FIELD_N = 200;
 
 const ROLE_CELLS = Object.freeze([
   { role: "ST", group: "FWD" },
@@ -237,15 +246,15 @@ function buildDiagnosticField(ctx, seedKey = "0") {
   );
 }
 
-/** Merge several independently seeded diagnostic populations for denser matched cells. */
-function buildMergedDiagnosticField(ctx, copies = 6) {
+/** Merge independently seeded diagnostic populations (caller supplies disjoint seed keys). */
+function buildMergedDiagnosticField(ctx, seedKeys) {
   const populations = [];
   let retained = 0;
   let template = null;
-  for (let i = 0; i < copies; i++) {
-    const f = buildDiagnosticField(ctx, String(i));
+  for (const seedKey of seedKeys) {
+    const f = buildDiagnosticField(ctx, seedKey);
     if (!template) template = f;
-    populations.push(...(f.diagnosticPopulation || []).map((r) => ({ ...r, id: `${r.id}#${i}` })));
+    populations.push(...(f.diagnosticPopulation || []).map((r) => ({ ...r, id: `${r.id}#${seedKey}` })));
     retained += f.rivals.length;
   }
   return {
@@ -254,8 +263,22 @@ function buildMergedDiagnosticField(ctx, copies = 6) {
     populationSize: populations.length,
     rivals: template.rivals,
     retainedSize: retained,
-    mergedCopies: copies,
+    mergedCopies: seedKeys.length,
+    seedKeys: { start: seedKeys[0], end: seedKeys.at(-1), n: seedKeys.length },
   };
+}
+
+function minMatchedN(field, minutesTargets = MINUTES) {
+  let min = Infinity;
+  for (const { role, group } of ROLE_CELLS) {
+    for (const ovr of ABILITIES) {
+      for (const minutes of minutesTargets) {
+        const n = awardFieldMatched(field, group, ovr, minutes, role).n;
+        if (n < min) min = n;
+      }
+    }
+  }
+  return Number.isFinite(min) ? min : 0;
 }
 
 /**
@@ -382,21 +405,94 @@ for (const ctx of CONTEXTS) {
   }
 }
 
-const fields = {};
+// Extended user seasons (predeclared) for production-field rate uncertainty.
+const trainExtended = {};
+const holdoutExtended = {};
 for (const ctx of CONTEXTS) {
-  fields[ctx.id] = buildMergedDiagnosticField(ctx, 8);
+  for (const { role } of ROLE_CELLS) {
+    for (const ovr of ABILITIES) {
+      for (const minutes of MINUTES) {
+        const key = `${ctx.id}|${role}|${ovr}|${minutes}`;
+        const baseTrain = train.find(
+          (c) => c.contextId === ctx.id && c.role === role && c.ovr === ovr && c.minutes === minutes
+        );
+        const baseHold = holdout.find(
+          (c) => c.contextId === ctx.id && c.role === role && c.ovr === ovr && c.minutes === minutes
+        );
+        const extraT = runUserCell(role, ovr, minutes, ctx, EXTRA_USER_SEEDS, "train-extra");
+        const extraH = runUserCell(role, ovr, minutes, ctx, EXTRA_USER_SEEDS, "holdout-extra");
+        rawByCell[`${key}|train-extra`] = extraT.raw;
+        rawByCell[`${key}|holdout-extra`] = extraH.raw;
+        const mergeUser = (a, b) => {
+          const totalMinutes = a.totalMinutes + b.totalMinutes;
+          const totalGoals = a.totalGoals + b.totalGoals;
+          const totalAssists = a.totalAssists + b.totalAssists;
+          const ratings = [...(a.raw || []).map((x) => x.minutesWeightedRating), ...(b.raw || []).map((x) => x.minutesWeightedRating)].filter(
+            (v) => v != null
+          );
+          return {
+            ...a,
+            samples: a.samples + b.samples,
+            totalMinutes,
+            totalGoals,
+            totalAssists,
+            goalsPer90: totalMinutes > 0 ? (totalGoals * 90) / totalMinutes : 0,
+            assistsPer90: totalMinutes > 0 ? (totalAssists * 90) / totalMinutes : 0,
+            meanRating: mean(ratings),
+            ratingSe: seMean(ratings),
+          };
+        };
+        // Re-aggregate from stored raw in rawByCell for train/holdout base.
+        const trainRaw = rawByCell[key]?.train || [];
+        const holdRaw = rawByCell[key]?.holdout || [];
+        const reAgg = (raw, side) => {
+          const totalGoals = raw.reduce((s, x) => s + x.goals, 0);
+          const totalAssists = raw.reduce((s, x) => s + x.assists, 0);
+          const totalMinutes = raw.reduce((s, x) => s + x.totalMinutes, 0);
+          const ratings = raw.map((x) => x.minutesWeightedRating).filter((v) => v != null);
+          return {
+            side,
+            samples: raw.length,
+            totalGoals,
+            totalAssists,
+            totalMinutes,
+            goalsPer90: totalMinutes > 0 ? (totalGoals * 90) / totalMinutes : 0,
+            assistsPer90: totalMinutes > 0 ? (totalAssists * 90) / totalMinutes : 0,
+            meanRating: mean(ratings),
+            ratingSe: seMean(ratings),
+            raw,
+          };
+        };
+        trainExtended[key] = mergeUser(reAgg(trainRaw, "train"), extraT);
+        holdoutExtended[key] = mergeUser(reAgg(holdRaw, "holdout"), extraH);
+        delete extraT.raw;
+        delete extraH.raw;
+        delete trainExtended[key].raw;
+        delete holdoutExtended[key].raw;
+      }
+    }
+  }
 }
+
+const trainFields = {};
+const holdoutFields = {};
+for (const ctx of CONTEXTS) {
+  trainFields[ctx.id] = buildMergedDiagnosticField(ctx, FIELD_TRAIN_SEED_KEYS);
+  holdoutFields[ctx.id] = buildMergedDiagnosticField(ctx, FIELD_HOLDOUT_SEED_KEYS);
+}
+const fields = trainFields; // provenance / legacy name for train production fields
 
 const matchedComparisons = [];
 const awardFieldRatingChecks = [];
 for (const ctx of CONTEXTS) {
-  const field = fields[ctx.id];
+  const field = trainFields[ctx.id];
   for (const { role, group } of ROLE_CELLS) {
     for (const ovr of ABILITIES) {
       for (const minutes of MINUTES) {
         const user = train.find(
           (c) => c.contextId === ctx.id && c.role === role && c.ovr === ovr && c.minutes === minutes
         );
+        const userExt = trainExtended[`${ctx.id}|${role}|${ovr}|${minutes}`];
         const npcCell = runNpcCell(role, ovr, minutes, ctx, TRAIN_SEEDS, "train");
         rawByCell[`${ctx.id}|${role}|${ovr}|${minutes}|npc`] = npcCell.raw;
         delete npcCell.raw;
@@ -445,44 +541,41 @@ for (const ctx of CONTEXTS) {
         matchedComparisons.push(row);
         checks.push({ id: `matched-${ctx.id}-${role}-${ovr}-${minutes}`, pass: row.pass, detail: row });
 
-        // Production award-field population vs user (position + talent-mapped).
-        // All declared rating / G/90 / A/90 tolerances are hard gates for both contexts.
-        if (minutes === 90) {
-          const fieldNpc = awardFieldMatched(field, group, ovr, minutes, role);
-          const fieldRating = gapOk(user.meanRating ?? 0, fieldNpc.meanRating ?? 0, TOL.meanRatingAbs, 0);
-          const fieldG90 = gapOk(user.goalsPer90, fieldNpc.goalsPer90, TOL.rateAbs, TOL.rateRel);
-          const fieldA90 = gapOk(user.assistsPer90, fieldNpc.assistsPer90, TOL.rateAbs, TOL.rateRel);
-          // GK match ratings barely move with OVR; strong-talent keepers are not a
-          // matched ability cell for the rating gate. Rates still apply.
-          const ratingGate = !(role === "GK" && ovr >= 85);
-          const ratesPass = fieldG90.pass && fieldA90.pass;
-          const ratingPass = !ratingGate || fieldRating.pass;
-          const fieldRow = {
-            contextId: ctx.id,
-            role,
-            group,
-            ovr,
-            minutes,
-            hardGate: true,
-            userMeanRating: user.meanRating,
-            fieldMeanRating: fieldNpc.meanRating,
-            fieldN: fieldNpc.n,
-            band: fieldNpc.band,
-            populationSize: fieldNpc.populationSize,
-            retainedSize: fieldNpc.retainedSize,
-            rating: fieldRating,
-            goalsPer90: fieldG90,
-            assistsPer90: fieldA90,
-            pass: fieldNpc.n >= 5 && ratesPass && ratingPass,
-            rawNpc: fieldNpc.rawNpc,
-          };
-          awardFieldRatingChecks.push(fieldRow);
-          checks.push({
-            id: `award-field-${ctx.id}-${role}-${ovr}`,
-            pass: fieldRow.pass,
-            detail: { ...fieldRow, rawNpc: undefined },
-          });
-        }
+        // Production award-field population vs extended user (both exposures).
+        // All declared rating / G/90 / A/90 tolerances are hard gates, including GK.
+        const fieldNpc = awardFieldMatched(field, group, ovr, minutes, role);
+        const fieldRating = gapOk(userExt.meanRating ?? 0, fieldNpc.meanRating ?? 0, TOL.meanRatingAbs, 0);
+        const fieldG90 = gapOk(userExt.goalsPer90, fieldNpc.goalsPer90, TOL.rateAbs, TOL.rateRel);
+        const fieldA90 = gapOk(userExt.assistsPer90, fieldNpc.assistsPer90, TOL.rateAbs, TOL.rateRel);
+        const ratesPass = fieldG90.pass && fieldA90.pass;
+        const fieldRow = {
+          contextId: ctx.id,
+          role,
+          group,
+          ovr,
+          minutes,
+          hardGate: true,
+          fieldSplit: "train",
+          userSamples: userExt.samples,
+          userMeanRating: userExt.meanRating,
+          fieldMeanRating: fieldNpc.meanRating,
+          fieldN: fieldNpc.n,
+          band: fieldNpc.band,
+          populationSize: fieldNpc.populationSize,
+          retainedSize: fieldNpc.retainedSize,
+          rating: fieldRating,
+          goalsPer90: fieldG90,
+          assistsPer90: fieldA90,
+          pass: fieldNpc.n >= MIN_FIELD_N && ratesPass && fieldRating.pass,
+          rawNpc: fieldNpc.rawNpc,
+        };
+        awardFieldRatingChecks.push(fieldRow);
+        rawByCell[`${ctx.id}|${role}|${ovr}|${minutes}|award-field`] = fieldNpc.rawNpc;
+        checks.push({
+          id: `award-field-${ctx.id}-${role}-${ovr}-${minutes}`,
+          pass: fieldRow.pass,
+          detail: { ...fieldRow, rawNpc: undefined },
+        });
       }
     }
   }
@@ -564,6 +657,10 @@ const summary = {
   matchesPerSeason: MATCHES_PER_SEASON,
   trainSeeds: { start: TRAIN_SEEDS[0], end: TRAIN_SEEDS.at(-1), n: TRAIN_SEEDS.length },
   holdoutSeeds: { start: HOLDOUT_SEEDS[0], end: HOLDOUT_SEEDS.at(-1), n: HOLDOUT_SEEDS.length },
+  extraUserSeeds: { start: EXTRA_USER_SEEDS[0], end: EXTRA_USER_SEEDS.at(-1), n: EXTRA_USER_SEEDS.length },
+  fieldTrainSeeds: trainFields[CONTEXTS[0].id]?.seedKeys,
+  fieldHoldoutSeeds: holdoutFields[CONTEXTS[0].id]?.seedKeys,
+  minFieldN: MIN_FIELD_N,
   tolerances: TOL,
   talentToAbility: fields[CONTEXTS[0].id]?.talentToAbility,
   provenance,
@@ -577,6 +674,102 @@ const summary = {
   pass: failed.length === 0,
 };
 
+// Holdout: disjoint production fields + untouched user seeds (must also pass).
+const holdoutMatched = [];
+const holdoutAwardFieldChecks = [];
+for (const ctx of CONTEXTS) {
+  const field = holdoutFields[ctx.id];
+  for (const { role, group } of ROLE_CELLS) {
+    for (const ovr of ABILITIES) {
+      for (const minutes of MINUTES) {
+        const user = holdout.find(
+          (c) => c.contextId === ctx.id && c.role === role && c.ovr === ovr && c.minutes === minutes
+        );
+        const userExt = holdoutExtended[`${ctx.id}|${role}|${ovr}|${minutes}`];
+        const npcCell = runNpcCell(role, ovr, minutes, ctx, HOLDOUT_SEEDS, "holdout");
+        rawByCell[`${ctx.id}|${role}|${ovr}|${minutes}|holdout-npc`] = npcCell.raw;
+        delete npcCell.raw;
+        const rating = gapOk(user.meanRating ?? 0, npcCell.meanRating ?? 0, TOL.meanRatingAbs, 0);
+        const g90 = gapOk(user.goalsPer90, npcCell.goalsPer90, TOL.rateAbs, TOL.rateRel);
+        const a90 = gapOk(user.assistsPer90, npcCell.assistsPer90, TOL.rateAbs, TOL.rateRel);
+        let pass =
+          rating.pass && g90.pass && a90.pass && (role !== "GK" || (user.totalGoals === 0 && npcCell.totalGoals === 0));
+        const fieldNpc = awardFieldMatched(field, group, ovr, minutes, role);
+        const fr = gapOk(userExt.meanRating ?? 0, fieldNpc.meanRating ?? 0, TOL.meanRatingAbs, 0);
+        const fg = gapOk(userExt.goalsPer90, fieldNpc.goalsPer90, TOL.rateAbs, TOL.rateRel);
+        const fa = gapOk(userExt.assistsPer90, fieldNpc.assistsPer90, TOL.rateAbs, TOL.rateRel);
+        const fieldPass = fieldNpc.n >= MIN_FIELD_N && fg.pass && fa.pass && fr.pass;
+        pass = pass && fieldPass;
+        rawByCell[`${ctx.id}|${role}|${ovr}|${minutes}|holdout-award-field`] = fieldNpc.rawNpc;
+        const fieldRow = {
+          contextId: ctx.id,
+          role,
+          group,
+          ovr,
+          minutes,
+          fieldSplit: "holdout",
+          userSamples: userExt.samples,
+          fieldN: fieldNpc.n,
+          rating: fr,
+          goalsPer90: fg,
+          assistsPer90: fa,
+          pass: fieldPass,
+        };
+        holdoutAwardFieldChecks.push(fieldRow);
+        holdoutMatched.push({
+          contextId: ctx.id,
+          role,
+          ovr,
+          minutes,
+          rating,
+          goalsPer90: g90,
+          assistsPer90: a90,
+          fieldPass,
+          fieldN: fieldNpc.n,
+          pass,
+        });
+        checks.push({ id: `holdout-matched-${ctx.id}-${role}-${ovr}-${minutes}`, pass });
+        checks.push({
+          id: `holdout-award-field-${ctx.id}-${role}-${ovr}-${minutes}`,
+          pass: fieldPass,
+          detail: fieldRow,
+        });
+      }
+    }
+  }
+}
+writeFileSync(join(outDir, "holdout-matched.json"), JSON.stringify(holdoutMatched, null, 2));
+
+// Assert every summarized cell retained its expected raw records.
+const requiredRawSuffixes = ["", "|npc", "|train-extra", "|holdout-extra", "|award-field", "|holdout-npc", "|holdout-award-field"];
+const rawCoverage = [];
+for (const ctx of CONTEXTS) {
+  for (const { role } of ROLE_CELLS) {
+    for (const ovr of ABILITIES) {
+      for (const minutes of MINUTES) {
+        const base = `${ctx.id}|${role}|${ovr}|${minutes}`;
+        for (const suffix of requiredRawSuffixes) {
+          const key = suffix === "" ? base : `${base}${suffix}`;
+          const present = rawByCell[key] != null || (suffix === "" && rawByCell[base]?.train != null);
+          rawCoverage.push({ key, present });
+          if (!present) checks.push({ id: `raw-coverage-${key}`, pass: false });
+        }
+      }
+    }
+  }
+}
+
+// Recompute pass after holdout checks appended.
+summary.checks = checks.map((c) => ({ id: c.id, pass: c.pass }));
+summary.failed = checks.filter((c) => !c.pass).map((c) => c.id);
+summary.pass = summary.failed.length === 0;
+summary.holdoutMatched = holdoutMatched;
+summary.holdoutAwardFieldChecks = holdoutAwardFieldChecks;
+summary.rawCoverage = {
+  required: rawCoverage.length,
+  present: rawCoverage.filter((r) => r.present).length,
+  missing: rawCoverage.filter((r) => !r.present).map((r) => r.key),
+};
 writeFileSync(
   join(outDir, "parity-summary.json"),
   JSON.stringify(
@@ -588,74 +781,31 @@ writeFileSync(
     2
   )
 );
+// Raw exports written AFTER training + holdout so holdout-npc / holdout-award-field are present.
 writeFileSync(
   join(outDir, "raw-samples.json"),
   JSON.stringify(
     {
-      note: "Per-cell season-equivalent raw samples (user + shared-model NPC) and award-field matched rivals.",
+      note: "Per-cell season-equivalent raw samples (user + shared-model NPC + disjoint production award-field rivals). Written after holdout.",
+      seedRanges: {
+        train: summary.trainSeeds,
+        holdout: summary.holdoutSeeds,
+        extraUser: summary.extraUserSeeds,
+        fieldTrain: summary.fieldTrainSeeds,
+        fieldHoldout: summary.fieldHoldoutSeeds,
+      },
       rawByCell,
       awardFieldMatchedRaw: Object.fromEntries(
-        awardFieldRatingChecks.map((r) => [`${r.contextId}|${r.role}|${r.ovr}`, r.rawNpc || []])
+        awardFieldRatingChecks.map((r) => [
+          `${r.contextId}|${r.role}|${r.ovr}|${r.minutes}`,
+          r.rawNpc || [],
+        ])
       ),
     },
     null,
     2
   )
 );
-
-// Holdout: shared-model matched contract (untouched seeds; must also pass).
-const holdoutMatched = [];
-for (const ctx of CONTEXTS) {
-  const field = fields[ctx.id];
-  for (const { role, group } of ROLE_CELLS) {
-    for (const ovr of ABILITIES) {
-      for (const minutes of MINUTES) {
-        const user = holdout.find(
-          (c) => c.contextId === ctx.id && c.role === role && c.ovr === ovr && c.minutes === minutes
-        );
-        const npcCell = runNpcCell(role, ovr, minutes, ctx, HOLDOUT_SEEDS, "holdout");
-        rawByCell[`${ctx.id}|${role}|${ovr}|${minutes}|holdout-npc`] = npcCell.raw;
-        delete npcCell.raw;
-        const rating = gapOk(user.meanRating ?? 0, npcCell.meanRating ?? 0, TOL.meanRatingAbs, 0);
-        const g90 = gapOk(user.goalsPer90, npcCell.goalsPer90, TOL.rateAbs, TOL.rateRel);
-        const a90 = gapOk(user.assistsPer90, npcCell.assistsPer90, TOL.rateAbs, TOL.rateRel);
-        let pass =
-          rating.pass && g90.pass && a90.pass && (role !== "GK" || (user.totalGoals === 0 && npcCell.totalGoals === 0));
-        let fieldPass = null;
-        if (minutes === 90) {
-          const fieldNpc = awardFieldMatched(field, group, ovr, minutes, role);
-          const fr = gapOk(user.meanRating ?? 0, fieldNpc.meanRating ?? 0, TOL.meanRatingAbs, 0);
-          const fg = gapOk(user.goalsPer90, fieldNpc.goalsPer90, TOL.rateAbs, TOL.rateRel);
-          const fa = gapOk(user.assistsPer90, fieldNpc.assistsPer90, TOL.rateAbs, TOL.rateRel);
-          const ratingGate = !(role === "GK" && ovr >= 85);
-          fieldPass = fieldNpc.n >= 5 && fg.pass && fa.pass && (!ratingGate || fr.pass);
-          pass = pass && fieldPass;
-          rawByCell[`${ctx.id}|${role}|${ovr}|holdout-award-field`] = fieldNpc.rawNpc;
-        }
-        holdoutMatched.push({
-          contextId: ctx.id,
-          role,
-          ovr,
-          minutes,
-          rating,
-          goalsPer90: g90,
-          assistsPer90: a90,
-          fieldPass,
-          pass,
-        });
-        checks.push({ id: `holdout-matched-${ctx.id}-${role}-${ovr}-${minutes}`, pass });
-      }
-    }
-  }
-}
-writeFileSync(join(outDir, "holdout-matched.json"), JSON.stringify(holdoutMatched, null, 2));
-
-// Recompute pass after holdout checks appended.
-summary.checks = checks.map((c) => ({ id: c.id, pass: c.pass }));
-summary.failed = checks.filter((c) => !c.pass).map((c) => c.id);
-summary.pass = summary.failed.length === 0;
-summary.holdoutMatched = holdoutMatched;
-writeFileSync(join(outDir, "parity-summary.json"), JSON.stringify(summary, null, 2));
 
 console.log(
   JSON.stringify(
@@ -665,6 +815,7 @@ console.log(
       failed: summary.failed,
       cells: train.length,
       samplesPerCell: TRAIN_SEEDS.length,
+      extraUserSamples: EXTRA_USER_SEEDS.length,
       matchesPerSeason: MATCHES_PER_SEASON,
       matchedPass: matchedComparisons.filter((r) => r.pass).length,
       matchedTotal: matchedComparisons.length,
@@ -673,6 +824,10 @@ console.log(
       exposurePass: exposureChecks.filter((r) => r.pass).length,
       holdoutPass: holdoutMatched.filter((r) => r.pass).length,
       holdoutTotal: holdoutMatched.length,
+      rawPresent: summary.rawCoverage.present,
+      rawRequired: summary.rawCoverage.required,
+      minTrainFieldN: minMatchedN(trainFields[CONTEXTS[0].id]),
+      minHoldoutFieldN: minMatchedN(holdoutFields[CONTEXTS[0].id]),
     },
     null,
     2
