@@ -998,6 +998,47 @@ test("R3: fingerprint includes club identity and per-team rows", () => {
   assert.equal(refreshed.userContext.teamGoals, 65);
 });
 
+test("user-team assist room is independent of user goals", () => {
+  const table = Array.from({ length: 20 }, (_, i) => ({
+    name: `C${i}`,
+    clubId: `c${i}`,
+    played: 38,
+    goalsFor: i === 0 ? 20 : 45,
+    goalsAgainst: 40,
+    points: 55,
+    position: i + 1,
+  }));
+  function teammateAssists(userGoals) {
+    const player = { name: "assist-room", position: "ST", club: table[0], awardFields: {} };
+    const field = ensureCompetitionAwardField(
+      player,
+      {
+        seasonId: "s1",
+        competitionEditionId: "assist-room::2026",
+        scope: "league",
+        table,
+        user: { goals: userGoals, assists: 0, position: "ST" },
+        retainDiagnosticPopulation: true,
+      },
+      createRng(5)
+    );
+    return field.diagnosticPopulation
+      .filter((r) => r.clubId === "c0")
+      .reduce((s, r) => s + (r.assists || 0), 0);
+  }
+  const before = teammateAssists(0);
+  const afterAllGoals = teammateAssists(20);
+  assert.ok(before > 0 && before <= 20, `expected valid teammate assists, got ${before}`);
+  assert.equal(
+    afterAllGoals,
+    before,
+    "goal room must not clip already-valid teammate assists when user assists remain 0"
+  );
+  const mid = teammateAssists(10);
+  assert.ok(mid <= 20);
+  assert.ok(mid >= Math.min(before, afterAllGoals));
+});
+
 test("club budgets: assists never exceed goalsFor for any club including zero-goal", () => {
   const table = Array.from({ length: 20 }, (_, i) => ({
     name: `C${i}`,

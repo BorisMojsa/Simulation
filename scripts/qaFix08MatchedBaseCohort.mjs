@@ -63,7 +63,7 @@ import { simulateSeason } from "./js/simulation/seasonSimulator.js";
 import { deserializeCareerSnapshot } from "./js/simulation/careerSnapshot.js";
 import { setWorldState } from "./js/simulation/worldState.js";
 import { resetClubFinanceLedgers } from "./js/simulation/clubFinance.js";
-import { reseedCareerRng } from "./js/simulation/rng.js";
+import { reseedCareerRng, getSimRng } from "./js/simulation/rng.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)));
 const initialsDir = process.env.FIX08_INITIALS_DIR;
@@ -86,6 +86,7 @@ const records = [];
 const fixtureHashes = {};
 const leaguesSeen = new Set();
 const startedAt = new Date().toISOString();
+const rngRuntime = [];
 
 for (const file of files) {
   // Byte-copy finals initials so snapshot hashes stay identical.
@@ -116,6 +117,24 @@ for (const file of files) {
   }
   fixtureHashes[fxId] = sharedFixtureHash;
   leaguesSeen.add(player.club?.league || "?");
+
+  // Restore the archived numeric RNG state — never reseed from careerId strings
+  // (Number("ST-…") >>> 0 collapses to seed 1).
+  if (!Number.isFinite(Number(snap.rngSeed))) {
+    throw new Error("snapshot missing numeric rngSeed: " + file);
+  }
+  reseedCareerRng(snap.rngSeed);
+  const runtimeRngBeforeFirstPeriod = getSimRng().seed();
+  if (runtimeRngBeforeFirstPeriod !== snap.rngSeed) {
+    throw new Error(
+      "RNG restore failed for " + file + ": saved=" + snap.rngSeed + " actual=" + runtimeRngBeforeFirstPeriod
+    );
+  }
+  rngRuntime.push({
+    fixtureId: fxId,
+    snapshotRngSeed: snap.rngSeed,
+    runtimeRngBeforeFirstPeriod,
+  });
   writeFileSync(
     join(outDir, "fixtures", fxId + ".json"),
     JSON.stringify(
@@ -124,14 +143,15 @@ for (const file of files) {
         fixtureHash: sharedFixtureHash,
         initialSnapshotPath: "snapshots/" + file,
         initialSnapshotHash,
-        compat: { baseSha: ${JSON.stringify(BASE_SHA)}, note: "matched initials from final cohort; gameplay from base engine" },
+        snapshotRngSeed: snap.rngSeed,
+        runtimeRngBeforeFirstPeriod,
+        compat: { baseSha: ${JSON.stringify(BASE_SHA)}, note: "matched initials + restored snapshot.rngSeed; gameplay from base engine" },
       },
       null,
       2
     )
   );
 
-  if (player.careerId) reseedCareerRng(player.careerId);
   const age0 = player.age;
   for (let period = 0; period < periods; period++) {
     const seasonsBefore = player.seasons?.length || 0;
@@ -201,11 +221,17 @@ const summary = {
   sizePass: records.length >= 144,
   matchedInitialsFrom: "qa/fix08-runs/cohort/snapshots",
   scoringAwardWitness: null,
-  ok: incomplete.length === 0 && records.length >= 144 && leaguesSeen.size >= 3,
+  rngRuntime,
+  rngRestorePass: rngRuntime.every((r) => r.snapshotRngSeed === r.runtimeRngBeforeFirstPeriod),
+  ok:
+    incomplete.length === 0 &&
+    records.length >= 144 &&
+    leaguesSeen.size >= 3 &&
+    rngRuntime.every((r) => r.snapshotRngSeed === r.runtimeRngBeforeFirstPeriod),
   compat: {
     baseSha: ${JSON.stringify(BASE_SHA)},
     adapter: "qaFix08MatchedBaseCohort",
-    note: "Full initial snapshots byte-identical to final; gameplay from base engine at accepted SHA.",
+    note: "Full initial snapshots byte-identical to final; snapshot.rngSeed restored before period 0; gameplay from base engine at accepted SHA.",
   },
 };
 writeFileSync(join(outDir, "summary.json"), JSON.stringify(summary, null, 2));
@@ -214,12 +240,88 @@ writeFileSync(join(outDir, "provenance.json"), JSON.stringify({
   harnessDigest: summary.harnessDigest,
   matchedInitials: true,
   adapter: "qaFix08MatchedBaseCohort",
+  rngRuntime,
   startedAt,
   finishedAt: summary.finishedAt,
 }, null, 2));
-console.log(JSON.stringify({ outDir, periodRecords: summary.periodRecords, ok: summary.ok, wins: summary.wins }, null, 2));
+console.log(JSON.stringify({ outDir, periodRecords: summary.periodRecords, ok: summary.ok, wins: summary.wins, rngRestorePass: summary.rngRestorePass }, null, 2));
 process.exitCode = summary.ok ? 0 : 1;
 `;
+
+/**
+ * Same-implementation control: on the current tip, restoring snapshot.rngSeed must
+ * reproduce packaged final period-0 minutes/G/A. CareerId reseeding must not.
+ */
+async function sameEngineDriverControl() {
+  const { deserializeCareerSnapshot } = await import("../js/simulation/careerSnapshot.js");
+  const { setWorldState } = await import("../js/simulation/worldState.js");
+  const { resetClubFinanceLedgers } = await import("../js/simulation/clubFinance.js");
+  const { reseedCareerRng, getSimRng } = await import("../js/simulation/rng.js");
+  const { simulateSeason } = await import("../js/simulation/seasonSimulator.js");
+  const { LEAGUES, LEAGUE_LOOKUP } = await import("../js/data/leagues.js");
+  const probes = ["ST-HullCity-70-0", "CM-HullCity-71-4", "GK-Atalanta-70-9"];
+  const results = [];
+  for (const id of probes) {
+    const snapPath = join(finalSnaps, `${id}-initial.json`);
+    const finalLedger = join(finalDir, "ledgers", `${id}-p0.json`);
+    if (!existsSync(snapPath) || !existsSync(finalLedger)) {
+      throw new Error(`missing probe evidence for ${id}`);
+    }
+    const expected = JSON.parse(readFileSync(finalLedger, "utf8"));
+    const snap = JSON.parse(readFileSync(snapPath, "utf8"));
+
+    function runOnce(reseedMode) {
+      const restored = deserializeCareerSnapshot(JSON.parse(JSON.stringify(snap)));
+      const player = restored.player;
+      if (restored.world) setWorldState(restored.world);
+      resetClubFinanceLedgers();
+      if (reseedMode === "snapshot") reseedCareerRng(snap.rngSeed);
+      else reseedCareerRng(player.careerId);
+      const runtimeSeed = getSimRng().seed();
+      simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+        pauseForDecisions: false,
+        autoDecisionPolicy: "stay",
+      });
+      const season = player.seasons?.at(-1) || null;
+      return {
+        runtimeSeed,
+        minutes: season?.minutes ?? season?.leagueMinutes ?? null,
+        goals: season?.goals ?? null,
+        assists: season?.assists ?? null,
+      };
+    }
+
+    const withSnap = runOnce("snapshot");
+    const withCareer = runOnce("careerId");
+    const match =
+      withSnap.minutes === expected.minutes &&
+      withSnap.goals === expected.goals &&
+      withSnap.assists === expected.assists &&
+      withSnap.runtimeSeed === snap.rngSeed;
+    results.push({
+      fixtureId: id,
+      snapshotRngSeed: snap.rngSeed,
+      expected: { minutes: expected.minutes, goals: expected.goals, assists: expected.assists },
+      withSnapshotSeed: withSnap,
+      withCareerIdSeed: withCareer,
+      matchFinal: match,
+      careerIdDiverges:
+        withCareer.minutes !== withSnap.minutes ||
+        withCareer.goals !== withSnap.goals ||
+        withCareer.assists !== withSnap.assists,
+    });
+  }
+  const ok = results.every((r) => r.matchFinal && r.careerIdDiverges);
+  writeFileSync(
+    join(outDir, "same-engine-rng-control.json"),
+    JSON.stringify({ generatedAt: new Date().toISOString(), ok, results }, null, 2)
+  );
+  if (!ok) {
+    console.error(JSON.stringify({ sameEngineControl: results }, null, 2));
+    throw new Error("same-engine RNG driver control failed");
+  }
+  console.log(JSON.stringify({ sameEngineControlOk: true, probes: results.length }, null, 2));
+}
 
 try {
   writeFileSync(join(work, "_matchedBaseRunner.mjs"), runner);
@@ -242,6 +344,7 @@ try {
   process.stdout.write(run.stdout || "");
   process.stderr.write(run.stderr || "");
   if (run.status !== 0) process.exit(run.status || 1);
+  await sameEngineDriverControl();
 } finally {
   spawnSync("git", ["worktree", "remove", "--force", work], { cwd: root, encoding: "utf8" });
 }

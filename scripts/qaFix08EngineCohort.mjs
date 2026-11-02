@@ -296,6 +296,7 @@ for (const fx of fixtures) {
   writeFileSync(initialSnapshotPath, JSON.stringify(initialSnap));
   writeFileSync(join(snapsRoot, `${fx.id}-initial.json`), JSON.stringify(initialSnap));
   const initialSnapshotHash = hashJson(initialSnap);
+  const snapshotRngSeed = initialSnap.rngSeed;
   writeFileSync(
     join(outDir, "fixtures", `${fx.id}.json`),
     JSON.stringify(
@@ -313,6 +314,8 @@ for (const fx of fixtures) {
         },
         initialSnapshotPath: `snapshots/${fx.id}-initial.json`,
         initialSnapshotHash,
+        snapshotRngSeed,
+        runtimeRngBeforeFirstPeriod: snapshotRngSeed,
       },
       null,
       2

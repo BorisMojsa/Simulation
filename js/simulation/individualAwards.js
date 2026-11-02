@@ -338,25 +338,27 @@ function impliedOverallFromTalent(talent) {
   return clamp(70 + 12 * (Number.isFinite(talent) ? talent : 0), 55, 95);
 }
 
+/** Scale one roster statistic down to `limit` (floor); never increases totals. */
+function scaleRosterStat(players, key, limit) {
+  const total = players.reduce((s, p) => s + num(p[key]), 0);
+  if (total <= limit) return total;
+  if (limit <= 0) {
+    for (const p of players) p[key] = 0;
+    return 0;
+  }
+  const scale = limit / total;
+  for (const p of players) p[key] = Math.floor(num(p[key]) * scale);
+  return players.reduce((s, p) => s + num(p[key]), 0);
+}
+
 /**
  * Hard club budgets: modeled roster goals/assists cannot exceed table goalsFor
  * (assists ≤ goals). Remainder is the unmodeled squad share.
  */
 export function enforceClubBudgets(players, goalsFor) {
   const gf = Math.max(0, Math.round(num(goalsFor)));
-  const scaleKey = (key, limit) => {
-    const total = players.reduce((s, p) => s + num(p[key]), 0);
-    if (total <= limit) return total;
-    if (limit <= 0) {
-      for (const p of players) p[key] = 0;
-      return 0;
-    }
-    const scale = limit / total;
-    for (const p of players) p[key] = Math.floor(num(p[key]) * scale);
-    return players.reduce((s, p) => s + num(p[key]), 0);
-  };
-  const modeledGoals = scaleKey("goals", gf);
-  const modeledAssists = scaleKey("assists", gf);
+  const modeledGoals = scaleRosterStat(players, "goals", gf);
+  const modeledAssists = scaleRosterStat(players, "assists", gf);
   return {
     teamGoals: gf,
     modeledGoals,
@@ -532,22 +534,13 @@ function adjustUserTeam(roster, userContext) {
   if (idx < 0) idx = roster.players.findIndex((p) => p.group === group);
   if (idx >= 0) roster.players.splice(idx, 1);
 
-  // Teammates + user conserve against table goalsFor (assists ≤ goals).
+  // Independent remaining rooms: goals vs user goals; assists vs user assists.
+  // Teammates may assist goals the user scored — do not couple assist room to goal room.
   const gf = Math.max(0, Math.round(num(teamGoals)));
   const goalRoom = Math.max(0, gf - num(goals));
-  enforceClubBudgets(roster.players, goalRoom);
   const assistRoom = Math.max(0, gf - num(assists));
-  const assistTotal = roster.players.reduce((s, p) => s + num(p.assists), 0);
-  if (assistTotal > assistRoom) {
-    if (assistRoom <= 0) {
-      for (const p of roster.players) p.assists = 0;
-    } else {
-      const scale = assistRoom / assistTotal;
-      for (const p of roster.players) p.assists = Math.floor(num(p.assists) * scale);
-    }
-  }
-  const modeledGoals = roster.players.reduce((s, p) => s + num(p.goals), 0);
-  const modeledAssists = roster.players.reduce((s, p) => s + num(p.assists), 0);
+  const modeledGoals = scaleRosterStat(roster.players, "goals", goalRoom);
+  const modeledAssists = scaleRosterStat(roster.players, "assists", assistRoom);
   roster.budget = {
     teamGoals: gf,
     modeledGoals,
