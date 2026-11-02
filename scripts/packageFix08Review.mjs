@@ -131,15 +131,15 @@ writeFileSync(
 
 | Finding | Status | Evidence |
 | --- | --- | --- |
-| R1 Rival compaction changes decisions | CLOSED | \`selectRivalIds\` category retention; F/R1 tests; probes \`qa/rereview1/\` |
-| R2 Short-appearance double exposure | CLOSED | matchEngine share floors removed; R2 controlled starter/sub checks |
-| R3 Partial field cache lock | CLOSED | stage + inputFingerprint + refresh; R3 test |
-| R4 Unmatched parity | CLOSED | \`scripts/qaFix08Parity.mjs\` matched season-equivalent cells; exit nonzero on fail |
-| R5 Browser journeys forged | CLOSED | real Continue + \`__exportCareerSnapshot\`; B01–B07 ok=${browser?.ok} |
-| R6 Missing 48×3 / decision traces | CLOSED | 48×3 ×4 leagues; \`decisionTrace\` on every category; base/final comparison |
-| R7 Source identity / package | CLOSED | \`git archive\` + \`git ls-tree -r -z --full-tree\`; verified checksums |
+| R1 Rookie retention ≠ evaluation gate | CLOSED | \`minRookie = max(breakthroughMinutes, minParticipation×possibleMinutes)\`; 46-match control test; full≡compact nominated |
+| R2 Short-appearance double exposure | CLOSED | matchEngine share floors removed; R2 starter/sub checks |
+| R3 Partial field cache lock | CLOSED | fingerprint includes clubId + per-team rows; same-league move / GF redistribution refresh tests |
+| R4 Production rivals ≠ simulateMatch | CLOSED | rivals use exported \`roleGoalRatePer90\` / \`roleAssistRatePer90\` / \`abilityFactorFromOverall\`; award-field 16/16 hard gates; holdout 32/32 |
+| R5 Browser earned honors / helpers | CLOSED | \`awardSummary\` reads \`careerHonors.individualAwards\` + \`individualAwards\` names; B02 Golden Boot+TOTS; B03 Golden Glove+TOTS; B06 recognition exact-once; B07 FA search period; full snaps under \`qa/snapshots/\` |
+| R6 Raw ledgers / scoring witness | CLOSED | cohort ledgers include \`ledgerRecords\` + award fields; dedicated Golden Boot / Glove witnesses; full initial snapshot hashes |
+| R7 Fix07 pin + package identity | CLOSED | D-S1 capacity pin reconciled to live 3780 (3420+360); witness JSON; \`git archive\` + \`git ls-tree -r -z --full-tree\` |
 
-Do not treat this table as independent approval.
+Final \`${FULL}\`. Do not treat this table as independent approval.
 `
 );
 
