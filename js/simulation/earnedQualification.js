@@ -27,7 +27,16 @@ import { attachClubIdentity, getWorldState } from "./worldState.js";
 import { simulateMatch } from "./matchEngine.js";
 import { flattenRoundRobinFixtures } from "./seasonCalendar.js?v=89";
 import { competitionIdSlug } from "./continentalSchedule.js";
+import { formatForCompetitionName } from "../data/competitions/formats.js";
 import { effectiveTeamStrength } from "./teamStrength.js";
+
+/** Persist the real edition competitionId (e.g. uefa-champions-league), not a display-name slug. */
+function targetCompetitionIdFor(competition) {
+  if (!competition) return null;
+  const fromFormat = formatForCompetitionName(competition)?.competitionId;
+  if (fromFormat) return fromFormat;
+  return competitionIdSlug(competition);
+}
 
 export const EARNED_QUALIFICATION_RULE_VERSION = "fix09-v1";
 export const EARNED_QUALIFICATION_SCHEMA_VERSION = 1;
@@ -207,7 +216,7 @@ function buildEntriesFromTable(table, league, {
       qualificationLabel: row.qualification || "",
       competition: competition || null,
       status: competition ? "qualified" : "not-qualified",
-      targetCompetitionId: competition ? competitionIdSlug(competition) : null,
+      targetCompetitionId: targetCompetitionIdFor(competition),
       targetContinentalYear,
       sourceEditionYear,
       provenance,
@@ -215,6 +224,54 @@ function buildEntriesFromTable(table, league, {
     };
   }
   return entries;
+}
+
+/**
+ * Validate a domestic table before it becomes authoritative earned evidence.
+ * Rejects partial/incomplete/undated-identity, duplicate ranks, and foreign clubs.
+ */
+export function validateStandingTable(table, league, {
+  requireComplete = true,
+  status = null,
+  completed = null,
+  sourceYear = null,
+} = {}) {
+  if (!league || !Array.isArray(table) || !table.length) {
+    return { ok: false, reason: "missing-inputs" };
+  }
+  if (completed === false || status === "partial" || status === "in-progress") {
+    return { ok: false, reason: "incomplete-status" };
+  }
+  if (requireComplete && sourceYear != null && !Number.isFinite(Number(sourceYear))) {
+    return { ok: false, reason: "missing-source-year" };
+  }
+  const expectedClubs = (league.clubs || []).map((c) => c.clubId).filter(Boolean);
+  const expectedSet = new Set(expectedClubs);
+  const expectedSize = expectedClubs.length || table.length;
+  if (requireComplete && expectedClubs.length && table.length !== expectedSize) {
+    return { ok: false, reason: "incomplete-roster", expected: expectedSize, actual: table.length };
+  }
+  const rowIds = [];
+  const ranks = [];
+  for (const raw of table) {
+    const clubId = raw?.clubId || null;
+    if (!clubId) return { ok: false, reason: "missing-club-id" };
+    if (expectedSet.size && !expectedSet.has(clubId)) {
+      return { ok: false, reason: "foreign-club", clubId };
+    }
+    rowIds.push(clubId);
+    const norm = normalizeFinishPosition(raw.position, { tableSize: table.length });
+    if (!norm.ok) return { ok: false, reason: "invalid-positions", detail: norm.reason };
+    ranks.push(norm.position);
+  }
+  if (new Set(rowIds).size !== rowIds.length) return { ok: false, reason: "duplicate-club" };
+  if (new Set(ranks).size !== ranks.length) return { ok: false, reason: "duplicate-ranks" };
+  if (requireComplete) {
+    for (let i = 1; i <= table.length; i++) {
+      if (!ranks.includes(i)) return { ok: false, reason: "incomplete-rank-ordering", missing: i };
+    }
+  }
+  return { ok: true, size: table.length, ranks, clubIds: rowIds };
 }
 
 /**
@@ -230,16 +287,24 @@ export function commitCompletedDomesticEdition({
   status = "complete",
   matchEvidenceIds = null,
   forceReplace = false,
+  requireComplete = true,
 } = {}) {
   if (!world || !league || !Array.isArray(table) || !table.length) {
     return { ok: false, reason: "missing-inputs" };
   }
-  if (status === "complete" && provenance === "simulated-complete") {
-    // Partial / mid-season tables must not be labeled complete elsewhere.
+  if (status === "partial" || status === "in-progress") {
+    return { ok: false, reason: "incomplete-status" };
   }
   const leagueId = league.leagueId || leagueIdFromName(league.name);
   const sourceEditionYear = Number(sourceYear);
   if (!Number.isFinite(sourceEditionYear)) return { ok: false, reason: "bad-source-year" };
+  const validation = validateStandingTable(table, league, {
+    requireComplete: requireComplete && (status === "complete" || status === "bootstrap"),
+    status,
+    completed: status === "complete" || status === "bootstrap",
+    sourceYear: sourceEditionYear,
+  });
+  if (!validation.ok) return { ok: false, reason: validation.reason, validation };
   const map = ensureQualificationMaps(world);
   const key = domesticEditionKey(leagueId, sourceEditionYear);
   if (map.has(key) && !forceReplace) {
@@ -437,28 +502,34 @@ export function ingestStandingEvidence({
   sourceYear,
   provenance = "legacy-migrated",
   requireComplete = true,
+  status = null,
+  completed = null,
 } = {}) {
   if (!world || !league || !Array.isArray(table) || !table.length) {
     return { ok: false, reason: "missing" };
   }
-  const expectedClubs = new Set((league.clubs || []).map((c) => c.clubId).filter(Boolean));
-  const rowIds = table.map((r) => r.clubId).filter(Boolean);
-  if (requireComplete && expectedClubs.size && rowIds.length < Math.min(expectedClubs.size, table.length)) {
-    // Allow constructed full tables that are self-consistent even if smaller than live roster
-    // when every row has clubId and unique positions.
+  if (sourceYear == null || sourceYear === "" || !Number.isFinite(Number(sourceYear))) {
+    return { ok: false, reason: "missing-source-year" };
   }
-  const positions = table.map((r) => r.position);
-  const norms = positions.map((p) => normalizeFinishPosition(p, { tableSize: table.length }));
-  if (norms.some((n) => !n.ok)) return { ok: false, reason: "invalid-positions" };
-  const uniqueClubs = new Set(rowIds);
-  if (uniqueClubs.size !== rowIds.length) return { ok: false, reason: "duplicate-club" };
+  const sourceEditionYear = Number(sourceYear);
+  if (!Number.isInteger(sourceEditionYear) || sourceEditionYear < 1900) {
+    return { ok: false, reason: "missing-source-year" };
+  }
+  const validation = validateStandingTable(table, league, {
+    requireComplete,
+    status,
+    completed,
+    sourceYear: sourceEditionYear,
+  });
+  if (!validation.ok) return { ok: false, reason: validation.reason, validation };
   return commitCompletedDomesticEdition({
     world,
     league,
     table,
-    sourceYear,
+    sourceYear: sourceEditionYear,
     provenance,
     status: "complete",
+    requireComplete,
   });
 }
 
@@ -470,9 +541,14 @@ function playingClubIdOf(player) {
   );
 }
 
-function inferSourceYearFromLatestStanding(latest, targetYear) {
-  if (!latest) return sourceYearForContinentalTarget(targetYear);
+/**
+ * Recover source edition year only from unambiguous saved evidence.
+ * Never invent targetYear-1 for undated/partial imports.
+ */
+function inferSourceYearFromLatestStanding(latest) {
+  if (!latest) return null;
   if (Number.isFinite(Number(latest.sourceEditionYear))) return Number(latest.sourceEditionYear);
+  if (Number.isFinite(Number(latest.seasonYear))) return Number(latest.seasonYear);
   if (typeof latest.seasonId === "string") {
     const m = latest.seasonId.match(/::(\d{4})\b/);
     if (m) return Number(m[1]);
@@ -481,7 +557,7 @@ function inferSourceYearFromLatestStanding(latest, targetYear) {
   if (Number.isFinite(Number(latest.seasonNumber)) && Number.isFinite(Number(latest.careerStartYear))) {
     return Number(latest.careerStartYear) + Number(latest.seasonNumber) - 1;
   }
-  return sourceYearForContinentalTarget(targetYear);
+  return null;
 }
 
 /**
@@ -611,6 +687,9 @@ export function resolveClubContinentalEntry({
 function maybeEvidenceFromPlayer(player, league, clubId, sourceYear, targetYear) {
   const latest = player?.latestStanding;
   if (!latest?.table?.length) return null;
+  if (latest.completed === false || latest.status === "partial" || latest.status === "in-progress") {
+    return null;
+  }
   const latestLeagueId =
     latest.leagueId || latest.league?.leagueId || latest.playerRow?.leagueId || null;
   const currentLeagueId = league?.leagueId || leagueIdFromName(league?.name);
@@ -618,14 +697,19 @@ function maybeEvidenceFromPlayer(player, league, clubId, sourceYear, targetYear)
   // Only ingest when the destination club has a row — never promote playerRow from another club.
   const destRow = latest.table.find((r) => r.clubId === clubId);
   if (!destRow) return null;
-  const inferredYear = inferSourceYearFromLatestStanding(
-    { ...latest, careerStartYear: player?.startYear },
-    targetYear
-  );
-  if (inferredYear !== sourceYear) return null;
-  // Require a full-looking table (unique clubIds, valid positions).
-  const ids = latest.table.map((r) => r.clubId).filter(Boolean);
-  if (ids.length < 2) return null;
+  const inferredYear = inferSourceYearFromLatestStanding({
+    ...latest,
+    careerStartYear: player?.startYear,
+  });
+  if (inferredYear == null || inferredYear !== sourceYear) return null;
+  const validation = validateStandingTable(latest.table, league, {
+    requireComplete: true,
+    status: latest.status || "complete",
+    completed: latest.completed !== false,
+    sourceYear: inferredYear,
+  });
+  if (!validation.ok) return null;
+  void targetYear;
   return {
     table: latest.table,
     sourceYear: inferredYear,

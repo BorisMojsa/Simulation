@@ -222,47 +222,96 @@ function resolveClubProfile(clubId, nationHint = null) {
 }
 
 /**
- * Clubs that must not be synthetic fillers for this competition/target year.
- * Only authoritative non-qualifiers are excluded from inventory fill. Clubs that
- * earned a *different* competition remain eligible as marked synthetic fillers
- * when inventory requires it — participant selection still prefers earned peers
- * via post-sample swaps, and known non-qualifiers never receive an earned label.
+ * Clubs that must not appear in this competition/target year field.
+ * Known non-qualifiers and clubs earned into a *different* competition are blocked.
+ * Approximation stays limited to clubs without an authoritative decision.
  */
 function blockedNonQualifiers(world, competition, seasonYear) {
-  // Inventory fill may still approximate background clubs. Authoritative
-  // non-qualification is enforced at player-entry resolution time; stripping
-  // every domestic non-qualifier from the sampled pool desyncs career RNG from
-  // prior fixtures without improving earned-entry integrity for the focus club.
-  void world;
-  void competition;
-  void seasonYear;
-  return new Set();
+  const blocked = new Set();
+  if (!world || !competition || seasonYear == null) return blocked;
+  const map = world.qualification instanceof Map ? world.qualification : null;
+  if (!map) return blocked;
+  for (const [key, record] of map.entries()) {
+    if (!String(key).startsWith("domestic:")) continue;
+    if (!record?.completed || !record.entries) continue;
+    if (Number(record.targetContinentalYear) !== Number(seasonYear)) continue;
+    for (const entry of Object.values(record.entries)) {
+      if (!entry?.clubId) continue;
+      if (entry.status === "not-qualified") {
+        blocked.add(entry.clubId);
+        continue;
+      }
+      if (
+        entry.status === "qualified" &&
+        entry.competition &&
+        entry.competition !== competition
+      ) {
+        blocked.add(entry.clubId);
+      }
+    }
+  }
+  return blocked;
+}
+
+/**
+ * Authoritative sporting entry for attachment. Known DNQ / wrong-competition
+ * rejects; missing evidence returns null (legacy grandfather for already-drawn seats only).
+ */
+function sportingEntryAllowsClub(world, clubId, competition, seasonYear) {
+  if (!world || !clubId || !competition || seasonYear == null) return null;
+  const decided = getClubTargetDecision(world, clubId, seasonYear);
+  if (!decided?.entry) return null;
+  if (decided.entry.status === "not-qualified") return false;
+  if (
+    decided.entry.status === "qualified" &&
+    decided.entry.competition &&
+    decided.entry.competition !== competition
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function buildField(competition, playerClub, size, confederation, minOverall, rng, world = null, seasonYear = null) {
+  const blocked = blockedNonQualifiers(world, competition, seasonYear);
+  const focusKey = clubKey(playerClub);
+  // Focus club may still appear even if a contradictory decision exists — prepare
+  // already rejected pure DNQ focus paths; keep sampling eligibility for the seat.
+  const isBlocked = (c) => {
+    const id = clubKey(c);
+    return id && id !== focusKey && blocked.has(id);
+  };
   const opts = {
     excludeName: playerClub.name,
     excludeId: playerClub.clubId,
     limit: Math.max(size * 2, 48),
   };
-  let pool = clubsFromConfederation(confederation, { ...opts, minOverall });
-  // Thin inventories relax the quality floor before the format has to shrink.
-  for (let floor = minOverall - 4; pool.length < size - 1 && floor > 0; floor -= 4) {
-    pool = clubsFromConfederation(confederation, { ...opts, minOverall: floor });
+  // Keep the historical clubsFromConfederation limit / sampleField RNG pattern when no
+  // clubs are blocked. Filtering applies after the sample so empty-registry careers stay pinned.
+  let rawPool = clubsFromConfederation(confederation, { ...opts, minOverall });
+  for (let floor = minOverall - 4; rawPool.length < size - 1 && floor > 0; floor -= 4) {
+    rawPool = clubsFromConfederation(confederation, { ...opts, minOverall: floor });
   }
-
-  // Preserve the historical sampleField RNG consumption pattern, then enforce
-  // earned/non-earned constraints by swapping into the already-drawn field.
-  const blocked = blockedNonQualifiers(world, competition, seasonYear);
-  let field = sampleField(pool, playerClub, size, rng);
+  const pool = rawPool.filter((c) => !isBlocked(c));
+  // When blockers remove seats from the raw pool, refill from a wider inventory without
+  // changing the first sampleField draw size when the filtered pool is still large enough.
+  let samplePool = pool.length >= size - 1 ? pool : rawPool.filter((c) => !isBlocked(c));
+  if (samplePool.length < size - 1) {
+    samplePool = clubsFromConfederation(confederation, {
+      ...opts,
+      minOverall: 0,
+      limit: 500,
+    }).filter((c) => !isBlocked(c));
+  }
+  let field = sampleField(samplePool.length >= size - 1 ? samplePool : rawPool, playerClub, size, rng);
 
   const earned = world && seasonYear != null
     ? earnedClubsForCompetition(world, competition, seasonYear)
     : [];
   const have = new Set(field.map(clubKey));
-  const focusKey = clubKey(playerClub);
   for (const entry of earned) {
     if (!entry.clubId || have.has(entry.clubId)) continue;
+    if (blocked.has(entry.clubId) && entry.clubId !== focusKey) continue;
     const profile = resolveClubProfile(entry.clubId, entry.nation);
     if (!profile) continue;
     // Replace a synthetic / blocked seat — never the focus club.
@@ -288,8 +337,20 @@ function buildField(competition, playerClub, size, confederation, minOverall, rn
     const id = clubKey(field[i]);
     if (id === focusKey) continue;
     if (!blocked.has(id)) continue;
-    const replacement = pool.find((c) => !have.has(clubKey(c)) && !blocked.has(clubKey(c)));
-    if (!replacement) continue;
+    let replacement = pool.find((c) => !have.has(clubKey(c)) && !blocked.has(clubKey(c)));
+    if (!replacement) {
+      const wider = clubsFromConfederation(confederation, {
+        ...opts,
+        minOverall: 0,
+        limit: 500,
+      }).filter((c) => !have.has(clubKey(c)) && !blocked.has(clubKey(c)));
+      replacement = wider[0] || null;
+    }
+    if (!replacement) {
+      field.splice(i, 1);
+      have.delete(id);
+      continue;
+    }
     have.delete(id);
     field[i] = markSyntheticFieldClub(replacement, "inventory-fill");
     have.add(clubKey(replacement));
@@ -548,7 +609,8 @@ function involvesFocusClub(state, fixtureOrTie) {
 
 /**
  * User attachment: dated playing registration must match a fixture participant,
- * and destination continental policy must permit the attachment when leaving the focus club.
+ * destination must have sporting entry for this edition, and subsequent-registration
+ * policy must permit attachment. Mutable view focus never authorizes play.
  */
 function involvesAttachedPlayer(state, fixtureOrTie, player, date = null) {
   if (!player) return involvesFocusClub(state, fixtureOrTie);
@@ -562,11 +624,45 @@ function involvesAttachedPlayer(state, fixtureOrTie, player, date = null) {
   });
   if (!side) return false;
   const playingId = side === "home" ? fixtureOrTie.homeClubId : fixtureOrTie.awayClubId;
-  if (playingId === state.playerClubId) return true;
+  const world = getWorldState();
+  const entryOk = sportingEntryAllowsClub(
+    world,
+    playingId,
+    state.competition,
+    state.seasonYear
+  );
+  if (entryOk === false) return false;
+
+  // Immutable sporting focus (not soft viewFocusClubId) owns the registration exemption.
+  const editionFocusId = state.editionFocusClubId || state.playerClubId;
+  const seasonStartApprox = `${state.seasonYear || 2026}-07-01`;
+  const stints = player.playingStints || [];
+  const foreignStintBeforeFixture = stints.some(
+    (s) =>
+      s?.playingClubId &&
+      s.playingClubId !== editionFocusId &&
+      String(s.from) <= String(d) &&
+      (s.to == null || String(s.to) > String(seasonStartApprox))
+  );
+  const midSeasonArrivalAtFocus = stints.some(
+    (s) =>
+      s?.playingClubId === editionFocusId &&
+      s.kind !== "seed" &&
+      String(s.from) > seasonStartApprox &&
+      String(s.from) <= String(d)
+  );
+  // Original edition-focus career (no foreign stint / no mid-season arrival) may play.
+  if (playingId === editionFocusId && !foreignStintBeforeFixture && !midSeasonArrivalAtFocus) {
+    return true;
+  }
+
   const pendingFrom = player.pendingRegistration?.effectiveDate || null;
   const stintFrom = resolvePlayingClubAt(player, d) === playingId ? d : pendingFrom;
   const gate = canAttachToContinentalFixture({
-    edition: state,
+    edition: {
+      ...state,
+      playerClubId: editionFocusId,
+    },
     playingClubId: playingId,
     fixture: fixtureOrTie,
     registrationEffectiveDate: player.playingStints?.slice(-1)?.[0]?.from || stintFrom,
@@ -603,6 +699,8 @@ function createEditionState({ competition, competitionId, format, confederation,
     field: [],
     playerClub,
     playerClubId: clubKey(playerClub),
+    editionFocusClubId: clubKey(playerClub),
+    viewFocusClubId: clubKey(playerClub),
     openingPhase: format.openingPhase || "knockout",
     stageId: null,
     status: null,
@@ -2382,12 +2480,14 @@ export function prepareContinentalEdition({ standing, league, player, seasonYear
   if (liveWorld) {
     const existing = loadContinentalEdition({ competitionId, editionId, world: liveWorld });
     if (existing) {
+      if (!existing.editionFocusClubId) {
+        existing.editionFocusClubId = existing.playerClubId;
+      }
       const focusId = clubKey(playerClub);
       const inField = (existing.field || []).some((c) => clubKey(c) === focusId);
       if (inField) {
-        // Soft-focus for attachment/projections — do not persist a field rewrite.
-        existing.playerClub = existing.field.find((c) => clubKey(c) === focusId) || playerClub;
-        existing.playerClubId = focusId;
+        // Soft view-focus only: never rewrite sporting playerClubId / registration identity.
+        existing.viewFocusClubId = focusId;
       }
       return existing;
     }

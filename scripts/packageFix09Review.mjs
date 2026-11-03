@@ -24,10 +24,14 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHORT = spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const FULL = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const BASE = "984495e4c12df0c2dd1c84d124bc4cb743a0f63e";
+const PREV_TIP = "b874040211c82e8f4aafebdbde28df447112e228";
 const DESK = join(homedir(), "Desktop");
-const PKG_NAME = `09-Earned-Continental-Qualification-Review-${SHORT}`;
+const PKG_NAME = `09-Earned-Continental-Qualification-ReReview-${SHORT}`;
 const PKG = join(DESK, PKG_NAME);
 const ZIP = join(DESK, `${PKG_NAME}.zip`);
+if (existsSync(PKG) || existsSync(ZIP)) {
+  throw new Error(`Refusing to overwrite existing review package/ZIP: ${PKG_NAME}`);
+}
 
 function sh(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, ...opts });
@@ -75,7 +79,6 @@ if (dirtyTracked.length) {
   process.exit(2);
 }
 
-if (existsSync(PKG)) rmSync(PKG, { recursive: true, force: true });
 ensureDir(PKG);
 
 ensureDir(join(PKG, "source"));
@@ -107,8 +110,17 @@ writeFileSync(
     maxBuffer: 256 * 1024 * 1024,
   }).stdout || Buffer.alloc(0)
 );
+writeFileSync(
+  join(PKG, "diff/prev-tip-to-final.patch"),
+  spawnSync("git", ["diff", "--binary", PREV_TIP, FULL], {
+    cwd: ROOT,
+    encoding: "buffer",
+    maxBuffer: 256 * 1024 * 1024,
+  }).stdout || Buffer.alloc(0)
+);
 writeFileSync(join(PKG, "diff/name-status.txt"), sh("git", ["diff", "--name-status", BASE, FULL]).stdout);
 writeFileSync(join(PKG, "diff/stat.txt"), sh("git", ["diff", "--stat", BASE, FULL]).stdout);
+writeFileSync(join(PKG, "diff/prev-tip-name-status.txt"), sh("git", ["diff", "--name-status", PREV_TIP, FULL]).stdout);
 
 ensureDir(join(PKG, "reports"));
 copyFile(join(ROOT, "reports/fix09-earned-continental-qualification-audit.md"), join(PKG, "reports/audit.md"));
@@ -120,9 +132,24 @@ copyFile(
 const browser = readJson(join(ROOT, "qa/fix09-runs/browser/browser-report.json"));
 const qaReport = readJson(join(ROOT, "qa/fix09-runs/final/qa-report.json"));
 const focusedOk = qaReport?.focused?.pass === true;
-const cohortOk = (qaReport?.cohort?.oracleViolations ?? 1) === 0;
-const browserOk = browser?.ok === true;
-const ready = focusedOk && cohortOk && browserOk;
+const requiredPeriods = qaReport?.cohort?.requiredPeriods ?? 42;
+const cohortOk =
+  (qaReport?.cohort?.oracleViolations ?? 1) === 0 &&
+  (qaReport?.cohort?.completedPeriods ?? 0) >= requiredPeriods &&
+  qaReport?.corruptionControlsPass === true;
+const browserOk =
+  browser?.ok === true &&
+  browser?.subsetOnly !== true &&
+  browser?.requiredComplete === true &&
+  Array.isArray(browser?.requiredIds) &&
+  browser.requiredIds.length === 9;
+const testedSha = qaReport?.sourceSha || null;
+const ready =
+  focusedOk &&
+  cohortOk &&
+  browserOk &&
+  testedSha === FULL &&
+  !browser?.blocked;
 
 writeFileSync(
   join(PKG, "reports/qa-matrix.md"),
@@ -169,14 +196,17 @@ const manifest = {
   repository: "BorisMojsa/Simulation",
   branch: "fix/09-earned-continental-qualification",
   baseSha: BASE,
+  previousReviewedTip: PREV_TIP,
   finalSha: FULL,
+  testedSourceSha: testedSha,
   remoteSha: remote.split(/\s+/)[0] || null,
   createdAt: new Date().toISOString(),
-  provenanceVersion: 1,
+  provenanceVersion: 2,
   gates: {
     focused: focusedOk,
     cohort: cohortOk,
     browser: browserOk,
+    testedShaMatchesFinal: testedSha === FULL,
     ready,
   },
   commands: {
@@ -189,20 +219,25 @@ writeFileSync(join(PKG, "manifest.json"), JSON.stringify(manifest, null, 2));
 
 writeFileSync(
   join(PKG, "README.md"),
-  `# Fix 09 — Earned continental qualification
+  `# Fix 09 — Earned continental qualification (ReReview)
 
 **Verdict: ${ready ? "READY FOR REVIEW" : "BLOCKED"}**
 
 - Branch: \`fix/09-earned-continental-qualification\`
-- Base: \`${BASE}\`
+- Accepted predecessor: \`${BASE}\`
+- Previous reviewed tip: \`${PREV_TIP}\`
 - Final: \`${FULL}\`
+- QA tested source: \`${testedSha || "(missing)"}\`
 - Remote: \`${manifest.remoteSha || "(push required)"}\`
 
-## Problem / result
+## ReReview repairs
 
-Continental entry belonged to the player's last standing row or OVR bands, so a move Arsenal→Brentford could inherit Champions League. Editions also rebuilt when focus changed.
-
-Fix 09 resolves entry from club + domestic/continental edition evidence on \`world.qualification\`, freezes shared editions, and keeps registration separate from sporting qualification.
+- R1: known non-qualifiers / wrong-competition clubs blocked from fields and player attachment
+- R2: incomplete / undated / invalid tables rejected without registry mutation
+- R3: soft view-focus no longer bypasses subsequent-registration policy
+- R4: cohort oracle fails missing/wrong evidence; exports fuller snapshots
+- R5: browser journeys require real moves/loans/re-signing and all nine IDs
+- R6: injury twin fixture seeds world RNG; package gates require full evidence
 
 ## Replay
 
@@ -216,13 +251,8 @@ node scripts/browserEarnedContinentalQualificationChecklist.mjs
 ## Gates
 
 - Focused F01–F25: ${focusedOk ? "PASS" : "FAIL"}
-- Cohort 14×3: ${qaReport?.cohort?.completedPeriods ?? "?"} periods, oracle violations ${qaReport?.cohort?.oracleViolations ?? "?"}
+- Cohort 14×3: ${qaReport?.cohort?.completedPeriods ?? "?"} / ${requiredPeriods} periods, oracle violations ${qaReport?.cohort?.oracleViolations ?? "?"}
 - Browser B01–B09: ${browserOk ? "PASS" : "FAIL"}
-
-## Known limitations
-
-- Synthetic continental inventory fills remain; they are labeled and cannot grant earned entry to a known non-qualifier focus club.
-- Full-suite injury deep-equal pin remains an ambient Fix 08 tip failure when reproduced in isolation.
 `
 );
 
@@ -256,7 +286,31 @@ const sourceFiles = walk(join(root, "source")).map((p) => relative(join(root, "s
 const indexed = new Set(index.files.map((f) => f.path));
 for (const p of sourceFiles) if (!indexed.has(p)) { console.error("extra source", p); bad++; }
 for (const p of indexed) if (!sourceFiles.includes(p)) { console.error("missing source", p); bad++; }
-JSON.parse(readFileSync(join(root, "manifest.json"), "utf8"));
+const manifest = JSON.parse(readFileSync(join(root, "manifest.json"), "utf8"));
+if (!manifest.finalSha || !manifest.baseSha || !manifest.previousReviewedTip) {
+  console.error("manifest missing identity fields");
+  bad++;
+}
+if (manifest.gates?.ready && manifest.testedSourceSha !== manifest.finalSha) {
+  console.error("tested source sha does not match final sha");
+  bad++;
+}
+function parseJson(path) {
+  try { JSON.parse(readFileSync(path, "utf8")); }
+  catch (err) { console.error("json-parse-fail", relative(root, path), err.message); bad++; }
+}
+for (const p of walk(root)) {
+  if (p.endsWith(".json")) parseJson(p);
+}
+for (const f of index.files) {
+  const full = join(root, "source", f.path);
+  if (!existsSync(full)) { console.error("missing blob path", f.path); bad++; continue; }
+  const blob = createHash("sha1").update(Buffer.concat([
+    Buffer.from("blob " + statSync(full).size + "\\0"),
+    readFileSync(full),
+  ])).digest("hex");
+  if (f.blob && f.blob !== blob) { console.error("blob-mismatch", f.path, f.blob, blob); bad++; }
+}
 process.exit(bad ? 1 : 0);
 `;
 writeFileSync(join(PKG, "verify-package.mjs"), verifyScript);
@@ -270,7 +324,6 @@ walk(PKG, (p) => {
 sumLines.sort((a, b) => a.slice(66).localeCompare(b.slice(66)));
 writeFileSync(join(PKG, "SHA256SUMS.txt"), sumLines.join("\n") + "\n");
 
-if (existsSync(ZIP)) rmSync(ZIP, { force: true });
 sh("zip", ["-qr", ZIP, PKG_NAME], { cwd: DESK });
 const zipHash = sha256File(ZIP);
 

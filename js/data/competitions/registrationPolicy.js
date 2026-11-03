@@ -59,9 +59,25 @@ export function canAttachToContinentalFixture({
   if (!involved) return { ok: false, reason: "not-fixture-participant" };
 
   const policy = registrationPolicyForFormat(edition.format);
-  const focusId = edition.playerClubId;
-  // Still representing the edition focus club: always allowed when registered.
-  if (playingClubId === focusId) return { ok: true };
+  // Immutable sporting focus — soft viewFocusClubId must never authorize attachment.
+  // Callers that authorize the original continuous focus player should pass
+  // editionFocusClubId and only invoke this gate for mid-season / destination arrivals.
+  const focusId = edition.editionFocusClubId || edition.playerClubId;
+  if (playingClubId === focusId && edition.allowFocusExemption !== false) {
+    const seasonYear = edition.seasonYear;
+    const seasonStart = Number.isFinite(Number(seasonYear)) ? `${seasonYear}-07-01` : null;
+    // A dated mid-season registration at the focus club is not exempt.
+    if (
+      registrationEffectiveDate &&
+      seasonStart &&
+      registrationEffectiveDate > seasonStart &&
+      edition.treatFocusAsSubsequentArrival
+    ) {
+      // fall through
+    } else if (!edition.treatFocusAsSubsequentArrival) {
+      return { ok: true };
+    }
+  }
 
   // Destination attachment into an ongoing edition.
   if (policy.leaguePhaseImmediate === false && fixture.stageType === "league") {

@@ -476,6 +476,47 @@ async function driveSeasonToDesk(
     deskPolicy,
     alreadyRunning,
   };
+  // Clear desk decisions that block Simulate (injury recovery, offers, etc.) before arming.
+  for (let guard = 0; guard < 12; guard++) {
+    const pre = await uiState(page);
+    if (!pre.simulateDisabled && pre.overlayHidden && pre.dashboardHidden && !pre.seasonActionInFlight) break;
+    const cleared = await page.evaluate((policy) => {
+      const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
+      const click = (re) => {
+        const btn = buttons.find((b) => re.test((b.textContent || "").trim()));
+        if (btn) {
+          btn.click();
+          return (btn.textContent || "").trim();
+        }
+        return null;
+      };
+      if (policy === "accept-move" || policy === "accept-cross-league") {
+        const loan = click(/review loan options|see loan|loan options/i);
+        if (loan) return `desk-decision:${loan}`;
+        const accept = click(/accept loan|accept offer|accept transfer|sign for|^accept$/i);
+        if (accept) return `desk-decision:${accept}`;
+      }
+      if (policy === "decline-offers") {
+        const decline = click(/decline all|decline offers|no thanks|continue as free agent|remain a free agent/i);
+        if (decline) return `desk-decision:${decline}`;
+      }
+      const stay =
+        click(/^stay and compete$/i) ||
+        click(/^continue the season$/i) ||
+        click(/^focus on recovery$/i) ||
+        click(/^keep working$/i) ||
+        click(/^acknowledge$/i) ||
+        click(/decline offers and continue at/i) ||
+        click(/^see it out$|^remain$|^understood$|^got it$/i);
+      return stay ? `desk-decision:${stay}` : null;
+    }, deskPolicy);
+    if (cleared?.startsWith("desk-decision:")) {
+      trace.deskDecisions.push(cleared.slice("desk-decision:".length));
+      await page.waitForTimeout(200);
+      continue;
+    }
+    break;
+  }
   const ui0 = await uiState(page);
   if (!alreadyRunning) {
     assert(ui0.simulateDisabled === false, "simulate must be enabled", ui0);
@@ -709,7 +750,7 @@ function relevantErrors(guards) {
 }
 
 const cases = {
-  /** Same-club earned rollover: seeded CL finish → season → Continue preserves entry. */
+  /** Same-club earned rollover: play season → Continue → next edition from saved final table. */
   async B01(page, guards) {
     const snap = buildSeededSnap({
       id: "fix09-b01",
@@ -727,6 +768,7 @@ const cases = {
     const desk = await exportSnapshot(page);
     await writeCase("B01-before-continue.json", slimEvidence(driven.beforeContinue));
     await writeCase("B01-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B01-desk.full.json", desk);
     const before = qualSummary(driven.beforeContinue.snapshot.player, driven.beforeContinue.snapshot);
     const after = qualSummary(desk.player, desk);
     assert(before.seasons >= 1, "season must complete", before);
@@ -734,137 +776,239 @@ const cases = {
     assert(after.seasons === before.seasons && after.age === before.age, "Continue exact-once", { before, after });
     assert(after.europe.competition === before.europe.competition, "Continue preserves Europe", { before, after });
     assert(after.arsenal2026?.competition === "Champions League" || after.arsenal2026?.position === 1, "registry retained", after);
+
+    // Next edition must start from the just-played final table (Continue already applied).
+    const next = await driveSeasonToDesk(page, { seasonsBefore: after.seasons, shotPrefix: "B01-next" });
+    const nextDesk = await exportSnapshot(page);
+    await writeCase("B01-next-desk.json", slimEvidence(nextDesk));
+    await writeFullSnapshot("B01-next-desk.full.json", nextDesk);
+    const nextSum = qualSummary(nextDesk.player, nextDesk);
+    assert(nextSum.seasons === after.seasons + 1, "second season completed", { after, nextSum });
+    const finalTable = (next.beforeContinue.snapshot.player.seasons || []).at(-2)?.standing?.table
+      || (desk.player.seasons || []).at(-1)?.standing?.table;
+    assert(Array.isArray(finalTable) && finalTable.length > 0, "prior final table present for next entry");
+    const arsenalRow = finalTable.find((r) => r.clubId === ARSENAL);
+    assert(arsenalRow, "Arsenal row in completed source table", finalTable?.length);
+    assert(nextSum.europe.competition, "next edition continental competition present", nextSum);
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, before, after, continued: true };
+    return { ok: true, before, after, next: nextSum, continued: true, nextEditionFromPlayedTable: true };
   },
 
-  /** Off-season Arsenal→Brentford: no CL inheritance; fresh-page restore. */
+  /** Off-season Arsenal→Brentford: accept real permanent offer; no CL inheritance; fresh restore. */
   async B02(page, guards) {
-    const snap = buildSeededSnap({
-      id: "fix09-b02",
-      clubId: BRENTFORD,
-      seed: 9102,
-      ovr: 76,
-      placements: { 1: ARSENAL, 17: BRENTFORD },
-      stalePlayerRowClubId: ARSENAL,
+    const { buildOwnershipTransferBrowserFixture } = await import(
+      "../js/simulation/ownershipTransferBrowserFixture.js"
+    );
+    const fixture = buildOwnershipTransferBrowserFixture({ seed: 9102, careerId: "fix09-b02" });
+    assert(fixture.ok, "ownership transfer fixture ready", fixture);
+    // Ensure earned DNQ for Brentford remains authoritative for destination entry.
+    const league = leagueById(EPL);
+    commitCompletedDomesticEdition({
+      world: getWorldState(),
+      league,
+      table: orderedTable(league, { 1: ARSENAL, 2: "club:england:crystal-palace", 3: "club:england:everton", 4: "club:england:leeds-united", 17: BRENTFORD }),
+      sourceYear: 2025,
+      forceReplace: true,
     });
+    const snap = serializeCareerSnapshot({ player: fixture.player, world: getWorldState() });
     await writeCase("B02-initial.json", slimEvidence(snap));
     await writeFullSnapshot("B02-initial.full.json", snap);
     await restore(page, snap);
     await shot(page, "B02-01-start");
     assert(clubDecision(snap, BRENTFORD, 2026)?.status === "not-qualified", "Brentford DNQ seeded");
-    const driven = await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B02" });
+    // Mid-season pause already awaiting decision with Brentford permanent offer — accept it.
+    await page.waitForTimeout(300);
+    const accepted = await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
+      const hit =
+        buttons.find((b) => /brentford/i.test(b.textContent || "") && /accept|sign/i.test(b.textContent || "")) ||
+        buttons.find((b) => /accept offer|accept transfer|sign for|^accept$/i.test((b.textContent || "").trim()));
+      if (!hit) return null;
+      hit.click();
+      return (hit.textContent || "").trim();
+    });
+    assert(accepted, "must click Accept on Brentford permanent offer", { accepted });
+    const driven = await driveSeasonToDesk(page, {
+      seasonsBefore: (snap.player.seasons || []).length,
+      alreadyRunning: true,
+      shotPrefix: "B02",
+      deskPolicy: "stay",
+      timeoutMs: 240000,
+    });
     const desk = await exportSnapshot(page);
     await writeCase("B02-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B02-desk.full.json", desk);
     const sum = qualSummary(desk.player, desk);
-    assert(sum.playingClubId === BRENTFORD, "still Brentford", sum);
-    assert(
-      !sum.europe.qualified || sum.europe.competition !== "Champions League",
-      "no Arsenal CL inheritance",
-      sum
-    );
+    assert(sum.playingClubId === BRENTFORD, "accepted move to Brentford", sum);
     assert(sum.brentford2026?.status === "not-qualified" || sum.brentford2026?.position === 17, "DNQ retained", sum);
+    const last = (desk.player.seasons || []).at(-1);
+    const moveDate = "2027-01-01";
+    const postMoveBrentfordCl = (last?.europeanCampaign?.playerMatches || []).filter(
+      (m) =>
+        String(m.date || "") >= moveDate &&
+        (m.home?.clubId === BRENTFORD || m.away?.clubId === BRENTFORD || m.teamId === BRENTFORD)
+    );
+    assert(postMoveBrentfordCl.length === 0, "Brentford must not inherit Arsenal CL attachments", {
+      postMoveBrentfordCl,
+      europe: sum.europe,
+    });
     await freshRestore(page, desk);
     const restored = await exportSnapshot(page);
     await writeCase("B02-fresh-restore.json", slimEvidence(restored));
+    await writeFullSnapshot("B02-fresh-restore.full.json", restored);
     const rSum = qualSummary(restored.player, restored);
     assert(rSum.playingClubId === BRENTFORD, "fresh restore club");
-    assert(
-      !rSum.europe.qualified || rSum.europe.competition !== "Champions League",
-      "fresh restore no CL inheritance",
-      rSum
-    );
+    assert(rSum.seasons === sum.seasons && rSum.age === sum.age, "fresh restore seasons/age", { sum, rSum });
+    assert(rSum.brentford2026?.status === "not-qualified" || rSum.brentford2026?.position === 17, "fresh restore DNQ", rSum);
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, sum, restored: rSum, freshRestore: true };
+    return { ok: true, sum, restored: rSum, freshRestore: true, transferAccepted: true, deskDecisions: driven.trace.deskDecisions };
   },
 
-  /** Non-qualified path → move onto qualified Arsenal grants CL. */
+  /** Same career: non-qualified Brentford → accept move onto qualified Arsenal. */
   async B03(page, guards) {
-    const negative = buildSeededSnap({
-      id: "fix09-b03-neg",
+    const snap = buildSeededSnap({
+      id: "fix09-b03",
       clubId: BRENTFORD,
       seed: 9103,
-      ovr: 74,
-      placements: { 1: ARSENAL, 17: BRENTFORD },
-    });
-    await writeCase("B03-negative-initial.json", slimEvidence(negative));
-    await restore(page, negative);
-    const drivenNeg = await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B03-neg" });
-    const negSum = qualSummary(drivenNeg.beforeContinue.snapshot.player, drivenNeg.beforeContinue.snapshot);
-    assert(
-      !negSum.europe.qualified || negSum.europe.competition !== "Champions League",
-      "Brentford negative path",
-      negSum
-    );
-
-    const positive = buildSeededSnap({
-      id: "fix09-b03-pos",
-      clubId: ARSENAL,
-      seed: 9104,
       ovr: 80,
       placements: { 1: ARSENAL, 17: BRENTFORD },
-      stalePlayerRowClubId: BRENTFORD,
     });
-    await writeCase("B03-positive-initial.json", slimEvidence(positive));
-    await restore(page, positive);
-    const drivenPos = await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B03-pos" });
+    const arsenal = clubIn(leagueById(EPL), ARSENAL);
+    const offer = {
+      offerId: `fix09-b03:${ARSENAL}`,
+      club: arsenal.name,
+      clubDisplay: arsenal.displayName || arsenal.name,
+      clubId: ARSENAL,
+      league: "England - Premier League",
+      leagueId: EPL,
+      nation: "England",
+      dealType: "permanent",
+      isLoan: false,
+      isRenewal: false,
+      isFreeAgent: false,
+      transferFee: 15_000_000,
+      wage: 8000,
+      contractYears: 3,
+      expectedRole: "starter",
+      status: "pending",
+      effectiveDate: "2026-07-01",
+      reviewDate: "2026-07-01",
+    };
+    snap.player.pendingOffers = [offer];
+    snap.player.pendingDecision = { kind: "transfer-offers", offers: [offer] };
+    await writeCase("B03-initial.json", slimEvidence(snap));
+    await writeFullSnapshot("B03-initial.full.json", snap);
+    await restore(page, snap);
+    const startSum = qualSummary(snap.player, snap);
+    assert(
+      !startSum.europe.qualified || startSum.europe.competition !== "Champions League",
+      "Brentford starts DNQ",
+      startSum
+    );
+    await page.waitForTimeout(300);
+    const accepted = await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
+      const hit =
+        buttons.find((b) => /arsenal/i.test(b.textContent || "") && /accept|sign/i.test(b.textContent || "")) ||
+        buttons.find((b) => /accept offer|accept transfer|sign for|^accept$/i.test((b.textContent || "").trim()));
+      if (!hit) return null;
+      hit.click();
+      return (hit.textContent || "").trim();
+    });
+    assert(accepted, "must accept Arsenal permanent offer", { accepted });
+    const driven = await driveSeasonToDesk(page, {
+      seasonsBefore: 0,
+      shotPrefix: "B03",
+      deskPolicy: "stay",
+      timeoutMs: 240000,
+    });
     const desk = await exportSnapshot(page);
-    await writeCase("B03-positive-desk.json", slimEvidence(desk));
+    await writeCase("B03-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B03-desk.full.json", desk);
     const posSum = qualSummary(desk.player, desk);
-    assert(posSum.europe.qualified && posSum.europe.competition === "Champions League", "Arsenal positive CL", posSum);
+    assert(posSum.playingClubId === ARSENAL, "accepted reverse transfer into Arsenal", posSum);
+    assert(posSum.europe.qualified && posSum.europe.competition === "Champions League", "qualified destination CL", posSum);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, negative: negSum, positive: posSum };
+    return { ok: true, start: startSum, positive: posSum, transferAccepted: true, deskDecisions: driven.trace.deskDecisions };
   },
 
-  /** Loan ownership: entry follows playing tip; parent/borrower registry; return if UI supports. */
+  /** Real accepted loan: entry follows playing tip; require return with parent entry. */
   async B04(page, guards) {
     const snap = buildSeededSnap({
       id: "fix09-b04",
-      clubId: BRENTFORD,
+      clubId: ARSENAL,
       seed: 9105,
       ovr: 72,
       placements: { 1: ARSENAL, 17: BRENTFORD },
-      employmentClubId: ARSENAL,
-      playingClubId: BRENTFORD,
     });
-    snap.player.activeLoan = {
-      status: "active",
-      parentClubId: ARSENAL,
-      loanClubId: BRENTFORD,
-      returnSeason: 1,
-    };
     await writeCase("B04-initial.json", slimEvidence(snap));
     await writeFullSnapshot("B04-initial.full.json", snap);
     await restore(page, snap);
     await shot(page, "B04-01-loan-start");
-    const start = await exportSnapshot(page);
-    assert(start.player.employmentClubId === ARSENAL, "parent employment tip");
-    assert(start.player.playingClubId === BRENTFORD, "borrower playing tip");
     assert(clubDecision(snap, ARSENAL, 2026)?.competition === "Champions League", "parent qualified");
     assert(clubDecision(snap, BRENTFORD, 2026)?.status === "not-qualified", "borrower DNQ");
 
-    const driven = await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B04", deskPolicy: "stay" });
-    const desk = await exportSnapshot(page);
-    await writeCase("B04-desk.json", slimEvidence(desk));
+    const driven = await driveSeasonToDesk(page, {
+      seasonsBefore: 0,
+      shotPrefix: "B04",
+      deskPolicy: "accept-cross-league",
+      timeoutMs: 240000,
+    });
+    const mid = await exportSnapshot(page);
+    await writeCase("B04-mid.json", slimEvidence(mid));
+    const loanAccepted =
+      mid.player.activeLoan?.status === "active" ||
+      (mid.player.employmentClubId === ARSENAL && mid.player.playingClubId && mid.player.playingClubId !== ARSENAL);
+    assert(loanAccepted, "real loan acceptance required", {
+      employment: mid.player.employmentClubId,
+      playing: mid.player.playingClubId,
+      activeLoan: mid.player.activeLoan,
+      deskDecisions: driven.trace.deskDecisions,
+    });
+    const midSum = qualSummary(mid.player, mid);
+    if (mid.player.playingClubId === BRENTFORD) {
+      assert(
+        !midSum.europe.qualified || midSum.europe.competition !== "Champions League",
+        "loan season follows playing club DNQ",
+        midSum
+      );
+    }
+
+    // Drive return window / next period if still on loan.
+    let desk = mid;
+    if (mid.player.activeLoan?.status === "active") {
+      const returnedDrive = await driveSeasonToDesk(page, {
+        seasonsBefore: (mid.player.seasons || []).length,
+        shotPrefix: "B04-return",
+        deskPolicy: "stay",
+        timeoutMs: 240000,
+      });
+      desk = await exportSnapshot(page);
+      await writeCase("B04-desk.json", slimEvidence(desk));
+      void returnedDrive;
+    } else {
+      await writeCase("B04-desk.json", slimEvidence(desk));
+    }
+    await writeFullSnapshot("B04-desk.full.json", desk);
     const sum = qualSummary(desk.player, desk);
-    assert(
-      !sum.europe.qualified || sum.europe.competition !== "Champions League",
-      "loan season follows playing club DNQ",
-      sum
-    );
     assert(sum.arsenal2026?.competition === "Champions League", "parent registry intact", sum);
     const returned =
-      desk.player.playingClubId === ARSENAL ||
-      desk.player.activeLoan?.status === "returned" ||
-      desk.player.activeLoan == null;
+      desk.player.playingClubId === ARSENAL &&
+      (desk.player.activeLoan == null || desk.player.activeLoan?.status === "returned");
+    assert(returned, "loan return with parent playing tip required", {
+      playing: desk.player.playingClubId,
+      employment: desk.player.employmentClubId,
+      activeLoan: desk.player.activeLoan,
+    });
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
     return {
       ok: true,
       sum,
-      loanReturnExercised: returned,
+      loanReturnExercised: true,
+      loanAccepted: true,
       employmentAtDesk: desk.player.employmentClubId,
       playingAtDesk: desk.player.playingClubId,
       deskDecisions: driven.trace.deskDecisions,
@@ -895,20 +1039,27 @@ const cases = {
     });
     const desk = await exportSnapshot(page);
     await writeCase("B05-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B05-desk.full.json", desk);
     const ed1 = editionSummary(desk);
     assert(ed1?.editionId === ed0.editionId, "editionId frozen across season/move", { ed0, ed1 });
     assert(JSON.stringify(ed1.field) === JSON.stringify(ed0.field), "field frozen", { ed0, ed1 });
     const moved = desk.player.playingClubId !== ARSENAL;
+    assert(moved, "mid-season move required", {
+      playingClubId: desk.player.playingClubId,
+      deskDecisions: driven.trace.deskDecisions,
+    });
+    const sum = qualSummary(desk.player, desk);
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
     return {
       ok: true,
       editionPreserved: true,
-      moved,
+      moved: true,
+      destination: desk.player.playingClubId,
+      europeAtDestination: sum.europe,
       ed0,
       ed1,
       deskDecisions: driven.trace.deskDecisions,
-      note: moved ? "mid-season move accepted" : "no move offer; edition still preserved under stay path",
     };
   },
 
@@ -951,12 +1102,21 @@ const cases = {
     }
     const deskB = await exportSnapshot(page);
     await writeCase("B06-desk-b.json", slimEvidence(deskB));
+    await writeFullSnapshot("B06-desk-a.full.json", deskA);
+    await writeFullSnapshot("B06-desk-b.full.json", deskB);
     const c = qualSummary(deskB.player, deskB);
     assert(c.europe.competition === b.europe.competition, "restore+Continue Europe matches", { b, c });
     assert(c.seasons === b.seasons && c.age === b.age, "branch seasons/age match", { b, c });
     assert(c.arsenal2026?.competition === b.arsenal2026?.competition, "registry branch match", { b, c });
+    assert(c.playingClubId === b.playingClubId, "branch playing club match", { b, c });
+    assert(
+      JSON.stringify(deskB.player.finance || null) === JSON.stringify(deskA.player.finance || null) ||
+        deskB.player.weeklyWage === deskA.player.weeklyWage,
+      "protected finance state matches across branch",
+      { wageA: deskA.player.weeklyWage, wageB: deskB.player.weeklyWage }
+    );
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, before: a, deskA: b, deskB: c, branchCompare: true };
+    return { ok: true, before: a, deskA: b, deskB: c, branchCompare: true, midSeasonPauseBranch: true };
   },
 
   /** Non-UEFA calendar-year league (Brazil). */
@@ -1080,6 +1240,29 @@ const cases = {
       placements: { 1: ARSENAL, 17: BRENTFORD },
       stalePlayerRowClubId: ARSENAL,
     });
+    const brentford = clubIn(leagueById(EPL), BRENTFORD);
+    const offer = {
+      offerId: `fix09-b09:${BRENTFORD}`,
+      club: brentford.name,
+      clubDisplay: brentford.displayName || brentford.name,
+      clubId: BRENTFORD,
+      league: "England - Premier League",
+      leagueId: EPL,
+      nation: "England",
+      dealType: "permanent",
+      isLoan: false,
+      isRenewal: false,
+      isFreeAgent: true,
+      transferFee: 0,
+      wage: 4000,
+      contractYears: 2,
+      expectedRole: "rotation",
+      status: "pending",
+      effectiveDate: "2026-07-01",
+      reviewDate: "2026-07-01",
+    };
+    snap.player.pendingOffers = [offer];
+    snap.player.pendingDecision = { kind: "transfer-offers", offers: [offer] };
     await writeCase("B09-initial.json", slimEvidence(snap));
     await writeFullSnapshot("B09-initial.full.json", snap);
     await restore(page, snap);
@@ -1087,59 +1270,36 @@ const cases = {
     const start = await exportSnapshot(page);
     assert(start.player.contractStatus === "released" || !start.player.club, "FA lifecycle");
     const ui0 = await uiState(page);
-    assert(ui0.simulateDisabled === false, "FA desk must not soft-lock", ui0);
+    assert(ui0.simulateDisabled === false || (start.player.pendingOffers || []).length > 0, "FA desk must not soft-lock", ui0);
 
-    const seasonsBefore = (start.player.seasons || []).length;
-    await page.click("#simulate-btn");
-    const deadline = Date.now() + 120000;
-    let beforeContinue = null;
-    while (Date.now() < deadline) {
-      const cur = await uiState(page);
-      const seasonsNow = cur.debug?.seasonsCount ?? null;
-      const committed = typeof seasonsNow === "number" && seasonsNow > seasonsBefore;
-      if (committed && !beforeContinue) {
-        beforeContinue = await exportSnapshot(page);
-        await shot(page, "B09-02-before-continue");
-      }
-      if (committed && beforeContinue && cur.continueBtnVisible && !cur.continueBtnDisabled) {
-        await page.click("#continue-btn");
-        await page.waitForTimeout(250);
-        continue;
-      }
-      if (
-        committed &&
-        beforeContinue &&
-        cur.overlayHidden &&
-        cur.dashboardHidden &&
-        cur.seasonActionInFlight === false
-      ) {
-        break;
-      }
-      // Decline offers so search can finish; Accept first viable re-sign if present near end.
-      await page.evaluate(() => {
-        const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
-        const decline = buttons.find((b) =>
-          /continue as free agent|decline all|no thanks|remain a free agent|decline offers/i.test(
-            b.textContent || ""
-          )
-        );
-        if (decline) {
-          decline.click();
-          return;
-        }
-        const accept = buttons.find((b) => /^accept$|accept offer|sign for/i.test((b.textContent || "").trim()));
-        if (accept) accept.click();
-      });
-      await page.waitForTimeout(200);
-    }
-    assert(beforeContinue, "B09 must complete a search/training period without soft-lock");
+    await page.waitForTimeout(300);
+    const accepted = await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
+      const hit =
+        buttons.find((b) => /brentford/i.test(b.textContent || "") && /accept|sign/i.test(b.textContent || "")) ||
+        buttons.find((b) => /accept offer|sign for|^accept$/i.test((b.textContent || "").trim()));
+      if (!hit) return null;
+      hit.click();
+      return (hit.textContent || "").trim();
+    });
+    assert(accepted, "must accept real free-agent re-signing offer", { accepted });
+    await page.waitForTimeout(400);
     const desk = await exportSnapshot(page);
     await writeCase("B09-after-search.json", slimEvidence(desk));
+    await writeFullSnapshot("B09-after-search.full.json", desk);
     const sum = qualSummary(desk.player, desk);
     assert(
       !sum.europe.qualified || sum.europe.competition !== "Champions League",
       "FA gap must not invent obsolete Arsenal CL",
       sum
+    );
+    assert(
+      desk.player.contractStatus === "active" && desk.player.playingClubId,
+      "real re-signing offer acceptance required",
+      {
+        contractStatus: desk.player.contractStatus,
+        playingClubId: desk.player.playingClubId,
+      }
     );
     if (desk.player.playingClubId === BRENTFORD) {
       assert(
@@ -1154,7 +1314,7 @@ const cases = {
       ok: true,
       sum,
       searchCompleted: true,
-      reSignedClub: desk.player.playingClubId || null,
+      reSignedClub: desk.player.playingClubId,
       noSoftLock: true,
     };
   },
@@ -1204,13 +1364,24 @@ async function main() {
     if (browser) await browser.close().catch(() => {});
     await hosted.close().catch(() => {});
   }
-  report.ok = !report.blocked && SELECTED.every((id) => report.cases[id]?.ok);
+  const requiredComplete = REQUIRED.every((id) => report.cases[id]?.ok);
+  const selectedComplete = SELECTED.every((id) => report.cases[id]?.ok);
+  const subsetOnly = SELECTED.length !== REQUIRED.length || SELECTED.some((id) => !REQUIRED.includes(id));
+  report.requiredIds = REQUIRED;
+  report.selectedIds = SELECTED;
+  report.subsetOnly = subsetOnly;
+  report.requiredComplete = requiredComplete;
+  // Full acceptance requires all nine required IDs. A subset run cannot become a complete pass.
+  report.ok = !report.blocked && !subsetOnly && requiredComplete;
+  report.selectedOk = !report.blocked && selectedComplete;
   await writeFile(OUT, JSON.stringify(report, null, 2));
   console.log(
     JSON.stringify(
       {
         out: OUT,
         ok: report.ok,
+        selectedOk: report.selectedOk,
+        subsetOnly: report.subsetOnly,
         blocked: report.blocked,
         base: report.base,
         cases: Object.fromEntries(Object.entries(report.cases).map(([k, v]) => [k, !!v.ok])),

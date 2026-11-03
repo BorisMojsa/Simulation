@@ -15,13 +15,16 @@ import {
   ensureBootstrapDomesticEdition,
   getClubTargetDecision,
   getDomesticEditionRecord,
+  ingestStandingEvidence,
   normalizeFinishPosition,
   resolveClubContinentalEntry,
   resolvePreSeasonContinentalStanding,
   sourceYearForContinentalTarget,
+  validateStandingTable,
 } from "../js/simulation/earnedQualification.js";
 import { preSeasonContinentalStanding } from "../js/simulation/chronologicalSeason.js";
 import {
+  listContinentalFixtures,
   loadContinentalEdition,
   prepareContinentalEdition,
   processContinentalMatchday,
@@ -39,6 +42,7 @@ import {
 } from "../js/simulation/playerDevelopmentModel.js";
 import { canAttachToContinentalFixture } from "../js/data/competitions/registrationPolicy.js";
 import { qualificationForPosition, findSisterLeagues } from "../js/simulation/leaguePhase.js";
+import { recordPlayingTransition } from "../js/simulation/playingRegistration.js";
 
 function leagueById(id) {
   return LEAGUES.find((l) => l.leagueId === id);
@@ -392,9 +396,19 @@ test("F11: lower division / unknown / duplicates cannot earn top-flight entry", 
   }
   const league = leagueById("league:england-premier-league");
   const arsenal = clubIn(league, "club:england:arsenal");
-  const table = orderedTable(league, { 1: arsenal.clubId });
-  table.push({ ...table[0], position: 2 }); // duplicate club
   const world = resetWorld(98);
+  const duplicate = orderedTable(league, { 1: arsenal.clubId });
+  duplicate[1] = { ...duplicate[0], position: 2 };
+  const rejected = ingestStandingEvidence({
+    world,
+    league,
+    table: duplicate,
+    sourceYear: 2025,
+  });
+  assert.equal(rejected.ok, false);
+  assert.equal(rejected.reason, "duplicate-club");
+  assert.equal(getDomesticEditionRecord(world, league.leagueId, 2025), null);
+
   const ingested = commitCompletedDomesticEdition({
     world,
     league,
@@ -402,7 +416,6 @@ test("F11: lower division / unknown / duplicates cannot earn top-flight entry", 
     sourceYear: 2025,
   });
   assert.equal(ingested.ok, true);
-  // Division move: Arsenal earned 2025 CL place remains for target 2026 even if we look up after.
   assert.equal(getClubTargetDecision(world, arsenal.clubId, 2026).entry.competition, "Champions League");
 });
 
@@ -435,7 +448,7 @@ test("F13: known non-qualifier never falls through to OVR", () => {
   assert.equal(resolvePreSeasonContinentalStanding(player, league, { world, seasonYear: 2026 }), null);
 });
 
-test("F14: legacy migration idempotent; unresolved without club ids", () => {
+test("F14: legacy migration idempotent; reject missing identity / foreign / undated", () => {
   const league = leagueById("league:england-premier-league");
   const arsenal = clubIn(league, "club:england:arsenal");
   const table = orderedTable(league, { 1: arsenal.clubId });
@@ -457,65 +470,121 @@ test("F14: legacy migration idempotent; unresolved without club ids", () => {
   assert.equal(first.ok, true);
   assert.equal(second.reused, true);
   assert.equal(first.record.provenance, "legacy-migrated");
+  assert.equal(first.record.entries[arsenal.clubId].targetCompetitionId, "uefa-champions-league");
+
+  const noYear = ingestStandingEvidence({ world, league, table, sourceYear: null });
+  assert.equal(noYear.ok, false);
+  assert.equal(noYear.reason, "missing-source-year");
+
+  const madrid = LEAGUES.find((l) => l.nation === "Spain" && (l.divisionLevel ?? 1) === 1).clubs.find(
+    (c) => c.clubId === "club:spain:real-madrid"
+  );
+  const foreign = orderedTable(league, { 1: arsenal.clubId });
+  foreign[0] = { ...foreign[0], clubId: madrid.clubId, name: madrid.name };
+  const foreignReject = ingestStandingEvidence({ world, league, table: foreign, sourceYear: 2024 });
+  assert.equal(foreignReject.ok, false);
+  assert.equal(foreignReject.reason, "foreign-club");
+  assert.equal(getDomesticEditionRecord(world, league.leagueId, 2024), null);
 });
 
-test("F15: re-prepare after MD1 freezes field and results", () => {
+test("F15: qualified second-focus after MD1 keeps registration gate", () => {
   const league = leagueById("league:england-premier-league");
   const arsenal = clubIn(league, "club:england:arsenal");
   const brentford = clubIn(league, "club:england:brentford");
-  const table = orderedTable(league, { 1: arsenal.clubId, 17: brentford.clubId });
-  const world = resetWorld(104);
+  const table = orderedTable(league, { 1: arsenal.clubId, 2: brentford.clubId });
+  const world = resetWorld(3);
   commitCompletedDomesticEdition({ world, league, table, sourceYear: 2025 });
   const player = makePlayer(arsenal, league);
   const standing = preSeasonContinentalStanding(player, league, { world, seasonYear: 2026 });
   const original = prepareContinentalEdition({ standing, league, player, seasonYear: 2026, world });
-  processContinentalMatchday(original, 1, { world, player });
+  assert.ok(original.field.some((c) => c.clubId === brentford.clubId));
+  for (const md of original.openingMatchdays) {
+    const day = listContinentalFixtures(original).find((f) => f.matchday === md)?.date;
+    if (day && day <= "2027-01-10") processContinentalMatchday(original, md, { world, player });
+  }
   const field = original.field.map((c) => c.clubId).sort();
   const fixtureIds = Object.keys(original.fixtures).sort();
-  const matchesBefore = world.matches.size;
 
-  const brPlayer = makePlayer(brentford, league);
-  const bypass = prepareContinentalEdition({
-    standing: { position: 1, qualification: "League Champions" },
-    league,
-    player: brPlayer,
-    seasonYear: 2026,
-    world,
+  recordPlayingTransition(player, {
+    kind: "permanent",
+    effectiveDate: "2027-01-10",
+    playingClubId: brentford.clubId,
+    employmentClubId: brentford.clubId,
+    leagueId: league.leagueId,
+    clubName: brentford.name,
   });
-  assert.equal(bypass, null);
+  player.club = { ...brentford, league: league.name, leagueId: league.leagueId, nation: league.nation };
+  player.playingClubId = brentford.clubId;
+  player.employmentClubId = brentford.clubId;
 
-  // Qualified second focus that is already in the frozen field (if present) soft-attaches.
-  const loaded = loadContinentalEdition({
-    competitionId: original.competitionId,
-    editionId: original.editionId,
-    world,
-  });
-  const again = prepareContinentalEdition({ standing, league, player, seasonYear: 2026, world });
-  assert.deepEqual(again.field.map((c) => c.clubId).sort(), field);
-  assert.deepEqual(Object.keys(again.fixtures).sort(), fixtureIds);
-  assert.equal(world.matches.size, matchesBefore);
-  assert.equal(loaded.playerClubId, arsenal.clubId);
+  const before = listContinentalFixtures(original, { status: "scheduled", playerOnly: true, player }).filter(
+    (f) => f.stageType === "league" && f.date > "2027-01-10"
+  );
+  assert.equal(before.length, 0);
+
+  const refocus = prepareContinentalEdition({ league, player, seasonYear: 2026, world });
+  assert.deepEqual(refocus.field.map((c) => c.clubId).sort(), field);
+  assert.deepEqual(Object.keys(refocus.fixtures).sort(), fixtureIds);
+  assert.equal(refocus.playerClubId, arsenal.clubId);
+  assert.equal(refocus.editionFocusClubId, arsenal.clubId);
+  assert.equal(refocus.viewFocusClubId, brentford.clubId);
+  const after = listContinentalFixtures(refocus, { status: "scheduled", playerOnly: true, player }).filter(
+    (f) => f.stageType === "league" && f.date > "2027-01-10"
+  );
+  assert.equal(after.length, 0);
 });
 
-test("F16: no conflicting CL/EL/Conference for known evidence", () => {
+test("F16: participant sets and playing eligibility honor earned decisions", () => {
   const league = leagueById("league:england-premier-league");
-  const world = resetWorld(105);
+  const arsenal = clubIn(league, "club:england:arsenal");
+  const brentford = clubIn(league, "club:england:brentford");
+  const world = resetWorld(91);
   const table = orderedTable(league, {
-    1: "club:england:arsenal",
-    5: "club:england:brentford",
+    1: arsenal.clubId,
+    5: "club:england:chelsea",
     6: "club:england:brighton-and-hove-albion",
-    7: "club:england:fulham",
+    17: brentford.clubId,
   });
   commitCompletedDomesticEdition({ world, league, table, sourceYear: 2025 });
-  const a = getClubTargetDecision(world, "club:england:arsenal", 2026).entry;
-  const b = getClubTargetDecision(world, "club:england:brentford", 2026).entry;
-  const c = getClubTargetDecision(world, "club:england:brighton-and-hove-albion", 2026).entry;
-  const d = getClubTargetDecision(world, "club:england:fulham", 2026).entry;
+  const a = getClubTargetDecision(world, arsenal.clubId, 2026).entry;
+  const b = getClubTargetDecision(world, brentford.clubId, 2026).entry;
+  const chelsea = getClubTargetDecision(world, "club:england:chelsea", 2026).entry;
   assert.equal(a.competition, "Champions League");
-  assert.equal(b.competition, "Europa League");
-  assert.equal(c.competition, "Conference League");
-  assert.equal(d.competition, null);
-  assert.notEqual(a.competition, b.competition);
+  assert.equal(b.status, "not-qualified");
+  assert.equal(chelsea.competition, "Europa League");
+
+  const player = makePlayer(arsenal, league);
+  const edition = prepareContinentalEdition({ league, player, seasonYear: 2026, world });
+  assert.ok(edition);
+  for (const club of edition.field) {
+    const decision = getClubTargetDecision(world, club.clubId, 2026)?.entry;
+    if (!decision) continue;
+    assert.notEqual(decision.status, "not-qualified", club.clubId);
+    if (decision.competition) {
+      assert.equal(decision.competition, "Champions League", club.clubId);
+    }
+  }
+  assert.equal(edition.field.some((c) => c.clubId === brentford.clubId), false);
+  assert.equal(edition.field.some((c) => c.clubId === "club:england:chelsea"), false);
+
+  // Mid-season move into a known DNQ must not create player continental appearances.
+  for (const md of edition.openingMatchdays) {
+    const day = listContinentalFixtures(edition).find((f) => f.matchday === md)?.date;
+    if (day && day <= "2027-01-10") processContinentalMatchday(edition, md, { world, player });
+  }
+  recordPlayingTransition(player, {
+    kind: "permanent",
+    effectiveDate: "2027-01-10",
+    playingClubId: brentford.clubId,
+    employmentClubId: brentford.clubId,
+    leagueId: league.leagueId,
+    clubName: brentford.name,
+  });
+  player.club = { ...brentford, league: league.name, leagueId: league.leagueId, nation: league.nation };
+  player.playingClubId = brentford.clubId;
+  player.employmentClubId = brentford.clubId;
+  const eligible = listContinentalFixtures(edition, { status: "scheduled", playerOnly: true, player });
+  assert.equal(eligible.length, 0);
 });
 
 test("F17: entry follows playing club for loan tips", () => {
@@ -679,12 +748,19 @@ test("F23: free-agent gap cannot reuse old club finish for a new club without ev
   assert.equal(preSeasonContinentalStanding(fa, league, { world, seasonYear: 2026 }), null);
 });
 
-test("F24: partial provenance does not grant completed earned entry", () => {
+test("F24: partial / duplicate-rank / undated evidence rejected without mutation", () => {
   const league = leagueById("league:england-premier-league");
   const arsenal = clubIn(league, "club:england:arsenal");
   const world = resetWorld(112);
-  const partial = orderedTable(league, { 1: arsenal.clubId }).slice(0, 5);
-  commitCompletedDomesticEdition({
+  const before = world.qualification.size;
+
+  const partial = orderedTable(league, { 1: arsenal.clubId }).slice(0, 2).map((r, i) => ({
+    ...r,
+    position: i + 1,
+    matches: 0,
+    played: 0,
+  }));
+  const partialCommit = commitCompletedDomesticEdition({
     world,
     league,
     table: partial,
@@ -692,24 +768,38 @@ test("F24: partial provenance does not grant completed earned entry", () => {
     provenance: "partial-origin",
     status: "partial",
   });
-  const record = getDomesticEditionRecord(world, league.leagueId, 2025);
-  assert.equal(record.status, "partial");
-  assert.equal(record.completed, false);
-  // Incomplete editions are not treated as authoritative completed decisions for lookup helpers
-  // that require completed=true; club pointer may still exist — resolve should bootstrap or unresolved
-  // rather than treating partial as full. ensureBootstrap may fill if allowBootstrap.
-  const r = resolveClubContinentalEntry({
+  assert.equal(partialCommit.ok, false);
+  assert.equal(partialCommit.reason, "incomplete-status");
+
+  const player = makePlayer(arsenal, league, {
+    latestStanding: {
+      leagueId: league.leagueId,
+      completed: false,
+      status: "partial",
+      table: partial,
+      playerRow: partial[0],
+    },
+  });
+  const undated = resolveClubContinentalEntry({
     world,
-    clubId: arsenal.clubId,
     league,
-    targetYear: 2026,
+    clubId: arsenal.clubId,
+    targetYear: 2034,
+    player,
     allowBootstrap: false,
   });
-  // Partial record exists but completed=false → fall through unresolved without bootstrap
-  assert.ok(r.status === "unresolved" || r.edition?.status === "partial");
+  assert.equal(undated.status, "unresolved");
+  assert.equal(getDomesticEditionRecord(world, league.leagueId, 2033), null);
+
+  const dupRanks = orderedTable(league, { 1: arsenal.clubId }).map((r) => ({ ...r, position: 1 }));
+  assert.equal(validateStandingTable(dupRanks, league).ok, false);
+  const dupIngest = ingestStandingEvidence({ world, league, table: dupRanks, sourceYear: 2025 });
+  assert.equal(dupIngest.ok, false);
+  assert.equal(dupIngest.reason, "duplicate-ranks");
+  assert.equal(world.qualification.size, before);
 });
 
-test("F25: independent oracle detects corrupted decisions", () => {
+test("F25: exporter validation path fails on missing/wrong evidence", async () => {
   const league = leagueById("league:england-premier-league");
   const arsenal = clubIn(league, "club:england:arsenal");
   const table = orderedTable(league, { 1: arsenal.clubId, 17: "club:england:brentford" });
@@ -718,22 +808,54 @@ test("F25: independent oracle detects corrupted decisions", () => {
   const good = getClubTargetDecision(world, arsenal.clubId, 2026).entry;
   assert.equal(oracleCompetition(league.nation, league.leagueId, good.position), good.competition);
 
-  const corrupted = {
-    clubId: "club:england:brentford",
-    position: 17,
-    competition: "Champions League",
-    sourceEditionYear: 2025,
-  };
-  const expected = oracleCompetition(league.nation, league.leagueId, corrupted.position);
-  assert.notEqual(expected, corrupted.competition);
-  assert.equal(expected, null);
+  const { validateEarnedPeriodOracle } = await import(
+    "../scripts/qaEarnedContinentalQualification.mjs"
+  );
+  assert.equal(typeof validateEarnedPeriodOracle, "function");
 
-  // Wrong source year claim
-  assert.notEqual(corrupted.sourceEditionYear, 2026);
-  assert.equal(sourceYearForContinentalTarget(2026), 2025);
+  const missing = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: null,
+    edition: null,
+    participants: [],
+  });
+  assert.equal(missing.ok, false);
 
-  // Wrong participant: Brentford listed as CL while oracle says null
-  const br = getClubTargetDecision(world, "club:england:brentford", 2026).entry;
-  assert.equal(oracleCompetition(league.nation, league.leagueId, br.position), br.competition);
-  assert.equal(br.competition, null);
+  const wrongRank = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: { ...good, position: 17, competition: "Champions League" },
+    edition: getDomesticEditionRecord(world, league.leagueId, 2025),
+    participants: [{ clubId: arsenal.clubId }],
+  });
+  assert.equal(wrongRank.ok, false);
+
+  const ok = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: getDomesticEditionRecord(world, league.leagueId, 2025),
+    participants: [{ clubId: arsenal.clubId, competition: "Champions League" }],
+    europeCompetition: "Champions League",
+  });
+  assert.equal(ok.ok, true);
+
+  const campaignOnly = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: getDomesticEditionRecord(world, league.leagueId, 2025),
+    participants: [],
+    europeCompetition: "Champions League",
+  });
+  assert.equal(campaignOnly.ok, true);
 });

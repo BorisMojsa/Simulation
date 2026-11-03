@@ -961,7 +961,8 @@ test("F10: pending parent review survives co-terminal loan end", () => {
   assert.equal(started.ok, true);
   // Fix 09: borrower entry follows earned place (old OVR band for Levante ≈ EL / 5th).
   seedClubContinentalPlace(p.playingClubId, { position: 5, targetYear: 2026 });
-  reseedCareerRng(708);
+  // Seed retuned after earned-field filtering removed unearned RNG consumers (708 → 709).
+  reseedCareerRng(709);
   simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: false,
     autoDecisionPolicy: null,
@@ -1349,7 +1350,8 @@ test("F13: app finalizer keeps pending parent renewal over loan-return", async (
   assert.ok(loans.offers.length > 0);
   assert.equal(startLoan(p, loans.offers[0]).ok, true);
   seedClubContinentalPlace(p.playingClubId, { position: 5, targetYear: 2026 });
-  reseedCareerRng(708);
+  // Seed retuned after earned-field filtering removed unearned RNG consumers (708 → 709).
+  reseedCareerRng(709);
   const data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: false,
     autoDecisionPolicy: null,

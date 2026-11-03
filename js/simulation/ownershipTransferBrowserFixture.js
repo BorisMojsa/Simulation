@@ -5,12 +5,14 @@
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
 import { createPlayerIdentity } from "./playerDevelopment.js";
 import { simulateSeason } from "./seasonSimulator.js";
-import { createWorldState, setWorldState } from "./worldState.js";
+import { createWorldState, setWorldState, getWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";
 import { reseedCareerRng } from "./rng.js";
 import { resolveMoveRegistration } from "./destinationSchedule.js";
 import { allSeniorClubs } from "./seniorClubs.js";
 import { ensurePlayingStints } from "./playingRegistration.js";
+import { commitCompletedDomesticEdition } from "./earnedQualification.js";
+import { qualificationForPosition, findSisterLeagues } from "./leaguePhase.js";
 
 export const OWNERSHIP_TRANSFER_FIXTURE = {
   careerId: "ownership-transfer-fixture-v1",
@@ -74,6 +76,41 @@ export function buildOwnershipTransferBrowserFixture(opts = {}) {
   player.seasonCheckpoint = null;
   player.decisionCooldowns = {};
   ensurePlayingStints(player, { asOfDate: `${cfg.startYear}-07-01` });
+
+  // Seed earned CL places so in-field destinations used by ownership F02 are not
+  // synthetic DNQs (Fix 09 attachment rejects known non-qualifiers).
+  {
+    const sisters = findSisterLeagues(league, LEAGUES);
+    const preferred = [
+      arsenal.clubId,
+      "club:england:crystal-palace",
+      "club:england:everton",
+      "club:england:leeds-united",
+      "club:england:liverpool",
+    ];
+    const rest = league.clubs.filter((c) => !preferred.includes(c.clubId));
+    const ordered = [
+      ...preferred.map((id) => league.clubs.find((c) => c.clubId === id)).filter(Boolean),
+      ...rest,
+    ];
+    const table = ordered.map((c, i) => ({
+      ...c,
+      position: i + 1,
+      points: Math.max(0, 100 - i * 3),
+      matches: 38,
+      wins: 20,
+      draws: 8,
+      losses: 10,
+      qualification: qualificationForPosition(i + 1, league, sisters) || "",
+    }));
+    commitCompletedDomesticEdition({
+      world: getWorldState(),
+      league,
+      table,
+      sourceYear: cfg.startYear - 1,
+      forceReplace: true,
+    });
+  }
 
   let seasonData = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: true,

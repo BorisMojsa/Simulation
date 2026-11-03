@@ -10,8 +10,12 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { LEAGUES, LEAGUE_LOOKUP } from "../js/data/leagues.js";
-import { createWorldState, setWorldState, serializeWorldState } from "../js/simulation/worldState.js";
-import { reseedCareerRng, getSimRng, createRng } from "../js/simulation/rng.js";
+import {
+  createWorldState,
+  setWorldState,
+  serializeWorldState,
+} from "../js/simulation/worldState.js";
+import { reseedCareerRng, getSimRng } from "../js/simulation/rng.js";
 import { createPlayerIdentity } from "../js/simulation/playerDevelopment.js";
 import { ensurePlayerModel } from "../js/simulation/playerModelMigration.js";
 import { refreshAbilityCaches } from "../js/simulation/playerAbility.js";
@@ -20,22 +24,18 @@ import { ensureTransferSave } from "../js/simulation/transferMigration.js";
 import { resetClubFinanceLedgers } from "../js/simulation/clubFinance.js";
 import { simulateSeason } from "../js/simulation/seasonSimulator.js";
 import {
-  commitCompletedDomesticEdition,
   getClubTargetDecision,
   getDomesticEditionRecord,
   sourceYearForContinentalTarget,
+  validateStandingTable,
 } from "../js/simulation/earnedQualification.js";
-import { createHash } from "node:crypto";
+import { continentalCompetitionForStanding } from "../js/data/competitions/qualification.js";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const outDir = process.env.FIX09_OUT || join(root, "qa/fix09-runs/final");
-mkdirSync(outDir, { recursive: true });
-mkdirSync(join(outDir, "cohort"), { recursive: true });
+const __filename = fileURLToPath(import.meta.url);
+const root = join(dirname(__filename), "..");
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 
-const started = new Date().toISOString();
-const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
-
-function oracleCompetition(nation, leagueId, position) {
+export function oracleCompetition(nation, leagueId, position) {
   if (!Number.isInteger(position) || position < 1) return null;
   const uefa = {
     "league:england-premier-league": { cl: 4, el: 1, uecl: 1 },
@@ -66,7 +66,97 @@ function oracleCompetition(nation, leagueId, position) {
   return null;
 }
 
-function runFocused() {
+/**
+ * Independent earned-entry oracle. Missing decision/table/participant evidence fails.
+ * Observed production rank/competition is compared to rebuilt source evidence — never trusted as expected.
+ */
+export function validateEarnedPeriodOracle({
+  league,
+  clubId,
+  sourceYear,
+  targetYear,
+  decision = null,
+  edition = null,
+  participants = null,
+  standingTable = null,
+  europeCompetition = null,
+} = {}) {
+  if (!league || !clubId || !Number.isFinite(Number(sourceYear)) || !Number.isFinite(Number(targetYear))) {
+    return { ok: false, reason: "missing-identity" };
+  }
+  if (Number(targetYear) !== Number(sourceYear) + 1) {
+    return { ok: false, reason: "wrong-source-target-pair" };
+  }
+  const table = standingTable || edition?.table || null;
+  if (!table?.length) return { ok: false, reason: "missing-source-table" };
+  if (!edition?.completed && edition?.status !== "bootstrap") {
+    return { ok: false, reason: "source-edition-incomplete" };
+  }
+  const validation = validateStandingTable(table, league, {
+    requireComplete: true,
+    status: edition?.status || "complete",
+    completed: true,
+    sourceYear,
+  });
+  if (!validation.ok) return { ok: false, reason: `invalid-table:${validation.reason}` };
+
+  const row = table.find((r) => r.clubId === clubId);
+  if (!row) return { ok: false, reason: "club-absent-from-source-table" };
+  const rebuiltCompetition =
+    continentalCompetitionForStanding({ position: row.position, qualification: row.qualification }, league) ||
+    oracleCompetition(league.nation, league.leagueId, row.position);
+
+  if (!decision) return { ok: false, reason: "missing-decision" };
+  if (Number(decision.position) !== Number(row.position)) {
+    return { ok: false, reason: "decision-rank-mismatch", expected: row.position, observed: decision.position };
+  }
+  if ((decision.competition || null) !== (rebuiltCompetition || null)) {
+    return {
+      ok: false,
+      reason: "decision-competition-mismatch",
+      expected: rebuiltCompetition,
+      observed: decision.competition,
+    };
+  }
+  const slotExpected = oracleCompetition(league.nation, league.leagueId, row.position);
+  if (slotExpected !== (decision.competition || null)) {
+    return {
+      ok: false,
+      reason: "slot-oracle-mismatch",
+      expected: slotExpected,
+      observed: decision.competition,
+    };
+  }
+  if (decision.status === "qualified" || decision.competition) {
+    const participantList = Array.isArray(participants) ? participants : null;
+    const inParticipants =
+      participantList &&
+      participantList.length > 0 &&
+      participantList.some(
+        (p) =>
+          (p.clubId || p) === clubId &&
+          (!p.competition || p.competition === decision.competition)
+      );
+    const campaignMatches = europeCompetition && europeCompetition === decision.competition;
+    if (!inParticipants && !campaignMatches) {
+      return { ok: false, reason: "missing-campaign-or-participant-evidence" };
+    }
+  } else if (Array.isArray(participants) && participants.length) {
+    const wronglyPresent = participants.some(
+      (p) => (p.clubId || p) === clubId && p.competition && p.competition !== decision.competition
+    );
+    if (wronglyPresent) return { ok: false, reason: "participant-contradiction-dnq" };
+  }
+  return {
+    ok: true,
+    rebuiltCompetition,
+    sourcePosition: row.position,
+    sourceYear,
+    targetYear,
+  };
+}
+
+function runFocused(outDir) {
   const r = spawnSync("node", ["--test", "tests/earnedContinentalQualification.test.mjs"], {
     cwd: root,
     encoding: "utf8",
@@ -141,14 +231,18 @@ function makeCareer(seed, nation, position) {
   return { player, league, world, club };
 }
 
-function runCohort() {
+function runCohort(outDir) {
   const rows = [];
   let oracleViolations = 0;
   let completedPeriods = 0;
+  mkdirSync(join(outDir, "cohort"), { recursive: true });
+  mkdirSync(join(outDir, "cohort-snapshots"), { recursive: true });
+
   for (const spec of COHORT) {
     const built = makeCareer(spec.seed, spec.nation, spec.position);
     if (!built) {
       rows.push({ ...spec, ok: false, reason: "league-missing" });
+      oracleViolations += 1;
       continue;
     }
     const { player, league, world, club } = built;
@@ -157,10 +251,17 @@ function runCohort() {
       rngState: getSimRng().seed(),
       playerClubId: club.clubId,
       leagueId: league.leagueId,
+      world: serializeWorldState(world),
     };
+    writeFileSync(
+      join(outDir, "cohort-snapshots", `fixture-${spec.seed}-initial.json`),
+      JSON.stringify(initialSnap)
+    );
     const periods = [];
+    let fixtureOk = true;
     for (let i = 0; i < 3; i++) {
       const beforeSeed = getSimRng().seed();
+      const seasonsBefore = player.seasons.length;
       let data = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
         pauseForDecisions: false,
         autoDecisionPolicy: "stay",
@@ -175,44 +276,85 @@ function runCohort() {
           autoDecisionPolicy: "stay",
         });
       }
+      if (player.seasons.length !== seasonsBefore + 1) {
+        oracleViolations += 1;
+        fixtureOk = false;
+        periods.push({
+          periodIndex: i,
+          ok: false,
+          reason: "period-not-completed",
+          seasonsBefore,
+          seasonsAfter: player.seasons.length,
+        });
+        continue;
+      }
       const season = player.seasons[player.seasons.length - 1];
       const sourceYear = (player.startYear || 2026) + Math.max(0, player.seasons.length - 1);
       const targetYear = sourceYear + 1;
-      const edition = getDomesticEditionRecord(world, league.leagueId, sourceYear);
-      const decision = getClubTargetDecision(world, player.playingClubId || club.clubId, targetYear);
-      let oracleOk = true;
-      let oracleExpected = null;
-      if (decision?.entry) {
-        oracleExpected = oracleCompetition(league.nation, league.leagueId, decision.entry.position);
-        if (oracleExpected !== decision.entry.competition) {
-          oracleOk = false;
-          oracleViolations += 1;
-        }
+      const clubId = player.playingClubId || club.clubId;
+      const edition = getDomesticEditionRecord(world, season?.leagueId || league.leagueId, sourceYear);
+      const decisionWrap = getClubTargetDecision(world, clubId, targetYear);
+      const decision = decisionWrap?.entry || null;
+      const europe = season?.europeanCampaign || null;
+      const participants = europe?.field || europe?.participants || europe?.lifecycle?.field || [];
+      const oracle = validateEarnedPeriodOracle({
+        league: LEAGUES.find((l) => l.leagueId === (season?.leagueId || league.leagueId)) || league,
+        clubId,
+        sourceYear,
+        targetYear,
+        decision,
+        edition,
+        participants: Array.isArray(participants) ? participants : null,
+        standingTable: edition?.table || season?.standing?.table || null,
+        europeCompetition: europe?.competition || null,
+      });
+      if (!oracle.ok) {
+        oracleViolations += 1;
+        fixtureOk = false;
+      } else {
+        completedPeriods += 1;
       }
       periods.push({
         periodIndex: i,
         sourceYear,
         targetYear,
-        playingClubId: player.playingClubId,
+        playingClubId: clubId,
         leagueId: season?.leagueId || league.leagueId,
         tableSize: edition?.table?.length || season?.standing?.table?.length || null,
-        position: decision?.entry?.position ?? season?.standing?.position ?? null,
-        competition: decision?.entry?.competition ?? null,
-        provenance: decision?.entry?.provenance || edition?.provenance || null,
-        europeCompetition: season?.europeanCampaign?.competition || null,
-        europeQualified: season?.europeanCampaign?.qualified !== false && !season?.europeanCampaign?.showcase,
+        sourceRow: edition?.table?.find((r) => r.clubId === clubId) || null,
+        position: decision?.position ?? null,
+        competition: decision?.competition ?? null,
+        provenance: decision?.provenance || edition?.provenance || null,
+        europeCompetition: europe?.competition || null,
+        europeQualified: europe?.qualified !== false && !europe?.showcase,
+        participants: (Array.isArray(participants) ? participants : []).map((p) => p.clubId || p),
         matchEvidenceIds: edition?.matchEvidenceIds?.length || 0,
-        oracleExpected,
-        oracleOk,
+        oracle,
+        oracleOk: oracle.ok,
         rngBefore: beforeSeed,
         rngAfter: getSimRng().seed(),
       });
-      completedPeriods += 1;
     }
+    const finalSnap = {
+      rngSeed: world.rngSeed,
+      rngState: getSimRng().seed(),
+      playerClubId: player.playingClubId,
+      seasons: player.seasons.length,
+      world: serializeWorldState(world),
+    };
+    writeFileSync(
+      join(outDir, "cohort-snapshots", `fixture-${spec.seed}-final.json`),
+      JSON.stringify(finalSnap)
+    );
     const record = {
       ...spec,
-      ok: true,
-      initialSnap,
+      ok: fixtureOk,
+      initialSnap: {
+        rngSeed: initialSnap.rngSeed,
+        rngState: initialSnap.rngState,
+        playerClubId: initialSnap.playerClubId,
+        leagueId: initialSnap.leagueId,
+      },
       finalRng: getSimRng().seed(),
       periods,
       worldQualificationKeys: [...(world.qualification?.keys?.() || [])].filter((k) =>
@@ -220,51 +362,110 @@ function runCohort() {
       ).length,
     };
     rows.push(record);
-    writeFileSync(
-      join(outDir, "cohort", `fixture-${spec.seed}.json`),
-      JSON.stringify(record, null, 2)
-    );
+    writeFileSync(join(outDir, "cohort", `fixture-${spec.seed}.json`), JSON.stringify(record, null, 2));
   }
   return { rows, oracleViolations, completedPeriods };
 }
 
-const focused = runFocused();
-const cohort = runCohort();
+function runCorruptionControls() {
+  const league = LEAGUES.find((l) => l.leagueId === "league:england-premier-league");
+  const cases = [
+    validateEarnedPeriodOracle({
+      league,
+      clubId: "club:england:arsenal",
+      sourceYear: 2025,
+      targetYear: 2026,
+      decision: null,
+      edition: null,
+      participants: [],
+    }),
+    validateEarnedPeriodOracle({
+      league,
+      clubId: "club:england:arsenal",
+      sourceYear: 2025,
+      targetYear: 2026,
+      decision: { position: 1, competition: "Champions League", status: "qualified" },
+      edition: { completed: true, status: "complete", table: [] },
+      participants: [],
+    }),
+  ];
+  return cases.every((c) => c.ok === false);
+}
 
-const report = {
-  fix: "09-earned-continental-qualification",
-  started,
-  ended: new Date().toISOString(),
-  sourceSha: sha,
-  node: process.version,
-  focused: {
-    exitCode: focused.exitCode,
-    pass: focused.exitCode === 0,
-  },
-  cohort: {
-    fixtures: COHORT.length,
-    periodsPerFixture: 3,
-    completedPeriods: cohort.completedPeriods,
-    oracleViolations: cohort.oracleViolations,
-    rows: cohort.rows.map((r) => ({
-      seed: r.seed,
-      nation: r.nation,
-      position: r.position,
-      ok: r.ok,
-      periodCompetitions: (r.periods || []).map((p) => p.competition),
-      oracleOk: (r.periods || []).every((p) => p.oracleOk !== false),
-    })),
-  },
-  sourceYearForTarget2026: sourceYearForContinentalTarget(2026),
-};
-writeFileSync(join(outDir, "qa-report.json"), JSON.stringify(report, null, 2));
-writeFileSync(join(outDir, "qa-report.md"), `# Fix 09 QA report
+async function main() {
+  const outDir = process.env.FIX09_OUT || join(root, "qa/fix09-runs/final");
+  mkdirSync(outDir, { recursive: true });
+  const started = new Date().toISOString();
+  const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
+  const focused = runFocused(outDir);
+  const cohort = runCohort(outDir);
+  const corruptionOk = runCorruptionControls();
+  const requiredPeriods = COHORT.length * 3;
+  const report = {
+    fix: "09-earned-continental-qualification",
+    started,
+    ended: new Date().toISOString(),
+    sourceSha: sha,
+    node: process.version,
+    focused: {
+      exitCode: focused.exitCode,
+      pass: focused.exitCode === 0,
+    },
+    cohort: {
+      fixtures: COHORT.length,
+      periodsPerFixture: 3,
+      requiredPeriods,
+      completedPeriods: cohort.completedPeriods,
+      oracleViolations: cohort.oracleViolations,
+      rows: cohort.rows.map((r) => ({
+        seed: r.seed,
+        nation: r.nation,
+        position: r.position,
+        ok: r.ok,
+        periodCompetitions: (r.periods || []).map((p) => p.competition),
+        oracleOk: (r.periods || []).every((p) => p.oracleOk === true),
+      })),
+    },
+    corruptionControlsPass: corruptionOk,
+    sourceYearForTarget2026: sourceYearForContinentalTarget(2026),
+  };
+  writeFileSync(join(outDir, "qa-report.json"), JSON.stringify(report, null, 2));
+  writeFileSync(
+    join(outDir, "qa-report.md"),
+    `# Fix 09 QA report
 
 - Focused F01–F25 exit: ${focused.exitCode}
-- Cohort fixtures: ${COHORT.length} × 3 periods = ${cohort.completedPeriods} completed
+- Cohort completed periods: ${cohort.completedPeriods} / ${requiredPeriods}
 - Oracle violations: ${cohort.oracleViolations}
+- Corruption controls: ${corruptionOk ? "PASS" : "FAIL"}
 - Source: ${sha}
-`);
+`
+  );
 
-console.log(JSON.stringify({ focusedExit: focused.exitCode, cohortPeriods: cohort.completedPeriods, oracleViolations: cohort.oracleViolations }, null, 2));
-process.exit(focused.exitCode !== 0 || cohort.oracleViolations > 0 ? 1 : 0);
+  console.log(
+    JSON.stringify(
+      {
+        focusedExit: focused.exitCode,
+        cohortPeriods: cohort.completedPeriods,
+        requiredPeriods,
+        oracleViolations: cohort.oracleViolations,
+        corruptionControlsPass: corruptionOk,
+      },
+      null,
+      2
+    )
+  );
+  const fail =
+    focused.exitCode !== 0 ||
+    cohort.oracleViolations > 0 ||
+    cohort.completedPeriods < requiredPeriods ||
+    !corruptionOk;
+  process.exit(fail ? 1 : 0);
+}
+
+if (isMain) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

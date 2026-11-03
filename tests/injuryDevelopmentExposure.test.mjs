@@ -654,7 +654,7 @@ function healthHistoryHas(player, eventId) {
 function makeSeasonPlayer({ seed, position = "ST", rating = 72, oldInjury = null, activeInjury = null, clubIndex = 0, leagueId = "league:england-premier-league" } = {}) {
   resetClubFinanceLedgers();
   reseedCareerRng(seed);
-  setWorldState(createWorldState({ startYear: 2026 }));
+  setWorldState(createWorldState({ startYear: 2026, seed }));
   const league = LEAGUE_BY_ID.get(leagueId) || LEAGUES[0];
   const club = league.clubs[Math.min(clubIndex, league.clubs.length - 1)];
   const p = createPlayerIdentity({

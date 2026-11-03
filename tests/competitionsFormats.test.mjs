@@ -133,12 +133,39 @@ test("Champions League campaign uses league phase with 36-team field when pool a
   assert.equal(Math.max(...campaign.leaguePhase.matches.map((m) => m.matchday || 0)), 8);
 });
 
-test("Libertadores uses group stage", () => {
+test("Libertadores uses group stage", async () => {
   reseedCareerRng(7);
-  setWorldState(createWorldState({ startYear: 2026, careerSeed: 7 }));
+  const world = createWorldState({ startYear: 2026, careerSeed: 7, seed: 7 });
+  setWorldState(world);
   const league = LEAGUES.find((l) => l.nation === "Brazil" && (l.divisionLevel ?? 1) === 1);
   const club = [...league.clubs].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0))[0];
   const player = makePlayer(club, league, { nationality: "Brazil" });
+  // Pin earned P1 so parallel suite pollution / bootstrap cannot remap the club to Sudamericana.
+  const { commitCompletedDomesticEdition } = await import("../js/simulation/earnedQualification.js");
+  const { qualificationForPosition, findSisterLeagues } = await import("../js/simulation/leaguePhase.js");
+  const sisters = findSisterLeagues(league, LEAGUES);
+  const rest = league.clubs.filter((c) => c.clubId !== club.clubId);
+  const ordered = [club, ...rest];
+  const table = ordered.map((c, i) => ({
+    ...c,
+    position: i + 1,
+    points: Math.max(0, 90 - i * 3),
+    matches: 38,
+    wins: 20,
+    draws: 8,
+    losses: 10,
+    qualification: qualificationForPosition(i + 1, league, sisters) || "",
+  }));
+  assert.equal(
+    commitCompletedDomesticEdition({
+      world,
+      league,
+      table,
+      sourceYear: 2025,
+      forceReplace: true,
+    }).ok,
+    true
+  );
   const campaign = simulateEuropeanCampaign({
     standing: { position: 1, qualification: "League Champions" },
     league,
