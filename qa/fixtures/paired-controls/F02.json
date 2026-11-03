@@ -3,7 +3,7 @@
   "inputHash": "4f696b06580c3c83ee789f78f6129226b3c693e59a1ee87e5a3120b045ec8083",
   "inputPath": "inputs/F02.json",
   "baseSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "finalSha": "03b2cd8618e60ac15d7907f1eb09de9425dc0bc4",
+  "finalSha": "6f2c43e7e280af58e16ac85c1ce109b87f2e5f83",
   "invariant": "Qualified destination grants Champions League",
   "expectedRngAfterRestore": 102,
   "base": {
@@ -26,7 +26,7 @@
   },
   "current": {
     "side": "final",
-    "sourceSha": "03b2cd8618e60ac15d7907f1eb09de9425dc0bc4",
+    "sourceSha": "6f2c43e7e280af58e16ac85c1ce109b87f2e5f83",
     "rngAfterRestore": 102,
     "expectedRngAfterRestore": 102,
     "rngMatchesExpected": true,

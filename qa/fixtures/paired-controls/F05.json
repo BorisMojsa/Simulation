@@ -3,7 +3,7 @@
   "inputHash": "a01d3a0b2fb4a3580834bd8b2adfe35543e4c0f6c9b826c43d88bde2d99bb0aa",
   "inputPath": "inputs/F05.json",
   "baseSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "finalSha": "03b2cd8618e60ac15d7907f1eb09de9425dc0bc4",
+  "finalSha": "6f2c43e7e280af58e16ac85c1ce109b87f2e5f83",
   "invariant": "Incomplete/stale evidence unresolved without mutation",
   "expectedRngAfterRestore": 105,
   "base": {
@@ -27,7 +27,7 @@
   },
   "current": {
     "side": "final",
-    "sourceSha": "03b2cd8618e60ac15d7907f1eb09de9425dc0bc4",
+    "sourceSha": "6f2c43e7e280af58e16ac85c1ce109b87f2e5f83",
     "rngAfterRestore": 105,
     "expectedRngAfterRestore": 105,
     "rngMatchesExpected": true,

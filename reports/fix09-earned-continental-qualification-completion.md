@@ -1,34 +1,38 @@
-# Fix 09 completion — ReReview repair (0d7664c follow-up)
+# Fix 09 completion — ReReview repair (6f2c43e follow-up)
 
 ## Verdict
 
-READY FOR REVIEW (ReReview of 0d7664c)
+READY FOR REVIEW (ReReview of 6f2c43e)
 
 ## Identities
 
 - Branch: `fix/09-earned-continental-qualification`
 - Accepted predecessor: `984495e4c12df0c2dd1c84d124bc4cb743a0f63e`
-- Previous reviewed tip: `0d7664ca5a1abff9f12e7a7e238fce4c3e92d5c1`
+- Previous reviewed tip: `6f2c43e7e280af58e16ac85c1ce109b87f2e5f83`
 
-## ReReview repairs (0d7664c remaining)
+## ReReview repairs (6f2c43e remaining)
 
 | ID | Repair |
 | --- | --- |
-| R4 coverage | `simulated-complete` requires full schedule fixture count + per-club coverage; 1/380 and 379/380 fail |
-| R4 campaign | Target-participation binds `europeEditionId` / season year / competition id to the source→target pair and world edition |
-| R4 paired | Real worktree base `984495e` vs tip workers; shared input hashes; RNG after restore; base failure expected |
-| R5 B06 | Live continuation vs fresh restore; dual-restore full equality; live market loan-offer divergence recorded honestly |
-| R5 B04 | Pre-sim tables; summer reverse/cross loans; borrower field + dated observations; full snapshots |
+| Loan lifecycle fixture | Purchase positive uses an explicitly affordable borrower/fee; unaffordable purchase refuses and leaves the loan/finance intact |
+| Full-suite gate | Ready/package rejects any failed file beyond the exact `playerAbility` allowance identities |
+| F15 scores | Paired workers measure committed `world.matches` scores after opening matchdays; deliberate score-corruption negative must fail equality |
+
+Preserved from prior tips: canonical `participants`/`lifecycle.field`, shared paired inputs + RNG gates, B06 live/restored finance/decision equality, source completeness/year, B04 loans, partial-season rejection.
 
 ## Gates
 
-- Focused + regression: 87/87 PASS
+- Focused + regression (incl. cross-league): PASS
 - Cohort 14×3: 42/42, 0 oracle violations; corruption PASS
-- Browser B01–B09: PASS (`requiredComplete`)
-- Full suite: 164 pass / 1 failed file — only the two established `playerAbility` assertions
+- Paired F01–F15: PASS with matched RNG; F15 committed-score positive + corruption negative
+- Browser B01–B09: PASS (`requiredComplete`), B06 finance/decision equal
+- Full suite: only the two established `playerAbility` assertions in `tests/playerAbility.test.mjs`
 
 ## Allowed failures
 
-Exactly the two documented `playerAbility` assertions from Fix 08. No injury ambient claim.
+Exactly:
 
-Live-vs-restored B06 may still diverge on post-season development-loan offer clubs/ledgers (same pattern as prior tips). Dual-restore remains fully equal; divergence is exported under `B06-live-market-divergence.json`.
+1. `learning 8.693485869706887` in `tests/playerAbility.test.mjs`
+2. `big.realized <= 7 - r.realized + 1e-6` in `tests/playerAbility.test.mjs`
+
+No additional failed files. Cross-league loan lifecycle must pass. B06 live/restored finance and pendingDecision must match.

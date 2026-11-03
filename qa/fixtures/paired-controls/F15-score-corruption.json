@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "targetId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:germany:bayern-munich:club:england:aston-villa",
+  "homeGoalsBefore": 4,
+  "homeGoalsAfter": 5,
+  "positiveScoresEqual": true,
+  "scoresEqualAfterCorruption": false
+}

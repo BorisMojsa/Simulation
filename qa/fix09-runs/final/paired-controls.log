@@ -1,0 +1,95 @@
+{
+  "baseSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
+  "finalSha": "6f2c43e7e280af58e16ac85c1ce109b87f2e5f83",
+  "adapter": "shared full snapshot + createWorldState({seed}) + asserted RNG",
+  "controls": [
+    {
+      "id": "F01",
+      "inputHash": "73968704aa6632e39db913547f6ba1b01446248ffe7b1747a6eac80af9bb4a4d",
+      "pass": true,
+      "rngGate": true,
+      "invariant": "DNQ Brentford cannot inherit Arsenal first-place/CL",
+      "expectedRng": 101,
+      "baseRng": 101,
+      "currentRng": 101,
+      "observationsEqual": false,
+      "baseFailedInvariant": true,
+      "committedMatchCount": null
+    },
+    {
+      "id": "F02",
+      "inputHash": "4f696b06580c3c83ee789f78f6129226b3c693e59a1ee87e5a3120b045ec8083",
+      "pass": true,
+      "rngGate": true,
+      "invariant": "Qualified destination grants Champions League",
+      "expectedRng": 102,
+      "baseRng": 102,
+      "currentRng": 102,
+      "observationsEqual": false,
+      "baseFailedInvariant": false,
+      "committedMatchCount": null
+    },
+    {
+      "id": "F03",
+      "inputHash": "7d53bca62ea9bcd0d5e13a1fadcc79115e23fb31b9d583b249ac4e5e3e434ece",
+      "pass": true,
+      "rngGate": true,
+      "invariant": "High OVR cannot override known DNQ history",
+      "expectedRng": 103,
+      "baseRng": 103,
+      "currentRng": 103,
+      "observationsEqual": false,
+      "baseFailedInvariant": false,
+      "committedMatchCount": null
+    },
+    {
+      "id": "F05",
+      "inputHash": "a01d3a0b2fb4a3580834bd8b2adfe35543e4c0f6c9b826c43d88bde2d99bb0aa",
+      "pass": true,
+      "rngGate": true,
+      "invariant": "Incomplete/stale evidence unresolved without mutation",
+      "expectedRng": 105,
+      "baseRng": 105,
+      "currentRng": 105,
+      "observationsEqual": false,
+      "baseFailedInvariant": true,
+      "committedMatchCount": null
+    },
+    {
+      "id": "F10",
+      "inputHash": "64c8a2a8fed7cdc4ea6d0c91a59761ed43ffc3a7307494f58e816c079278bed7",
+      "pass": true,
+      "rngGate": true,
+      "invariant": "Invalid ranks/conflicting labels rejected; legacy numeric ok",
+      "expectedRng": 110,
+      "baseRng": 110,
+      "currentRng": 110,
+      "observationsEqual": false,
+      "baseFailedInvariant": true,
+      "committedMatchCount": null
+    },
+    {
+      "id": "F15",
+      "inputHash": "7ac4763d181508f70a914fd0e1d6b69f154c2df6bfcb560a7e08cf8b9312730e",
+      "pass": true,
+      "rngGate": true,
+      "invariant": "Soft refocus after committed MD1 preserves field/fixtures and registration gate",
+      "expectedRng": 115,
+      "baseRng": 115,
+      "currentRng": 115,
+      "observationsEqual": false,
+      "baseFailedInvariant": true,
+      "committedMatchCount": 108
+    }
+  ],
+  "f15ScoreCorruption": {
+    "ok": true,
+    "targetId": "uefa-champions-league:2026-uefa-champions-league:league:md1:club:germany:bayern-munich:club:england:aston-villa",
+    "homeGoalsBefore": 4,
+    "homeGoalsAfter": 5,
+    "positiveScoresEqual": true,
+    "scoresEqualAfterCorruption": false
+  },
+  "allPass": true,
+  "allRngEqual": true
+}

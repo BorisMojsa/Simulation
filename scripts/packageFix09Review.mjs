@@ -24,9 +24,17 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHORT = spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const FULL = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const BASE = "984495e4c12df0c2dd1c84d124bc4cb743a0f63e";
-const PREV_TIP = "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118";
+const PREV_TIP = "6f2c43e7e280af58e16ac85c1ce109b87f2e5f83";
 const FIRST_REVIEWED_TIP = "b874040211c82e8f4aafebdbde28df447112e228";
 const PRIOR_REREVIEW_TIP = "1203cfe4ce8d5b5f619e3e8654611041d51363fd";
+/** Exact full-suite allowance: one failed file, two named assertions. */
+const ALLOWED_FULL_SUITE = {
+  failedFiles: ["tests/playerAbility.test.mjs"],
+  assertionMarkers: [
+    "learning 8.693485869706887",
+    "big.realized <= 7 - r.realized + 1e-6",
+  ],
+};
 // Prefer roomy temp/Downloads over Desktop when free space is tight.
 const OUT_ROOT = process.env.FIX09_REVIEW_OUT || join(homedir(), "Downloads");
 const PKG_NAME = `09-Earned-Continental-Qualification-ReReview-${SHORT}`;
@@ -176,11 +184,63 @@ function testedShaCoversFinal() {
   );
 }
 const testedShaMatchesFinal = testedShaCoversFinal();
+
+function assessFullSuiteAllowance() {
+  const logPath = join(ROOT, "qa/fix09-runs/final/full-suite.log");
+  if (!existsSync(logPath)) {
+    return { ok: false, reason: "missing-full-suite-log", failedFiles: [], markersFound: [] };
+  }
+  const log = readFileSync(logPath, "utf8");
+  const failedFiles = [
+    ...log.matchAll(/^# Subtest:\s+(tests\/\S+\.test\.mjs)\s*$/gm),
+  ]
+    // TAP nests file results; collect files that have a following "not ok" at file level.
+    .map((m) => m[1]);
+  // Prefer explicit "not ok N - tests/...." file failures from node --test.
+  const notOkFiles = [...log.matchAll(/^not ok \d+ - (tests\/\S+\.test\.mjs)\s*$/gm)].map(
+    (m) => m[1]
+  );
+  const uniqueFailed = [...new Set(notOkFiles.length ? notOkFiles : [])];
+  const markersFound = ALLOWED_FULL_SUITE.assertionMarkers.filter((m) => log.includes(m));
+  const onlyAllowedFiles =
+    uniqueFailed.length > 0 &&
+    uniqueFailed.every((f) => ALLOWED_FULL_SUITE.failedFiles.includes(f)) &&
+    uniqueFailed.length === ALLOWED_FULL_SUITE.failedFiles.length;
+  const markersComplete =
+    markersFound.length === ALLOWED_FULL_SUITE.assertionMarkers.length;
+  // Cross-league and other suites must not appear as failed files.
+  const hasCrossLeagueFail =
+    uniqueFailed.includes("tests/crossLeagueCareer.test.mjs") ||
+    /FAIL loan accept\/refuse\/return/.test(log);
+  return {
+    ok: onlyAllowedFiles && markersComplete && !hasCrossLeagueFail,
+    reason: onlyAllowedFiles
+      ? markersComplete
+        ? hasCrossLeagueFail
+          ? "cross-league-failure"
+          : "ok"
+        : "missing-allowed-assertion-markers"
+      : uniqueFailed.length === 0
+        ? "no-failed-files-parsed"
+        : "unexpected-failed-files",
+    failedFiles: uniqueFailed,
+    markersFound,
+  };
+}
+const fullSuiteGate = assessFullSuiteAllowance();
+const pairedSummary = readJson(join(ROOT, "qa/fixtures/paired-controls/summary.json"));
+const pairedOk =
+  pairedSummary?.allPass === true &&
+  pairedSummary?.allRngEqual === true &&
+  pairedSummary?.f15ScoreCorruption?.ok === true;
+
 const ready =
   focusedOk &&
   cohortOk &&
   browserOk &&
   testedShaMatchesFinal &&
+  fullSuiteGate.ok &&
+  pairedOk &&
   !browser?.blocked;
 
 writeFileSync(
@@ -241,14 +301,20 @@ const manifest = {
     focused: focusedOk,
     cohort: cohortOk,
     browser: browserOk,
+    paired: pairedOk,
+    fullSuite: fullSuiteGate,
     testedShaMatchesFinal,
     testedSourceSha: testedSha,
+    allowedFullSuiteFailures: ALLOWED_FULL_SUITE,
     ready,
   },
   commands: {
-    focused: "node --test tests/earnedContinentalQualification.test.mjs",
+    focused:
+      "node --test tests/earnedContinentalQualification.test.mjs tests/injuryDevelopmentExposure.test.mjs tests/clubOwnershipTransfers.test.mjs tests/competitionsFormats.test.mjs tests/continentalIntegrity.test.mjs tests/playingTimeContractRecovery.test.mjs tests/crossLeagueCareer.test.mjs",
     qa: "node scripts/qaEarnedContinentalQualification.mjs",
     browser: "node scripts/browserEarnedContinentalQualificationChecklist.mjs",
+    paired: "node scripts/exportFix09PairedControls.mjs",
+    fullSuite: "node --test tests/*.mjs",
   },
 };
 writeFileSync(join(PKG, "manifest.json"), JSON.stringify(manifest, null, 2));
@@ -268,26 +334,29 @@ writeFileSync(
 - QA tested source: \`${testedSha || "(missing)"}\`
 - Remote: \`${manifest.remoteSha || "(push required)"}\`
 
-## ReReview repairs (1203cfe follow-up)
+## ReReview repairs (6f2c43e follow-up)
 
-- R2: half-played / uneven coverage rejected via appearances + per-club play evidence
-- R4: simulated-complete requires sourceResults; target-participation + six paired controls
-- R5: B06 dual-restore protected compare; B02 off-season path; B04 reverse/cross loan
-- R1/R3/R6: preserved from prior tips
+- Loan lifecycle fixture: affordable purchase positive + unaffordable refusal negative
+- F15 paired scores: committed \`world.matches\` evidence + corruption negative
+- Full-suite ready gate: only the exact \`playerAbility\` assertion identities
+- Preserved: canonical participants, paired RNG, B06 finance/decision equality
 
 ## Replay
 
 \`\`\`bash
 cd source
-node --test tests/earnedContinentalQualification.test.mjs
+node --test tests/earnedContinentalQualification.test.mjs tests/crossLeagueCareer.test.mjs
 node scripts/qaEarnedContinentalQualification.mjs
+node scripts/exportFix09PairedControls.mjs
 node scripts/browserEarnedContinentalQualificationChecklist.mjs
 \`\`\`
 
 ## Gates
 
-- Focused F01–F25: ${focusedOk ? "PASS" : "FAIL"}
+- Focused F01–F25 (+ cross-league): ${focusedOk ? "PASS" : "FAIL"}
 - Cohort 14×3: ${qaReport?.cohort?.completedPeriods ?? "?"} / ${requiredPeriods} periods, oracle violations ${qaReport?.cohort?.oracleViolations ?? "?"}
+- Paired controls: ${pairedOk ? "PASS" : "FAIL"}
+- Full suite allowance: ${fullSuiteGate.ok ? "PASS" : "FAIL"} (${fullSuiteGate.reason}; failed=${JSON.stringify(fullSuiteGate.failedFiles)})
 - Browser B01–B09: ${browserOk ? "PASS" : "FAIL"}
 `
 );

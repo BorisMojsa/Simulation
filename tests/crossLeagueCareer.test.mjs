@@ -35,6 +35,7 @@ import { SYNTHETIC_SERIE_B_FIXTURE } from "../js/data/clubFinanceProfiles.js";
 import {
   ledgerFromSyntheticSerieB,
   validateDealAffordability,
+  getOrInitClubSeasonFinance,
 } from "../js/simulation/clubFinance.js";
 import { negotiateFee } from "../js/simulation/playerValuation.js";
 
@@ -357,7 +358,22 @@ test("loan accept/refuse/return and wage share conservation", () => {
   assert.equal(p.activeLoan.status, "returned");
   assert.equal(p.club.clubId, parentId);
 
-  // Purchase option — force clause when market RNG omits it
+  // Purchase option — pick a borrower that can fund an explicit affordable fee.
+  // Do not depend on whichever generated offer happens to come first.
+  const AFFORDABLE_PURCHASE_FEE = 500_000;
+  const UNAFFORDABLE_PURCHASE_FEE = 50_000_000;
+  function purchaseAffordable(clubId, fee, wage) {
+    const ledger = getOrInitClubSeasonFinance(clubId, "2026");
+    return validateDealAffordability(ledger, {
+      transferFee: fee,
+      wage,
+      contractYears: 3,
+      isLoan: false,
+      isRenewal: false,
+      expectedRole: "rotation",
+    });
+  }
+
   const p2 = makeSeniorInLeague("league:italy-serie-a", {
     name: "PurchaseOpt",
     rating: 66,
@@ -368,10 +384,12 @@ test("loan accept/refuse/return and wage share conservation", () => {
   });
   p2.development.latentBudget = 82;
   const loans2 = generateLoanOffers(p2, { rng: createStreamRng("purchase-opt", "l"), maxOffers: 8 });
-  let withOpt = loans2.offers.find((o) => o.loanTerms?.purchaseOption) || loans2.offers[0];
-  assert.ok(withOpt, "need a loan offer to exercise purchase option");
-  withOpt.loanTerms.purchaseOption = withOpt.loanTerms.purchaseOption || {
-    fee: 2_000_000,
+  const withOpt = loans2.offers.find((o) =>
+    purchaseAffordable(o.clubId, AFFORDABLE_PURCHASE_FEE, o.wage).ok
+  );
+  assert.ok(withOpt, "need an affordable loan destination for purchase lifecycle");
+  withOpt.loanTerms.purchaseOption = {
+    fee: AFFORDABLE_PURCHASE_FEE,
     wage: withOpt.wage,
   };
   assert.equal(startLoan(p2, withOpt).ok, true);
@@ -381,6 +399,49 @@ test("loan accept/refuse/return and wage share conservation", () => {
   assert.equal(purchased.ok, true);
   assert.equal(p2.activeLoan.status, "purchased");
   assert.equal(p2.club.clubId, withOpt.clubId);
+  assert.ok(purchased.transactionId, "purchase must book once");
+
+  // Unaffordable purchase must refuse without settling the loan or booking a purchase.
+  const pNeg = makeSeniorInLeague("league:italy-serie-a", {
+    name: "PurchaseUnaffordable",
+    rating: 66,
+    age: 20,
+    potential: 80,
+    careerId: "purchase-unaffordable",
+    contractYears: 4,
+  });
+  pNeg.development.latentBudget = 82;
+  const loansNeg = generateLoanOffers(pNeg, {
+    rng: createStreamRng("purchase-unaffordable", "l"),
+    maxOffers: 8,
+  });
+  const unaffordableOffer = loansNeg.offers[0];
+  assert.ok(unaffordableOffer, "need a loan offer for unaffordable purchase negative");
+  unaffordableOffer.loanTerms.purchaseOption = {
+    fee: UNAFFORDABLE_PURCHASE_FEE,
+    wage: unaffordableOffer.wage,
+  };
+  assert.equal(startLoan(pNeg, unaffordableOffer).ok, true);
+  const loanIdBefore = pNeg.activeLoan.loanId;
+  const financeBefore = JSON.stringify(
+    getOrInitClubSeasonFinance(unaffordableOffer.clubId, "2026")
+  );
+  const refused = endLoan(pNeg, "purchase");
+  assert.equal(refused.ok, false);
+  assert.equal(refused.reason, "purchase-unaffordable");
+  assert.equal(pNeg.activeLoan.status, "active");
+  assert.equal(pNeg.activeLoan.loanId, loanIdBefore);
+  assert.equal(pNeg.playingClubId, unaffordableOffer.clubId);
+  assert.equal(
+    JSON.stringify(getOrInitClubSeasonFinance(unaffordableOffer.clubId, "2026")),
+    financeBefore,
+    "refused purchase must not mutate borrower ledger"
+  );
+  assert.equal(
+    (pNeg.consumedTransitionIds || []).some((id) => /:purchase$|^purchase:/.test(String(id))),
+    false,
+    "refused purchase must not consume a purchase transition id"
+  );
 
   // Recall — force clause
   const p3 = makeSeniorInLeague("league:germany-bundesliga", {

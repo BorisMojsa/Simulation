@@ -264,6 +264,40 @@ function captureRng(getSimRng) {
   }
 }
 
+/** Committed continental results from world.matches (not empty fixture defs). */
+function committedScoreSnapshot(world, editionId, competitionId = "uefa-champions-league") {
+  const raw = world?.matches;
+  const entries =
+    raw instanceof Map
+      ? [...raw.entries()]
+      : Array.isArray(raw)
+        ? raw
+        : Object.entries(raw || {});
+  const out = {};
+  for (const entry of entries) {
+    const id = Array.isArray(entry) ? entry[0] : entry?.matchId || entry?.id;
+    const m = Array.isArray(entry) ? entry[1] : entry;
+    if (!m || id == null) continue;
+    if (competitionId && m.competitionId && m.competitionId !== competitionId) continue;
+    if (editionId && m.editionId && m.editionId !== editionId) continue;
+    if (!Number.isFinite(Number(m.homeGoals)) || !Number.isFinite(Number(m.awayGoals))) continue;
+    out[String(id)] = {
+      homeGoals: Number(m.homeGoals),
+      awayGoals: Number(m.awayGoals),
+      winnerSide: m.winnerSide ?? null,
+      tieId: m.tieId ?? null,
+      status: m.status ?? null,
+      regulationHomeGoals: m.regulationHomeGoals ?? null,
+      regulationAwayGoals: m.regulationAwayGoals ?? null,
+      penaltyHome: m.penaltyHome ?? null,
+      penaltyAway: m.penaltyAway ?? null,
+      etHomeGoals: m.etHomeGoals ?? null,
+      etAwayGoals: m.etAwayGoals ?? null,
+    };
+  }
+  return out;
+}
+
 async function runFinal() {
   const { LEAGUES } = await mod("js/data/leagues.js");
   const { setWorldState, deserializeWorldState, getWorldState } = await mod("js/simulation/worldState.js");
@@ -424,23 +458,19 @@ async function runFinal() {
     });
     const fixtureIdsBefore = Object.keys(original.fixtures || {}).sort();
     const fieldBefore = (original.field || []).map((c) => c.clubId || c).sort();
-    const scoresBefore = {};
-    for (const id of fixtureIdsBefore) {
-      const f = original.fixtures[id];
-      scoresBefore[id] = {
-        status: f?.status || null,
-        homeGoals: f?.homeGoals ?? f?.score?.home ?? null,
-        awayGoals: f?.awayGoals ?? f?.score?.away ?? null,
-        tieId: f?.tieId || null,
-      };
-    }
     const played = [];
     for (const md of original.openingMatchdays || []) {
       const day = listContinentalFixtures(original).find((f) => f.matchday === md)?.date;
       if (day && day <= "2027-01-10") {
-        processContinentalMatchday(original, md, { player });
+        processContinentalMatchday(original, md, { player, world: getWorldState() });
         played.push(md);
       }
+    }
+    const editionId = original.editionId || "2026-uefa-champions-league";
+    const scoresBefore = committedScoreSnapshot(getWorldState(), editionId);
+    const committedMatchIds = Object.keys(scoresBefore).sort();
+    if (!committedMatchIds.length) {
+      throw new Error("F15 final: expected committed world.matches scores after opening matchdays");
     }
     recordPlayingTransition(player, {
       kind: "permanent",
@@ -466,21 +496,16 @@ async function runFinal() {
       world: getWorldState(),
     });
     const fixtureIdsAfter = Object.keys(refocus.fixtures || {}).sort();
-    const scoresAfter = {};
-    for (const id of fixtureIdsAfter) {
-      const f = refocus.fixtures[id];
-      scoresAfter[id] = {
-        status: f?.status || null,
-        homeGoals: f?.homeGoals ?? f?.score?.home ?? null,
-        awayGoals: f?.awayGoals ?? f?.score?.away ?? null,
-        tieId: f?.tieId || null,
-      };
-    }
+    const scoresAfter = committedScoreSnapshot(getWorldState(), editionId);
     result = {
       playedMatchdays: played,
       fieldEqual: JSON.stringify((refocus.field || []).map((c) => c.clubId || c).sort()) === JSON.stringify(fieldBefore),
       fixturesEqual: JSON.stringify(fixtureIdsAfter) === JSON.stringify(fixtureIdsBefore),
       scoresEqual: JSON.stringify(scoresAfter) === JSON.stringify(scoresBefore),
+      committedMatchCount: committedMatchIds.length,
+      committedMatchIds,
+      scoresBefore,
+      scoresAfter,
       fixtureIdsBefore,
       fixtureIdsAfter,
       editionFocusClubId: refocus.editionFocusClubId || refocus.playerClubId || null,
@@ -658,23 +683,19 @@ async function runBase() {
     const original = prepareContinentalEdition({ standing, league, player, seasonYear: 2026 });
     const fixtureIdsBefore = Object.keys(original.fixtures || {}).sort();
     const fieldBefore = (original.field || []).map((c) => c.clubId || c).sort();
-    const scoresBefore = {};
-    for (const id of fixtureIdsBefore) {
-      const f = original.fixtures[id];
-      scoresBefore[id] = {
-        status: f?.status || null,
-        homeGoals: f?.homeGoals ?? f?.score?.home ?? null,
-        awayGoals: f?.awayGoals ?? f?.score?.away ?? null,
-        tieId: f?.tieId || null,
-      };
-    }
     const played = [];
     for (const md of original.openingMatchdays || []) {
       const day = listContinentalFixtures(original).find((f) => f.matchday === md)?.date;
       if (day && day <= "2027-01-10") {
-        processContinentalMatchday(original, md, { player });
+        processContinentalMatchday(original, md, { player, world: getWorldState() });
         played.push(md);
       }
+    }
+    const editionId = original.editionId || "2026-uefa-champions-league";
+    const scoresBefore = committedScoreSnapshot(getWorldState(), editionId);
+    const committedMatchIds = Object.keys(scoresBefore).sort();
+    if (!committedMatchIds.length) {
+      throw new Error("F15 base: expected committed world.matches scores after opening matchdays");
     }
     recordPlayingTransition(player, {
       kind: "permanent",
@@ -709,21 +730,16 @@ async function runBase() {
       seasonYear: 2026,
     });
     const fixtureIdsAfter = Object.keys(refocus?.fixtures || {}).sort();
-    const scoresAfter = {};
-    for (const id of fixtureIdsAfter) {
-      const f = refocus.fixtures[id];
-      scoresAfter[id] = {
-        status: f?.status || null,
-        homeGoals: f?.homeGoals ?? f?.score?.home ?? null,
-        awayGoals: f?.awayGoals ?? f?.score?.away ?? null,
-        tieId: f?.tieId || null,
-      };
-    }
+    const scoresAfter = committedScoreSnapshot(getWorldState(), editionId);
     result = {
       playedMatchdays: played,
       fieldEqual: JSON.stringify((refocus?.field || []).map((c) => c.clubId || c).sort()) === JSON.stringify(fieldBefore),
       fixturesEqual: JSON.stringify(fixtureIdsAfter) === JSON.stringify(fixtureIdsBefore),
       scoresEqual: JSON.stringify(scoresAfter) === JSON.stringify(scoresBefore),
+      committedMatchCount: committedMatchIds.length,
+      committedMatchIds,
+      scoresBefore,
+      scoresAfter,
       fixtureIdsBefore,
       fixtureIdsAfter,
       editionFocusClubId: refocus?.editionFocusClubId || refocus?.playerClubId || null,
@@ -849,6 +865,11 @@ try {
         r.fieldEqual === true &&
         r.fixturesEqual === true &&
         r.scoresEqual === true &&
+        Number(r.committedMatchCount) > 0 &&
+        Array.isArray(r.committedMatchIds) &&
+        r.committedMatchIds.length > 0 &&
+        r.scoresBefore &&
+        Object.keys(r.scoresBefore).length > 0 &&
         r.lateEligibleAfterMove === 0 &&
         Array.isArray(r.playedMatchdays) &&
         r.playedMatchdays.length > 0,
@@ -951,6 +972,39 @@ try {
     writeFileSync(join(outDir, `${spec.id}.json`), JSON.stringify(record, null, 2));
   }
 
+  // F15 deliberate score-corruption negative: mutating one committed world match
+  // must break the measured scoresEqual comparison.
+  const f15 = controls.find((c) => c.id === "F15");
+  let f15ScoreCorruption = { ok: false, reason: "missing-f15" };
+  if (f15?.current?.result?.scoresBefore) {
+    const before = structuredClone(f15.current.result.scoresBefore);
+    const ids = Object.keys(before);
+    if (!ids.length) {
+      f15ScoreCorruption = { ok: false, reason: "no-committed-scores" };
+    } else {
+      const targetId = ids[0];
+      const corrupted = structuredClone(before);
+      corrupted[targetId] = {
+        ...corrupted[targetId],
+        homeGoals: Number(corrupted[targetId].homeGoals) + 1,
+      };
+      const scoresEqualAfterCorruption =
+        JSON.stringify(corrupted) === JSON.stringify(before);
+      f15ScoreCorruption = {
+        ok: scoresEqualAfterCorruption === false && f15.current.result.scoresEqual === true,
+        targetId,
+        homeGoalsBefore: before[targetId].homeGoals,
+        homeGoalsAfter: corrupted[targetId].homeGoals,
+        positiveScoresEqual: f15.current.result.scoresEqual,
+        scoresEqualAfterCorruption,
+      };
+    }
+  }
+  writeFileSync(
+    join(outDir, "F15-score-corruption.json"),
+    JSON.stringify(f15ScoreCorruption, null, 2)
+  );
+
   const summary = {
     baseSha: BASE_SHA,
     finalSha: FINAL_SHA,
@@ -966,8 +1020,10 @@ try {
       currentRng: c.current?.rngAfterRestore ?? null,
       observationsEqual: c.observationsEqual,
       baseFailedInvariant: c.baseFailedInvariant,
+      committedMatchCount: c.current?.result?.committedMatchCount ?? null,
     })),
-    allPass: controls.every((c) => c.pass),
+    f15ScoreCorruption,
+    allPass: controls.every((c) => c.pass) && f15ScoreCorruption.ok === true,
     allRngEqual: controls.every((c) => c.rngGate),
   };
   writeFileSync(join(outDir, "summary.json"), JSON.stringify(summary, null, 2));

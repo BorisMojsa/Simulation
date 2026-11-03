@@ -1,28 +1,28 @@
 [browser] start B01
-[browser] pass B01 15899ms
+[browser] pass B01 15857ms
 [browser] start B02
-[browser] pass B02 17747ms
+[browser] pass B02 17843ms
 [browser] start B03
-[browser] pass B03 7583ms
+[browser] pass B03 7848ms
 [browser] start B04
-[browser] pass B04 30340ms
+[browser] pass B04 30916ms
 [browser] start B05
-[browser] pass B05 7029ms
+[browser] pass B05 7422ms
 [browser] start B06
-[browser] pass B06 39131ms
+[browser] pass B06 39670ms
 [browser] start B07
-[browser] pass B07 14966ms
+[browser] pass B07 15057ms
 [browser] start B08
-[browser] pass B08 5408ms
+[browser] pass B08 5507ms
 [browser] start B09
-[browser] pass B09 8504ms
+[browser] pass B09 8810ms
 {
   "out": "/Users/mojsa/Desktop/Simulation/.worktrees/fix09/qa/fix09-runs/browser/browser-report.json",
   "ok": true,
   "selectedOk": true,
   "subsetOnly": false,
   "blocked": false,
-  "base": "http://127.0.0.1:56128",
+  "base": "http://127.0.0.1:56789",
   "cases": {
     "B01": true,
     "B02": true,
