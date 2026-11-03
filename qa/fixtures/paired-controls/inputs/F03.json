@@ -1,0 +1,12 @@
+{
+  "id": "F03",
+  "seed": 103,
+  "hotOvr": 95,
+  "leagueId": "league:england-premier-league",
+  "arsenalId": "club:england:arsenal",
+  "brentfordId": "club:england:brentford",
+  "placements": {
+    "1": "club:england:arsenal",
+    "17": "club:england:brentford"
+  }
+}

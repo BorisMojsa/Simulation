@@ -1,54 +1,67 @@
 {
-  "sourceSha": "93b571b2e3a932d322bc8a18b985775ddb120487",
-  "generatedAt": "2026-11-03T02:55:18.667Z",
+  "baseSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
+  "finalSha": "0d7664ca5a1abff9f12e7a7e238fce4c3e92d5c1",
+  "adapter": "exportFix09PairedControls worktree base + tip worker",
   "controls": [
     {
       "id": "F01",
-      "inputHash": "e46dbe0e9dbcc261c8ea031e91d64a63db7c323dee32b7437f88022690fece02",
+      "inputHash": "ac963e3128ece73d3a78b00909488ca9f1d343db79a621ec1733ed821558eef5",
       "pass": true,
-      "invariant": "DNQ destination has zero eligible late fixtures and no CL inheritance",
-      "baseRng": 1,
-      "currentRng": 3325529024
+      "invariant": "DNQ Brentford cannot inherit Arsenal first-place/CL",
+      "baseRng": 3373663684,
+      "currentRng": 2011218834,
+      "observationsEqual": false,
+      "baseFailedInvariant": true
     },
     {
       "id": "F02",
-      "inputHash": "b3dc917a27ca5dd806306073e4403742314c45ddd75138c5da3664dd28048c3c",
+      "inputHash": "b5ee923888082820dbdbe4d94cd168cb56bd746abec225edfd2892c468ef8df6",
       "pass": true,
       "invariant": "Qualified destination grants Champions League",
-      "baseRng": 3325529024,
-      "currentRng": 102
+      "baseRng": 1294212810,
+      "currentRng": 1979478882,
+      "observationsEqual": false,
+      "baseFailedInvariant": false
     },
     {
       "id": "F03",
-      "inputHash": "b0d4310d47293923550b98bde85f0e952ff00d62846d77c1099c65983b37c8ee",
+      "inputHash": "54b7a66f3c2d0d03732f1c246b70ecbd0ce88a4fcc449492a789a14cf8db1450",
       "pass": true,
       "invariant": "High OVR cannot override known DNQ history",
-      "baseRng": 102,
-      "currentRng": 103
+      "baseRng": 3439102901,
+      "currentRng": 4110663436,
+      "observationsEqual": false,
+      "baseFailedInvariant": false
     },
     {
       "id": "F05",
-      "inputHash": "b74befdcbff40f911ada7882d07a9ec36e9c2e4dc14f450831b79eb9cb0a7f97",
+      "inputHash": "0c98b5b1c356986dd53b7d5d28e6cc183de32d59395f53ad55bebcec7e6e1ec1",
       "pass": true,
       "invariant": "Incomplete/stale evidence unresolved without mutation",
-      "baseRng": 103,
-      "currentRng": 105
+      "baseRng": 3461161068,
+      "currentRng": 3460542850,
+      "observationsEqual": false,
+      "baseFailedInvariant": true
     },
     {
       "id": "F10",
-      "inputHash": "2ef1a51638fb1a4af9da55a35259d66decf0821082b7e1ecc8bc5ea593e8b6bc",
+      "inputHash": "18918dce15b254fb226bfaccd14e731d7f73c610874143b3560692aeeceb723b",
       "pass": true,
-      "invariant": "Duplicate ranks cannot grant entry",
-      "baseRng": 105,
-      "currentRng": 110
+      "invariant": "Invalid ranks/conflicting labels rejected; legacy numeric ok",
+      "baseRng": 4249818916,
+      "currentRng": 886495095,
+      "observationsEqual": false,
+      "baseFailedInvariant": true
     },
     {
       "id": "F15",
-      "inputHash": "900e5fd8c3638c125345243801ec517e5137f1832bdfe7271eb0ae42f3302acf",
+      "inputHash": "3359f9bdb98c56434007266cbfcc04a25e6834ceca0467f21129276642c82692",
       "pass": true,
-      "invariant": "Soft refocus preserves field/fixtures and immutable edition focus",
-      "baseRng": 110,
-      "currentRng": 74848409
+      "invariant": "Soft refocus after committed MD1 preserves field/fixtures and registration gate",
+      "baseRng": 2134654553,
+      "currentRng": 3860473695,
+      "observationsEqual": false,
+      "baseFailedInvariant": true
     }
   ],
   "allPass": true

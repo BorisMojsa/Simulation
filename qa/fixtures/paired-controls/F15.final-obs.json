@@ -1,0 +1,24 @@
+{
+  "side": "final",
+  "sourceSha": "0d7664ca5a1abff9f12e7a7e238fce4c3e92d5c1",
+  "rngAfterRestore": 3860473695,
+  "rngAfterRun": 220657648,
+  "clubFinanceKeys": [
+    "club:england:arsenal|2026"
+  ],
+  "result": {
+    "playedMatchdays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "fieldEqual": true,
+    "fixturesEqual": true,
+    "editionFocusClubId": "club:england:arsenal",
+    "viewFocusClubId": "club:england:brentford",
+    "lateEligibleAfterMove": 0
+  }
+}

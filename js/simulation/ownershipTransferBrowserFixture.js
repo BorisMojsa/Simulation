@@ -13,6 +13,7 @@ import { allSeniorClubs } from "./seniorClubs.js";
 import { ensurePlayingStints } from "./playingRegistration.js";
 import { commitCompletedDomesticEdition } from "./earnedQualification.js";
 import { qualificationForPosition, findSisterLeagues } from "./leaguePhase.js";
+import { prepareContinentalEdition } from "./continentalTournament.js";
 
 export const OWNERSHIP_TRANSFER_FIXTURE = {
   careerId: "ownership-transfer-fixture-v1",
@@ -83,22 +84,32 @@ export function buildOwnershipTransferBrowserFixture(opts = {}) {
   player.decisionCooldowns = {};
   ensurePlayingStints(player, { asOfDate: `${cfg.startYear}-07-01` });
 
-  // Seed earned CL places so in-field destinations used by ownership F02 are not
-  // synthetic DNQs (Fix 09 attachment rejects known non-qualifiers).
+  // Seed earned places BEFORE any season simulation / continental draw.
+  // Default: origin club first (CL). Callers may pass `placements` and/or
+  // `extraDomesticTables` so reverse/cross loans start with the correct registry.
   {
     const sisters = findSisterLeagues(league, LEAGUES);
+    const placements = cfg.placements || { 1: arsenal.clubId };
+    const placed = new Map(Object.entries(placements).map(([pos, id]) => [Number(pos), id]));
     const preferred = [
-      arsenal.clubId,
+      ...[...placed.entries()].sort((a, b) => a[0] - b[0]).map(([, id]) => id),
       "club:england:crystal-palace",
       "club:england:everton",
       "club:england:leeds-united",
       "club:england:liverpool",
-    ];
+    ].filter((id, i, arr) => id && arr.indexOf(id) === i);
     const rest = league.clubs.filter((c) => !preferred.includes(c.clubId));
-    const ordered = [
+    const ordered = Array.from({ length: league.clubs.length }, () => null);
+    for (const [pos, clubId] of placed) {
+      const club = league.clubs.find((c) => c.clubId === clubId);
+      if (club && pos >= 1 && pos <= ordered.length) ordered[pos - 1] = club;
+    }
+    let r = 0;
+    const fill = [
       ...preferred.map((id) => league.clubs.find((c) => c.clubId === id)).filter(Boolean),
       ...rest,
-    ];
+    ].filter((c) => !ordered.some((o) => o?.clubId === c.clubId));
+    for (let i = 0; i < ordered.length; i++) if (!ordered[i]) ordered[i] = fill[r++];
     const table = ordered.map((c, i) => ({
       ...c,
       position: i + 1,
@@ -115,6 +126,65 @@ export function buildOwnershipTransferBrowserFixture(opts = {}) {
       table,
       sourceYear: cfg.startYear - 1,
       forceReplace: true,
+    });
+    for (const extra of cfg.extraDomesticTables || []) {
+      if (!extra?.league?.clubs?.length) continue;
+      const exSisters = findSisterLeagues(extra.league, LEAGUES);
+      const exPlaced = new Map(
+        Object.entries(extra.placements || {}).map(([pos, id]) => [Number(pos), id])
+      );
+      const exOrdered = Array.from({ length: extra.league.clubs.length }, () => null);
+      for (const [pos, clubId] of exPlaced) {
+        const club = extra.league.clubs.find((c) => c.clubId === clubId);
+        if (club && pos >= 1 && pos <= exOrdered.length) exOrdered[pos - 1] = club;
+      }
+      let er = 0;
+      const exFill = extra.league.clubs.filter((c) => !exOrdered.some((o) => o?.clubId === c.clubId));
+      for (let i = 0; i < exOrdered.length; i++) if (!exOrdered[i]) exOrdered[i] = exFill[er++];
+      const exTable = exOrdered.map((c, i) => ({
+        ...c,
+        position: i + 1,
+        points: Math.max(0, 100 - i * 3),
+        matches: 38,
+        wins: 20,
+        draws: 8,
+        losses: 10,
+        qualification: qualificationForPosition(i + 1, extra.league, exSisters) || "",
+      }));
+      commitCompletedDomesticEdition({
+        world: getWorldState(),
+        league: extra.league,
+        table: exTable,
+        sourceYear: extra.sourceYear ?? cfg.startYear - 1,
+        forceReplace: true,
+      });
+    }
+  }
+
+  // Optionally freeze the destination borrower's earned continental edition into the
+  // world before the origin club's season runs (DNQ origins never prepare Europe).
+  if (cfg.seedDestinationEdition) {
+    const destLeague =
+      LEAGUE_BY_ID.get(brentford.leagueId) ||
+      LEAGUES.find((l) => (l.clubs || []).some((c) => c.clubId === brentford.clubId)) ||
+      league;
+    const ghost = {
+      ...player,
+      club: {
+        ...brentford,
+        league: destLeague.name,
+        leagueId: destLeague.leagueId,
+        nation: destLeague.nation,
+      },
+      playingClubId: brentford.clubId,
+      employmentClubId: brentford.clubId,
+    };
+    prepareContinentalEdition({
+      standing: { position: 1, qualification: "League Champions" },
+      league: destLeague,
+      player: ghost,
+      seasonYear: cfg.startYear,
+      world: getWorldState(),
     });
   }
 

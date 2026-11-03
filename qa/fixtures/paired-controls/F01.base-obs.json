@@ -1,0 +1,18 @@
+{
+  "side": "base",
+  "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
+  "rngAfterRestore": 3373663684,
+  "rngAfterRun": 3824582860,
+  "result": {
+    "standing": {
+      "position": 1,
+      "competition": "League Champions"
+    },
+    "editionCompetition": "Champions League",
+    "eligibleCount": 8,
+    "decisionStatus": null,
+    "decisionCompetition": null,
+    "decisionPosition": 1,
+    "adapter": "base-latestStanding-inherit"
+  }
+}

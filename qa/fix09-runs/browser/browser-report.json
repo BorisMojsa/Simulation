@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-03T02:51:24.370Z",
-  "base": "http://127.0.0.1:54109",
+  "generatedAt": "2026-11-03T03:48:52.499Z",
+  "base": "http://127.0.0.1:55235",
   "cases": {
     "B01": {
       "ok": true,
@@ -746,8 +746,8 @@
           "showcase": false,
           "editionId": "2026-uefa-champions-league",
           "competitionId": "uefa-champions-league",
-          "result": "League phase",
-          "matchCount": 6
+          "result": "Winners",
+          "matchCount": 15
         }
       },
       "crossAssociationLoan": {
@@ -777,14 +777,14 @@
       "ok": true,
       "editionPreserved": true,
       "moved": true,
-      "destination": "club:spain:malaga",
+      "destination": "club:spain:espanyol",
       "europeAtDestination": {
         "competition": "Champions League",
         "qualified": true,
         "showcase": false,
         "editionId": "2026-uefa-champions-league",
         "competitionId": "uefa-champions-league",
-        "result": "Runner-up",
+        "result": "Winners",
         "matchCount": 6
       },
       "ed0": {
@@ -1064,9 +1064,9 @@
       "protectedCompare": {
         "worldEqual": true,
         "rngEqual": true,
-        "clubFinanceEqual": true,
+        "clubFinanceEqual": false,
         "pendingOffersEqual": true,
-        "pendingDecisionEqual": true,
+        "pendingDecisionEqual": false,
         "playingStintsEqual": true,
         "seasonsEqual": true,
         "qualificationEqual": true,

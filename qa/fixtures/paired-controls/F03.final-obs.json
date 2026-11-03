@@ -1,0 +1,14 @@
+{
+  "side": "final",
+  "sourceSha": "0d7664ca5a1abff9f12e7a7e238fce4c3e92d5c1",
+  "rngAfterRestore": 4110663436,
+  "rngAfterRun": 4110663436,
+  "clubFinanceKeys": [
+    "club:england:brentford|2026"
+  ],
+  "result": {
+    "status": "not-qualified",
+    "competition": null,
+    "ovr": 95
+  }
+}

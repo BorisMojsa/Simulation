@@ -29,8 +29,22 @@ import {
   getDomesticEditionRecord,
   sourceYearForContinentalTarget,
   validateStandingTable,
+  expectedDomesticPlayCoverage,
 } from "../js/simulation/earnedQualification.js";
 import { continentalCompetitionForStanding } from "../js/data/competitions/qualification.js";
+import { formatForCompetitionName } from "../js/data/competitions/formats.js";
+import { competitionIdSlug } from "../js/simulation/continentalSchedule.js";
+
+function competitionIdForName(competition) {
+  if (!competition) return null;
+  return formatForCompetitionName(competition)?.competitionId || competitionIdSlug(competition);
+}
+
+/** Parse leading YYYY from edition ids like 2026-uefa-champions-league. */
+export function campaignEditionYear(editionId) {
+  const m = String(editionId || "").match(/^(\d{4})-/);
+  return m ? Number(m[1]) : null;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const root = join(dirname(__filename), "..");
@@ -179,6 +193,10 @@ export function validateEarnedPeriodOracle({
   participants = null,
   standingTable = null,
   europeCompetition = null,
+  europeEditionId = null,
+  europeCompetitionId = null,
+  europeSeasonYear = null,
+  worldEditions = null,
   worldMatches = null,
   requireParticipants = true,
   mode = "source-complete",
@@ -295,6 +313,25 @@ export function validateEarnedPeriodOracle({
     if (!sourceResults.length) {
       return { ok: false, reason: "missing-source-results" };
     }
+    // Nonempty is not enough — require full schedule coverage from the league format.
+    const coverage = expectedDomesticPlayCoverage(league);
+    if (coverage.fixtures > 0 && sourceResults.length !== coverage.fixtures) {
+      return {
+        ok: false,
+        reason: "incomplete-source-results",
+        expected: coverage.fixtures,
+        observed: sourceResults.length,
+        coverageSource: coverage.source,
+      };
+    }
+    if (matchIds.length && coverage.fixtures > 0 && matchIds.length !== coverage.fixtures) {
+      return {
+        ok: false,
+        reason: "incomplete-match-evidence-ids",
+        expected: coverage.fixtures,
+        observed: matchIds.length,
+      };
+    }
   }
 
   // Immutable sourceResults must themselves belong to the claimed source edition.
@@ -324,6 +361,21 @@ export function validateEarnedPeriodOracle({
     const rebuilt = rebuildStandingsFromSourceResults(sourceResults, league);
     if (!rebuilt.ok || !rebuilt.table?.length) {
       return { ok: false, reason: rebuilt.reason || "rebuild-failed" };
+    }
+    if (edition.provenance === "simulated-complete") {
+      const coverage = expectedDomesticPlayCoverage(league);
+      if (coverage.perClub > 0) {
+        const uneven = rebuilt.table.find((r) => Number(r.played) !== coverage.perClub);
+        if (uneven) {
+          return {
+            ok: false,
+            reason: "incomplete-club-coverage",
+            clubId: uneven.clubId,
+            expected: coverage.perClub,
+            observed: uneven.played,
+          };
+        }
+      }
     }
     const rebuiltRow = rebuilt.table.find((r) => r.clubId === clubId);
     if (!rebuiltRow) return { ok: false, reason: "club-absent-from-rebuilt-table" };
@@ -403,6 +455,93 @@ export function validateEarnedPeriodOracle({
           expected: decision.competition,
           observed: europeCompetition,
         };
+      }
+      const expectedCompId =
+        decision.targetCompetitionId || competitionIdForName(decision.competition);
+      if (
+        europeCompetitionId &&
+        expectedCompId &&
+        String(europeCompetitionId) !== String(expectedCompId)
+      ) {
+        return {
+          ok: false,
+          reason: "target-competition-id-mismatch",
+          expected: expectedCompId,
+          observed: europeCompetitionId,
+        };
+      }
+      // Bind the actual campaign edition identity to the source→target year pair.
+      const editionYearFromId = campaignEditionYear(europeEditionId);
+      if (europeEditionId != null && europeEditionId !== "") {
+        if (editionYearFromId == null) {
+          return { ok: false, reason: "campaign-edition-unparseable", europeEditionId };
+        }
+        if (Number(editionYearFromId) !== Number(targetYear)) {
+          return {
+            ok: false,
+            reason: "wrong-campaign-edition-year",
+            expected: targetYear,
+            observed: editionYearFromId,
+            europeEditionId,
+          };
+        }
+      }
+      if (europeSeasonYear != null && Number(europeSeasonYear) !== Number(targetYear)) {
+        return {
+          ok: false,
+          reason: "wrong-campaign-season-year",
+          expected: targetYear,
+          observed: europeSeasonYear,
+        };
+      }
+      // Canonical world edition must exist for the claimed campaign identity.
+      if (europeEditionId && worldEditions != null) {
+        const editionMap =
+          worldEditions instanceof Map ? worldEditions : new Map(worldEditions);
+        let found = null;
+        for (const [, ed] of editionMap) {
+          if (ed && String(ed.editionId) === String(europeEditionId)) {
+            found = ed;
+            break;
+          }
+        }
+        if (!found) {
+          return {
+            ok: false,
+            reason: "campaign-edition-missing-from-world",
+            europeEditionId,
+          };
+        }
+        if (
+          found.competitionId &&
+          expectedCompId &&
+          String(found.competitionId) !== String(expectedCompId)
+        ) {
+          return {
+            ok: false,
+            reason: "world-edition-competition-mismatch",
+            expected: expectedCompId,
+            observed: found.competitionId,
+          };
+        }
+        if (
+          found.seasonYear != null &&
+          Number(found.seasonYear) !== Number(targetYear)
+        ) {
+          return {
+            ok: false,
+            reason: "world-edition-year-mismatch",
+            expected: targetYear,
+            observed: found.seasonYear,
+          };
+        }
+        const worldField = found.field || found.clubs || null;
+        if (Array.isArray(worldField) && worldField.length) {
+          const inWorldField = worldField.some((p) => (p.clubId || p) === clubId);
+          if (!inWorldField) {
+            return { ok: false, reason: "participant-missing-from-world-edition", clubId };
+          }
+        }
       }
       // Real continental fields are club objects/IDs; competition lives on the campaign.
       // Only treat an annotated participant.competition as a hard mismatch when present.
@@ -618,6 +757,10 @@ function runCohort(outDir) {
           edition: priorEdition,
           participants: Array.isArray(participants) ? participants : [],
           europeCompetition: europe?.competition || null,
+          europeEditionId: europe?.editionId || null,
+          europeCompetitionId: europe?.competitionId || null,
+          europeSeasonYear: europe?.seasonYear ?? europe?.year ?? null,
+          worldEditions: world.editions,
           worldMatches: world.matches,
           mode: "target-participation",
           requireParticipants: Boolean(priorDecision?.competition),
@@ -697,10 +840,38 @@ function runCohort(outDir) {
   return { rows, oracleViolations, completedPeriods };
 }
 
+/** Build a complete double-round-robin result set for oracle coverage controls. */
+export function synthesizeCompleteSourceResults(league, sourceYear) {
+  const clubs = (league.clubs || []).filter((c) => c?.clubId);
+  const results = [];
+  let n = 0;
+  for (let i = 0; i < clubs.length; i++) {
+    for (let j = 0; j < clubs.length; j++) {
+      if (i === j) continue;
+      const home = clubs[i];
+      const away = clubs[j];
+      const homeWins = i < j;
+      results.push({
+        matchId: `${league.leagueId}::${sourceYear}:syn:${n++}`,
+        editionId: String(sourceYear),
+        competitionId: league.leagueId,
+        homeClubId: home.clubId,
+        awayClubId: away.clubId,
+        homeGoals: homeWins ? 2 : 0,
+        awayGoals: homeWins ? 0 : 1,
+      });
+    }
+  }
+  return results;
+}
+
 function runCorruptionControls() {
   const league = LEAGUES.find((l) => l.leagueId === "league:england-premier-league");
   const arsenal = "club:england:arsenal";
   const brentford = "club:england:brentford";
+  const completeResults = synthesizeCompleteSourceResults(league, 2025);
+  const rebuiltComplete = rebuildStandingsFromSourceResults(completeResults, league);
+  const arsenalPos = rebuiltComplete.table.find((r) => r.clubId === arsenal)?.position;
   const goodEdition = {
     completed: true,
     status: "complete",
@@ -708,6 +879,8 @@ function runCorruptionControls() {
     leagueId: league.leagueId,
     sourceEditionYear: 2025,
     targetContinentalYear: 2026,
+    sourceResults: completeResults,
+    matchEvidenceIds: completeResults.map((m) => m.matchId),
     table: (league.clubs || []).map((c, i) => ({
       ...c,
       position: i + 1,
@@ -723,12 +896,15 @@ function runCorruptionControls() {
   };
   const goodDecision = {
     clubId: arsenal,
-    position: 1,
-    competition: "Champions League",
+    position: arsenalPos,
+    competition: oracleCompetition(league.nation, league.leagueId, arsenalPos) || "Champions League",
     status: "qualified",
     sourceEditionYear: 2025,
     targetContinentalYear: 2026,
+    targetCompetitionId: "uefa-champions-league",
   };
+  const oneResult = [completeResults.find((m) => m.homeClubId === arsenal || m.awayClubId === arsenal)];
+  const almostComplete = completeResults.slice(0, -1);
   const cases = [
     validateEarnedPeriodOracle({
       league,
@@ -745,7 +921,7 @@ function runCorruptionControls() {
       sourceYear: 2025,
       targetYear: 2026,
       decision: goodDecision,
-      edition: { ...goodEdition, table: [] },
+      edition: { ...goodEdition, table: [], sourceResults: [], matchEvidenceIds: [] },
       participants: [],
     }),
     validateEarnedPeriodOracle({
@@ -852,13 +1028,90 @@ function runCorruptionControls() {
         sourceEditionYear: 2025,
         targetContinentalYear: 2026,
       },
-      edition: { ...goodEdition, provenance: "legacy-migrated" },
+      edition: { ...goodEdition, provenance: "legacy-migrated", sourceResults: [], matchEvidenceIds: [] },
       participants: [{ clubId: brentford, competition: "Champions League" }],
       europeCompetition: "Champions League",
       mode: "target-participation",
     }),
+    // Partial coverage must fail even when the incomplete rebuild still ranks Arsenal first.
+    validateEarnedPeriodOracle({
+      league,
+      clubId: arsenal,
+      sourceYear: 2025,
+      targetYear: 2026,
+      decision: goodDecision,
+      edition: {
+        ...goodEdition,
+        sourceResults: oneResult,
+        matchEvidenceIds: oneResult.map((m) => m.matchId),
+      },
+    }),
+    validateEarnedPeriodOracle({
+      league,
+      clubId: arsenal,
+      sourceYear: 2025,
+      targetYear: 2026,
+      decision: goodDecision,
+      edition: {
+        ...goodEdition,
+        sourceResults: almostComplete,
+        matchEvidenceIds: almostComplete.map((m) => m.matchId),
+      },
+    }),
+    // Wrong actual campaign edition/year must fail target-participation.
+    validateEarnedPeriodOracle({
+      league,
+      clubId: arsenal,
+      sourceYear: 2025,
+      targetYear: 2026,
+      decision: goodDecision,
+      edition: { ...goodEdition, provenance: "legacy-migrated", sourceResults: [], matchEvidenceIds: [] },
+      participants: [{ clubId: arsenal }],
+      europeCompetition: "Champions League",
+      europeEditionId: "1900-uefa-champions-league",
+      europeCompetitionId: "uefa-champions-league",
+      europeSeasonYear: 1900,
+      mode: "target-participation",
+      requireParticipants: true,
+    }),
   ];
-  return cases.every((c) => c.ok === false);
+  const negativesOk = cases.every((c) => c.ok === false);
+  const completeOk = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: goodDecision,
+    edition: goodEdition,
+    mode: "source-complete",
+  });
+  const campaignOk = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: goodDecision,
+    edition: { ...goodEdition, provenance: "legacy-migrated", sourceResults: [], matchEvidenceIds: [] },
+    participants: [{ clubId: arsenal }],
+    europeCompetition: "Champions League",
+    europeEditionId: "2026-uefa-champions-league",
+    europeCompetitionId: "uefa-champions-league",
+    europeSeasonYear: 2026,
+    worldEditions: new Map([
+      [
+        "uefa-champions-league::2026-uefa-champions-league",
+        {
+          editionId: "2026-uefa-champions-league",
+          seasonYear: 2026,
+          competitionId: "uefa-champions-league",
+          field: [{ clubId: arsenal }],
+        },
+      ],
+    ]),
+    mode: "target-participation",
+    requireParticipants: true,
+  });
+  return negativesOk && completeOk.ok === true && campaignOk.ok === true;
 }
 
 async function main() {

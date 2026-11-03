@@ -1081,7 +1081,90 @@ test("F25: exporter validation path fails on missing/wrong evidence", async () =
     },
   });
   assert.equal(nullScore.ok, false);
-  assert.equal(nullScore.reason, "source-result-missing-or-invalid-score");
+  assert.ok(
+    ["source-result-missing-or-invalid-score", "incomplete-source-results"].includes(nullScore.reason),
+    nullScore.reason
+  );
+
+  const { synthesizeCompleteSourceResults, rebuildStandingsFromSourceResults } = await import(
+    "../scripts/qaEarnedContinentalQualification.mjs"
+  );
+  const completeRaw = synthesizeCompleteSourceResults(league, 2025);
+  const rebuiltPos = rebuildStandingsFromSourceResults(completeRaw, league).table.find(
+    (r) => r.clubId === arsenal.clubId
+  ).position;
+  const oneWin = completeRaw.find(
+    (m) =>
+      (m.homeClubId === arsenal.clubId && m.homeGoals > m.awayGoals) ||
+      (m.awayClubId === arsenal.clubId && m.awayGoals > m.homeGoals)
+  );
+  const oneOnly = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: {
+      ...ed,
+      provenance: "simulated-complete",
+      sourceResults: [oneWin],
+      matchEvidenceIds: [oneWin.matchId],
+    },
+  });
+  assert.equal(oneOnly.ok, false);
+  assert.equal(oneOnly.reason, "incomplete-source-results");
+
+  const almost = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: {
+      ...ed,
+      provenance: "simulated-complete",
+      sourceResults: completeRaw.slice(0, -1),
+      matchEvidenceIds: completeRaw.slice(0, -1).map((m) => m.matchId),
+    },
+  });
+  assert.equal(almost.ok, false);
+  assert.equal(almost.reason, "incomplete-source-results");
+
+  const completeOk = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: {
+      ...good,
+      position: rebuiltPos,
+      competition: "Champions League",
+    },
+    edition: {
+      ...ed,
+      provenance: "simulated-complete",
+      sourceResults: completeRaw,
+      matchEvidenceIds: completeRaw.map((m) => m.matchId),
+    },
+  });
+  assert.equal(completeOk.ok, true, completeOk);
+
+  const wrongCampaignEdition = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: ed,
+    participants: [{ clubId: arsenal.clubId }],
+    europeCompetition: "Champions League",
+    europeEditionId: "1900-uefa-champions-league",
+    europeCompetitionId: "uefa-champions-league",
+    mode: "target-participation",
+    requireParticipants: true,
+  });
+  assert.equal(wrongCampaignEdition.ok, false);
+  assert.equal(wrongCampaignEdition.reason, "wrong-campaign-edition-year");
 
   const wrongYearCited = validateEarnedPeriodOracle({
     league,

@@ -1,0 +1,12 @@
+{
+  "side": "base",
+  "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
+  "rngAfterRestore": 1294212810,
+  "rngAfterRun": 1294212810,
+  "result": {
+    "status": "qualified",
+    "competition": "Champions League",
+    "position": 1,
+    "adapter": "base-latestStanding"
+  }
+}

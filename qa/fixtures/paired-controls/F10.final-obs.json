@@ -1,0 +1,73 @@
+{
+  "side": "final",
+  "sourceSha": "0d7664ca5a1abff9f12e7a7e238fce4c3e92d5c1",
+  "rngAfterRestore": 886495095,
+  "rngAfterRun": 886495095,
+  "clubFinanceKeys": [],
+  "result": {
+    "rejected": [
+      {
+        "value": "null",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "undefined",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "NaN",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "Infinity",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "-Infinity",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "0",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "-1",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "0.5",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "1.5",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "abc",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "99",
+        "normalizeOk": false,
+        "competition": null
+      }
+    ],
+    "conflicting": null,
+    "legacyNumeric": "Champions League"
+  }
+}

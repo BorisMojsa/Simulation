@@ -561,6 +561,28 @@ export function simulateChronologicalSeason({
           historySegment = "destination";
         }
         if (cupState) rebindDomesticCupAttachment(cupState, player);
+        if (!europeEdition) {
+          const destLeague = activeLeague || league;
+          const standing = preSeasonContinentalStanding(player, destLeague, {
+            world,
+            seasonYear: seasonStartYear,
+          });
+          if (standing) {
+            europeEdition = prepareSeasonContinental({
+              standing,
+              league: destLeague,
+              player,
+              seasonYear: seasonStartYear,
+              world,
+            });
+            if (europeEdition) {
+              europePlan = buildContinentalCampaignView(europeEdition, {
+                playerName: europeEdition.playerClub?.name,
+                world,
+              });
+            }
+          }
+        }
         if (europeEdition) {
           ordered = mergePendingEvents(
             ordered,
@@ -1569,6 +1591,30 @@ export function resumeChronologicalSeason({
       historySegment = "destination";
     }
     if (cupState) rebindDomesticCupAttachment(cupState, player);
+    // Mid-season move into an already-prepared earned edition (e.g. DNQ → CL loan):
+    // adopt the destination club's world edition without redrawing.
+    if (!europeEdition) {
+      const destLeague = activeLeague || league;
+      const standing = preSeasonContinentalStanding(player, destLeague, {
+        world,
+        seasonYear: seasonStartYear,
+      });
+      if (standing) {
+        europeEdition = prepareSeasonContinental({
+          standing,
+          league: destLeague,
+          player,
+          seasonYear: seasonStartYear,
+          world,
+        });
+        if (europeEdition) {
+          europePlan = buildContinentalCampaignView(europeEdition, {
+            playerName: europeEdition.playerClub?.name,
+            world,
+          });
+        }
+      }
+    }
     if (europeEdition) {
       ordered = mergePendingEvents(
         ordered,
@@ -1633,6 +1679,28 @@ export function resumeChronologicalSeason({
           historySegment = "destination";
         }
         if (cupState) rebindDomesticCupAttachment(cupState, player);
+        if (!europeEdition) {
+          const destLeague = activeLeague || league;
+          const standing = preSeasonContinentalStanding(player, destLeague, {
+            world,
+            seasonYear: seasonStartYear,
+          });
+          if (standing) {
+            europeEdition = prepareSeasonContinental({
+              standing,
+              league: destLeague,
+              player,
+              seasonYear: seasonStartYear,
+              world,
+            });
+            if (europeEdition) {
+              europePlan = buildContinentalCampaignView(europeEdition, {
+                playerName: europeEdition.playerClub?.name,
+                world,
+              });
+            }
+          }
+        }
         if (europeEdition) {
           ordered = mergePendingEvents(
             ordered,

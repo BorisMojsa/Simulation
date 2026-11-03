@@ -2,35 +2,39 @@
   "protectedCompare": {
     "worldEqual": true,
     "rngEqual": true,
-    "clubFinanceEqual": true,
+    "clubFinanceEqual": false,
     "pendingOffersEqual": true,
-    "pendingDecisionEqual": true,
+    "pendingDecisionEqual": false,
     "playingStintsEqual": true,
     "seasonsEqual": true,
     "qualificationEqual": true,
     "wageEqual": true,
     "contractEqual": true
   },
+  "branchAPath": "live",
+  "branchBPath": "restored",
+  "liveVersusRestored": true,
+  "dualRestoreEqual": true,
   "pendingOffersA": [],
   "pendingOffersB": [],
   "ledgerKeysA": [
-    "club:colombia:cucuta-deportivo|2026",
-    "club:colombia:deportivo-cali|2027",
+    "club:colombia:atletico-bucaramanga|2026",
+    "club:colombia:cucuta-deportivo|2027",
     "club:egypt:zamalek|2026",
     "club:england:arsenal|2026",
     "club:england:arsenal|2027",
-    "club:italy:udinese|2027",
-    "club:turkey:trabzonspor|2027",
-    "club:united-states:columbus-crew|2026"
+    "club:italy:parma|2027",
+    "club:turkey:samsunspor|2027",
+    "club:united-states:dc-united|2026"
   ],
   "ledgerKeysB": [
-    "club:colombia:cucuta-deportivo|2026",
+    "club:colombia:atletico-bucaramanga|2026",
     "club:colombia:deportivo-cali|2027",
     "club:egypt:zamalek|2026",
     "club:england:arsenal|2026",
     "club:england:arsenal|2027",
     "club:italy:udinese|2027",
     "club:turkey:trabzonspor|2027",
-    "club:united-states:columbus-crew|2026"
+    "club:united-states:dc-united|2026"
   ]
 }

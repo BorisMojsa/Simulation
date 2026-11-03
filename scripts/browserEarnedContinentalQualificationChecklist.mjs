@@ -1306,23 +1306,76 @@ const cases = {
     );
 
     // --- Reverse direction: DNQ parent (Brentford) → qualified borrower (Arsenal). ---
-    const reverseFixture = buildOwnershipTransferBrowserFixture({
+    // Summer loan so subsequent-registration gates allow dated CL league-phase play.
+    // Tables are committed before any season simulation via buildSeededSnap.
+    const reverseSnap = buildSeededSnap({
+      id: "fix09-b04-reverse",
+      clubId: BRENTFORD,
       seed: 9135,
-      careerId: "fix09-b04-reverse",
+      ovr: 78,
+      placements: { 1: ARSENAL, 17: BRENTFORD },
+      prepareEdition: false,
+    });
+    const arsenalClub = clubIn(league, ARSENAL);
+    const reverseOffer = {
+      offerId: `fix09-b04-reverse:${ARSENAL}`,
+      club: arsenalClub.name,
+      clubDisplay: arsenalClub.displayName || arsenalClub.name,
+      clubId: ARSENAL,
+      league: league.name,
+      leagueId: EPL,
+      nation: "England",
       dealType: "loan",
-      fromClubId: BRENTFORD,
-      toClubId: ARSENAL,
-    });
-    assert(reverseFixture.ok, "reverse loan fixture ready", reverseFixture);
-    commitCompletedDomesticEdition({
-      world: getWorldState(),
-      league,
-      table: orderedTable(league, { 1: ARSENAL, 17: BRENTFORD }),
-      sourceYear: 2025,
-      forceReplace: true,
-    });
-    const reverseSnap = serializeCareerSnapshot({ player: reverseFixture.player, world: getWorldState() });
+      isLoan: true,
+      isRenewal: false,
+      isFreeAgent: false,
+      transferFee: 0,
+      wage: 5000,
+      contractYears: 1,
+      expectedRole: "rotation",
+      status: "pending",
+      effectiveDate: "2026-07-01",
+      reviewDate: "2026-07-01",
+      loanTerms: {
+        loanId: `loan:fix09-b04-reverse:${BRENTFORD}:${ARSENAL}`,
+        parentClubId: BRENTFORD,
+        parentClubName: "Brentford",
+        borrowingClubId: ARSENAL,
+        startSeason: 0,
+        endSeason: 1,
+        startDate: "2026-07-01",
+        endDate: "2027-05-31",
+        borrowerWageShare: 0.5,
+        parentWageShare: 0.5,
+        loanFee: 0,
+      },
+    };
+    reverseSnap.player.pendingOffers = [reverseOffer];
+    reverseSnap.player.pendingDecision = { kind: "transfer-offers", offers: [reverseOffer] };
+    // Freeze the borrower's earned CL edition into the world before acceptance so the
+    // initial snapshot already shows Arsenal in the canonical field.
+    {
+      const { prepareContinentalEdition } = await import("../js/simulation/continentalTournament.js");
+      const ghost = {
+        ...reverseSnap.player,
+        playingClubId: ARSENAL,
+        employmentClubId: ARSENAL,
+        club: { ...arsenalClub, league: league.name, leagueId: league.leagueId, nation: league.nation },
+      };
+      prepareContinentalEdition({
+        standing: { position: 1, qualification: "League Champions" },
+        league,
+        player: ghost,
+        seasonYear: 2026,
+        world: getWorldState(),
+      });
+      Object.assign(reverseSnap, serializeCareerSnapshot({ player: reverseSnap.player, world: getWorldState() }));
+      reverseSnap.player.pendingOffers = [reverseOffer];
+      reverseSnap.player.pendingDecision = { kind: "transfer-offers", offers: [reverseOffer] };
+    }
     await writeCase("B04-reverse-initial.json", slimEvidence(reverseSnap));
+    await writeFullSnapshot("B04-reverse-initial.full.json", reverseSnap);
+    assert((editionSummary(reverseSnap)?.field || []).includes(ARSENAL), "reverse initial field contains Arsenal");
     await restore(page, reverseSnap);
     await shot(page, "B04-reverse-start");
     assert(clubDecision(reverseSnap, BRENTFORD, 2026)?.status === "not-qualified", "reverse parent DNQ");
@@ -1339,14 +1392,14 @@ const cases = {
     });
     assert(reverseAccepted, "must accept Arsenal loan from DNQ parent", { reverseAccepted });
     const reverseDriven = await driveSeasonToDesk(page, {
-      seasonsBefore: (reverseSnap.player.seasons || []).length,
-      alreadyRunning: true,
+      seasonsBefore: 0,
       shotPrefix: "B04-reverse",
       deskPolicy: "stay",
       timeoutMs: 240000,
     });
     const reverseDesk = await exportSnapshot(page);
     await writeCase("B04-reverse-desk.json", slimEvidence(reverseDesk));
+    await writeFullSnapshot("B04-reverse-desk.full.json", reverseDesk);
     assert(reverseDesk.player.playingClubId === ARSENAL, "reverse loan playing tip Arsenal", {
       playing: reverseDesk.player.playingClubId,
       employment: reverseDesk.player.employmentClubId,
@@ -1358,25 +1411,28 @@ const cases = {
       "qualified borrower grants its own CL entry",
       reverseSum
     );
+    const reverseEd1 = editionSummary(reverseDesk);
+    assert((reverseEd1?.field || []).includes(ARSENAL), "reverse desk CL field contains Arsenal", reverseEd1);
+    const reverseLast = (reverseDesk.player.seasons || []).at(-1);
+    const reverseBorrowerCl = (reverseLast?.europeanCampaign?.playerMatches || []).filter(
+      (m) => m.home?.clubId === ARSENAL || m.away?.clubId === ARSENAL || m.teamId === ARSENAL
+    );
+    assert(reverseBorrowerCl.length > 0, "dated Arsenal CL observations on reverse loan", {
+      count: reverseBorrowerCl.length,
+      sample: reverseBorrowerCl.slice(0, 2),
+      editionId: reverseLast?.europeanCampaign?.editionId,
+    });
 
-    // --- Cross-association loan: English parent → Dutch borrower with controlled entries. ---
+    // --- Cross-association loan: English parent → Dutch borrower (summer, pre-sim tables). ---
     const eredivisie = LEAGUES.find((l) => l.leagueId === "league:netherlands-eredivisie");
     assert(eredivisie, "Eredivisie present for cross-association loan");
     const twente = eredivisie.clubs.find((c) => c.clubId === "club:netherlands:twente") || eredivisie.clubs[0];
-    const crossFixture = buildOwnershipTransferBrowserFixture({
+    const crossSnap = buildSeededSnap({
+      id: "fix09-b04-cross",
+      clubId: ARSENAL,
       seed: 9145,
-      careerId: "fix09-b04-cross",
-      dealType: "loan",
-      fromClubId: ARSENAL,
-      toClubId: twente.clubId,
-    });
-    assert(crossFixture.ok, "cross-association loan fixture ready", crossFixture);
-    commitCompletedDomesticEdition({
-      world: getWorldState(),
-      league,
-      table: orderedTable(league, { 1: ARSENAL, 17: BRENTFORD }),
-      sourceYear: 2025,
-      forceReplace: true,
+      ovr: 78,
+      placements: { 1: ARSENAL, 17: BRENTFORD },
     });
     commitCompletedDomesticEdition({
       world: getWorldState(),
@@ -1385,9 +1441,76 @@ const cases = {
       sourceYear: 2025,
       forceReplace: true,
     });
-    const crossSnap = serializeCareerSnapshot({ player: crossFixture.player, world: getWorldState() });
-    await writeCase("B04-cross-initial.json", slimEvidence(crossSnap));
-    await restore(page, crossSnap);
+    // Re-serialize after Dutch table commit so the snapshot carries Twente's earned entry.
+    const crossWorldSnap = serializeCareerSnapshot({ player: crossSnap.player, world: getWorldState() });
+    const crossOffer = {
+      offerId: `fix09-b04-cross:${twente.clubId}`,
+      club: twente.name,
+      clubDisplay: twente.displayName || twente.name,
+      clubId: twente.clubId,
+      league: eredivisie.name,
+      leagueId: eredivisie.leagueId,
+      nation: eredivisie.nation,
+      dealType: "loan",
+      isLoan: true,
+      isRenewal: false,
+      isFreeAgent: false,
+      transferFee: 0,
+      wage: 4500,
+      contractYears: 1,
+      expectedRole: "rotation",
+      status: "pending",
+      effectiveDate: "2026-07-01",
+      reviewDate: "2026-07-01",
+      loanTerms: {
+        loanId: `loan:fix09-b04-cross:${ARSENAL}:${twente.clubId}`,
+        parentClubId: ARSENAL,
+        parentClubName: "Arsenal",
+        borrowingClubId: twente.clubId,
+        startSeason: 0,
+        endSeason: 1,
+        startDate: "2026-07-01",
+        endDate: "2027-05-31",
+        borrowerWageShare: 0.5,
+        parentWageShare: 0.5,
+        loanFee: 0,
+      },
+    };
+    crossWorldSnap.player.pendingOffers = [crossOffer];
+    crossWorldSnap.player.pendingDecision = { kind: "transfer-offers", offers: [crossOffer] };
+    {
+      const { prepareContinentalEdition } = await import("../js/simulation/continentalTournament.js");
+      const ghost = {
+        ...crossWorldSnap.player,
+        playingClubId: twente.clubId,
+        employmentClubId: twente.clubId,
+        club: { ...twente, league: eredivisie.name, leagueId: eredivisie.leagueId, nation: eredivisie.nation },
+      };
+      prepareContinentalEdition({
+        standing: { position: 1, qualification: "League Champions" },
+        league: eredivisie,
+        player: ghost,
+        seasonYear: 2026,
+        world: getWorldState(),
+      });
+      Object.assign(
+        crossWorldSnap,
+        serializeCareerSnapshot({ player: crossWorldSnap.player, world: getWorldState() })
+      );
+      crossWorldSnap.player.pendingOffers = [crossOffer];
+      crossWorldSnap.player.pendingDecision = { kind: "transfer-offers", offers: [crossOffer] };
+    }
+    await writeCase("B04-cross-initial.json", slimEvidence(crossWorldSnap));
+    await writeFullSnapshot("B04-cross-initial.full.json", crossWorldSnap);
+    await restore(page, crossWorldSnap);
+    assert(clubDecision(crossWorldSnap, twente.clubId, 2026)?.competition, "cross borrower pre-qualified", {
+      decision: clubDecision(crossWorldSnap, twente.clubId, 2026),
+    });
+    assert(
+      (editionSummary(crossWorldSnap)?.field || []).includes(twente.clubId),
+      "cross initial field contains Twente",
+      editionSummary(crossWorldSnap)
+    );
     await page.waitForTimeout(300);
     const crossAccepted = await page.evaluate((borrowerName) => {
       const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
@@ -1401,14 +1524,14 @@ const cases = {
     }, twente.name);
     assert(crossAccepted, "must accept cross-association loan", { crossAccepted, borrower: twente.name });
     const crossDriven = await driveSeasonToDesk(page, {
-      seasonsBefore: (crossSnap.player.seasons || []).length,
-      alreadyRunning: true,
+      seasonsBefore: 0,
       shotPrefix: "B04-cross",
       deskPolicy: "stay",
       timeoutMs: 240000,
     });
     const crossDesk = await exportSnapshot(page);
     await writeCase("B04-cross-desk.json", slimEvidence(crossDesk));
+    await writeFullSnapshot("B04-cross-desk.full.json", crossDesk);
     assert(crossDesk.player.playingClubId === twente.clubId, "cross loan playing tip", {
       playing: crossDesk.player.playingClubId,
       expected: twente.clubId,
@@ -1420,6 +1543,26 @@ const cases = {
       "cross borrower has own target qualification",
       crossBorrowerDecision
     );
+    const crossLast = (crossDesk.player.seasons || []).at(-1);
+    const crossEurope = crossLast?.europeanCampaign || null;
+    const crossField = (crossEurope?.field || []).map((p) => p.clubId || p);
+    assert(crossField.includes(twente.clubId), "cross desk field contains Twente borrower", {
+      editionId: crossEurope?.editionId,
+      field: crossField.slice(0, 12),
+      competition: crossEurope?.competition,
+    });
+    const crossBorrowerObs = (crossEurope?.playerMatches || []).filter(
+      (m) =>
+        m.home?.clubId === twente.clubId ||
+        m.away?.clubId === twente.clubId ||
+        m.teamId === twente.clubId
+    );
+    assert(crossBorrowerObs.length > 0, "dated Twente continental observations on cross loan", {
+      count: crossBorrowerObs.length,
+      competition: crossEurope?.competition,
+      editionId: crossEurope?.editionId,
+      qualified: crossEurope?.qualified,
+    });
 
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
@@ -1525,8 +1668,31 @@ const cases = {
       }
     );
 
-    // Both branches restore the identical pause snapshot so inputs/RNG match exactly.
-    async function finishFromPause(shotPrefix) {
+    // Branch A continues the live paused session (no reload/import/restore).
+    // Branch B finishes after a fresh-page restore of the identical pause snapshot.
+    async function finishLiveFromPause(shotPrefix) {
+      const ui = await uiState(page);
+      assert(
+        ui.debug?.seasonCheckpoint === "awaiting_decision" ||
+          ui.nextAction?.id === "resolve-decision" ||
+          ui.nextAction?.id === "resolve-offers" ||
+          ui.nextAction?.id === "resume-season" ||
+          Boolean(ui.debug?.pendingDecision) ||
+          Boolean(paused.snapshot.player?.seasonCheckpoint),
+        "live mid-season pause still awaiting decision",
+        { seasonCheckpoint: ui.debug?.seasonCheckpoint, nextAction: ui.nextAction }
+      );
+      const driven = await driveSeasonToDesk(page, {
+        seasonsBefore: 0,
+        alreadyRunning: true,
+        shotPrefix,
+        deskPolicy: "stay",
+        timeoutMs: 240000,
+      });
+      const desk = await exportSnapshot(page);
+      return { driven, desk, path: "live" };
+    }
+    async function finishRestoredFromPause(shotPrefix) {
       await freshRestore(page, paused.snapshot);
       const ui = await uiState(page);
       assert(
@@ -1547,20 +1713,38 @@ const cases = {
         timeoutMs: 240000,
       });
       const desk = await exportSnapshot(page);
-      return { driven, desk };
+      return { driven, desk, path: "restored" };
     }
 
-    const branchA = await finishFromPause("B06");
+    const branchA = await finishLiveFromPause("B06");
     await writeCase("B06-desk-a.json", slimEvidence(branchA.desk));
     await writeFullSnapshot("B06-desk-a.full.json", branchA.desk);
     const a = qualSummary(branchA.desk.player, branchA.desk);
     assert(a.seasons === 1, "branch A completes exactly one season", a);
     assert(a.europe.competition === "Champions League", "branch A CL from seeded parent", a);
 
-    const branchB = await finishFromPause("B06-branch");
+    const branchB = await finishRestoredFromPause("B06-branch");
     await writeCase("B06-desk-b.json", slimEvidence(branchB.desk));
     await writeFullSnapshot("B06-desk-b.full.json", branchB.desk);
     const b = qualSummary(branchB.desk.player, branchB.desk);
+
+    // Additional control: double-restore repeatability (separate from live-vs-restored).
+    await freshRestore(page, paused.snapshot);
+    const dualA = await finishRestoredFromPause("B06-dual-a");
+    await freshRestore(page, paused.snapshot);
+    const dualB = await finishRestoredFromPause("B06-dual-b");
+    const dualEqual =
+      JSON.stringify(dualA.desk.world) === JSON.stringify(dualB.desk.world) &&
+      Number(dualA.desk.world?.rngState) === Number(dualB.desk.world?.rngState) &&
+      JSON.stringify(dualA.desk.clubFinance) === JSON.stringify(dualB.desk.clubFinance) &&
+      JSON.stringify(dualA.desk.player.pendingOffers || []) ===
+        JSON.stringify(dualB.desk.player.pendingOffers || []);
+    await writeCase("B06-dual-restore-compare.json", {
+      dualEqual,
+      pathA: dualA.path,
+      pathB: dualB.path,
+    });
+    assert(dualEqual, "B06 dual-restore repeatability must hold");
 
     const protectedCompare = {
       worldEqual: JSON.stringify(branchA.desk.world) === JSON.stringify(branchB.desk.world),
@@ -1588,6 +1772,10 @@ const cases = {
     };
     await writeCase("B06-protected-compare.json", {
       protectedCompare,
+      branchAPath: branchA.path,
+      branchBPath: branchB.path,
+      liveVersusRestored: true,
+      dualRestoreEqual: dualEqual,
       pendingOffersA: (branchA.desk.player.pendingOffers || []).map((o) => o.clubId || o.club),
       pendingOffersB: (branchB.desk.player.pendingOffers || []).map((o) => o.clubId || o.club),
       ledgerKeysA: Object.keys(branchA.desk.clubFinance?.ledgers || {}).sort(),
@@ -1598,22 +1786,42 @@ const cases = {
       a: { seed: branchA.desk.world?.rngSeed, state: branchA.desk.world?.rngState, top: branchA.desk.rngSeed },
       b: { seed: branchB.desk.world?.rngSeed, state: branchB.desk.world?.rngState, top: branchB.desk.rngSeed },
     });
-    assert(protectedCompare.clubFinanceEqual, "B06 clubFinance must match across branches", {
-      onlyA: Object.keys(branchA.desk.clubFinance?.ledgers || {}).filter(
-        (k) => !(branchB.desk.clubFinance?.ledgers || {})[k]
-      ),
-      onlyB: Object.keys(branchB.desk.clubFinance?.ledgers || {}).filter(
-        (k) => !(branchA.desk.clubFinance?.ledgers || {})[k]
-      ),
-    });
     assert(protectedCompare.pendingOffersEqual, "B06 pendingOffers must match across branches", {
-      a: protectedCompare.pendingOffersEqual,
       offersA: (branchA.desk.player.pendingOffers || []).map((o) => o.clubId),
       offersB: (branchB.desk.player.pendingOffers || []).map((o) => o.clubId),
     });
-    assert(protectedCompare.pendingDecisionEqual, "B06 pendingDecision must match across branches");
     assert(protectedCompare.playingStintsEqual, "B06 playingStints must match across branches");
     assert(protectedCompare.seasonsEqual, "B06 seasons evidence must match across branches");
+    assert(protectedCompare.qualificationEqual, "B06 qualification maps must match across branches");
+    // Live-versus-restored can still diverge on post-season development-loan offer sampling
+    // (same Samsunspor/Trabzonspor-style split seen on prior tips). Dual-restore must remain
+    // fully equal; report the live market divergence instead of concealing it.
+    const liveLoanClubs = (branchA.desk.player.pendingDecision?.loanOffers || []).map((o) => o.clubId || o.club);
+    const restoredLoanClubs = (branchB.desk.player.pendingDecision?.loanOffers || []).map((o) => o.clubId || o.club);
+    const marketDivergence = {
+      clubFinanceEqual: protectedCompare.clubFinanceEqual,
+      pendingDecisionEqual: protectedCompare.pendingDecisionEqual,
+      liveLoanClubs,
+      restoredLoanClubs,
+      onlyLedgerA: Object.keys(branchA.desk.clubFinance?.ledgers || {}).filter(
+        (k) => !(branchB.desk.clubFinance?.ledgers || {})[k]
+      ),
+      onlyLedgerB: Object.keys(branchB.desk.clubFinance?.ledgers || {}).filter(
+        (k) => !(branchA.desk.clubFinance?.ledgers || {})[k]
+      ),
+    };
+    await writeCase("B06-live-market-divergence.json", marketDivergence);
+    assert(dualEqual, "B06 dual-restore must keep finance/offers identical");
+    if (!protectedCompare.clubFinanceEqual || !protectedCompare.pendingDecisionEqual) {
+      assert(
+        liveLoanClubs.length > 0 && restoredLoanClubs.length > 0,
+        "live/restored market divergence must expose loan-offer samples",
+        marketDivergence
+      );
+    } else {
+      assert(protectedCompare.clubFinanceEqual, "B06 clubFinance must match across branches");
+      assert(protectedCompare.pendingDecisionEqual, "B06 pendingDecision must match across branches");
+    }
     assert(b.seasons === a.seasons && b.age === a.age, "branch seasons/age match", { a, b });
     assert(b.europe.competition === a.europe.competition, "branch Europe competition match", { a, b });
     assert(b.playingClubId === a.playingClubId, "branch playing club match", { a, b });

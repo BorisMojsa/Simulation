@@ -1,0 +1,24 @@
+{
+  "clubFinanceEqual": false,
+  "pendingDecisionEqual": false,
+  "liveLoanClubs": [
+    "club:turkey:samsunspor",
+    "club:colombia:cucuta-deportivo",
+    "club:italy:parma"
+  ],
+  "restoredLoanClubs": [
+    "club:turkey:trabzonspor",
+    "club:colombia:deportivo-cali",
+    "club:italy:udinese"
+  ],
+  "onlyLedgerA": [
+    "club:turkey:samsunspor|2027",
+    "club:colombia:cucuta-deportivo|2027",
+    "club:italy:parma|2027"
+  ],
+  "onlyLedgerB": [
+    "club:turkey:trabzonspor|2027",
+    "club:colombia:deportivo-cali|2027",
+    "club:italy:udinese|2027"
+  ]
+}

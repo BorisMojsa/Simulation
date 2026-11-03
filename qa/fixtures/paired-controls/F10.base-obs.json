@@ -1,0 +1,73 @@
+{
+  "side": "base",
+  "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
+  "rngAfterRestore": 4249818916,
+  "rngAfterRun": 4249818916,
+  "result": {
+    "rejected": [
+      {
+        "value": "null",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "undefined",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "NaN",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "Infinity",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "-Infinity",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "0",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "-1",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "0.5",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "1.5",
+        "normalizeOk": false,
+        "competition": "Champions League"
+      },
+      {
+        "value": "abc",
+        "normalizeOk": false,
+        "competition": null
+      },
+      {
+        "value": "99",
+        "normalizeOk": false,
+        "competition": null
+      }
+    ],
+    "conflicting": "Champions League",
+    "legacyNumeric": "Champions League",
+    "adapter": "base-label-fallback"
+  }
+}

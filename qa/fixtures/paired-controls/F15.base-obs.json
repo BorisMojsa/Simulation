@@ -1,0 +1,22 @@
+{
+  "side": "base",
+  "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
+  "rngAfterRestore": 2134654553,
+  "rngAfterRun": 3537702063,
+  "result": {
+    "playedMatchdays": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "fieldEqual": false,
+    "fixturesEqual": false,
+    "editionFocusClubId": "club:england:brentford",
+    "viewFocusClubId": null,
+    "lateEligibleAfterMove": 0,
+    "adapter": "base-soft-refocus"
+  }
+}
