@@ -3,7 +3,7 @@
   "inputHash": "7ac4763d181508f70a914fd0e1d6b69f154c2df6bfcb560a7e08cf8b9312730e",
   "inputPath": "inputs/F15.json",
   "baseSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "finalSha": "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118",
+  "finalSha": "03b2cd8618e60ac15d7907f1eb09de9425dc0bc4",
   "invariant": "Soft refocus after committed MD1 preserves field/fixtures and registration gate",
   "expectedRngAfterRestore": 115,
   "base": {
@@ -329,7 +329,7 @@
   },
   "current": {
     "side": "final",
-    "sourceSha": "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118",
+    "sourceSha": "03b2cd8618e60ac15d7907f1eb09de9425dc0bc4",
     "rngAfterRestore": 115,
     "expectedRngAfterRestore": 115,
     "rngMatchesExpected": true,
