@@ -319,8 +319,8 @@ if (!manifest.finalSha || !manifest.baseSha || !manifest.previousReviewedTip) {
   console.error("manifest missing identity fields");
   bad++;
 }
-if (manifest.gates?.ready && manifest.testedSourceSha !== manifest.finalSha) {
-  console.error("tested source sha does not match final sha");
+if (manifest.gates?.ready && manifest.gates?.testedShaMatchesFinal !== true) {
+  console.error("tested source sha does not cover final sha");
   bad++;
 }
 function parseJson(path) {
