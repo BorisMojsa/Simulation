@@ -166,7 +166,12 @@ function testedShaCoversFinal() {
     .filter(Boolean);
   return (
     changed.length > 0 &&
-    changed.every((p) => p === "scripts/packageFix09Review.mjs" || p.startsWith("qa/fix09-runs/final/"))
+    changed.every(
+      (p) =>
+        p === "scripts/packageFix09Review.mjs" ||
+        p.startsWith("qa/fix09-runs/final/") ||
+        p.startsWith("qa/fixtures/paired-controls/")
+    )
   );
 }
 const testedShaMatchesFinal = testedShaCoversFinal();
