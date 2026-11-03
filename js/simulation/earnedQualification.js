@@ -235,6 +235,9 @@ export function validateStandingTable(table, league, {
   status = null,
   completed = null,
   sourceYear = null,
+  requirePlayedEvidence = true,
+  matchEvidenceIds = null,
+  provenance = null,
 } = {}) {
   if (!league || !Array.isArray(table) || !table.length) {
     return { ok: false, reason: "missing-inputs" };
@@ -253,6 +256,8 @@ export function validateStandingTable(table, league, {
   }
   const rowIds = [];
   const ranks = [];
+  let totalPlayed = 0;
+  let totalPoints = 0;
   for (const raw of table) {
     const clubId = raw?.clubId || null;
     if (!clubId) return { ok: false, reason: "missing-club-id" };
@@ -263,6 +268,9 @@ export function validateStandingTable(table, league, {
     const norm = normalizeFinishPosition(raw.position, { tableSize: table.length });
     if (!norm.ok) return { ok: false, reason: "invalid-positions", detail: norm.reason };
     ranks.push(norm.position);
+    const played = Number(raw.matches ?? raw.played ?? 0) || 0;
+    totalPlayed += played;
+    totalPoints += Number(raw.points ?? 0) || 0;
   }
   if (new Set(rowIds).size !== rowIds.length) return { ok: false, reason: "duplicate-club" };
   if (new Set(ranks).size !== ranks.length) return { ok: false, reason: "duplicate-ranks" };
@@ -271,13 +279,54 @@ export function validateStandingTable(table, league, {
       if (!ranks.includes(i)) return { ok: false, reason: "incomplete-rank-ordering", missing: i };
     }
   }
-  return { ok: true, size: table.length, ranks, clubIds: rowIds };
+  // A full roster/rank permutation is not a completed season by itself.
+  if (requirePlayedEvidence && requireComplete && (status === "complete" || completed === true || status == null)) {
+    const hasMatchIds = Array.isArray(matchEvidenceIds) && matchEvidenceIds.length > 0;
+    const trustedInternal =
+      provenance === "simulated-complete" ||
+      provenance === "bootstrap-synthetic";
+    if (!hasMatchIds && !trustedInternal) {
+      if (totalPlayed <= 0 && totalPoints <= 0) {
+        return { ok: false, reason: "unplayed-table" };
+      }
+      // Partially played full roster still lacks completion evidence without match IDs.
+      const expectedMatches = expectedSize > 1 ? expectedSize * (expectedSize - 1) : 0;
+      // Each match increments two clubs' played counts.
+      if (expectedMatches > 0 && totalPlayed < expectedMatches) {
+        return { ok: false, reason: "incomplete-play-evidence", totalPlayed, expectedMatches };
+      }
+    }
+  }
+  return { ok: true, size: table.length, ranks, clubIds: rowIds, totalPlayed };
 }
 
 /**
  * Persist a completed (or bootstrap) domestic table once under stable edition keys.
  * Repeated commits with the same key are no-ops unless forceReplace is set.
  */
+/** Immutable slim source results for independent standings rebuild. */
+export function slimSourceResults(matches = []) {
+  const out = [];
+  const seen = new Set();
+  for (const m of matches || []) {
+    const id = m?.matchId || m?.fixtureId || m?.id || null;
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push({
+      matchId: id,
+      fixtureId: m.fixtureId || id,
+      date: m.date || null,
+      competitionId: m.competitionId || m.leagueContextId || null,
+      editionId: m.editionId != null ? String(m.editionId) : null,
+      homeClubId: m.home?.clubId || m.homeClubId || null,
+      awayClubId: m.away?.clubId || m.awayClubId || null,
+      homeGoals: m.homeGoals ?? m.matchHomeGoals ?? null,
+      awayGoals: m.awayGoals ?? m.matchAwayGoals ?? null,
+    });
+  }
+  return out;
+}
+
 export function commitCompletedDomesticEdition({
   world = getWorldState(),
   league,
@@ -286,6 +335,7 @@ export function commitCompletedDomesticEdition({
   provenance = "simulated-complete",
   status = "complete",
   matchEvidenceIds = null,
+  sourceResults = null,
   forceReplace = false,
   requireComplete = true,
 } = {}) {
@@ -303,6 +353,9 @@ export function commitCompletedDomesticEdition({
     status,
     completed: status === "complete" || status === "bootstrap",
     sourceYear: sourceEditionYear,
+    requirePlayedEvidence: status === "complete",
+    matchEvidenceIds,
+    provenance,
   });
   if (!validation.ok) return { ok: false, reason: validation.reason, validation };
   const map = ensureQualificationMaps(world);
@@ -338,6 +391,9 @@ export function commitCompletedDomesticEdition({
     table: slimTable,
     entries,
     matchEvidenceIds: Array.isArray(matchEvidenceIds) ? [...matchEvidenceIds] : [],
+    sourceResults: Array.isArray(sourceResults)
+      ? slimSourceResults(sourceResults)
+      : [],
     feeder: isContinentalFeederLeague(league),
   };
 
@@ -520,6 +576,8 @@ export function ingestStandingEvidence({
     status,
     completed,
     sourceYear: sourceEditionYear,
+    requirePlayedEvidence: true,
+    provenance,
   });
   if (!validation.ok) return { ok: false, reason: validation.reason, validation };
   return commitCompletedDomesticEdition({

@@ -1,0 +1,86 @@
+{
+  "player": {
+    "name": "fix09-b08-dnq",
+    "careerId": "fix09-b08-dnq",
+    "age": 22,
+    "rating": 72,
+    "contractStatus": "active",
+    "employmentClubId": "club:england:brentford",
+    "playingClubId": "club:england:brentford",
+    "club": {
+      "name": "Brentford",
+      "clubId": "club:england:brentford",
+      "league": "England - Premier League"
+    },
+    "seasons": [],
+    "latestStanding": null
+  },
+  "qualification": {
+    "age": 22,
+    "seasons": 0,
+    "club": "Brentford",
+    "employmentClubId": "club:england:brentford",
+    "playingClubId": "club:england:brentford",
+    "contractStatus": "active",
+    "rating": 72,
+    "europe": {
+      "competition": null,
+      "qualified": false,
+      "showcase": false,
+      "editionId": null,
+      "competitionId": null,
+      "result": null,
+      "matchCount": 0
+    },
+    "arsenal2026": {
+      "clubId": "club:england:arsenal",
+      "name": "Arsenal",
+      "position": 1,
+      "qualificationLabel": "League Champions",
+      "competition": "Champions League",
+      "status": "qualified",
+      "targetCompetitionId": "uefa-champions-league",
+      "targetContinentalYear": 2026,
+      "sourceEditionYear": 2025,
+      "provenance": "simulated-complete",
+      "ruleVersion": "fix09-v1"
+    },
+    "brentford2026": {
+      "clubId": "club:england:brentford",
+      "name": "Brentford",
+      "position": 17,
+      "qualificationLabel": "",
+      "competition": null,
+      "status": "not-qualified",
+      "targetCompetitionId": null,
+      "targetContinentalYear": 2026,
+      "sourceEditionYear": 2025,
+      "provenance": "simulated-complete",
+      "ruleVersion": "fix09-v1"
+    },
+    "edition": null
+  },
+  "qualKeys": [
+    "domestic:league:england-premier-league::2025",
+    "club:club:england:arsenal::target:2026",
+    "club:club:england:aston-villa::target:2026",
+    "club:club:england:afc-bournemouth::target:2026",
+    "club:club:england:brighton-and-hove-albion::target:2026",
+    "club:club:england:chelsea::target:2026",
+    "club:club:england:coventry-city::target:2026",
+    "club:club:england:crystal-palace::target:2026",
+    "club:club:england:everton::target:2026",
+    "club:club:england:fulham::target:2026",
+    "club:club:england:hull-city::target:2026",
+    "club:club:england:ipswich-town::target:2026",
+    "club:club:england:leeds-united::target:2026",
+    "club:club:england:liverpool::target:2026",
+    "club:club:england:manchester-city::target:2026",
+    "club:club:england:manchester-united::target:2026",
+    "club:club:england:newcastle-united::target:2026",
+    "club:club:england:brentford::target:2026",
+    "club:club:england:nottingham-forest::target:2026",
+    "club:club:england:sunderland::target:2026",
+    "club:club:england:tottenham-hotspur::target:2026"
+  ]
+}

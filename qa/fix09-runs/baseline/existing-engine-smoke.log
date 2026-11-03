@@ -1,0 +1,181 @@
+TAP version 13
+# OK  Arsenal to Brentford: no post-move Arsenal player continental/cup sides
+# OK  accepted-offer permanent move asserts destination fixture ownership
+# OK  cross-country accepted loan detaches parent continental player fixtures
+# OK  loan return and parent renewal preserve borrower then restore parent
+# OK  delayed registration blocks destination side before effective date
+# OK  snapshot round-trip preserves playing stints
+# OK  continental format ownership policy covers all eight club formats
+# OK  national team identity is unaffected by club side helper
+# OK  F01: undated free-agent signing records destination stint and league fixtures
+# OK  F02: in-field continental destination fixtures match ledger after resume
+# OK  F03: January cross-association move schedules winter destination cup rounds
+# OK  R1: direct R16 destination knockout fixtures match ledger in chrono order
+# OK  R2: cross-association loan keeps pre-move cup fixture history
+# OK  F04: empty trophies[] does not fall through to europeanCampaign.won
+# Subtest: tests/clubOwnershipTransfers.test.mjs
+ok 1 - tests/clubOwnershipTransfers.test.mjs
+  ---
+  duration_ms: 773.979583
+  type: 'test'
+  ...
+# Subtest: UEFA pre-season standing preserves Champions League qualification label
+ok 2 - UEFA pre-season standing preserves Champions League qualification label
+  ---
+  duration_ms: 0.801291
+  type: 'test'
+  ...
+# Subtest: UEFA position fallback grants CL when qualification label was null
+ok 3 - UEFA position fallback grants CL when qualification label was null
+  ---
+  duration_ms: 0.079209
+  type: 'test'
+  ...
+# Subtest: AFC/CAF club supplement and playable leagues are present
+ok 4 - AFC/CAF club supplement and playable leagues are present
+  ---
+  duration_ms: 0.17675
+  type: 'test'
+  ...
+# Subtest: Champions League campaign uses league phase with 36-team field when pool allows
+ok 5 - Champions League campaign uses league phase with 36-team field when pool allows
+  ---
+  duration_ms: 64.50975
+  type: 'test'
+  ...
+# Subtest: Libertadores uses group stage
+ok 6 - Libertadores uses group stage
+  ---
+  duration_ms: 24.121459
+  type: 'test'
+  ...
+# Subtest: World Cup 2026 config is 48 teams with best thirds; EURO is 24
+ok 7 - World Cup 2026 config is 48 teams with best thirds; EURO is 24
+  ---
+  duration_ms: 0.124334
+  type: 'test'
+  ...
+# Subtest: World Cup simulation builds power-of-two knockout without truncating qualifiers
+ok 8 - World Cup simulation builds power-of-two knockout without truncating qualifiers
+  ---
+  duration_ms: 40.419667
+  type: 'test'
+  ...
+# Subtest: league-phase schedule constraints
+    # Subtest: UCL/UEL: 1000 seeds produce valid 36-club schedules
+    ok 1 - UCL/UEL: 1000 seeds produce valid 36-club schedules
+      ---
+      duration_ms: 148.966916
+      type: 'test'
+      ...
+    # Subtest: UECL: 1000 seeds produce valid 36-club schedules
+    ok 2 - UECL: 1000 seeds produce valid 36-club schedules
+      ---
+      duration_ms: 90.443083
+      type: 'test'
+      ...
+    # Subtest: is deterministic for identical seed and field
+    ok 3 - is deterministic for identical seed and field
+      ---
+      duration_ms: 1.675792
+      type: 'test'
+      ...
+    1..3
+ok 9 - league-phase schedule constraints
+  ---
+  duration_ms: 241.580792
+  type: 'suite'
+  ...
+# Subtest: controlled four-win accounting
+    # Subtest: injected results produce P8 W4 D2 L2 Pts14 for Red Star and mirrored opponents
+    ok 1 - injected results produce P8 W4 D2 L2 Pts14 for Red Star and mirrored opponents
+      ---
+      duration_ms: 20.001875
+      type: 'test'
+      ...
+    1..1
+ok 10 - controlled four-win accounting
+  ---
+  duration_ms: 20.066708
+  type: 'suite'
+  ...
+# Subtest: chronology agrees with committed table
+    # Subtest: seed-3 Red Star viewer tallies match league-phase table
+    ok 1 - seed-3 Red Star viewer tallies match league-phase table
+      ---
+      duration_ms: 116.462208
+      type: 'test'
+      ...
+    1..1
+ok 11 - chronology agrees with committed table
+  ---
+  duration_ms: 116.527208
+  type: 'suite'
+  ...
+# Subtest: identity and duplicates
+    # Subtest: reprocessing a fixture is idempotent
+    ok 1 - reprocessing a fixture is idempotent
+      ---
+      duration_ms: 2.730792
+      type: 'test'
+      ...
+    # Subtest: consecutive editions use disjoint match IDs
+    ok 2 - consecutive editions use disjoint match IDs
+      ---
+      duration_ms: 67.537959
+      type: 'test'
+      ...
+    1..2
+ok 12 - identity and duplicates
+  ---
+  duration_ms: 70.50825
+  type: 'suite'
+  ...
+# Subtest: playoff-only advancement
+    # Subtest: playoff round creates 8 winners and no speculative final
+    ok 1 - playoff round creates 8 winners and no speculative final
+      ---
+      duration_ms: 8.674208
+      type: 'test'
+      ...
+    1..1
+ok 13 - playoff-only advancement
+  ---
+  duration_ms: 8.738708
+  type: 'suite'
+  ...
+# Subtest: two-leg extra-time orientation
+    # Subtest: audit seed-4: Čukarički ET win is first-leg-relative away
+    ok 1 - audit seed-4: Čukarički ET win is first-leg-relative away
+      ---
+      duration_ms: 0.587
+      type: 'test'
+      ...
+    1..1
+ok 14 - two-leg extra-time orientation
+  ---
+  duration_ms: 0.722333
+  type: 'suite'
+  ...
+# Subtest: JSON round-trip
+    # Subtest: rebuilds campaign after serialize/deserialize
+    ok 1 - rebuilds campaign after serialize/deserialize
+      ---
+      duration_ms: 45.681084
+      type: 'test'
+      ...
+    1..1
+ok 15 - JSON round-trip
+  ---
+  duration_ms: 45.722959
+  type: 'suite'
+  ...
+1..15
+# tests 18
+# suites 7
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 777.838042

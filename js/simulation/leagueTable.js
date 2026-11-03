@@ -40,11 +40,16 @@ export function matchKey(match) {
 export function ensureLeagueMatchId(match) {
   if (!match) return match;
   if (!match.matchId) {
+    const edition = match.editionId != null ? String(match.editionId) : null;
     match.matchId =
       match.fixtureId ||
-      `league:${match.competitionId || match.leagueContextId || "lg"}:${match.date || "?"}:${
-        match.home?.clubId || match.home?.name
-      }:${match.away?.clubId || match.away?.name}`;
+      (edition
+        ? `${match.competitionId || match.leagueContextId || "lg"}::${edition}:md:${match.date || "?"}:${
+            match.home?.clubId || match.home?.name
+          }:${match.away?.clubId || match.away?.name}`
+        : `league:${match.competitionId || match.leagueContextId || "lg"}:${match.date || "?"}:${
+            match.home?.clubId || match.home?.name
+          }:${match.away?.clubId || match.away?.name}`);
   }
   if (!match.fixtureId) match.fixtureId = match.matchId;
   return match;

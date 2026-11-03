@@ -132,7 +132,7 @@ export function buildOwnershipTransferBrowserFixture(opts = {}) {
   }
 
   const ck = seasonData.checkpoint || player.seasonCheckpoint;
-  // Controlled permanent offer for ownership QA. Fee is set inside Brentford's
+  // Controlled Brentford offer for ownership QA. Fee is set inside Brentford's
   // affordability band so production acceptPipelineOffer can book it without
   // requiring a negotiated seller/buyer overlap (Arsenal reservation can exceed it).
   const registration = resolveMoveRegistration({
@@ -140,8 +140,9 @@ export function buildOwnershipTransferBrowserFixture(opts = {}) {
     departureDate: ck.lastDate,
     originSeasonStartYear: cfg.startYear,
   });
+  const asLoan = cfg.dealType === "loan" || cfg.isLoan === true;
   const offer = {
-    offerId: `ownership-transfer:${brentford.clubId}:${ck.lastDate}`,
+    offerId: `ownership-transfer:${asLoan ? "loan" : "permanent"}:${brentford.clubId}:${ck.lastDate}`,
     club: brentford.name,
     clubDisplay: brentford.displayName,
     clubId: brentford.clubId,
@@ -160,20 +161,44 @@ export function buildOwnershipTransferBrowserFixture(opts = {}) {
     defence: brentford.defence,
     goalkeeper: brentford.goalkeeper,
     strengthTier: brentford.strengthTier,
-    dealType: "permanent",
-    isLoan: false,
+    dealType: asLoan ? "loan" : "permanent",
+    isLoan: asLoan,
     isRenewal: false,
     isFreeAgent: false,
-    transferFee: 12_000_000,
-    wage: 6000,
-    contractYears: 3,
-    expectedRole: "starter",
+    transferFee: asLoan ? 0 : 12_000_000,
+    wage: asLoan ? 3500 : 6000,
+    contractYears: asLoan ? 1 : 3,
+    expectedRole: asLoan ? "rotation" : "starter",
     reviewDate: ck.lastDate,
     effectiveDate: ck.lastDate,
     registration,
     status: "pending",
     careerId: player.careerId,
   };
+  if (asLoan) {
+    const endSeason = Math.min(
+      player.contractEndSeason ?? 1,
+      (player.seasons?.length ?? 0) + 1
+    );
+    offer.loanTerms = {
+      loanId: `loan:fix09:${arsenal.clubId}:${brentford.clubId}:${ck.lastDate}`,
+      parentClubId: arsenal.clubId,
+      parentClubName: arsenal.name,
+      borrowingClubId: brentford.clubId,
+      startSeason: player.seasons?.length ?? 0,
+      endSeason,
+      startDate: ck.lastDate,
+      endDate: `${Number(cfg.startYear) + 1}-05-31`,
+      borrowerWageShare: 0.5,
+      parentWageShare: 0.5,
+      loanFee: 0,
+      status: "proposed",
+      agreedGrossWeekly: offer.wage,
+      international: false,
+      recallClause: false,
+      purchaseOption: null,
+    };
+  }
 
   player.pendingOffers = [offer];
   player.pendingDecision = null;
@@ -191,5 +216,6 @@ export function buildOwnershipTransferBrowserFixture(opts = {}) {
     checkpoint: ck,
     fromClubId: arsenal.clubId,
     toClubId: brentford.clubId,
+    dealType: offer.dealType,
   };
 }

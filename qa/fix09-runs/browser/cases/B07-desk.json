@@ -1,0 +1,99 @@
+{
+  "player": {
+    "name": "fix09-b07",
+    "careerId": "fix09-b07",
+    "age": 25,
+    "rating": 79,
+    "contractStatus": "active",
+    "employmentClubId": "club:brazil:athletico-paranaense",
+    "playingClubId": "club:brazil:athletico-paranaense",
+    "club": {
+      "name": "Athletico Paranaense",
+      "clubId": "club:brazil:athletico-paranaense",
+      "league": "Brazil - Brasileirão Série A"
+    },
+    "seasons": [
+      {
+        "minutes": 2177,
+        "europe": {
+          "competition": "Copa Libertadores",
+          "qualified": true,
+          "showcase": false,
+          "editionId": "2026-copa-libertadores",
+          "competitionId": "copa-libertadores",
+          "result": "Semi-finals",
+          "matchCount": 12
+        }
+      }
+    ],
+    "latestStanding": {
+      "leagueId": "league:brazil-brasileirao-serie-a",
+      "seasonId": "season-1",
+      "playerRowClubId": "club:brazil:athletico-paranaense",
+      "playerRowPosition": 10
+    }
+  },
+  "qualification": {
+    "age": 25,
+    "seasons": 1,
+    "club": "Athletico Paranaense",
+    "employmentClubId": "club:brazil:athletico-paranaense",
+    "playingClubId": "club:brazil:athletico-paranaense",
+    "contractStatus": "active",
+    "rating": 79,
+    "europe": {
+      "competition": "Copa Libertadores",
+      "qualified": true,
+      "showcase": false,
+      "editionId": "2026-copa-libertadores",
+      "competitionId": "copa-libertadores",
+      "result": "Semi-finals",
+      "matchCount": 12
+    },
+    "arsenal2026": null,
+    "brentford2026": null,
+    "edition": null
+  },
+  "qualKeys": [
+    "domestic:league:brazil-brasileirao-serie-a::2025",
+    "club:club:brazil:athletico-paranaense::target:2026",
+    "club:club:brazil:atletico-mineiro::target:2026",
+    "club:club:brazil:bahia::target:2026",
+    "club:club:brazil:botafogo::target:2026",
+    "club:club:brazil:red-bull-bragantino::target:2026",
+    "club:club:brazil:chapecoense::target:2026",
+    "club:club:brazil:corinthians::target:2026",
+    "club:club:brazil:coritiba::target:2026",
+    "club:club:brazil:cruzeiro::target:2026",
+    "club:club:brazil:flamengo::target:2026",
+    "club:club:brazil:fluminense::target:2026",
+    "club:club:brazil:gremio::target:2026",
+    "club:club:brazil:internacional::target:2026",
+    "club:club:brazil:mirassol::target:2026",
+    "club:club:brazil:palmeiras::target:2026",
+    "club:club:brazil:remo::target:2026",
+    "club:club:brazil:santos::target:2026",
+    "club:club:brazil:sao-paulo::target:2026",
+    "club:club:brazil:vasco-da-gama::target:2026",
+    "club:club:brazil:vitoria::target:2026",
+    "domestic:league:brazil-brasileirao-serie-a::2026",
+    "club:club:brazil:fluminense::target:2027",
+    "club:club:brazil:flamengo::target:2027",
+    "club:club:brazil:santos::target:2027",
+    "club:club:brazil:cruzeiro::target:2027",
+    "club:club:brazil:palmeiras::target:2027",
+    "club:club:brazil:atletico-mineiro::target:2027",
+    "club:club:brazil:red-bull-bragantino::target:2027",
+    "club:club:brazil:coritiba::target:2027",
+    "club:club:brazil:corinthians::target:2027",
+    "club:club:brazil:athletico-paranaense::target:2027",
+    "club:club:brazil:botafogo::target:2027",
+    "club:club:brazil:gremio::target:2027",
+    "club:club:brazil:mirassol::target:2027",
+    "club:club:brazil:internacional::target:2027",
+    "club:club:brazil:vitoria::target:2027",
+    "club:club:brazil:bahia::target:2027",
+    "club:club:brazil:remo::target:2027",
+    "club:club:brazil:chapecoense::target:2027"
+  ]
+}

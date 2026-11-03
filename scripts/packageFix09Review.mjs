@@ -24,7 +24,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHORT = spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const FULL = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const BASE = "984495e4c12df0c2dd1c84d124bc4cb743a0f63e";
-const PREV_TIP = "b874040211c82e8f4aafebdbde28df447112e228";
+const PREV_TIP = "ebbe1d19b9621da6cfe8d9c0b84f6ed778255c19";
+const FIRST_REVIEWED_TIP = "b874040211c82e8f4aafebdbde28df447112e228";
 const DESK = join(homedir(), "Desktop");
 const PKG_NAME = `09-Earned-Continental-Qualification-ReReview-${SHORT}`;
 const PKG = join(DESK, PKG_NAME);
@@ -196,6 +197,7 @@ const manifest = {
   repository: "BorisMojsa/Simulation",
   branch: "fix/09-earned-continental-qualification",
   baseSha: BASE,
+  firstReviewedTip: FIRST_REVIEWED_TIP,
   previousReviewedTip: PREV_TIP,
   finalSha: FULL,
   testedSourceSha: testedSha,
@@ -225,7 +227,8 @@ writeFileSync(
 
 - Branch: \`fix/09-earned-continental-qualification\`
 - Accepted predecessor: \`${BASE}\`
-- Previous reviewed tip: \`${PREV_TIP}\`
+- First reviewed tip: \`${FIRST_REVIEWED_TIP}\`
+- Previous reviewed tip (ebbe1d1): \`${PREV_TIP}\`
 - Final: \`${FULL}\`
 - QA tested source: \`${testedSha || "(missing)"}\`
 - Remote: \`${manifest.remoteSha || "(push required)"}\`

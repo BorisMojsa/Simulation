@@ -1,0 +1,161 @@
+TAP version 13
+# Subtest: F01: Arsenal title does not transfer to Brentford
+ok 1 - F01: Arsenal title does not transfer to Brentford
+  ---
+  duration_ms: 3.173292
+  type: 'test'
+  ...
+# Subtest: F02: reverse move into qualified Arsenal grants CL
+ok 2 - F02: reverse move into qualified Arsenal grants CL
+  ---
+  duration_ms: 9.203875
+  type: 'test'
+  ...
+# Subtest: F03: same-club prior edition beats low OVR; high-OVR non-qualifier stays out
+ok 3 - F03: same-club prior edition beats low OVR; high-OVR non-qualifier stays out
+  ---
+  duration_ms: 0.765
+  type: 'test'
+  ...
+# Subtest: F04: destination row wins over stale foreign playerRow
+ok 4 - F04: destination row wins over stale foreign playerRow
+  ---
+  duration_ms: 0.519792
+  type: 'test'
+  ...
+# Subtest: F05: stale/future/incomplete rejected; correct mapping passes
+ok 5 - F05: stale/future/incomplete rejected; correct mapping passes
+  ---
+  duration_ms: 1.14875
+  type: 'test'
+  ...
+# Subtest: F06: later live table cannot replace prior completed edition
+ok 6 - F06: later live table cannot replace prior completed edition
+  ---
+  duration_ms: 0.429875
+  type: 'test'
+  ...
+# Subtest: F07: consecutive source editions retained independently
+ok 7 - F07: consecutive source editions retained independently
+  ---
+  duration_ms: 0.400959
+  type: 'test'
+  ...
+# Subtest: F08: UEFA boundaries including France and Serbia
+ok 8 - F08: UEFA boundaries including France and Serbia
+  ---
+  duration_ms: 0.113708
+  type: 'test'
+  ...
+# Subtest: F09: non-UEFA families
+ok 9 - F09: non-UEFA families
+  ---
+  duration_ms: 0.290625
+  type: 'test'
+  ...
+# Subtest: F10: invalid ranks and conflicting labels rejected; legacy numeric ok
+ok 10 - F10: invalid ranks and conflicting labels rejected; legacy numeric ok
+  ---
+  duration_ms: 0.277834
+  type: 'test'
+  ...
+# Subtest: F11: lower division / unknown / duplicates cannot earn top-flight entry
+ok 11 - F11: lower division / unknown / duplicates cannot earn top-flight entry
+  ---
+  duration_ms: 0.42575
+  type: 'test'
+  ...
+# Subtest: F12: bootstrap deterministic and idempotent
+ok 12 - F12: bootstrap deterministic and idempotent
+  ---
+  duration_ms: 9.2115
+  type: 'test'
+  ...
+# Subtest: F13: known non-qualifier never falls through to OVR
+ok 13 - F13: known non-qualifier never falls through to OVR
+  ---
+  duration_ms: 0.387
+  type: 'test'
+  ...
+# Subtest: F14: legacy migration idempotent; reject missing identity / foreign / undated
+ok 14 - F14: legacy migration idempotent; reject missing identity / foreign / undated
+  ---
+  duration_ms: 0.34675
+  type: 'test'
+  ...
+# Subtest: F15: qualified second-focus after MD1 keeps registration gate
+ok 15 - F15: qualified second-focus after MD1 keeps registration gate
+  ---
+  duration_ms: 10.432
+  type: 'test'
+  ...
+# Subtest: F16: participant sets and playing eligibility honor earned decisions
+ok 16 - F16: participant sets and playing eligibility honor earned decisions
+  ---
+  duration_ms: 7.971916
+  type: 'test'
+  ...
+# Subtest: F17: entry follows playing club for loan tips
+ok 17 - F17: entry follows playing club for loan tips
+  ---
+  duration_ms: 0.389416
+  type: 'test'
+  ...
+# Subtest: F18: registration policy still gates continental attachment
+ok 18 - F18: registration policy still gates continental attachment
+  ---
+  duration_ms: 0.040583
+  type: 'test'
+  ...
+# Subtest: F19: mid-season focus change does not redraw world edition
+ok 19 - F19: mid-season focus change does not redraw world edition
+  ---
+  duration_ms: 3.017834
+  type: 'test'
+  ...
+# Subtest: F20: calendar-year Brazil uses edition year not seasons.length alone
+ok 20 - F20: calendar-year Brazil uses edition year not seasons.length alone
+  ---
+  duration_ms: 0.403917
+  type: 'test'
+  ...
+# Subtest: F21: snapshot round-trip preserves qualification + edition
+ok 21 - F21: snapshot round-trip preserves qualification + edition
+  ---
+  duration_ms: 1.899708
+  type: 'test'
+  ...
+# Subtest: F22: repeated commit/resolve is stable
+ok 22 - F22: repeated commit/resolve is stable
+  ---
+  duration_ms: 0.250667
+  type: 'test'
+  ...
+# Subtest: F23: free-agent gap cannot reuse old club finish for a new club without evidence
+ok 23 - F23: free-agent gap cannot reuse old club finish for a new club without evidence
+  ---
+  duration_ms: 0.315667
+  type: 'test'
+  ...
+# Subtest: F24: partial / duplicate-rank / undated / unplayed evidence rejected without mutation
+ok 24 - F24: partial / duplicate-rank / undated / unplayed evidence rejected without mutation
+  ---
+  duration_ms: 0.493792
+  type: 'test'
+  ...
+# Subtest: F25: exporter validation path fails on missing/wrong evidence
+ok 25 - F25: exporter validation path fails on missing/wrong evidence
+  ---
+  duration_ms: 7.252041
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 155.417833
+

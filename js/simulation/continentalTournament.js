@@ -383,34 +383,73 @@ function trimField(field, keepKey, multiple = 2) {
   return out;
 }
 
-function buildRegionalField(playerClub, format, minOverall, rng) {
+function buildRegionalField(playerClub, format, minOverall, rng, world = null, seasonYear = null, competition = null) {
   const regionIds = (format.regions || ["West", "East"]).map((r) => String(r).toLowerCase());
   const perRegion = Math.floor((format.fieldSize || 32) / regionIds.length);
   const regionOf = (club) => regionIds.find((rid) => AFC_REGION_NATIONS[rid]?.has(club.nation)) || null;
   const playerRegion = regionOf(playerClub) || regionIds[0];
+  const focusKey = clubKey(playerClub);
+  const blocked = blockedNonQualifiers(world, competition || format?.name || "AFC Champions League Elite", seasonYear);
+  const isBlocked = (c) => {
+    const id = clubKey(c);
+    return id && id !== focusKey && blocked.has(id);
+  };
   const buckets = Object.fromEntries(regionIds.map((rid) => [rid, []]));
   clubsFromConfederation("AFC", {
     excludeName: playerClub.name,
     excludeId: playerClub.clubId,
     limit: 1000,
   }).forEach((club) => {
+    if (isBlocked(club)) return;
     const rid =
       regionOf(club) ||
       regionIds.reduce((best, r) => (buckets[r].length < buckets[best].length ? r : best), regionIds[0]);
     buckets[rid].push(club);
   });
 
+  // Prefer earned same-competition clubs into each region before sampling fillers.
+  const earned = world && seasonYear != null && competition
+    ? earnedClubsForCompetition(world, competition, seasonYear)
+    : [];
+  for (const entry of earned) {
+    if (!entry.clubId || blocked.has(entry.clubId)) continue;
+    const profile = resolveClubProfile(entry.clubId, entry.nation);
+    if (!profile || isBlocked(profile)) continue;
+    const rid = regionOf(profile) || playerRegion;
+    if (!buckets[rid].some((c) => clubKey(c) === entry.clubId)) {
+      buckets[rid].unshift({
+        ...profile,
+        entryRoute: "earned",
+        entryProvenance: entry.provenance || "earned",
+        earnedPosition: entry.position,
+      });
+    }
+  }
+
   const regions = {};
   regionIds.forEach((rid) => {
     const withPlayer = rid === playerRegion;
-    const preferred = buckets[rid].filter((c) => (c.overall ?? 0) >= minOverall);
-    const pool = preferred.length >= perRegion - (withPlayer ? 1 : 0) ? preferred : buckets[rid];
+    const preferred = buckets[rid].filter((c) => (c.overall ?? 0) >= minOverall && !isBlocked(c));
+    const eligible = buckets[rid].filter((c) => !isBlocked(c));
+    const pool = preferred.length >= perRegion - (withPlayer ? 1 : 0) ? preferred : eligible;
+    // Do not refill with known DNQs to preserve nominal seats — sample what eligible inventory allows.
+    const target = Math.min(perRegion, Math.max(withPlayer ? 1 : 0, pool.length + (withPlayer ? 1 : 0)));
     regions[rid] = trimField(
-      sampleField(pool, withPlayer ? playerClub : null, perRegion, rng),
-      clubKey(playerClub)
-    );
+      sampleField(pool, withPlayer ? playerClub : null, target, rng),
+      focusKey
+    ).map((c) => {
+      if (clubKey(c) === focusKey) {
+        return {
+          ...c,
+          entryRoute: playerClub.entryRoute || c.entryRoute || "earned-or-focus",
+          entryProvenance: playerClub.entryProvenance || c.entryProvenance || "focus",
+        };
+      }
+      if (c.entryRoute === "earned") return c;
+      return markSyntheticFieldClub(c, "inventory-fill");
+    });
   });
-  return { regionIds, regions, playerRegion };
+  return { regionIds, regions, playerRegion, blockedCount: blocked.size };
 }
 
 function confederationForCompetition(name) {
@@ -651,8 +690,10 @@ function involvesAttachedPlayer(state, fixtureOrTie, player, date = null) {
       String(s.from) > seasonStartApprox &&
       String(s.from) <= String(d)
   );
+  const isSubsequentArrival =
+    playingId !== editionFocusId || foreignStintBeforeFixture || midSeasonArrivalAtFocus;
   // Original edition-focus career (no foreign stint / no mid-season arrival) may play.
-  if (playingId === editionFocusId && !foreignStintBeforeFixture && !midSeasonArrivalAtFocus) {
+  if (playingId === editionFocusId && !isSubsequentArrival) {
     return true;
   }
 
@@ -662,6 +703,9 @@ function involvesAttachedPlayer(state, fixtureOrTie, player, date = null) {
     edition: {
       ...state,
       playerClubId: editionFocusId,
+      // Detected subsequent arrival must not regain the focus exemption in the shared gate.
+      allowFocusExemption: false,
+      treatFocusAsSubsequentArrival: true,
     },
     playingClubId: playingId,
     fixture: fixtureOrTie,
@@ -821,7 +865,15 @@ function prepareLeaguePhase(state, ctx) {
   };
 
   if (lpFormat.regionalSplit) {
-    const regional = buildRegionalField(state.playerClub, format, minOverall, ctx.rng);
+    const regional = buildRegionalField(
+      state.playerClub,
+      format,
+      minOverall,
+      ctx.rng,
+      ctx.store || ctx.world || getWorldState(),
+      state.seasonYear,
+      state.competition
+    );
     const feasible = regional.regionIds.every((rid) => {
       const n = regional.regions[rid].length;
       return n % 2 === 0 && opponentsFor(n) === wanted && n >= (lpFormat.advancePerRegion ?? 8);
@@ -849,6 +901,8 @@ function prepareLeaguePhase(state, ctx) {
       finishOpening(state, "league", wanted);
       return;
     }
+    // Ineligible inventory made the regional format infeasible — fall through to
+    // the common buildField path rather than refilling with known DNQs.
   }
 
   const field = trimField(

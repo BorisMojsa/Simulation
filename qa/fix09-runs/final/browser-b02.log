@@ -1,0 +1,13 @@
+[browser] start B02
+[browser] pass B02 13387ms
+{
+  "out": "/Users/mojsa/Desktop/Simulation/.worktrees/fix09/qa/fix09-runs/browser/browser-report.json",
+  "ok": false,
+  "selectedOk": true,
+  "subsetOnly": true,
+  "blocked": false,
+  "base": "http://127.0.0.1:52455",
+  "cases": {
+    "B02": true
+  }
+}

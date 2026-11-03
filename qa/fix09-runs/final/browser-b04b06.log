@@ -1,0 +1,16 @@
+[browser] start B04
+[browser] fail B04 7998ms: real loan acceptance required
+[browser] start B06
+[browser] pass B06 17388ms
+{
+  "out": "/Users/mojsa/Desktop/Simulation/.worktrees/fix09/qa/fix09-runs/browser/browser-report.json",
+  "ok": false,
+  "selectedOk": false,
+  "subsetOnly": true,
+  "blocked": false,
+  "base": "http://127.0.0.1:53222",
+  "cases": {
+    "B04": false,
+    "B06": true
+  }
+}

@@ -162,12 +162,14 @@ export function simulateLeagueSeason(league, player, performanceScore) {
       worldState: world,
       rng,
       competitionId: league.leagueId,
-      fixtureId: `${league.leagueId}:md:${index}`,
+      fixtureId: fx.fixtureId || `${league.leagueId}::${String(seasonStartYear)}:md:${index}`,
+      editionId: String(seasonStartYear),
       playerMinutes: playerIn ? minutes : null,
       date: fx.date,
     });
     match.matchday = Math.floor(index / Math.max(1, Math.floor(clubs.length / 2))) + 1;
     match.round = `Matchday ${match.matchday}`;
+    match.editionId = String(seasonStartYear);
     applyMatchFormUpdate(world, match);
     allMatches.push(match);
 

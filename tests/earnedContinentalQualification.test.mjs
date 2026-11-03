@@ -532,6 +532,26 @@ test("F15: qualified second-focus after MD1 keeps registration gate", () => {
     (f) => f.stageType === "league" && f.date > "2027-01-10"
   );
   assert.equal(after.length, 0);
+
+  // New arrival *at the immutable focus club* also loses the focus exemption.
+  const arrival = makePlayer(brentford, league);
+  recordPlayingTransition(arrival, {
+    kind: "permanent",
+    effectiveDate: "2027-01-10",
+    playingClubId: arsenal.clubId,
+    employmentClubId: arsenal.clubId,
+    leagueId: league.leagueId,
+    clubName: arsenal.name,
+  });
+  arrival.club = { ...arsenal, league: league.name, leagueId: league.leagueId, nation: league.nation };
+  arrival.playingClubId = arsenal.clubId;
+  arrival.employmentClubId = arsenal.clubId;
+  const arrivalEligible = listContinentalFixtures(original, {
+    status: "scheduled",
+    playerOnly: true,
+    player: arrival,
+  }).filter((f) => f.stageType === "league" && f.date > "2027-01-10");
+  assert.equal(arrivalEligible.length, 0);
 });
 
 test("F16: participant sets and playing eligibility honor earned decisions", () => {
@@ -585,6 +605,49 @@ test("F16: participant sets and playing eligibility honor earned decisions", () 
   player.employmentClubId = brentford.clubId;
   const eligible = listContinentalFixtures(edition, { status: "scheduled", playerOnly: true, player });
   assert.equal(eligible.length, 0);
+
+  // AFC regional fields must also exclude known DNQs.
+  const saudi = topFlight("Saudi Arabia");
+  assert.ok(saudi);
+  const focus = [...saudi.clubs].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0))[0];
+  const saudiWorld = resetWorld(3);
+  commitCompletedDomesticEdition({
+    world: saudiWorld,
+    league: saudi,
+    table: orderedTable(saudi, { 1: focus.clubId }),
+    sourceYear: 2025,
+  });
+  const afc = prepareContinentalEdition({
+    league: saudi,
+    player: makePlayer(focus, saudi),
+    seasonYear: 2026,
+    world: saudiWorld,
+  });
+  assert.ok(afc);
+  const afcConflicts = afc.field
+    .map((c) => ({ clubId: c.clubId, decision: getClubTargetDecision(saudiWorld, c.clubId, 2026)?.entry }))
+    .filter((x) => x.decision && x.decision.competition !== "AFC Champions League Elite");
+  assert.equal(afcConflicts.length, 0, JSON.stringify(afcConflicts.slice(0, 3)));
+  const saudiInField = afc.field.filter((c) => c.nation === "Saudi Arabia").map((c) => c.clubId);
+  const knownQualifiedSaudi = saudi.clubs
+    .map((c) => getClubTargetDecision(saudiWorld, c.clubId, 2026)?.entry)
+    .filter((e) => e?.competition === "AFC Champions League Elite")
+    .map((e) => e.clubId);
+  for (const id of saudiInField) {
+    const d = getClubTargetDecision(saudiWorld, id, 2026)?.entry;
+    if (!d) continue;
+    assert.equal(d.competition, "AFC Champions League Elite", id);
+  }
+  for (const id of knownQualifiedSaudi) {
+    assert.ok(
+      saudiInField.includes(id) || afc.playerClubId === id || afc.editionFocusClubId === id,
+      `earned Saudi entrant retained: ${id}`
+    );
+  }
+  // Regional split is preferred when feasible; otherwise limited-inventory fallback must still
+  // exclude known DNQs (already asserted via afcConflicts).
+  assert.ok(afc.field.length > 0);
+  assert.ok(!afcConflicts.length);
 });
 
 test("F17: entry follows playing club for loan tips", () => {
@@ -748,7 +811,7 @@ test("F23: free-agent gap cannot reuse old club finish for a new club without ev
   assert.equal(preSeasonContinentalStanding(fa, league, { world, seasonYear: 2026 }), null);
 });
 
-test("F24: partial / duplicate-rank / undated evidence rejected without mutation", () => {
+test("F24: partial / duplicate-rank / undated / unplayed evidence rejected without mutation", () => {
   const league = leagueById("league:england-premier-league");
   const arsenal = clubIn(league, "club:england:arsenal");
   const world = resetWorld(112);
@@ -796,15 +859,72 @@ test("F24: partial / duplicate-rank / undated evidence rejected without mutation
   const dupIngest = ingestStandingEvidence({ world, league, table: dupRanks, sourceYear: 2025 });
   assert.equal(dupIngest.ok, false);
   assert.equal(dupIngest.reason, "duplicate-ranks");
+
+  const zeroPlayed = orderedTable(league, { 1: arsenal.clubId }).map((r) => ({
+    ...r,
+    points: 0,
+    matches: 0,
+    played: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    goalDiff: 0,
+  }));
+  const zeroPlayer = makePlayer(arsenal, league, {
+    latestStanding: {
+      leagueId: league.leagueId,
+      seasonId: `${league.leagueId}::2025`,
+      table: zeroPlayed,
+      playerRow: zeroPlayed[0],
+    },
+  });
+  const zeroResolved = resolveClubContinentalEntry({
+    world,
+    league,
+    clubId: arsenal.clubId,
+    targetYear: 2026,
+    player: zeroPlayer,
+    allowBootstrap: false,
+  });
+  assert.equal(zeroResolved.status, "unresolved");
+  assert.equal(getDomesticEditionRecord(world, league.leagueId, 2025), null);
+
+  const halfPlayed = orderedTable(league, { 1: arsenal.clubId }).map((r) => ({
+    ...r,
+    matches: 10,
+    played: 10,
+  }));
+  const halfIngest = ingestStandingEvidence({
+    world,
+    league,
+    table: halfPlayed,
+    sourceYear: 2024,
+    provenance: "legacy-migrated",
+  });
+  assert.equal(halfIngest.ok, false);
+  assert.ok(
+    halfIngest.reason === "incomplete-play-evidence" || halfIngest.reason === "unplayed-table",
+    halfIngest.reason
+  );
   assert.equal(world.qualification.size, before);
 });
 
 test("F25: exporter validation path fails on missing/wrong evidence", async () => {
   const league = leagueById("league:england-premier-league");
   const arsenal = clubIn(league, "club:england:arsenal");
-  const table = orderedTable(league, { 1: arsenal.clubId, 17: "club:england:brentford" });
+  const brentford = clubIn(league, "club:england:brentford");
+  const table = orderedTable(league, { 1: arsenal.clubId, 17: brentford.clubId });
   const world = resetWorld(113);
-  commitCompletedDomesticEdition({ world, league, table, sourceYear: 2025 });
+  commitCompletedDomesticEdition({
+    world,
+    league,
+    table,
+    sourceYear: 2025,
+    provenance: "simulated-complete",
+  });
+  const ed = getDomesticEditionRecord(world, league.leagueId, 2025);
   const good = getClubTargetDecision(world, arsenal.clubId, 2026).entry;
   assert.equal(oracleCompetition(league.nation, league.leagueId, good.position), good.competition);
 
@@ -824,16 +944,58 @@ test("F25: exporter validation path fails on missing/wrong evidence", async () =
   });
   assert.equal(missing.ok, false);
 
-  const wrongRank = validateEarnedPeriodOracle({
+  const wrongIdentity = validateEarnedPeriodOracle({
     league,
     clubId: arsenal.clubId,
     sourceYear: 2025,
     targetYear: 2026,
-    decision: { ...good, position: 17, competition: "Champions League" },
-    edition: getDomesticEditionRecord(world, league.leagueId, 2025),
-    participants: [{ clubId: arsenal.clubId }],
+    decision: { ...good, clubId: brentford.clubId, sourceEditionYear: 2020, targetContinentalYear: 2021 },
+    edition: { ...ed, leagueId: "league:spain-la-liga", sourceEditionYear: 2020, targetContinentalYear: 2021 },
   });
-  assert.equal(wrongRank.ok, false);
+  assert.equal(wrongIdentity.ok, false);
+
+  const labelOnly = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: ed,
+    participants: [],
+    europeCompetition: "Champions League",
+    mode: "target-participation",
+    requireParticipants: true,
+  });
+  assert.equal(labelOnly.ok, false);
+
+  const wrongYearCited = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: {
+      ...ed,
+      provenance: "simulated-complete",
+      matchEvidenceIds: ["league:england-premier-league::2025:md:0"],
+      sourceResults: [],
+    },
+    worldMatches: new Map([
+      [
+        "league:england-premier-league::2025:md:0",
+        {
+          editionId: "2024",
+          competitionId: league.leagueId,
+          homeGoals: 1,
+          awayGoals: 0,
+          home: { clubId: arsenal.clubId },
+          away: { clubId: brentford.clubId },
+        },
+      ],
+    ]),
+  });
+  assert.equal(wrongYearCited.ok, false);
+  assert.equal(wrongYearCited.reason, "cited-match-wrong-edition");
 
   const ok = validateEarnedPeriodOracle({
     league,
@@ -841,21 +1003,8 @@ test("F25: exporter validation path fails on missing/wrong evidence", async () =
     sourceYear: 2025,
     targetYear: 2026,
     decision: good,
-    edition: getDomesticEditionRecord(world, league.leagueId, 2025),
-    participants: [{ clubId: arsenal.clubId, competition: "Champions League" }],
-    europeCompetition: "Champions League",
+    edition: ed,
+    mode: "source-complete",
   });
   assert.equal(ok.ok, true);
-
-  const campaignOnly = validateEarnedPeriodOracle({
-    league,
-    clubId: arsenal.clubId,
-    sourceYear: 2025,
-    targetYear: 2026,
-    decision: good,
-    edition: getDomesticEditionRecord(world, league.leagueId, 2025),
-    participants: [],
-    europeCompetition: "Champions League",
-  });
-  assert.equal(campaignOnly.ok, true);
 });

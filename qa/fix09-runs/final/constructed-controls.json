@@ -1,0 +1,86 @@
+{
+  "base": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
+  "seed": 91,
+  "cases": {
+    "inherited": {
+      "intendedDestinationPosition": 17,
+      "actualPosition": 1,
+      "qualification": "League Champions",
+      "attachedClub": "Brentford",
+      "competition": "Champions League"
+    },
+    "ovr": [
+      {
+        "overall": 60,
+        "position": null,
+        "competition": null
+      },
+      {
+        "overall": 90,
+        "position": 1,
+        "competition": "Champions League"
+      }
+    ],
+    "editionRedraw": {
+      "sameEditionId": true,
+      "fieldChanged": true,
+      "committedBefore": 18,
+      "committedAfter": 18,
+      "persistedFocus": "Brentford"
+    },
+    "invalidRanks": [
+      {
+        "nation": "Brazil",
+        "input": {},
+        "competition": "Copa Libertadores"
+      },
+      {
+        "nation": "Brazil",
+        "input": {
+          "position": 0
+        },
+        "competition": "Copa Libertadores"
+      },
+      {
+        "nation": "Brazil",
+        "input": {
+          "position": -1
+        },
+        "competition": "Copa Libertadores"
+      },
+      {
+        "nation": "Brazil",
+        "input": {
+          "position": 0.5
+        },
+        "competition": "Copa Libertadores"
+      },
+      {
+        "nation": "Mexico",
+        "input": {},
+        "competition": "CONCACAF Champions Cup"
+      },
+      {
+        "nation": "Mexico",
+        "input": {
+          "position": 0
+        },
+        "competition": "CONCACAF Champions Cup"
+      },
+      {
+        "nation": "Mexico",
+        "input": {
+          "position": -1
+        },
+        "competition": "CONCACAF Champions Cup"
+      },
+      {
+        "nation": "Mexico",
+        "input": {
+          "position": 0.5
+        },
+        "competition": "CONCACAF Champions Cup"
+      }
+    ]
+  }
+}

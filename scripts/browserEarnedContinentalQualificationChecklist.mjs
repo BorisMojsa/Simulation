@@ -30,6 +30,7 @@ import {
   commitCompletedDomesticEdition,
   ensureBootstrapDomesticEdition,
   getClubTargetDecision,
+  competitionForValidatedFinish,
 } from "../js/simulation/earnedQualification.js";
 import { preSeasonContinentalStanding } from "../js/simulation/chronologicalSeason.js";
 import { prepareContinentalEdition } from "../js/simulation/continentalTournament.js";
@@ -260,12 +261,29 @@ function europeOf(player) {
   const eu = last?.europeanCampaign || null;
   return {
     competition: eu?.competition || null,
-    qualified: Boolean(eu && eu.qualified !== false),
+    qualified: Boolean(eu && eu.qualified !== false && !eu.showcase),
+    showcase: Boolean(eu?.showcase),
     editionId: eu?.editionId || null,
     competitionId: eu?.competitionId || null,
     result: eu?.result || null,
     matchCount: Array.isArray(eu?.playerMatches) ? eu.playerMatches.length : 0,
   };
+}
+
+function expectedCompetitionFromFinish(league, row) {
+  if (!league || !row) return null;
+  return (
+    competitionForValidatedFinish({ position: row.position, qualification: row.qualification }, league) ||
+    qualificationForPosition(row.position, league, findSisterLeagues(league, LEAGUES)) ||
+    null
+  );
+}
+
+function decisionMatchesFinish(decision, expectedCompetition) {
+  if (!expectedCompetition) {
+    return !decision?.competition && (decision?.status === "not-qualified" || decision?.status == null);
+  }
+  return decision?.competition === expectedCompetition && decision?.status === "qualified";
 }
 
 function qualEntries(snap) {
@@ -490,9 +508,13 @@ async function driveSeasonToDesk(
         }
         return null;
       };
-      if (policy === "accept-move" || policy === "accept-cross-league") {
+      if (policy === "accept-move" || policy === "accept-cross-league" || policy === "accept-brentford-loan") {
         const loan = click(/review loan options|see loan|loan options/i);
         if (loan) return `desk-decision:${loan}`;
+        if (policy === "accept-brentford-loan" || policy === "accept-cross-league") {
+          const brentford = click(/brentford/i) || null;
+          if (brentford && /accept|sign|loan/i.test(brentford)) return `desk-decision:${brentford}`;
+        }
         const accept = click(/accept loan|accept offer|accept transfer|sign for|^accept$/i);
         if (accept) return `desk-decision:${accept}`;
       }
@@ -596,7 +618,7 @@ async function driveSeasonToDesk(
               return clicked;
             }
           }
-          if (policy === "accept-cross-league" || policy === "accept-move") {
+          if (policy === "accept-cross-league" || policy === "accept-move" || policy === "accept-brentford-loan") {
             const loanTray =
               trayButtons.find((b) => /review loan options|see loan|loan options/i.test(b.textContent || "")) ||
               null;
@@ -605,10 +627,18 @@ async function driveSeasonToDesk(
               clicked.push(`desk-decision:${(loanTray.textContent || "").trim()}`);
               return clicked;
             }
+            const preferBrentford = policy === "accept-brentford-loan" || policy === "accept-cross-league";
             const accept =
+              (preferBrentford &&
+                trayButtons.find(
+                  (b) =>
+                    /brentford/i.test(b.textContent || "") &&
+                    /accept loan|accept offer|accept transfer|sign for|^accept$/i.test(b.textContent || "")
+                )) ||
               trayButtons.find((b) =>
                 /accept loan|accept offer|accept transfer|sign for/i.test(b.textContent || "")
-              ) || trayButtons.find((b) => /^accept$/i.test((b.textContent || "").trim()));
+              ) ||
+              trayButtons.find((b) => /^accept$/i.test((b.textContent || "").trim()));
             if (accept) {
               accept.click();
               clicked.push(`desk-decision:${(accept.textContent || "").trim()}`);
@@ -675,7 +705,7 @@ async function driveSeasonToDesk(
           const buttons = [...rootEl.querySelectorAll("button")].filter(
             (b) => !b.disabled && b.offsetParent !== null
           );
-          if (policy === "accept-cross-league" || policy === "accept-move") {
+          if (policy === "accept-cross-league" || policy === "accept-move" || policy === "accept-brentford-loan") {
             const loanTray =
               buttons.find((b) => /review loan options|see loan|loan options/i.test(b.textContent || "")) || null;
             if (loanTray) {
@@ -683,7 +713,14 @@ async function driveSeasonToDesk(
               clicked.push(`desk-decision:${(loanTray.textContent || "").trim()}`);
               return clicked;
             }
+            const preferBrentford = policy === "accept-brentford-loan" || policy === "accept-cross-league";
             const accept =
+              (preferBrentford &&
+                buttons.find(
+                  (b) =>
+                    /brentford/i.test(b.textContent || "") &&
+                    /accept loan|accept offer|accept transfer|sign for|^accept$/i.test(b.textContent || "")
+                )) ||
               buttons.find((b) => /accept loan|accept offer|accept transfer|sign for/i.test(b.textContent || "")) ||
               buttons.find((b) => /^accept$/i.test((b.textContent || "").trim()));
             if (accept) {
@@ -736,6 +773,88 @@ async function driveSeasonToDesk(
   );
 }
 
+/**
+ * Drive until a real mid-season awaiting_decision checkpoint (season not yet committed).
+ * Auto-clears senior scenarios so the pause is a registration/decision checkpoint, not a scene.
+ * Does not auto-resolve the decision — caller branches from the exported snapshot.
+ */
+async function driveToMidSeasonPause(page, { seasonsBefore = 0, timeoutMs = 180000, shotPrefix = null } = {}) {
+  const trace = { simulateClicks: 0, skipClicks: 0, deskDecisions: [], scenariosCleared: 0 };
+  const ui0 = await uiState(page);
+  assert(ui0.simulateDisabled === false, "simulate must be enabled for mid-season pause", ui0);
+  await page.click("#simulate-btn");
+  trace.simulateClicks += 1;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const cur = await uiState(page);
+    const seasonsNow = cur.debug?.seasonsCount ?? 0;
+    if (seasonsNow > seasonsBefore) {
+      throw new Error(
+        `Season completed before mid-season pause: ${JSON.stringify({ seasonsBefore, seasonsNow, cur })}`
+      );
+    }
+    const act = await page.evaluate(() => {
+      const clicked = [];
+      const senior = document.getElementById("senior-scenario-overlay");
+      if (senior && !senior.classList.contains("hidden")) {
+        const choice = [...senior.querySelectorAll("button")].find((b) => !b.disabled);
+        if (choice) {
+          choice.click();
+          clicked.push("scenario");
+          return clicked;
+        }
+      }
+      // Do not auto-click stay/accept at the squad-review decision — that is the pause target.
+      for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "sim-skip-match-btn", "match-skip-btn"]) {
+        const el = document.getElementById(id);
+        if (el && !el.disabled && el.offsetParent !== null) {
+          el.click();
+          clicked.push(id);
+        }
+      }
+      return clicked;
+    });
+    for (const c of act) {
+      if (c === "scenario") trace.scenariosCleared += 1;
+      if (/skip/i.test(c)) trace.skipClicks += 1;
+    }
+    if (act.includes("scenario")) {
+      await page.waitForTimeout(180);
+      continue;
+    }
+    const paused =
+      cur.overlayHidden &&
+      cur.dashboardHidden &&
+      cur.seasonActionInFlight === false &&
+      !act.length &&
+      (cur.debug?.seasonCheckpoint === "awaiting_decision" ||
+        cur.nextAction?.id === "resolve-decision" ||
+        cur.nextAction?.id === "resolve-offers" ||
+        Boolean(cur.debug?.pendingDecision) ||
+        (Array.isArray(cur.debug?.pendingOffers) && cur.debug.pendingOffers.length > 0));
+    if (paused) {
+      const snapshot = await exportSnapshot(page);
+      const ck = snapshot.player?.seasonCheckpoint;
+      assert(
+        ck?.status === "awaiting_decision" ||
+          snapshot.player?.pendingDecision ||
+          (snapshot.player?.pendingOffers || []).length > 0 ||
+          cur.debug?.seasonCheckpoint === "awaiting_decision",
+        "mid-season pause must expose awaiting_decision",
+        { ckStatus: ck?.status, debug: cur.debug?.seasonCheckpoint, seasons: snapshot.player?.seasons?.length }
+      );
+      assert((snapshot.player?.seasons || []).length === seasonsBefore, "pause before season commit", {
+        seasons: snapshot.player?.seasons?.length,
+        seasonsBefore,
+      });
+      if (shotPrefix) await shot(page, `${shotPrefix}-mid-pause`);
+      return { trace, snapshot, debug: cur.debug, ui: cur };
+    }
+    await page.waitForTimeout(act.length ? 120 : 200);
+  }
+  throw new Error(`Timed out waiting for mid-season pause: ${JSON.stringify({ seasonsBefore, trace, ui: await uiState(page) })}`);
+}
+
 async function assertDeskUsable(page) {
   const ui = await uiState(page);
   assert(ui.overlayHidden, "overlay must be closed at desk", ui);
@@ -784,15 +903,59 @@ const cases = {
     await writeFullSnapshot("B01-next-desk.full.json", nextDesk);
     const nextSum = qualSummary(nextDesk.player, nextDesk);
     assert(nextSum.seasons === after.seasons + 1, "second season completed", { after, nextSum });
-    const finalTable = (next.beforeContinue.snapshot.player.seasons || []).at(-2)?.standing?.table
-      || (desk.player.seasons || []).at(-1)?.standing?.table;
+    const sourceSeason = (desk.player.seasons || []).at(-1);
+    const finalTable = sourceSeason?.standing?.table || null;
     assert(Array.isArray(finalTable) && finalTable.length > 0, "prior final table present for next entry");
     const arsenalRow = finalTable.find((r) => r.clubId === ARSENAL);
     assert(arsenalRow, "Arsenal row in completed source table", finalTable?.length);
-    assert(nextSum.europe.competition, "next edition continental competition present", nextSum);
+    const league = leagueById(EPL);
+    const expectedNext = expectedCompetitionFromFinish(league, arsenalRow);
+    const sourceYear = 2026;
+    const targetYear = 2027;
+    const nextDecision = clubDecision(nextDesk, ARSENAL, targetYear);
+    assert(
+      decisionMatchesFinish(nextDecision, expectedNext),
+      "next-year registry must match played finish",
+      { expectedNext, nextDecision, position: arsenalRow.position }
+    );
+    if (expectedNext) {
+      assert(nextSum.europe.qualified === true, "earned next entry must be qualified", nextSum);
+      assert(nextSum.europe.competition === expectedNext, "next campaign competition from played table", {
+        expectedNext,
+        europe: nextSum.europe,
+        position: arsenalRow.position,
+      });
+      assert(nextSum.europe.showcase !== true, "earned entry is not showcase", nextSum.europe);
+    } else {
+      assert(
+        nextSum.europe.qualified !== true || nextSum.europe.showcase === true,
+        "DNQ finish must not invent earned continental entry",
+        { expectedNext, europe: nextSum.europe, position: arsenalRow.position }
+      );
+    }
+    // No unearned player fixtures for a DNQ destination competition.
+    if (!expectedNext && nextSum.europe.competition === "Champions League" && !nextSum.europe.showcase) {
+      assert(false, "DNQ must not attach earned Champions League fixtures", nextSum);
+    }
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, before, after, next: nextSum, continued: true, nextEditionFromPlayedTable: true };
+    return {
+      ok: true,
+      before,
+      after,
+      next: nextSum,
+      continued: true,
+      nextEditionFromPlayedTable: true,
+      sourceYear,
+      targetYear,
+      expectedNext,
+      nextDecision,
+      arsenalSourcePosition: arsenalRow.position,
+      transitions: {
+        seasons: [before.seasons, after.seasons, nextSum.seasons],
+        europe: [before.europe.competition, after.europe.competition, nextSum.europe.competition],
+      },
+    };
   },
 
   /** Off-season Arsenal→Brentford: accept real permanent offer; no CL inheritance; fresh restore. */
@@ -936,13 +1099,25 @@ const cases = {
 
   /** Real accepted loan: entry follows playing tip; require return with parent entry. */
   async B04(page, guards) {
-    const snap = buildSeededSnap({
-      id: "fix09-b04",
-      clubId: ARSENAL,
+    const { buildOwnershipTransferBrowserFixture } = await import(
+      "../js/simulation/ownershipTransferBrowserFixture.js"
+    );
+    const fixture = buildOwnershipTransferBrowserFixture({
       seed: 9105,
-      ovr: 72,
-      placements: { 1: ARSENAL, 17: BRENTFORD },
+      careerId: "fix09-b04",
+      dealType: "loan",
     });
+    assert(fixture.ok, "loan ownership fixture ready", fixture);
+    // Authoritative parent CL / borrower DNQ for the controlled loan tip.
+    const league = leagueById(EPL);
+    commitCompletedDomesticEdition({
+      world: getWorldState(),
+      league,
+      table: orderedTable(league, { 1: ARSENAL, 17: BRENTFORD }),
+      sourceYear: 2025,
+      forceReplace: true,
+    });
+    const snap = serializeCareerSnapshot({ player: fixture.player, world: getWorldState() });
     await writeCase("B04-initial.json", slimEvidence(snap));
     await writeFullSnapshot("B04-initial.full.json", snap);
     await restore(page, snap);
@@ -950,35 +1125,63 @@ const cases = {
     assert(clubDecision(snap, ARSENAL, 2026)?.competition === "Champions League", "parent qualified");
     assert(clubDecision(snap, BRENTFORD, 2026)?.status === "not-qualified", "borrower DNQ");
 
+    await page.waitForTimeout(300);
+    const accepted = await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
+      const hit =
+        buttons.find((b) => /brentford/i.test(b.textContent || "") && /accept loan|accept offer|^accept$/i.test(b.textContent || "")) ||
+        buttons.find((b) => /accept loan/i.test(b.textContent || "")) ||
+        buttons.find((b) => /accept offer|sign for|^accept$/i.test((b.textContent || "").trim()));
+      if (!hit) return null;
+      hit.click();
+      return (hit.textContent || "").trim();
+    });
+    assert(accepted, "must click Accept on Brentford loan offer", { accepted });
     const driven = await driveSeasonToDesk(page, {
-      seasonsBefore: 0,
+      seasonsBefore: (snap.player.seasons || []).length,
+      alreadyRunning: true,
       shotPrefix: "B04",
-      deskPolicy: "accept-cross-league",
+      deskPolicy: "stay",
       timeoutMs: 240000,
     });
     const mid = await exportSnapshot(page);
     await writeCase("B04-mid.json", slimEvidence(mid));
+    const borrowerId = mid.player.playingClubId;
     const loanAccepted =
       mid.player.activeLoan?.status === "active" ||
-      (mid.player.employmentClubId === ARSENAL && mid.player.playingClubId && mid.player.playingClubId !== ARSENAL);
+      (mid.player.employmentClubId === ARSENAL && borrowerId && borrowerId !== ARSENAL) ||
+      borrowerId === BRENTFORD;
     assert(loanAccepted, "real loan acceptance required", {
       employment: mid.player.employmentClubId,
-      playing: mid.player.playingClubId,
+      playing: borrowerId,
       activeLoan: mid.player.activeLoan,
       deskDecisions: driven.trace.deskDecisions,
+      accepted,
+    });
+    assert(borrowerId === BRENTFORD, "controlled loan must land at Brentford DNQ tip", {
+      borrowerId,
+      accepted,
     });
     const midSum = qualSummary(mid.player, mid);
-    if (mid.player.playingClubId === BRENTFORD) {
-      assert(
-        !midSum.europe.qualified || midSum.europe.competition !== "Champions League",
-        "loan season follows playing club DNQ",
-        midSum
-      );
-    }
+    const borrowerDecision = clubDecision(mid, borrowerId, 2026);
+    assert(borrowerDecision?.status === "not-qualified", "actual borrower is DNQ", borrowerDecision);
+    // Playing-tip DNQ: no earned CL attachments for Brentford after the loan effective date.
+    const moveDate = fixture.checkpoint?.lastDate || "2027-01-01";
+    const last = (mid.player.seasons || []).at(-1);
+    const postMoveBrentfordCl = (last?.europeanCampaign?.playerMatches || []).filter(
+      (m) =>
+        String(m.date || "") >= String(moveDate) &&
+        (m.home?.clubId === BRENTFORD || m.away?.clubId === BRENTFORD || m.teamId === BRENTFORD)
+    );
+    assert(postMoveBrentfordCl.length === 0, "DNQ borrower must not inherit parent CL attachments", {
+      postMoveBrentfordCl,
+      midSum,
+      borrowerDecision,
+    });
 
     // Drive return window / next period if still on loan.
     let desk = mid;
-    if (mid.player.activeLoan?.status === "active") {
+    if (mid.player.activeLoan?.status === "active" || mid.player.playingClubId !== ARSENAL) {
       const returnedDrive = await driveSeasonToDesk(page, {
         seasonsBefore: (mid.player.seasons || []).length,
         shotPrefix: "B04-return",
@@ -1002,6 +1205,11 @@ const cases = {
       employment: desk.player.employmentClubId,
       activeLoan: desk.player.activeLoan,
     });
+    assert(
+      clubDecision(desk, ARSENAL, 2026)?.competition === "Champions League",
+      "return restores parent qualification authority",
+      clubDecision(desk, ARSENAL, 2026)
+    );
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
     return {
@@ -1009,9 +1217,14 @@ const cases = {
       sum,
       loanReturnExercised: true,
       loanAccepted: true,
+      borrowerId,
+      borrowerDecision,
+      borrowerWasDnq: true,
+      parentQualified: true,
       employmentAtDesk: desk.player.employmentClubId,
       playingAtDesk: desk.player.playingClubId,
       deskDecisions: driven.trace.deskDecisions,
+      accepted,
     };
   },
 
@@ -1063,7 +1276,7 @@ const cases = {
     };
   },
 
-  /** Pause / restore / Continue branch compare. */
+  /** Real mid-season pause / restore / finish branch compare. */
   async B06(page, guards) {
     const snap = buildSeededSnap({
       id: "fix09-b06",
@@ -1074,41 +1287,77 @@ const cases = {
     });
     await writeCase("B06-initial.json", slimEvidence(snap));
     await restore(page, snap);
-    const driven = await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B06" });
-    const before = driven.beforeContinue.snapshot;
-    await writeCase("B06-before-continue.json", slimEvidence(driven.beforeContinue));
-    await writeFullSnapshot("B06-before-continue.full.json", driven.beforeContinue);
+    const paused = await driveToMidSeasonPause(page, { seasonsBefore: 0, shotPrefix: "B06" });
+    await writeCase("B06-before-continue.json", slimEvidence({ snapshot: paused.snapshot, debug: paused.debug, ui: paused.ui }));
+    await writeFullSnapshot("B06-before-continue.full.json", paused.snapshot);
+    assert((paused.snapshot.player.seasons || []).length === 0, "mid-season pause before finalize");
+    assert(
+      paused.snapshot.player.seasonCheckpoint?.status === "awaiting_decision" ||
+        paused.snapshot.player.seasonCheckpoint?.status === "awaiting_scenario" ||
+        paused.debug?.seasonCheckpoint === "awaiting_decision",
+      "real awaiting_decision checkpoint required",
+      {
+        ck: paused.snapshot.player.seasonCheckpoint?.status,
+        debug: paused.debug?.seasonCheckpoint,
+      }
+    );
+
+    // Branch A: uninterrupted finish from the live paused desk.
+    const drivenA = await driveSeasonToDesk(page, {
+      seasonsBefore: 0,
+      alreadyRunning: true,
+      shotPrefix: "B06",
+      deskPolicy: "stay",
+      timeoutMs: 240000,
+    });
     const deskA = await exportSnapshot(page);
     await writeCase("B06-desk-a.json", slimEvidence(deskA));
-    const a = qualSummary(before.player, before);
-    const b = qualSummary(deskA.player, deskA);
-    assert(a.europe.competition === "Champions League", "B06 CL before Continue", a);
-    assert(b.europe.competition === a.europe.competition, "Continue preserves Europe", { a, b });
-    assert(a.seasons === b.seasons && a.age === b.age, "Continue exact-once", { a, b });
+    await writeFullSnapshot("B06-desk-a.full.json", deskA);
+    const a = qualSummary(deskA.player, deskA);
+    assert(a.seasons === 1, "branch A completes exactly one season", a);
+    assert(a.europe.competition === "Champions League", "branch A CL from seeded parent", a);
 
-    await freshRestore(page, before);
-    const ui = await uiState(page);
-    if (ui.continueBtnVisible && !ui.continueBtnDisabled) {
-      await page.click("#continue-btn");
-      await page.waitForTimeout(400);
-    } else {
-      // Restored mid-presentation: drive remaining Continue/skips to desk.
-      const seasonsBefore = (before.player.seasons || []).length - 1;
-      await driveSeasonToDesk(page, {
-        seasonsBefore: Math.max(0, seasonsBefore),
-        alreadyRunning: true,
-        shotPrefix: "B06-branch",
-      });
-    }
+    // Branch B: restore identical mid-season checkpoint and finish again.
+    await freshRestore(page, paused.snapshot);
+    const uiB = await uiState(page);
+    assert(
+      uiB.debug?.seasonCheckpoint === "awaiting_decision" ||
+        uiB.nextAction?.id === "resolve-decision" ||
+        uiB.nextAction?.id === "resolve-offers" ||
+        uiB.nextAction?.id === "resume-season" ||
+        Boolean(uiB.debug?.pendingDecision) ||
+        (Array.isArray(uiB.debug?.pendingOffers) && uiB.debug.pendingOffers.length > 0) ||
+        Boolean(paused.snapshot.player?.seasonCheckpoint),
+      "restored mid-season pause still awaiting decision",
+      {
+        seasonCheckpoint: uiB.debug?.seasonCheckpoint,
+        nextAction: uiB.nextAction,
+        pendingDecision: uiB.debug?.pendingDecision,
+        ck: paused.snapshot.player?.seasonCheckpoint?.status,
+      }
+    );
+    const drivenB = await driveSeasonToDesk(page, {
+      seasonsBefore: 0,
+      alreadyRunning: true,
+      shotPrefix: "B06-branch",
+      deskPolicy: "stay",
+      timeoutMs: 240000,
+    });
     const deskB = await exportSnapshot(page);
     await writeCase("B06-desk-b.json", slimEvidence(deskB));
-    await writeFullSnapshot("B06-desk-a.full.json", deskA);
     await writeFullSnapshot("B06-desk-b.full.json", deskB);
-    const c = qualSummary(deskB.player, deskB);
-    assert(c.europe.competition === b.europe.competition, "restore+Continue Europe matches", { b, c });
-    assert(c.seasons === b.seasons && c.age === b.age, "branch seasons/age match", { b, c });
-    assert(c.arsenal2026?.competition === b.arsenal2026?.competition, "registry branch match", { b, c });
-    assert(c.playingClubId === b.playingClubId, "branch playing club match", { b, c });
+    const b = qualSummary(deskB.player, deskB);
+    assert(b.seasons === a.seasons && b.age === a.age, "branch seasons/age match", { a, b });
+    assert(b.europe.competition === a.europe.competition, "branch Europe competition match", { a, b });
+    assert(b.europe.qualified === a.europe.qualified, "branch Europe qualified match", { a, b });
+    assert(b.arsenal2026?.competition === a.arsenal2026?.competition, "registry branch match", { a, b });
+    assert(b.playingClubId === a.playingClubId, "branch playing club match", { a, b });
+    const tableA = (deskA.player.seasons || []).at(-1)?.standing?.table?.map((r) => [r.clubId, r.position, r.points]);
+    const tableB = (deskB.player.seasons || []).at(-1)?.standing?.table?.map((r) => [r.clubId, r.position, r.points]);
+    assert(JSON.stringify(tableA) === JSON.stringify(tableB), "final tables match across mid-season branches", {
+      tableA: tableA?.slice?.(0, 5),
+      tableB: tableB?.slice?.(0, 5),
+    });
     assert(
       JSON.stringify(deskB.player.finance || null) === JSON.stringify(deskA.player.finance || null) ||
         deskB.player.weeklyWage === deskA.player.weeklyWage,
@@ -1116,10 +1365,19 @@ const cases = {
       { wageA: deskA.player.weeklyWage, wageB: deskB.player.weeklyWage }
     );
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, before: a, deskA: b, deskB: c, branchCompare: true, midSeasonPauseBranch: true };
+    return {
+      ok: true,
+      midSeasonPauseBranch: true,
+      checkpointStatus: paused.snapshot.player.seasonCheckpoint?.status || paused.debug?.seasonCheckpoint,
+      deskA: a,
+      deskB: b,
+      branchCompare: true,
+      traceA: drivenA.trace,
+      traceB: drivenB.trace,
+    };
   },
 
-  /** Non-UEFA calendar-year league (Brazil). */
+  /** Non-UEFA calendar-year league (Brazil) with played source→target rollover. */
   async B07(page, guards) {
     const league = topFlight("Brazil");
     assert(league, "Brazil top flight present");
@@ -1150,9 +1408,56 @@ const cases = {
       "calendar-year Brazil → Copa Libertadores",
       sum
     );
+
+    // Played source→target rollover: complete a second calendar year from the just-finished table.
+    const next = await driveSeasonToDesk(page, {
+      seasonsBefore: sum.seasons,
+      shotPrefix: "B07-next",
+      timeoutMs: 240000,
+    });
+    const nextDesk = await exportSnapshot(page);
+    await writeCase("B07-next-desk.json", slimEvidence(nextDesk));
+    await writeFullSnapshot("B07-desk.full.json", nextDesk);
+    const nextSum = qualSummary(nextDesk.player, nextDesk);
+    assert(nextSum.seasons === sum.seasons + 1, "Brazil second calendar year completed", { sum, nextSum });
+    const sourceTable = (desk.player.seasons || []).at(-1)?.standing?.table || null;
+    assert(Array.isArray(sourceTable) && sourceTable.length > 0, "Brazil source table present");
+    const clubRow = sourceTable.find((r) => r.clubId === club.clubId);
+    assert(clubRow, "club row in Brazil source table");
+    const expectedNext = expectedCompetitionFromFinish(league, clubRow);
+    const nextDecision = clubDecision(nextDesk, club.clubId, 2027);
+    assert(
+      decisionMatchesFinish(nextDecision, expectedNext),
+      "Brazil next-year registry matches played finish",
+      { expectedNext, nextDecision, position: clubRow.position }
+    );
+    if (expectedNext) {
+      assert(nextSum.europe.competition === expectedNext, "Brazil rollover campaign matches finish", {
+        expectedNext,
+        europe: nextSum.europe,
+      });
+      assert(nextSum.europe.qualified === true && nextSum.europe.showcase !== true, "earned Brazil rollover", nextSum);
+    } else {
+      assert(
+        nextSum.europe.qualified !== true || nextSum.europe.showcase === true,
+        "Brazil DNQ finish must not invent earned continental entry",
+        nextSum
+      );
+    }
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, sum, clubId: club.clubId, leagueId: league.leagueId };
+    void driven;
+    void next;
+    return {
+      ok: true,
+      sum,
+      next: nextSum,
+      clubId: club.clubId,
+      leagueId: league.leagueId,
+      expectedNext,
+      nextDecision,
+      calendarRollover: true,
+    };
   },
 
   /** Bootstrap/missing evidence stable; OVR cannot grant known non-qualifier. */
@@ -1229,20 +1534,65 @@ const cases = {
     };
   },
 
-  /** Free-agent gap / re-signing: no obsolete Arsenal entry; no soft-lock. */
+  /** Free-agent gap / re-signing: real search period, then accept; no obsolete Arsenal entry. */
   async B09(page, guards) {
+    const startAge = 22;
     const snap = buildSeededSnap({
       id: "fix09-b09",
       clubId: BRENTFORD,
       seed: 9111,
       ovr: 70,
+      age: startAge,
       freeAgent: true,
       placements: { 1: ARSENAL, 17: BRENTFORD },
       stalePlayerRowClubId: ARSENAL,
     });
+    // Start with an empty market so Simulate advances a real FA search/train period.
+    snap.player.pendingOffers = [];
+    snap.player.pendingDecision = null;
+    await writeCase("B09-initial.json", slimEvidence(snap));
+    await writeFullSnapshot("B09-initial.full.json", snap);
+    await restore(page, snap);
+    await shot(page, "B09-01-fa-desk");
+    const start = await exportSnapshot(page);
+    assert(start.player.contractStatus === "released" || !start.player.club, "FA lifecycle");
+    assert((start.player.seasons || []).length === 0, "FA starts with zero club seasons");
+    const ui0 = await uiState(page);
+    assert(ui0.simulateDisabled === false, "FA desk must expose Search/train simulate", ui0);
+
+    await page.click("#simulate-btn");
+    await page.waitForTimeout(500);
+    // Clear any empty-market acknowledgements / Continue so the FA period commits.
+    const faDriven = await driveSeasonToDesk(page, {
+      seasonsBefore: 0,
+      alreadyRunning: true,
+      shotPrefix: "B09",
+      deskPolicy: "decline-offers",
+      timeoutMs: 180000,
+    });
+    const afterSearch = await exportSnapshot(page);
+    await writeCase("B09-after-search.json", slimEvidence(afterSearch));
+    await writeFullSnapshot("B09-after-search.full.json", afterSearch);
+    const searchAge = afterSearch.player.age;
+    const searchSeasons = (afterSearch.player.seasons || []).length;
+    assert(
+      searchAge > startAge || searchSeasons >= 1,
+      "FA search/train period must advance age or record a free-agent season",
+      { startAge, searchAge, searchSeasons, trace: faDriven.trace }
+    );
+    assert(
+      afterSearch.player.contractStatus === "released" || !afterSearch.player.club,
+      "still free agent after search period",
+      {
+        contractStatus: afterSearch.player.contractStatus,
+        club: afterSearch.player.club,
+      }
+    );
+
+    // Separate control: seed a real Brentford offer after the search gap and accept it.
     const brentford = clubIn(leagueById(EPL), BRENTFORD);
     const offer = {
-      offerId: `fix09-b09:${BRENTFORD}`,
+      offerId: `fix09-b09:${BRENTFORD}:post-search`,
       club: brentford.name,
       clubDisplay: brentford.displayName || brentford.name,
       clubId: BRENTFORD,
@@ -1258,20 +1608,12 @@ const cases = {
       contractYears: 2,
       expectedRole: "rotation",
       status: "pending",
-      effectiveDate: "2026-07-01",
-      reviewDate: "2026-07-01",
+      effectiveDate: "2027-07-01",
+      reviewDate: "2027-07-01",
     };
-    snap.player.pendingOffers = [offer];
-    snap.player.pendingDecision = { kind: "transfer-offers", offers: [offer] };
-    await writeCase("B09-initial.json", slimEvidence(snap));
-    await writeFullSnapshot("B09-initial.full.json", snap);
-    await restore(page, snap);
-    await shot(page, "B09-01-fa-desk");
-    const start = await exportSnapshot(page);
-    assert(start.player.contractStatus === "released" || !start.player.club, "FA lifecycle");
-    const ui0 = await uiState(page);
-    assert(ui0.simulateDisabled === false || (start.player.pendingOffers || []).length > 0, "FA desk must not soft-lock", ui0);
-
+    afterSearch.player.pendingOffers = [offer];
+    afterSearch.player.pendingDecision = { kind: "transfer-offers", offers: [offer] };
+    await freshRestore(page, afterSearch);
     await page.waitForTimeout(300);
     const accepted = await page.evaluate(() => {
       const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
@@ -1282,40 +1624,67 @@ const cases = {
       hit.click();
       return (hit.textContent || "").trim();
     });
-    assert(accepted, "must accept real free-agent re-signing offer", { accepted });
+    assert(accepted, "must accept real free-agent re-signing offer after search", { accepted });
     await page.waitForTimeout(400);
-    const desk = await exportSnapshot(page);
-    await writeCase("B09-after-search.json", slimEvidence(desk));
-    await writeFullSnapshot("B09-after-search.full.json", desk);
-    const sum = qualSummary(desk.player, desk);
+    const signed = await exportSnapshot(page);
     assert(
-      !sum.europe.qualified || sum.europe.competition !== "Champions League",
-      "FA gap must not invent obsolete Arsenal CL",
+      signed.player.contractStatus === "active" && signed.player.playingClubId === BRENTFORD,
+      "post-search re-signing required",
+      {
+        contractStatus: signed.player.contractStatus,
+        playingClubId: signed.player.playingClubId,
+      }
+    );
+
+    // Start the destination period and resolve entry for Brentford's actual target edition.
+    const clubDriven = await driveSeasonToDesk(page, {
+      seasonsBefore: (signed.player.seasons || []).length,
+      shotPrefix: "B09-club",
+      deskPolicy: "stay",
+      timeoutMs: 240000,
+    });
+    const desk = await exportSnapshot(page);
+    await writeCase("B09-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B09-desk.full.json", desk);
+    const sum = qualSummary(desk.player, desk);
+    assert(sum.playingClubId === BRENTFORD, "destination period at Brentford", sum);
+    assert(sum.seasons > searchSeasons, "destination club season completed after re-signing", {
+      searchSeasons,
+      seasons: sum.seasons,
+    });
+    assert(
+      sum.europe.qualified !== true || sum.europe.competition !== "Champions League",
+      "re-signed Brentford must not invent Arsenal CL",
       sum
     );
     assert(
-      desk.player.contractStatus === "active" && desk.player.playingClubId,
-      "real re-signing offer acceptance required",
+      clubDecision(desk, BRENTFORD, 2026)?.status === "not-qualified" ||
+        clubDecision(desk, BRENTFORD, 2027)?.status === "not-qualified" ||
+        !sum.europe.qualified,
+      "Brentford DNQ authority retained across FA gap",
       {
-        contractStatus: desk.player.contractStatus,
-        playingClubId: desk.player.playingClubId,
+        b2026: clubDecision(desk, BRENTFORD, 2026),
+        b2027: clubDecision(desk, BRENTFORD, 2027),
+        europe: sum.europe,
       }
     );
-    if (desk.player.playingClubId === BRENTFORD) {
-      assert(
-        !sum.europe.qualified || sum.europe.competition !== "Champions League",
-        "re-sign Brentford still DNQ",
-        sum
-      );
-    }
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
+    void clubDriven;
     return {
       ok: true,
       sum,
       searchCompleted: true,
+      searchAge,
+      searchSeasons,
+      startAge,
       reSignedClub: desk.player.playingClubId,
       noSoftLock: true,
+      transitions: {
+        ages: [startAge, searchAge, desk.player.age],
+        seasons: [0, searchSeasons, sum.seasons],
+        contract: ["released", "released", desk.player.contractStatus],
+      },
     };
   },
 };

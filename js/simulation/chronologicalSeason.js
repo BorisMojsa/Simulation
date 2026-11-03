@@ -104,6 +104,8 @@ function commitActiveLeagueQualification({
       if (!id || seen.has(id)) continue;
       seen.add(id);
       matchEvidenceIds.push(id);
+      // Ensure edition identity is stamped before evidence capture.
+      if (m.editionId == null) m.editionId = String(sourceYear);
     }
   }
   return commitCompletedDomesticEdition({
@@ -114,6 +116,7 @@ function commitActiveLeagueQualification({
     provenance: "simulated-complete",
     status: "complete",
     matchEvidenceIds,
+    sourceResults: allMatches,
   });
 }
 
@@ -448,6 +451,8 @@ export function simulateChronologicalSeason({
       index,
       home: fx.home,
       away: fx.away,
+      // Preserve edition-scoped fixture identity from the calendar builder.
+      fixtureId: fx.fixtureId || `${league.leagueId || league.name}::${String(seasonStartYear)}:md:${index}`,
     });
   });
   cupRoundDates.forEach((date, i) => {
@@ -761,7 +766,8 @@ export function simulateChronologicalSeason({
         playerIn = null;
       }
       const matchday = leagueMatchday(ev, clubs.length);
-      const fixtureId = ev.fixtureId || `${competitionId}:md:${ev.index}`;
+      const fixtureId =
+        ev.fixtureId || `${competitionId}::${String(seasonStartYear)}:md:${ev.index}`;
 
       if (!playerIn) {
         const match = simulateMatch(fx.home, fx.away, {
@@ -774,6 +780,7 @@ export function simulateChronologicalSeason({
         });
         match.matchday = matchday;
         match.round = `Matchday ${match.matchday}`;
+        match.editionId = String(seasonStartYear);
         tagLeagueMatch(match, { activeLeague, player, historySegment, seasonStartYear, world });
         applyMatchFormUpdate(world, match);
         leagueAllMatches.push(match);
@@ -1831,7 +1838,8 @@ export function resumeChronologicalSeason({
         playerIn = null;
       }
       const matchday = leagueMatchday(ev, clubs.length);
-      const fixtureId = ev.fixtureId || `${competitionId}:md:${ev.index}`;
+      const fixtureId =
+        ev.fixtureId || `${competitionId}::${String(seasonStartYear)}:md:${ev.index}`;
 
       if (!playerIn) {
         const match = simulateMatch(fx.home, fx.away, {
@@ -1844,6 +1852,7 @@ export function resumeChronologicalSeason({
         });
         match.matchday = matchday;
         match.round = `Matchday ${match.matchday}`;
+        match.editionId = String(seasonStartYear);
         tagLeagueMatch(match, { activeLeague, player, historySegment, seasonStartYear, world });
         applyMatchFormUpdate(world, match);
         leagueAllMatches.push(match);
