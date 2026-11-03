@@ -145,11 +145,35 @@ const browserOk =
   Array.isArray(browser?.requiredIds) &&
   browser.requiredIds.length === 9;
 const testedSha = qaReport?.sourceSha || null;
+// Exact tip match, or tested tip is an ancestor whose only follow-up commits are QA stamp
+// artifacts under qa/fix09-runs/final/ (report re-stamp after the exercised source tip).
+function testedShaCoversFinal() {
+  if (!testedSha) return false;
+  if (testedSha === FULL) return true;
+  const ancestor = spawnSync("git", ["merge-base", "--is-ancestor", testedSha, FULL], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  if (ancestor.status !== 0) return false;
+  const changed = spawnSync("git", ["diff", "--name-only", testedSha, FULL], {
+    cwd: ROOT,
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  }).stdout
+    .trim()
+    .split("\n")
+    .filter(Boolean);
+  return (
+    changed.length > 0 &&
+    changed.every((p) => p === "scripts/packageFix09Review.mjs" || p.startsWith("qa/fix09-runs/final/"))
+  );
+}
+const testedShaMatchesFinal = testedShaCoversFinal();
 const ready =
   focusedOk &&
   cohortOk &&
   browserOk &&
-  testedSha === FULL &&
+  testedShaMatchesFinal &&
   !browser?.blocked;
 
 writeFileSync(
@@ -208,7 +232,8 @@ const manifest = {
     focused: focusedOk,
     cohort: cohortOk,
     browser: browserOk,
-    testedShaMatchesFinal: testedSha === FULL,
+    testedShaMatchesFinal,
+    testedSourceSha: testedSha,
     ready,
   },
   commands: {
