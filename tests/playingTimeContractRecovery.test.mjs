@@ -49,6 +49,42 @@ import {
   serializeCareerSnapshot,
   deserializeCareerSnapshot,
 } from "../js/simulation/careerSnapshot.js";
+import { commitCompletedDomesticEdition } from "../js/simulation/earnedQualification.js";
+import { qualificationForPosition, findSisterLeagues } from "../js/simulation/leaguePhase.js";
+
+/** Seed an earned continental place that matches the retired OVR band for a club. */
+function seedClubContinentalPlace(clubId, { position = 5, targetYear = 2026 } = {}) {
+  const world = getWorldState();
+  const club = allSeniorClubs().find((c) => c.clubId === clubId);
+  assert.ok(club, clubId);
+  const league = LEAGUE_BY_ID.get(club.leagueId) || LEAGUES.find((l) => l.leagueId === club.leagueId);
+  assert.ok(league, club.leagueId);
+  const sisters = findSisterLeagues(league, LEAGUES);
+  const rest = [...league.clubs.filter((c) => c.clubId !== clubId)];
+  const ordered = [];
+  for (let i = 1; i <= league.clubs.length; i++) {
+    if (i === position) ordered.push(club);
+    else ordered.push(rest.shift());
+  }
+  const table = ordered.map((c, i) => ({
+    ...c,
+    position: i + 1,
+    points: Math.max(0, 90 - i * 3),
+    matches: 38,
+    wins: 20,
+    draws: 8,
+    losses: 10,
+    qualification: qualificationForPosition(i + 1, league, sisters) || "",
+  }));
+  commitCompletedDomesticEdition({
+    world,
+    league,
+    table,
+    sourceYear: targetYear - 1,
+    provenance: "simulated-complete",
+    forceReplace: true,
+  });
+}
 
 function attrs(ovr) {
   return Object.fromEntries(
@@ -923,6 +959,8 @@ test("F10: pending parent review survives co-terminal loan end", () => {
   assert.ok(loans.offers.length > 0, "loan offer");
   const started = startLoan(p, loans.offers[0]);
   assert.equal(started.ok, true);
+  // Fix 09: borrower entry follows earned place (old OVR band for Levante ≈ EL / 5th).
+  seedClubContinentalPlace(p.playingClubId, { position: 5, targetYear: 2026 });
   reseedCareerRng(708);
   simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: false,
@@ -1310,6 +1348,7 @@ test("F13: app finalizer keeps pending parent renewal over loan-return", async (
   const loans = generateLoanOffers(p, { maxOffers: 3, rng: createRng(707) });
   assert.ok(loans.offers.length > 0);
   assert.equal(startLoan(p, loans.offers[0]).ok, true);
+  seedClubContinentalPlace(p.playingClubId, { position: 5, targetYear: 2026 });
   reseedCareerRng(708);
   const data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: false,

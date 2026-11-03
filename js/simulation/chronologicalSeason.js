@@ -77,6 +77,45 @@ import {
 } from "./seniorCareerScenarios.js?v=88";
 import { ensureLeagueMatchId } from "./leagueTable.js";
 import { commitLeagueMatchResult } from "./leagueEditionAdapter.js";
+import {
+  resolvePreSeasonContinentalStanding,
+  commitCompletedDomesticEdition,
+} from "./earnedQualification.js";
+
+function commitActiveLeagueQualification({
+  world,
+  league,
+  table,
+  sourceYear,
+  allMatches = null,
+}) {
+  if (!world || !league || !Array.isArray(table) || !table.length) return null;
+  const sisters = findSisterLeagues(league, LEAGUES);
+  for (const row of table) {
+    if (row.qualification == null || row.qualification === undefined) {
+      row.qualification = qualificationForPosition(row.position, league, sisters) || "";
+    }
+  }
+  const matchEvidenceIds = [];
+  if (Array.isArray(allMatches)) {
+    const seen = new Set();
+    for (const m of allMatches) {
+      const id = m?.matchId || m?.fixtureId || m?.id || null;
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      matchEvidenceIds.push(id);
+    }
+  }
+  return commitCompletedDomesticEdition({
+    world,
+    league,
+    table,
+    sourceYear,
+    provenance: "simulated-complete",
+    status: "complete",
+    matchEvidenceIds,
+  });
+}
 
 function ensurePlayerInClubs(league, player) {
   const clubs = [...(league.clubs || [])].map(attachClubIdentity);
@@ -273,63 +312,20 @@ function buildTable(records) {
 }
 
 /**
- * Pre-season continental entry proxy when current-season standing is unknown.
- * Prefers previous season finish; otherwise uses club quality bands.
+ * Pre-season continental entry for the player's current playing club.
+ * Uses earned club+edition evidence (world.qualification / complete prior tables).
+ * Never invents positions from club OVR and never reuses another club's playerRow.
  */
-export function preSeasonContinentalStanding(player, league) {
-  const prev = player.latestStanding?.playerRow;
-  const prevLeagueId =
-    player.latestStanding?.leagueId ||
-    player.latestStanding?.league?.leagueId ||
-    player.latestStanding?.playerRow?.leagueId;
-  const currentLeagueId = league?.leagueId || league?.name;
-  // Do not reuse a finish from a different association/league (e.g. after transfer).
-  const sameLeague =
-    !prevLeagueId ||
-    !currentLeagueId ||
-    prevLeagueId === currentLeagueId ||
-    prevLeagueId === league?.name;
-
-  if (prev?.position && sameLeague) {
-    const sisters = findSisterLeagues(league, LEAGUES);
-    const qualification =
-      prev.qualification ||
-      qualificationForPosition(prev.position, league, sisters) ||
-      "";
-    return {
-      position: prev.position,
-      points: prev.points || 0,
-      qualification,
-      divisionMove: null,
-      record: { wins: prev.wins || 0, draws: prev.draws || 0, losses: prev.losses || 0 },
-      matches: prev.matches || 0,
-      goalDiff: prev.goalDiff || 0,
-      strength: prev.strength || player.club?.overall || 70,
-      table: player.latestStanding?.table || null,
-    };
-  }
-  const overall = Number(player.club?.overall) || 70;
-  // Simulation-policy seeding — not claimed real UEFA access list.
-  let position = 12;
-  if (overall >= 84) position = 1;
-  else if (overall >= 80) position = 2;
-  else if (overall >= 76) position = 3;
-  else if (overall >= 72) position = 5;
-  else if (overall >= 68) position = 7;
-  else return null;
-  const sisters = findSisterLeagues(league, LEAGUES);
-  const qualification = qualificationForPosition(position, league, sisters) || "";
-  return {
-    position,
-    points: 0,
-    qualification,
-    divisionMove: null,
-    record: { wins: 0, draws: 0, losses: 0 },
-    matches: 0,
-    goalDiff: 0,
-    strength: overall,
-    table: null,
-  };
+export function preSeasonContinentalStanding(player, league, opts = {}) {
+  const world = opts.world || getWorldState();
+  const seasonYear =
+    opts.seasonYear ??
+    ((player?.startYear || 2026) + (player?.seasons?.length || 0));
+  return resolvePreSeasonContinentalStanding(player, league, {
+    world,
+    seasonYear,
+    allowBootstrap: opts.allowBootstrap !== false,
+  });
 }
 
 function accumulatePlayerStats(stats, match, participation) {
@@ -409,7 +405,10 @@ export function simulateChronologicalSeason({
   ).map((r) => r.date);
 
   // Continental: prepare edition (schedule only). Fixtures play once on their dates.
-  const preStanding = preSeasonContinentalStanding(player, league);
+  const preStanding = preSeasonContinentalStanding(player, league, {
+    world,
+    seasonYear: seasonStartYear,
+  });
   let europeEdition = prepareSeasonContinental({
     standing: preStanding,
     league,
@@ -986,6 +985,13 @@ export function simulateChronologicalSeason({
 
   const table = buildTable(records);
   if (world) world.standings.set(activeLeague.leagueId || activeLeague.name, table);
+  commitActiveLeagueQualification({
+    world,
+    league: activeLeague,
+    table,
+    sourceYear: seasonStartYear,
+    allMatches: leagueAllMatches,
+  });
   player.seasonCheckpoint = null;
   const playerRecord = findPlayingClubRow(table, player);
   const leagueMatchSegments = buildLeagueMatchSegments(leaguePlayerMatches);
@@ -2040,6 +2046,13 @@ export function resumeChronologicalSeason({
 
   const table = buildTable(records);
   if (world) world.standings.set(activeLeague.leagueId || activeLeague.name, table);
+  commitActiveLeagueQualification({
+    world,
+    league: activeLeague,
+    table,
+    sourceYear: seasonStartYear,
+    allMatches: leagueAllMatches,
+  });
   player.seasonCheckpoint = null;
   const playerRecord = findPlayingClubRow(table, player);
   const leagueMatchSegments = buildLeagueMatchSegments(leaguePlayerMatches);

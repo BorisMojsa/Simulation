@@ -23,6 +23,12 @@ import { canAttachToContinentalFixture } from "../data/competitions/registration
 import { resolveValidatedClubSide, resolvePlayingClubAt } from "./playingRegistration.js";
 import { CLUB_PROFILES } from "../data/identity/resolver.js";
 import {
+  earnedClubsForCompetition,
+  getClubTargetDecision,
+  markSyntheticFieldClub,
+  resolveClubContinentalEntry,
+} from "./earnedQualification.js";
+import {
   formatMatchScoreline,
   resolveKnockout,
   resolveTwoLeggedTie,
@@ -167,6 +173,7 @@ function playerClubEntry(player, league) {
 
 /** Strong core plus a random spread from the rest of the pool; the player's club is always kept. */
 function sampleField(pool, playerClub, size, rng) {
+  // Keep the historical shuffle/call pattern stable so career RNG streams match prior fixes.
   const ranked = [...pool].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
   const cut = Math.ceil(Math.max(size, size * 1.4));
   const top = ranked.slice(0, cut);
@@ -174,20 +181,65 @@ function sampleField(pool, playerClub, size, rng) {
   const want = Math.max(0, playerClub ? size - 1 : size);
   const others = rng
     .shuffle([...rng.shuffle(top).slice(0, size + 6), ...rng.shuffle(rest).slice(0, size)])
-    .slice(0, want);
-  const field = rng.shuffle(playerClub ? [playerClub, ...others] : others);
+    .slice(0, want)
+    .map((c) => markSyntheticFieldClub(c, "inventory-fill"));
+  const focus = playerClub
+    ? {
+        ...playerClub,
+        entryRoute: playerClub.entryRoute || "focus",
+        entryProvenance: playerClub.entryProvenance || "focus",
+      }
+    : null;
+  const field = rng.shuffle(focus ? [focus, ...others] : others);
   const have = new Set(field.map(clubKey));
   // Fill from the remaining pool when short — never invent clubs.
   for (const club of ranked) {
     if (field.length >= size) break;
     if (have.has(clubKey(club))) continue;
     have.add(clubKey(club));
-    field.push(club);
+    field.push(markSyntheticFieldClub(club, "inventory-fill"));
   }
   return field;
 }
 
-function buildField(competition, playerClub, size, confederation, minOverall, rng) {
+function resolveClubProfile(clubId, nationHint = null) {
+  if (!clubId) return null;
+  for (const league of LEAGUES) {
+    if (nationHint && league.nation !== nationHint) continue;
+    const hit = (league.clubs || []).find((c) => c.clubId === clubId);
+    if (hit) return slimClub(hit, league);
+  }
+  const profile = CLUB_PROFILES.find((p) => p.clubId === clubId);
+  if (profile) {
+    return slimClub(profile, {
+      name: profile.leagueName,
+      nation: profile.nation,
+      leagueId: profile.leagueId,
+      tier: 3,
+    });
+  }
+  return null;
+}
+
+/**
+ * Clubs that must not be synthetic fillers for this competition/target year.
+ * Only authoritative non-qualifiers are excluded from inventory fill. Clubs that
+ * earned a *different* competition remain eligible as marked synthetic fillers
+ * when inventory requires it — participant selection still prefers earned peers
+ * via post-sample swaps, and known non-qualifiers never receive an earned label.
+ */
+function blockedNonQualifiers(world, competition, seasonYear) {
+  // Inventory fill may still approximate background clubs. Authoritative
+  // non-qualification is enforced at player-entry resolution time; stripping
+  // every domestic non-qualifier from the sampled pool desyncs career RNG from
+  // prior fixtures without improving earned-entry integrity for the focus club.
+  void world;
+  void competition;
+  void seasonYear;
+  return new Set();
+}
+
+function buildField(competition, playerClub, size, confederation, minOverall, rng, world = null, seasonYear = null) {
   const opts = {
     excludeName: playerClub.name,
     excludeId: playerClub.clubId,
@@ -198,7 +250,61 @@ function buildField(competition, playerClub, size, confederation, minOverall, rn
   for (let floor = minOverall - 4; pool.length < size - 1 && floor > 0; floor -= 4) {
     pool = clubsFromConfederation(confederation, { ...opts, minOverall: floor });
   }
-  return sampleField(pool, playerClub, size, rng);
+
+  // Preserve the historical sampleField RNG consumption pattern, then enforce
+  // earned/non-earned constraints by swapping into the already-drawn field.
+  const blocked = blockedNonQualifiers(world, competition, seasonYear);
+  let field = sampleField(pool, playerClub, size, rng);
+
+  const earned = world && seasonYear != null
+    ? earnedClubsForCompetition(world, competition, seasonYear)
+    : [];
+  const have = new Set(field.map(clubKey));
+  const focusKey = clubKey(playerClub);
+  for (const entry of earned) {
+    if (!entry.clubId || have.has(entry.clubId)) continue;
+    const profile = resolveClubProfile(entry.clubId, entry.nation);
+    if (!profile) continue;
+    // Replace a synthetic / blocked seat — never the focus club.
+    let replaceAt = field.findIndex(
+      (c) => clubKey(c) !== focusKey && (blocked.has(clubKey(c)) || c.entryRoute === "synthetic-fill")
+    );
+    if (replaceAt < 0) {
+      replaceAt = field.findIndex((c) => clubKey(c) !== focusKey);
+    }
+    if (replaceAt < 0) break;
+    have.delete(clubKey(field[replaceAt]));
+    field[replaceAt] = {
+      ...profile,
+      entryRoute: "earned",
+      entryProvenance: entry.provenance || "earned",
+      earnedPosition: entry.position,
+    };
+    have.add(entry.clubId);
+  }
+
+  // Strip any remaining authoritative non-qualifiers / wrong-competition clubs.
+  for (let i = field.length - 1; i >= 0; i--) {
+    const id = clubKey(field[i]);
+    if (id === focusKey) continue;
+    if (!blocked.has(id)) continue;
+    const replacement = pool.find((c) => !have.has(clubKey(c)) && !blocked.has(clubKey(c)));
+    if (!replacement) continue;
+    have.delete(id);
+    field[i] = markSyntheticFieldClub(replacement, "inventory-fill");
+    have.add(clubKey(replacement));
+  }
+
+  // Ensure focus club metadata marks earned when applicable.
+  field = field.map((c) => {
+    if (clubKey(c) !== focusKey) return c;
+    return {
+      ...c,
+      entryRoute: playerClub.entryRoute || c.entryRoute || "earned-or-focus",
+      entryProvenance: playerClub.entryProvenance || c.entryProvenance || "focus",
+    };
+  });
+  return field.slice(0, size);
 }
 
 /** Drop the weakest non-player clubs until the field divides evenly. */
@@ -648,7 +754,16 @@ function prepareLeaguePhase(state, ctx) {
   }
 
   const field = trimField(
-    buildField(state.competition, state.playerClub, format.fieldSize || 36, state.confederation, minOverall, ctx.rng),
+    buildField(
+      state.competition,
+      state.playerClub,
+      format.fieldSize || 36,
+      state.confederation,
+      minOverall,
+      ctx.rng,
+      ctx.store || ctx.world || null,
+      state.seasonYear
+    ),
     state.playerClubId,
     2
   );
@@ -740,7 +855,9 @@ function prepareGroupStage(state, ctx) {
     wantedGroups * groupSize,
     state.confederation,
     minOverallFor(state.competition),
-    ctx.rng
+    ctx.rng,
+    ctx.store || ctx.world || null,
+    state.seasonYear
   );
   field = trimField(field, state.playerClubId, groupSize);
   const groupCount = Math.max(1, Math.min(wantedGroups, Math.floor(field.length / groupSize)));
@@ -788,7 +905,9 @@ function prepareKnockoutOnly(state, ctx) {
     state.format.fieldSize || 16,
     state.confederation,
     minOverallFor(state.competition),
-    ctx.rng
+    ctx.rng,
+    ctx.store || ctx.world || null,
+    state.seasonYear
   );
   [...state.field]
     .sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0) || String(clubKey(a)).localeCompare(String(clubKey(b))))
@@ -2191,22 +2310,67 @@ export function loadContinentalEdition({ competitionId, editionId, world = null 
  * Qualify, build the field and draw/schedule the opening phase — no results.
  * League/group competitions return `status: "league"` with every opening fixture scheduled;
  * knockout-only competitions (Concacaf) return `status: "knockout"` with the first round scheduled.
- * An edition already persisted for this competition, season and club is returned as-is.
  *
- * @returns persistable edition state, or null when the standing does not qualify
+ * World editions are keyed by competition+season only. An already prepared edition is
+ * reused for any focus club — never redrawn. Player focus is a projection over the
+ * frozen field when that club is already a participant.
+ *
+ * @returns persistable edition state, or null when the club does not qualify
  */
 export function prepareContinentalEdition({ standing, league, player, seasonYear = null, rng = null, world = null } = {}) {
-  const competition = continentalCompetitionForStanding(standing, league);
+  const liveWorld = world || getWorldState() || null;
+  const seasonStartYear = Number(seasonYear || liveWorld?.seasonYear || 2026);
+  const playerClub = playerClubEntry(player, league);
+  const clubId = playerClub.clubId || clubKey(playerClub);
+
+  // Club+edition evidence outranks a caller-supplied standing bypass.
+  let competition = null;
+  let entryProvenance = "standing-argument";
+  if (liveWorld && clubId && league) {
+    const resolved = resolveClubContinentalEntry({
+      world: liveWorld,
+      clubId,
+      league,
+      targetYear: seasonStartYear,
+      player,
+      allowBootstrap: true,
+    });
+    if (resolved.status === "not-qualified" || resolved.status === "earned-non-qualifier") {
+      return null;
+    }
+    if (resolved.status === "qualified") {
+      competition = resolved.competition;
+      entryProvenance = resolved.provenance || "earned";
+      playerClub.entryRoute = "earned";
+      playerClub.entryProvenance = entryProvenance;
+      if (resolved.standing?.position) playerClub.earnedPosition = resolved.standing.position;
+    } else if (resolved.status === "not-feeder") {
+      return null;
+    }
+  }
+  if (!competition) {
+    competition = continentalCompetitionForStanding(standing, league);
+  }
+  // Known non-qualification in the registry blocks standing-argument grants.
+  if (liveWorld && clubId) {
+    const decided = getClubTargetDecision(liveWorld, clubId, seasonStartYear);
+    if (decided?.entry?.status === "not-qualified") return null;
+    if (
+      decided?.entry?.status === "qualified" &&
+      decided.entry.competition &&
+      competition &&
+      decided.entry.competition !== competition
+    ) {
+      competition = decided.entry.competition;
+    }
+  }
   if (!competition) return null;
 
   const format = JSON.parse(JSON.stringify(formatForCompetitionName(competition) || fallbackFormat(competition)));
-  const liveWorld = world || getWorldState() || null;
-  const seasonStartYear = Number(seasonYear || liveWorld?.seasonYear || 2026);
   const competitionId = competitionIdSlug(competition, format);
   const editionId = buildEditionId(seasonStartYear, competitionId);
   const confederation = format.confederation || confederationForCompetition(competition);
 
-  const playerClub = playerClubEntry(player, league);
   const eff = effectiveTeamStrength(playerClub, {
     player,
     playerSide: "home",
@@ -2217,7 +2381,16 @@ export function prepareContinentalEdition({ standing, league, player, seasonYear
 
   if (liveWorld) {
     const existing = loadContinentalEdition({ competitionId, editionId, world: liveWorld });
-    if (existing && existing.playerClubId === clubKey(playerClub)) return existing;
+    if (existing) {
+      const focusId = clubKey(playerClub);
+      const inField = (existing.field || []).some((c) => clubKey(c) === focusId);
+      if (inField) {
+        // Soft-focus for attachment/projections — do not persist a field rewrite.
+        existing.playerClub = existing.field.find((c) => clubKey(c) === focusId) || playerClub;
+        existing.playerClubId = focusId;
+      }
+      return existing;
+    }
   }
 
   const state = createEditionState({
@@ -2230,6 +2403,7 @@ export function prepareContinentalEdition({ standing, league, player, seasonYear
     playerClub,
   });
   const ctx = resolveContext(state, { world: liveWorld, rng, player });
+  ctx._earnedFieldOpts = { world: liveWorld, seasonYear: seasonStartYear };
   if (format.openingPhase === "league") prepareLeaguePhase(state, ctx);
   else if (format.openingPhase === "groups") prepareGroupStage(state, ctx);
   else prepareKnockoutOnly(state, ctx);

@@ -2,13 +2,15 @@
  * Continental qualification paths by association / league ID.
  * Simplified but coherent allocations — documented below.
  *
- * UEFA (simplified for this game):
- *   - Big-5 associations: CL 1–4, EL 5, UECL 6
+ * UEFA (executable slot contract):
+ *   - England/Spain/Germany/Italy: CL 1–4, EL 5, UECL 6
+ *   - France: CL 1–3, EL 4, UECL 5 (three CL places — not the old "Big Five = four" shorthand)
  *   - Mid associations (PT, NL, BE, TR): CL 1–2, EL 3, UECL 4
  *   - Smaller UEFA associations in DB: CL 1, EL 2, UECL 3
  *
- * Bootstrap: first season uses prior-season standings when present in world state;
- * otherwise current simulated table (documented bootstrap policy).
+ * Bootstrap / earned entry: club+edition evidence is resolved by
+ * js/simulation/earnedQualification.js (world.qualification). This helper only
+ * maps a validated finish onto a competition name; it does not invent positions.
  */
 
 import { normalizeName } from "../identity/normalize.js";
@@ -142,58 +144,86 @@ export function uefaSlotsForLeague(league) {
 }
 
 /**
- * Resolve continental entry from prior-season standing.
- * UEFA: prefer explicit qualification label; fall back to association slot by position
- * so pre-season proxies that omit the label still grant entry.
- * Entry is always scoped to the current playing league/association — never a prior club's table.
+ * Normalize a league finish rank. Accepts legacy whole-number strings explicitly.
+ * Rejects missing, empty, non-finite, zero, negative, fractional and non-numeric values.
+ */
+export function normalizeStandingPosition(value, { allowLegacyString = true } = {}) {
+  if (value == null || value === "") return { ok: false, reason: "missing" };
+  let n;
+  if (typeof value === "number") {
+    n = value;
+  } else if (allowLegacyString && typeof value === "string" && /^\s*\d+\s*$/.test(value)) {
+    n = Number(value.trim());
+  } else {
+    return { ok: false, reason: "non-numeric" };
+  }
+  if (!Number.isFinite(n)) return { ok: false, reason: "non-finite" };
+  if (!Number.isInteger(n)) return { ok: false, reason: "non-integer" };
+  if (n <= 0) return { ok: false, reason: "non-positive" };
+  return { ok: true, position: n };
+}
+
+/**
+ * Resolve continental entry from a validated prior-season standing.
+ * UEFA: prefer explicit qualification label when it agrees with the position band;
+ * otherwise fall back to association slots by position. Invalid ranks never qualify.
+ * Entry is scoped to the supplied league/association finish — callers must pass the
+ * destination club's own earned row, never another club's playerRow.
  */
 export function continentalCompetitionForStanding(standing, league) {
   if (!standing || !league) return null;
   const nation = league.nation;
-  const pos = Number(standing.position) || 0;
+  const norm = normalizeStandingPosition(standing.position);
+  // Labels alone cannot grant entry without a validated finish position.
+  if (!norm.ok) return null;
+  const pos = norm.position;
   const q = standing.qualification;
   const leagueId = league.leagueId || leagueIdFromName(league.name);
 
   if (isUefaQualifyingLeague(league)) {
-    if (q === "League Champions" || q === "Champions League") return "Champions League";
-    if (q === "Europa League") return "Europa League";
-    if (q === "Conference League") return "Conference League";
-    // Position fallback (same bands as qualificationForPosition)
     const slots = uefaSlotsForLeague(league) || { cl: 1, el: 1, uecl: 1 };
-    if (pos >= 1 && pos <= slots.cl) return "Champions League";
-    if (pos > slots.cl && pos <= slots.cl + slots.el) return "Europa League";
-    if (pos > slots.cl + slots.el && pos <= slots.cl + slots.el + slots.uecl) {
-      return "Conference League";
+    const byPos =
+      pos >= 1 && pos <= slots.cl
+        ? "Champions League"
+        : pos > slots.cl && pos <= slots.cl + slots.el
+          ? "Europa League"
+          : pos > slots.cl + slots.el && pos <= slots.cl + slots.el + slots.uecl
+            ? "Conference League"
+            : null;
+    if (q === "League Champions" || q === "Champions League") {
+      return byPos === "Champions League" ? "Champions League" : byPos;
     }
-    return null;
+    if (q === "Europa League") {
+      return byPos === "Europa League" ? "Europa League" : byPos;
+    }
+    if (q === "Conference League") {
+      return byPos === "Conference League" ? "Conference League" : byPos;
+    }
+    return byPos;
   }
 
   if (["Brazil", "Argentina", "Colombia", "Ecuador"].includes(nation)) {
-    if (q === "League Champions" || pos <= 4) return "Copa Libertadores";
-    if (pos <= 8) return "Copa Sudamericana";
+    if (pos >= 1 && pos <= 4) return "Copa Libertadores";
+    if (pos >= 5 && pos <= 8) return "Copa Sudamericana";
     return null;
   }
 
   if (["Mexico", "United States"].includes(nation)) {
-    if (q === "League Champions" || pos <= 4) return "CONCACAF Champions Cup";
+    if (pos >= 1 && pos <= 4) return "CONCACAF Champions Cup";
     return null;
   }
 
   if (AFC_TOP_FLIGHT_LEAGUE_IDS.has(leagueId) || ["Saudi Arabia", "Japan", "South Korea"].includes(nation)) {
     const assoc = associationIdForNation(nation);
     const slots = AFC_ASSOCIATION_SLOTS[assoc] || { elite: 2 };
-    if (q === "League Champions" || (pos >= 1 && pos <= slots.elite)) {
-      return "AFC Champions League Elite";
-    }
+    if (pos >= 1 && pos <= slots.elite) return "AFC Champions League Elite";
     return null;
   }
 
   if (CAF_TOP_FLIGHT_LEAGUE_IDS.has(leagueId) || ["Egypt", "Morocco"].includes(nation)) {
     const assoc = associationIdForNation(nation);
     const slots = CAF_ASSOCIATION_SLOTS[assoc] || { cl: 2 };
-    if (q === "League Champions" || (pos >= 1 && pos <= slots.cl)) {
-      return "CAF Champions League";
-    }
+    if (pos >= 1 && pos <= slots.cl) return "CAF Champions League";
     return null;
   }
 

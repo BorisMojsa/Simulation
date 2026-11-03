@@ -29,19 +29,52 @@ function makePlayer(club, league, extras = {}) {
   };
 }
 
-test("UEFA pre-season standing preserves Champions League qualification label", () => {
+test("UEFA pre-season standing preserves Champions League qualification label", async () => {
+  const { commitCompletedDomesticEdition } = await import("../js/simulation/earnedQualification.js");
   const league = serieA();
   assert.ok(league);
   const sisters = findSisterLeagues(league, LEAGUES);
   const q = qualificationForPosition(1, league, sisters);
   assert.equal(q, "League Champions");
-  const player = makePlayer(league.clubs[0], league, {
+  const club = league.clubs[0];
+  const table = league.clubs.map((c, i) => ({
+    ...c,
+    position: i + 1,
+    points: Math.max(0, 90 - i * 3),
+    matches: 38,
+    wins: 20,
+    draws: 8,
+    losses: 10,
+    qualification: qualificationForPosition(i + 1, league, sisters) || "",
+  }));
+  // Ensure the player's club sits first with the champions label.
+  const focus = table.find((r) => r.clubId === club.clubId) || table[0];
+  const rest = table.filter((r) => r.clubId !== focus.clubId);
+  const ordered = [{ ...focus, position: 1, points: 90, qualification: "League Champions" }, ...rest].map(
+    (r, i) => ({ ...r, position: i + 1, qualification: r.qualification || qualificationForPosition(i + 1, league, sisters) || "" })
+  );
+  ordered[0].qualification = "League Champions";
+  const world = createWorldState({ startYear: 2026, careerSeed: 11 });
+  setWorldState(world);
+  commitCompletedDomesticEdition({
+    world,
+    league,
+    table: ordered,
+    sourceYear: 2025,
+    provenance: "simulated-complete",
+  });
+  const player = makePlayer(club, league, {
+    playingClubId: club.clubId,
+    employmentClubId: club.clubId,
     latestStanding: {
       leagueId: league.leagueId,
-      playerRow: { position: 1, points: 90, qualification: "League Champions", wins: 28, draws: 6, losses: 4 },
+      seasonId: `${league.leagueId}::2025`,
+      table: ordered,
+      playerRow: ordered[0],
     },
   });
-  const standing = preSeasonContinentalStanding(player, league);
+  const standing = preSeasonContinentalStanding(player, league, { world, seasonYear: 2026 });
+  assert.ok(standing);
   assert.equal(standing.qualification, "League Champions");
   assert.equal(continentalCompetitionForStanding(standing, league), "Champions League");
 });
