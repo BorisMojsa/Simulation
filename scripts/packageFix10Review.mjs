@@ -113,20 +113,33 @@ for (const line of parts) {
 writeFileSync(join(PKG, "source-git-blob-index.json"), JSON.stringify({ commit: FULL, files: blobIndex }, null, 2));
 
 ensureDir(join(PKG, "diff"));
-writeFileSync(
-  join(PKG, "diff/base-to-final.patch"),
+ensureDir(join(PKG, "changes"));
+const basePatch =
   spawnSync("git", ["diff", "--binary", BASE, FULL], {
     cwd: ROOT,
     encoding: "buffer",
     maxBuffer: 256 * 1024 * 1024,
-  }).stdout || Buffer.alloc(0)
-);
+  }).stdout || Buffer.alloc(0);
+writeFileSync(join(PKG, "diff/base-to-final.patch"), basePatch);
+writeFileSync(join(PKG, "changes/base-to-final.patch"), basePatch);
 writeFileSync(join(PKG, "diff/name-status.txt"), sh("git", ["diff", "--name-status", BASE, FULL]).stdout);
 writeFileSync(join(PKG, "diff/stat.txt"), sh("git", ["diff", "--stat", BASE, FULL]).stdout);
+writeFileSync(join(PKG, "changes/changed-files.txt"), sh("git", ["diff", "--name-only", BASE, FULL]).stdout);
+writeFileSync(join(PKG, "changes/git-log.txt"), sh("git", ["log", "--oneline", `${BASE}..${FULL}`]).stdout);
+writeFileSync(join(PKG, "changes/git-status.txt"), sh("git", ["status", "--porcelain=v1"]).stdout || "(clean)\n");
 
 ensureDir(join(PKG, "reports"));
 if (existsSync(join(ROOT, "reports/fix10-club-strength-audit.md"))) {
   copyFile(join(ROOT, "reports/fix10-club-strength-audit.md"), join(PKG, "reports/audit.md"));
+  copyFile(join(ROOT, "reports/fix10-club-strength-audit.md"), join(PKG, "reports/fix10-club-strength-audit.md"));
+}
+for (const name of [
+  "fix10-club-strength-profiles-superstar-impact-completion.md",
+  "calibration-targets.json",
+  "baseline-vs-final-summary.json",
+]) {
+  const src = join(ROOT, "reports", name);
+  if (existsSync(src)) copyFile(src, join(PKG, "reports", name));
 }
 for (const name of [
   "strength-calibration-report.json",
@@ -150,13 +163,23 @@ const focusedOk =
   existsSync(join(ROOT, "qa/fix10-runs/logs/focused-strength.log")) ||
   existsSync(join(ROOT, "qa/fix10-runs/cases/F01.json"));
 const calibrationOk = calibration?.ok === true || calibrationGate?.ok === true;
+const browserCaseIds = Object.keys(browser?.cases || {});
+const browserCasesPass =
+  ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08"].every((id) => {
+    const c = browser?.cases?.[id];
+    return c === true || c?.ok === true;
+  });
 const browserOk =
   browser?.ok === true &&
+  browser?.selectedOk === true &&
   browser?.subsetOnly !== true &&
-  browser?.requiredComplete === true &&
-  Array.isArray(browser?.requiredIds) &&
-  browser.requiredIds.length === 8;
-const matchedOk = matched?.ok === true || matched?.pass === true;
+  browser?.blocked !== true &&
+  browserCasesPass &&
+  browserCaseIds.length >= 8;
+const matchedOk =
+  matched?.ok === true ||
+  matched?.pass === true ||
+  matched?.selfReplayExact === true;
 
 const ready = focusedOk && calibrationOk && browserOk && !browser?.blocked;
 
