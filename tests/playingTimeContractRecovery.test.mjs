@@ -983,11 +983,12 @@ test("F10: pending parent review survives co-terminal loan end", () => {
 
 test("F11: boundary facade keeps identical renewal terms", async () => {
   // Fix 08 substitute attribution changed match outcomes; seed 707 no longer yields a
-  // renewal offer. Seed 703 still produces wants-renewal — facade invariant unchanged.
+  // renewal offer. Fix 10 strength recalibration similarly retires seed 703.
+  // Seed 704 still produces wants-renewal — facade invariant unchanged.
   const { applySeniorScenarioPolicy } = await import("../js/simulation/seniorCareerScenarios.js");
   const p = basePlayer({ ovr: 86, age: 24, id: "review07-ui-86" });
   attachClub(p, "Hull City", { contractEndSeason: 1, contractYears: 1 });
-  reseedCareerRng(703);
+  reseedCareerRng(704);
   let data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: true,
     autoDecisionPolicy: null,
@@ -1036,7 +1037,7 @@ test("F9: post-season facade preserves pending boundary phase", async () => {
   const { applySeniorScenarioPolicy } = await import("../js/simulation/seniorCareerScenarios.js");
   const p = basePlayer({ ovr: 86, age: 24, id: "review07-ui-86" });
   attachClub(p, "Hull City", { contractEndSeason: 1, contractYears: 1 });
-  reseedCareerRng(703);
+  reseedCareerRng(704);
   let data = simulateSeason(p, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: true,
     autoDecisionPolicy: null,

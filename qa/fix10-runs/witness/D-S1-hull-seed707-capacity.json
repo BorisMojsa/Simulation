@@ -1,0 +1,10 @@
+{
+  "caseId": "D-S1-stay-opportunity-Hull City-ovr58-seed707",
+  "pin": {
+    "minutes": 511,
+    "eligible": 42,
+    "capacity": 3810
+  },
+  "note": "Fix 10: one domestic-cup fixture reaches ET (+30). Opportunity share invariant unchanged.",
+  "updatedFor": "fix/10-club-strength-profiles-superstar-impact"
+}

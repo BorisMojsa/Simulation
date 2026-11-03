@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "gridSize": 75,
+  "left": {
+    "home": 1.25,
+    "away": 1.25
+  },
+  "right": {
+    "home": 1.25,
+    "away": 1.25
+  },
+  "xRich": {
+    "home": 1.25,
+    "away": 1.25
+  },
+  "xPoorHome": {
+    "home": 1.25,
+    "away": 1.25
+  },
+  "xEq": {
+    "home": 1.25,
+    "away": 1.25
+  }
+}

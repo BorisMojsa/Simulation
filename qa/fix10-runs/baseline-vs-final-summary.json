@@ -1,0 +1,299 @@
+{
+  "commonInputSha256": "9d04455f75b309b1b8695a4cf5ec580daf1fd3f0718480590fdc5b1ecb6d3634",
+  "baseShaExpected": "296a14f2e921e68a946a802605e472662cb0894e",
+  "baseShaActual": "296a14f2e921e68a946a802605e472662cb0894e",
+  "finalSha": "296a14f2e921e68a946a802605e472662cb0894e",
+  "adapterSha256": "8ee92d7313a5533319ec82d2a80a9ef0e85135ee57b954a2617e7c46422eee15",
+  "selfReplayExact": true,
+  "fixtureCount": 36,
+  "comparisons": [
+    {
+      "id": "Hull City__Burnley__ST__68",
+      "baseXgHome": 1.2161,
+      "finalXgHome": 1.2161,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "Hull City__Burnley__ST__99",
+      "baseXgHome": 1.3039,
+      "finalXgHome": 1.4854,
+      "baseImpactAtk": 2.125,
+      "finalImpactAtk": 6.032,
+      "deltaXgHome": 0.1815
+    },
+    {
+      "id": "Hull City__Burnley__CM__99",
+      "baseXgHome": 1.2603,
+      "finalXgHome": 1.3913,
+      "baseImpactAtk": 0.448,
+      "finalImpactAtk": 2.011,
+      "deltaXgHome": 0.131
+    },
+    {
+      "id": "Hull City__Burnley__CB__99",
+      "baseXgHome": 1.2198,
+      "finalXgHome": 1.2336,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0.013800000000000034
+    },
+    {
+      "id": "Hull City__Burnley__GK__99",
+      "baseXgHome": 1.2161,
+      "finalXgHome": 1.2161,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "Brentford__Crystal Palace__ST__81",
+      "baseXgHome": 1.4332,
+      "finalXgHome": 1.4332,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "Brentford__Crystal Palace__ST__99",
+      "baseXgHome": 1.5047,
+      "finalXgHome": 1.6269,
+      "baseImpactAtk": 1.478,
+      "finalImpactAtk": 3.818,
+      "deltaXgHome": 0.12220000000000009
+    },
+    {
+      "id": "Brentford__Crystal Palace__CM__99",
+      "baseXgHome": 1.4709,
+      "finalXgHome": 1.5654,
+      "baseImpactAtk": 0.325,
+      "finalImpactAtk": 1.318,
+      "deltaXgHome": 0.0944999999999998
+    },
+    {
+      "id": "Brentford__Crystal Palace__CB__99",
+      "baseXgHome": 1.4363,
+      "finalXgHome": 1.4467,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0.010400000000000187
+    },
+    {
+      "id": "Brentford__Crystal Palace__GK__99",
+      "baseXgHome": 1.4332,
+      "finalXgHome": 1.4332,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "Arsenal__Manchester City__ST__91",
+      "baseXgHome": 1.4133,
+      "finalXgHome": 1.4133,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "Arsenal__Manchester City__ST__99",
+      "baseXgHome": 1.4463,
+      "finalXgHome": 1.5038,
+      "baseImpactAtk": 0.704,
+      "finalImpactAtk": 1.867,
+      "deltaXgHome": 0.05750000000000011
+    },
+    {
+      "id": "Arsenal__Manchester City__CM__99",
+      "baseXgHome": 1.4335,
+      "finalXgHome": 1.483,
+      "baseImpactAtk": 0.177,
+      "finalImpactAtk": 0.717,
+      "deltaXgHome": 0.0495000000000001
+    },
+    {
+      "id": "Arsenal__Manchester City__CB__99",
+      "baseXgHome": 1.415,
+      "finalXgHome": 1.4206,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0.005600000000000049
+    },
+    {
+      "id": "Arsenal__Manchester City__GK__99",
+      "baseXgHome": 1.4133,
+      "finalXgHome": 1.4133,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "Železničar Pančevo__Red Star Belgrade__ST__53",
+      "baseXgHome": 0.6209,
+      "finalXgHome": 0.6209,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "Železničar Pančevo__Red Star Belgrade__ST__99",
+      "baseXgHome": 0.6723,
+      "finalXgHome": 0.8104,
+      "baseImpactAtk": 2.425,
+      "finalImpactAtk": 8.026,
+      "deltaXgHome": 0.1381
+    },
+    {
+      "id": "Železničar Pančevo__Red Star Belgrade__CM__99",
+      "baseXgHome": 0.6464,
+      "finalXgHome": 0.7408,
+      "baseImpactAtk": 0.506,
+      "finalImpactAtk": 2.64,
+      "deltaXgHome": 0.09440000000000004
+    },
+    {
+      "id": "Železničar Pančevo__Red Star Belgrade__CB__99",
+      "baseXgHome": 0.6229,
+      "finalXgHome": 0.6326,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0.009700000000000042
+    },
+    {
+      "id": "Železničar Pančevo__Red Star Belgrade__GK__99",
+      "baseXgHome": 0.6209,
+      "finalXgHome": 0.6209,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "synth-q55__ST__53",
+      "baseXgHome": 1.1743,
+      "finalXgHome": 1.1743,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "synth-q55__ST__99",
+      "baseXgHome": 1.2716,
+      "finalXgHome": 1.5327,
+      "baseImpactAtk": 2.425,
+      "finalImpactAtk": 8.026,
+      "deltaXgHome": 0.2610999999999999
+    },
+    {
+      "id": "synth-q55__CM__51",
+      "baseXgHome": 1.1743,
+      "finalXgHome": 1.1743,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "synth-q55__CM__99",
+      "baseXgHome": 1.2226,
+      "finalXgHome": 1.4012,
+      "baseImpactAtk": 0.506,
+      "finalImpactAtk": 2.64,
+      "deltaXgHome": 0.1786000000000001
+    },
+    {
+      "id": "synth-q55__CB__51",
+      "baseXgHome": 1.1743,
+      "finalXgHome": 1.1743,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "synth-q55__CB__99",
+      "baseXgHome": 1.1782,
+      "finalXgHome": 1.1964,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0.018199999999999994
+    },
+    {
+      "id": "synth-q55__GK__50",
+      "baseXgHome": 1.1743,
+      "finalXgHome": 1.1743,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "synth-q55__GK__99",
+      "baseXgHome": 1.1743,
+      "finalXgHome": 1.1743,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "synth-q70__ST__68",
+      "baseXgHome": 1.25,
+      "finalXgHome": 1.25,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "synth-q70__ST__99",
+      "baseXgHome": 1.3402,
+      "finalXgHome": 1.5259,
+      "baseImpactAtk": 2.118,
+      "finalImpactAtk": 6.013,
+      "deltaXgHome": 0.18569999999999998
+    },
+    {
+      "id": "synth-q70__CM__66",
+      "baseXgHome": 1.25,
+      "finalXgHome": 1.25,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "synth-q70__CM__99",
+      "baseXgHome": 1.2954,
+      "finalXgHome": 1.4292,
+      "baseImpactAtk": 0.447,
+      "finalImpactAtk": 2.005,
+      "deltaXgHome": 0.13379999999999992
+    },
+    {
+      "id": "synth-q70__CB__66",
+      "baseXgHome": 1.25,
+      "finalXgHome": 1.25,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "synth-q70__CB__99",
+      "baseXgHome": 1.2538,
+      "finalXgHome": 1.2679,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0.014100000000000001
+    },
+    {
+      "id": "synth-q70__GK__65",
+      "baseXgHome": 1.25,
+      "finalXgHome": 1.25,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    },
+    {
+      "id": "synth-q70__GK__99",
+      "baseXgHome": 1.25,
+      "finalXgHome": 1.25,
+      "baseImpactAtk": 0,
+      "finalImpactAtk": 0,
+      "deltaXgHome": 0
+    }
+  ]
+}

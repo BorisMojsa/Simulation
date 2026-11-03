@@ -1,0 +1,992 @@
+{
+  "careers": 24,
+  "periodsEach": 3,
+  "failures": 1,
+  "exclusions": [
+    {
+      "i": 9,
+      "club": "Yokohama F. Marinos",
+      "role": "CM",
+      "seed": 9109,
+      "error": "Failed to build valid league-phase schedule for n=16 opponents=8 after 80 attempts"
+    }
+  ],
+  "completed": 23,
+  "rows": [
+    {
+      "i": 0,
+      "role": "ST",
+      "club": "Hull City",
+      "leagueId": "league:england-premier-league",
+      "seed": 9100,
+      "ovr": 68,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:hull-city",
+          "employmentClubId": "club:england:hull-city",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 68.6912,
+          "lastMinutes": 1326
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:hull-city",
+          "employmentClubId": "club:england:hull-city",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 68.7404,
+          "lastMinutes": 1330
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:england:hull-city",
+          "employmentClubId": "club:england:hull-city",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 68.6496,
+          "lastMinutes": 1265
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 1,
+      "role": "CM",
+      "club": "Brentford",
+      "leagueId": "league:england-premier-league",
+      "seed": 9101,
+      "ovr": 70,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:brentford",
+          "employmentClubId": "club:england:brentford",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 80.5809,
+          "lastMinutes": 687
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:brentford",
+          "employmentClubId": "club:england:brentford",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 79.8342,
+          "lastMinutes": 217
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 482
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 2,
+      "role": "CB",
+      "club": "Burnley",
+      "leagueId": "league:england-championship",
+      "seed": 9102,
+      "ovr": 72,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:burnley",
+          "employmentClubId": "club:england:burnley",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 68.1661,
+          "lastMinutes": 1660
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:burnley",
+          "employmentClubId": "club:england:burnley",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 68.4073,
+          "lastMinutes": 2408
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:england:burnley",
+          "employmentClubId": "club:england:burnley",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 67.3042,
+          "lastMinutes": 2160
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 3,
+      "role": "GK",
+      "club": "Everton",
+      "leagueId": "league:england-premier-league",
+      "seed": 9103,
+      "ovr": 74,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:everton",
+          "employmentClubId": "club:england:everton",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 78.5568,
+          "lastMinutes": 920
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:everton",
+          "employmentClubId": "club:england:everton",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 78.4611,
+          "lastMinutes": 1029
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 1173
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 4,
+      "role": "ST",
+      "club": "Atalanta",
+      "leagueId": "league:italy-serie-a",
+      "seed": 9104,
+      "ovr": 76,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:italy:atalanta",
+          "employmentClubId": "club:italy:atalanta",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 77.4454,
+          "lastMinutes": 946
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:italy:atalanta",
+          "employmentClubId": "club:italy:atalanta",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 77.1235,
+          "lastMinutes": 927
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:italy:atalanta",
+          "employmentClubId": "club:italy:atalanta",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 76.8961,
+          "lastMinutes": 833
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 5,
+      "role": "CM",
+      "club": "Lecce",
+      "leagueId": "league:italy-serie-a",
+      "seed": 9105,
+      "ovr": 78,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:italy:lecce",
+          "employmentClubId": "club:italy:lecce",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 68.1885,
+          "lastMinutes": 3117
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:italy:lecce",
+          "employmentClubId": "club:italy:lecce",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 68.9552,
+          "lastMinutes": 1270
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 1985
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 6,
+      "role": "CB",
+      "club": "Red Star Belgrade",
+      "leagueId": "league:serbia-superliga",
+      "seed": 9106,
+      "ovr": 68,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:serbia:red-star-belgrade",
+          "employmentClubId": "club:serbia:red-star-belgrade",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 69.0202,
+          "lastMinutes": 900
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:serbia:red-star-belgrade",
+          "employmentClubId": "club:serbia:red-star-belgrade",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 68.4239,
+          "lastMinutes": 443
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 1024
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 7,
+      "role": "GK",
+      "club": "Partizan",
+      "leagueId": "league:serbia-superliga",
+      "seed": 9107,
+      "ovr": 70,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:serbia:partizan",
+          "employmentClubId": "club:serbia:partizan",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 58.1322,
+          "lastMinutes": 2150
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:serbia:partizan",
+          "employmentClubId": "club:serbia:partizan",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 58.096,
+          "lastMinutes": 1287
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:serbia:partizan",
+          "employmentClubId": "club:serbia:partizan",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 58.1412,
+          "lastMinutes": 1951
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 8,
+      "role": "ST",
+      "club": "Al Hilal",
+      "leagueId": "league:saudi-arabia-saudi-pro-league",
+      "seed": 9108,
+      "ovr": 72,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:saudi-arabia:al-hilal",
+          "employmentClubId": "club:saudi-arabia:al-hilal",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 74.0308,
+          "lastMinutes": 1259
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:saudi-arabia:al-hilal",
+          "employmentClubId": "club:saudi-arabia:al-hilal",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 73.6685,
+          "lastMinutes": 1281
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 787
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 9,
+      "role": "CM",
+      "club": "Yokohama F. Marinos",
+      "seed": 9109,
+      "ovr": 74,
+      "excluded": true,
+      "error": "Failed to build valid league-phase schedule for n=16 opponents=8 after 80 attempts"
+    },
+    {
+      "i": 10,
+      "role": "CB",
+      "club": "São Paulo",
+      "leagueId": "league:brazil-brasileirao-serie-a",
+      "seed": 9110,
+      "ovr": 76,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:brazil:sao-paulo",
+          "employmentClubId": "club:brazil:sao-paulo",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 71.8613,
+          "lastMinutes": 1784
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:brazil:sao-paulo",
+          "employmentClubId": "club:brazil:sao-paulo",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 71.9064,
+          "lastMinutes": 1422
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:brazil:sao-paulo",
+          "employmentClubId": "club:brazil:sao-paulo",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 71.7705,
+          "lastMinutes": 2682
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 11,
+      "role": "GK",
+      "club": "Club Brugge",
+      "leagueId": "league:belgium-belgian-pro-league",
+      "seed": 9111,
+      "ovr": 78,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:belgium:club-brugge",
+          "employmentClubId": "club:belgium:club-brugge",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 77.6861,
+          "lastMinutes": 1480
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:belgium:club-brugge",
+          "employmentClubId": "club:belgium:club-brugge",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 77.393,
+          "lastMinutes": 1760
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 1422
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 12,
+      "role": "ST",
+      "club": "Fulham",
+      "leagueId": "league:england-premier-league",
+      "seed": 9112,
+      "ovr": 68,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:fulham",
+          "employmentClubId": "club:england:fulham",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 77.9556,
+          "lastMinutes": 460
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:fulham",
+          "employmentClubId": "club:england:fulham",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 77.5981,
+          "lastMinutes": 594
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 662
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 13,
+      "role": "CM",
+      "club": "Getafe",
+      "leagueId": "league:spain-la-liga",
+      "seed": 9113,
+      "ovr": 70,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:spain:getafe",
+          "employmentClubId": "club:spain:getafe",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 71.4963,
+          "lastMinutes": 1308
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:spain:getafe",
+          "employmentClubId": "club:spain:getafe",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 72.0703,
+          "lastMinutes": 1110
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:spain:getafe",
+          "employmentClubId": "club:spain:getafe",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 72.5004,
+          "lastMinutes": 1073
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 14,
+      "role": "CB",
+      "club": "Mallorca",
+      "leagueId": "league:spain-laliga-2",
+      "seed": 9114,
+      "ovr": 72,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:spain:mallorca",
+          "employmentClubId": "club:spain:mallorca",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 71.7167,
+          "lastMinutes": 1521
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:spain:mallorca",
+          "employmentClubId": "club:spain:mallorca",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 72.1949,
+          "lastMinutes": 1147
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:spain:mallorca",
+          "employmentClubId": "club:spain:mallorca",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 71.9537,
+          "lastMinutes": 1429
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 15,
+      "role": "GK",
+      "club": "Bologna",
+      "leagueId": "league:italy-serie-a",
+      "seed": 9115,
+      "ovr": 74,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:italy:bologna",
+          "employmentClubId": "club:italy:bologna",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 74.66,
+          "lastMinutes": 1645
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:italy:bologna",
+          "employmentClubId": "club:italy:bologna",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 75.3534,
+          "lastMinutes": 409
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:italy:bologna",
+          "employmentClubId": "club:italy:bologna",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 75.5255,
+          "lastMinutes": 1459
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 16,
+      "role": "ST",
+      "club": "Torino",
+      "leagueId": "league:italy-serie-a",
+      "seed": 9116,
+      "ovr": 76,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:italy:torino",
+          "employmentClubId": "club:italy:torino",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 70.9453,
+          "lastMinutes": 1641
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:italy:torino",
+          "employmentClubId": "club:italy:torino",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 70.7554,
+          "lastMinutes": 1890
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:italy:torino",
+          "employmentClubId": "club:italy:torino",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 71.3114,
+          "lastMinutes": 1486
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 17,
+      "role": "CM",
+      "club": "Crystal Palace",
+      "leagueId": "league:england-premier-league",
+      "seed": 9117,
+      "ovr": 78,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:crystal-palace",
+          "employmentClubId": "club:england:crystal-palace",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 78.5845,
+          "lastMinutes": 662
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:crystal-palace",
+          "employmentClubId": "club:england:crystal-palace",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 78.5653,
+          "lastMinutes": 896
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 821
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 18,
+      "role": "CB",
+      "club": "Wolverhampton Wanderers",
+      "leagueId": "league:england-championship",
+      "seed": 9118,
+      "ovr": 68,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:wolverhampton-wanderers",
+          "employmentClubId": "club:england:wolverhampton-wanderers",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 72.7674,
+          "lastMinutes": 801
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:wolverhampton-wanderers",
+          "employmentClubId": "club:england:wolverhampton-wanderers",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 72.9202,
+          "lastMinutes": 1033
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 486
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 19,
+      "role": "GK",
+      "club": "Tottenham Hotspur",
+      "leagueId": "league:england-premier-league",
+      "seed": 9119,
+      "ovr": 70,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:tottenham-hotspur",
+          "employmentClubId": "club:england:tottenham-hotspur",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 77.8198,
+          "lastMinutes": 778
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:tottenham-hotspur",
+          "employmentClubId": "club:england:tottenham-hotspur",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 78.3402,
+          "lastMinutes": 315
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 521
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 20,
+      "role": "ST",
+      "club": "West Ham United",
+      "leagueId": "league:england-championship",
+      "seed": 9120,
+      "ovr": 72,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:west-ham-united",
+          "employmentClubId": "club:england:west-ham-united",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 75.9773,
+          "lastMinutes": 1286
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:west-ham-united",
+          "employmentClubId": "club:england:west-ham-united",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 75.6923,
+          "lastMinutes": 951
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:england:west-ham-united",
+          "employmentClubId": "club:england:west-ham-united",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 75.8131,
+          "lastMinutes": 725
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 21,
+      "role": "CM",
+      "club": "Nottingham Forest",
+      "leagueId": "league:england-premier-league",
+      "seed": 9121,
+      "ovr": 74,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:nottingham-forest",
+          "employmentClubId": "club:england:nottingham-forest",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 78.1483,
+          "lastMinutes": 911
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:nottingham-forest",
+          "employmentClubId": "club:england:nottingham-forest",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 77.8947,
+          "lastMinutes": 842
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": null,
+          "employmentClubId": null,
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": null,
+          "lastMinutes": 642
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 22,
+      "role": "CB",
+      "club": "Bolton Wanderers",
+      "leagueId": "league:england-championship",
+      "seed": 9122,
+      "ovr": 76,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:bolton-wanderers",
+          "employmentClubId": "club:england:bolton-wanderers",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 62.9031,
+          "lastMinutes": 2505
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:bolton-wanderers",
+          "employmentClubId": "club:england:bolton-wanderers",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 63.5275,
+          "lastMinutes": 2560
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:england:bolton-wanderers",
+          "employmentClubId": "club:england:bolton-wanderers",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 63.4257,
+          "lastMinutes": 2479
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    },
+    {
+      "i": 23,
+      "role": "GK",
+      "club": "Sheffield United",
+      "leagueId": "league:england-championship",
+      "seed": 9123,
+      "ovr": 78,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:sheffield-united",
+          "employmentClubId": "club:england:sheffield-united",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 66.415,
+          "lastMinutes": 2792
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:sheffield-united",
+          "employmentClubId": "club:england:sheffield-united",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 66.6691,
+          "lastMinutes": 2346
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:england:sheffield-united",
+          "employmentClubId": "club:england:sheffield-united",
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 67.1821,
+          "lastMinutes": 2695
+        }
+      ],
+      "restoreOk": true,
+      "excluded": false
+    }
+  ]
+}

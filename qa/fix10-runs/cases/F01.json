@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "runtimeClubs": 572,
+  "nationProfiles": 79,
+  "estimatedUnitClubs": 572,
+  "xgModel": {
+    "BASE_XG": 1.25,
+    "SCALE": 18,
+    "K_ATT": 0.55,
+    "K_MID": 0.2,
+    "K_GK": 0.25,
+    "HOME_ADV": 0.12,
+    "ET_FRACTION": 0.3333333333333333,
+    "MAX_LAMBDA": 3.2,
+    "MIN_LAMBDA": 0.15
+  },
+  "lineupImpactModel": {
+    "version": "fix10-lineup-impact-v1",
+    "saturationDenominator": 30,
+    "squadFactorBase": 1.16,
+    "squadFactorSlope": 0.0125,
+    "squadFactorMin": 0.55,
+    "squadFactorMax": 1.3,
+    "unitBound": 12,
+    "overallBound": 6,
+    "referenceAttributes": {
+      "Shooting": 65,
+      "Passing": 65,
+      "Defending": 65,
+      "Reflexes": 65,
+      "Handling": 65,
+      "Positioning": 65
+    }
+  },
+  "equalUnits": true
+}

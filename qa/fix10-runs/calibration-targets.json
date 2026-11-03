@@ -1,0 +1,39 @@
+{
+  "modelVersion": "fix10-club-strength-v1",
+  "lineupImpactModelVersion": "fix10-lineup-impact-v1",
+  "frozenAt": "2026-11-03",
+  "note": "Game-design acceptance targets for Fix 10. Frozen before tuning. Not real-world statistics.",
+  "controls": {
+    "qualities": [55, 70],
+    "eliteQuality": 88,
+    "roles": ["ST", "CM", "CB", "GK"],
+    "roleReferences": { "ST": "q-2", "CM": "q-4", "CB": "q-4", "GK": "q-5" },
+    "neutralAttributes": {
+      "Shooting": 65,
+      "Passing": 65,
+      "Defending": 65,
+      "Reflexes": 65,
+      "Handling": 65,
+      "Positioning": 65
+    },
+    "minutesFull": 90,
+    "venue": "neutral",
+    "form": 0
+  },
+  "acceptance": {
+    "replacementNeutral": true,
+    "stOwnXgPctRise": { "min": 15, "max": 35 },
+    "gkOppXgPctFall": { "min": 12, "max": 30 },
+    "roleExpectedPointsGain": { "min": 0.1, "max": 0.4 },
+    "highEnd99vs90ExpectedPoints": { "min": 0.02 },
+    "unitAbsChangeMax": 12,
+    "effectiveOverallAbsChangeMax": 6,
+    "minuteShareTolerance": 0.02,
+    "eliteDiminishing": true,
+    "inferiorPlayerHurts": true
+  },
+  "poisson": {
+    "maxGoals": 40,
+    "tailTolerance": 1e-9
+  }
+}

@@ -1,6 +1,6 @@
 import { clamp } from "../utils/helpers.js";
 import { getSimRng } from "./rng.js";
-import { effectiveTeamStrength } from "./teamStrength.js";
+import { effectiveTeamStrength, phaseEffectiveStrength } from "./teamStrength.js";
 
 /**
  * Goal environment coefficients (documented game-design targets, not claimed
@@ -628,6 +628,8 @@ export function simulateMatch(home, away, {
     decidedBy: homeGoals === awayGoals ? null : "regulation",
     winnerSide: homeGoals > awayGoals ? "home" : awayGoals > homeGoals ? "away" : null,
     expectedGoals: xg,
+    // Immutable regulation strength evidence (ET recomputes phase strength separately).
+    regulationEffectiveStrength: { home: homeEff, away: awayEff },
     effectiveStrength: { home: homeEff, away: awayEff },
   };
 
@@ -643,14 +645,6 @@ export function matchWinnerSide(match) {
 
 function simulateExtraTime(match, { player, rng }) {
   const r = rngOr(rng);
-  const homeEff = match.effectiveStrength.home;
-  const awayEff = match.effectiveStrength.away;
-  const xg = expectedGoals(homeEff, awayEff, {
-    venue: match.venue === "neutral" ? "neutral" : "home",
-  });
-  const etHome = poissonSample(xg.home * XG_MODEL.ET_FRACTION, r);
-  const etAway = poissonSample(xg.away * XG_MODEL.ET_FRACTION, r);
-
   const matchDuration = Number(player?.matchParticipation?.matchDuration) || 90;
   const regMinutes = Number(match.playerStats?.minutes) || 0;
   // Only players who completed regulation continue into ET exposure/attribution.
@@ -662,6 +656,35 @@ function simulateExtraTime(match, { player, rng }) {
       matchDuration,
     };
   }
+
+  // Phase-local strength: non-continuing players must not affect ET xG.
+  // Rebuild from immutable regulation profile+form inputs (do not mutate regulation evidence).
+  const regulationStrength =
+    match.regulationEffectiveStrength || match.effectiveStrength || {};
+  const etPhaseMinutes = continuesIntoEt ? 30 : 0;
+  const homeEff = phaseEffectiveStrength(regulationStrength.home, {
+    player,
+    playerSide: match.playerSide,
+    side: "home",
+    phaseMinutes: etPhaseMinutes,
+    phaseDuration: 30,
+  });
+  const awayEff = phaseEffectiveStrength(regulationStrength.away, {
+    player,
+    playerSide: match.playerSide,
+    side: "away",
+    phaseMinutes: etPhaseMinutes,
+    phaseDuration: 30,
+  });
+
+  // Preserve venue orientation, including venue:"away".
+  const venueMode =
+    match.venue === "neutral" ? "neutral" : match.venue === "away" ? "away" : "home";
+  const xg = expectedGoals(homeEff, awayEff, {
+    venue: venueMode === "neutral" ? "neutral" : venueMode === "away" ? "away" : "home",
+  });
+  const etHome = poissonSample(xg.home * XG_MODEL.ET_FRACTION, r);
+  const etAway = poissonSample(xg.away * XG_MODEL.ET_FRACTION, r);
 
   const etEvents = buildGoalEvents({
     home: match.home,
@@ -693,6 +716,10 @@ function simulateExtraTime(match, { player, rng }) {
     matchAwayGoals: matchAway,
     playerStats: nextStats,
     events: [...match.events, ...etEvents].sort((a, b) => a.minute - b.minute || a.type.localeCompare(b.type)),
+    // Keep regulation evidence immutable; expose phase strength for ET/shootouts.
+    regulationEffectiveStrength: regulationStrength,
+    effectiveStrength: { home: homeEff, away: awayEff },
+    etEffectiveStrength: { home: homeEff, away: awayEff },
     expectedGoals: {
       ...match.expectedGoals,
       etHome: Number((xg.home * XG_MODEL.ET_FRACTION).toFixed(4)),

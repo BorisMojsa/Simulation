@@ -1,0 +1,122 @@
+{
+  "generatedAt": "2026-11-03T17:54:46.449Z",
+  "base": "http://127.0.0.1:59278",
+  "cases": {
+    "B01": {
+      "ok": true,
+      "estimatedCue": true,
+      "seasons": 1,
+      "continueClicks": 9,
+      "strengthSnippet": "Team strength: 69.7 (Average) · ATK 70 / MID 70 / DEF 70 / GK 70 · Estimated unit ratings · Starting data: 2026-10-08"
+    },
+    "B02": {
+      "ok": true,
+      "replacement": 68,
+      "refMean": -0.3351818181818182,
+      "starMean": 5.234172413793105,
+      "refTeam": 69,
+      "starTeam": 71.29862068965517,
+      "refMatches": 38,
+      "starMatches": 38
+    },
+    "B03": {
+      "ok": true,
+      "replacement": 65,
+      "refGk": -0.7871000000000001,
+      "starGk": 7.948266666666666,
+      "refMatches": 38,
+      "starMatches": 38
+    },
+    "B04": {
+      "ok": true,
+      "scale": {
+        "m0": 0,
+        "m30": 2.016,
+        "m90": 6.048
+      },
+      "zeroRows": 38,
+      "matches": 38
+    },
+    "B05": {
+      "ok": true,
+      "asymmetric": {
+        "attack": 80,
+        "midfield": 70,
+        "defence": 60,
+        "goalkeeper": 65
+      },
+      "desc": {
+        "overall": 68.75,
+        "attack": 80,
+        "midfield": 70,
+        "defence": 60,
+        "goalkeeper": 65,
+        "tierLabel": "Average",
+        "sourceType": "verified_rating",
+        "snapshotDate": "2026-10-08",
+        "sourceStatus": "verified_rating",
+        "unitsEstimated": false,
+        "unitRatingsLabel": "Unit ratings",
+        "componentDerivationStatus": "controlled_asymmetric_fixture",
+        "breakdownMethod": "controlled_asymmetric_fixture",
+        "lineupImpactModelVersion": "fix10-lineup-impact-v1"
+      },
+      "text": "Team strength: 68.8 (Average) · ATK 80 / MID 70 / DEF 60 / GK 65 · Unit ratings · Starting data: 2026-10-08"
+    },
+    "B06": {
+      "ok": true,
+      "beforeST": 68.15,
+      "pausedST": 68.4887,
+      "restoredST": 68.4887,
+      "model": "fix10-club-strength-v1",
+      "lineupModel": "fix10-lineup-impact-v1",
+      "rngSeed": 10106
+    },
+    "B07": {
+      "ok": true,
+      "continuingEtAtk": 75.76,
+      "nonContinuingEtAtk": 69.71,
+      "noneEtAtk": 69.71,
+      "etRows": 2,
+      "presentation": "desk"
+    },
+    "B08": {
+      "ok": true,
+      "arsenalId": "club:england:arsenal",
+      "playing": "club:england:hull-city",
+      "employment": "club:england:arsenal",
+      "loanPlaying": "club:england:hull-city",
+      "moved": true,
+      "formerUnaffected": true,
+      "receiverImpact": 6.050000000000011
+    }
+  },
+  "errors": [],
+  "blocked": false,
+  "modelVersion": "fix10-club-strength-v1",
+  "lineupImpactModelVersion": "fix10-lineup-impact-v1",
+  "requiredIds": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08"
+  ],
+  "selectedIds": [
+    "B01",
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08"
+  ],
+  "subsetOnly": false,
+  "requiredComplete": true,
+  "ok": true,
+  "selectedOk": true
+}

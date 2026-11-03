@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "m0": {
+    "attack": 0,
+    "midfield": 0,
+    "defence": 0,
+    "goalkeeper": 0,
+    "deltaOvr": 0
+  },
+  "m30": {
+    "attack": 0.005,
+    "midfield": 0.005,
+    "defence": 0.005,
+    "goalkeeper": 0,
+    "deltaOvr": 0.004,
+    "modelVersion": "fix10-lineup-impact-v1"
+  },
+  "m90": {
+    "attack": 0.016,
+    "midfield": 0.015,
+    "defence": 0.016,
+    "goalkeeper": 0,
+    "deltaOvr": 0.012,
+    "modelVersion": "fix10-lineup-impact-v1"
+  },
+  "w30": {
+    "attack": -1.479,
+    "midfield": -0.348,
+    "defence": 0,
+    "goalkeeper": 0,
+    "deltaOvr": -0.457,
+    "modelVersion": "fix10-lineup-impact-v1"
+  },
+  "w90": {
+    "attack": -4.437,
+    "midfield": -1.044,
+    "defence": 0,
+    "goalkeeper": 0,
+    "deltaOvr": -1.37,
+    "modelVersion": "fix10-lineup-impact-v1"
+  }
+}

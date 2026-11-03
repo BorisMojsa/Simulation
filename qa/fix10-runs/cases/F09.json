@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "beforeST": 64,
+  "afterST": 65,
+  "expected": 65,
+  "modelVersion": "fix10-club-strength-v1"
+}

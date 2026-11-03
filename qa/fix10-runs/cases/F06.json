@@ -1,0 +1,104 @@
+{
+  "ok": true,
+  "results": [
+    {
+      "quality": 55,
+      "role": "ST",
+      "ownXgPct": 30.520309971898165,
+      "oppXgPct": 0,
+      "dEp": 0.2597573128074364,
+      "dOverall": 2.479999999999997,
+      "unitMax": 8.030000000000001
+    },
+    {
+      "quality": 55,
+      "role": "CM",
+      "ownXgPct": 19.3221493655795,
+      "oppXgPct": -5.143489738567664,
+      "dEp": 0.21137078657360964,
+      "dOverall": 3.4200000000000017,
+      "unitMax": 8.64
+    },
+    {
+      "quality": 55,
+      "role": "CB",
+      "ownXgPct": 1.8819722387805493,
+      "oppXgPct": -19.688324959550364,
+      "dEp": 0.18650784702979584,
+      "dOverall": 3,
+      "unitMax": 9.120000000000005
+    },
+    {
+      "quality": 55,
+      "role": "GK",
+      "ownXgPct": 0,
+      "oppXgPct": -20.803883164438375,
+      "dEp": 0.17941542244005704,
+      "dOverall": 3.509999999999998,
+      "unitMax": 11.61
+    },
+    {
+      "quality": 70,
+      "role": "ST",
+      "ownXgPct": 22.072000000000003,
+      "oppXgPct": 0,
+      "dEp": 0.1971945523357741,
+      "dOverall": 1.8599999999999994,
+      "unitMax": 6.010000000000005
+    },
+    {
+      "quality": 70,
+      "role": "CM",
+      "ownXgPct": 14.335999999999993,
+      "oppXgPct": -3.927999999999998,
+      "dEp": 0.16426123983294127,
+      "dOverall": 2.5999999999999943,
+      "unitMax": 6.560000000000002
+    },
+    {
+      "quality": 70,
+      "role": "CB",
+      "ownXgPct": 1.432000000000011,
+      "oppXgPct": -15.344000000000001,
+      "dEp": 0.14945340181131272,
+      "dOverall": 2.280000000000001,
+      "unitMax": 6.930000000000007
+    },
+    {
+      "quality": 70,
+      "role": "GK",
+      "ownXgPct": 0,
+      "oppXgPct": -16.32,
+      "dEp": 0.1449747657799465,
+      "dOverall": 2.680000000000007,
+      "unitMax": 8.870000000000005
+    }
+  ],
+  "elite": {
+    "e55": 0.2597573128074364,
+    "e88": 0.09533699412012964
+  },
+  "targets": {
+    "replacementNeutral": true,
+    "stOwnXgPctRise": {
+      "min": 15,
+      "max": 35
+    },
+    "gkOppXgPctFall": {
+      "min": 12,
+      "max": 30
+    },
+    "roleExpectedPointsGain": {
+      "min": 0.1,
+      "max": 0.4
+    },
+    "highEnd99vs90ExpectedPoints": {
+      "min": 0.02
+    },
+    "unitAbsChangeMax": 12,
+    "effectiveOverallAbsChangeMax": 6,
+    "minuteShareTolerance": 0.02,
+    "eliteDiminishing": true,
+    "inferiorPlayerHurts": true
+  }
+}

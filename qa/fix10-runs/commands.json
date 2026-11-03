@@ -1,0 +1,9 @@
+{
+  "focused": "node --test tests/clubStrengthSuperstarImpact.test.mjs tests/teamStrength.test.mjs tests/strengthProvenance.test.mjs",
+  "regressionGate": "node --test tests/clubStrengthSuperstarImpact.test.mjs tests/teamStrength.test.mjs tests/strengthProvenance.test.mjs tests/matchParticipationEvidence.test.mjs tests/injuryDevelopmentExposure.test.mjs tests/playingTimeContractRecovery.test.mjs tests/userRivalPerformanceAwards.test.mjs tests/individualAwards.test.mjs tests/clubOwnershipTransfers.test.mjs tests/earnedContinentalQualification.test.mjs tests/competitionsFormats.test.mjs tests/continentalIntegrity.test.mjs tests/internationalIntegrity.test.mjs",
+  "calibration": "FIX10_MC_N=5000 FIX10_SEASON_N=100 node scripts/qaClubStrengthSuperstarImpact.mjs",
+  "matched": "node scripts/qaFix10MatchedCompare.mjs",
+  "browser": "CASES=B01,B02,B03,B04,B05,B06,B07,B08 node scripts/browserClubStrengthSuperstarImpactChecklist.mjs",
+  "fullSuite": "node --test tests/*.test.mjs",
+  "note": "Full suite passed with the established ability exception only."
+}

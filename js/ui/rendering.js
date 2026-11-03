@@ -49,7 +49,10 @@ export function renderPlayerOverview(player, overviewEl, statsKeys) {
         clubStrength.tierLabel
       )}) · ATK ${clubStrength.attack.toFixed(0)} / MID ${clubStrength.midfield.toFixed(
         0
-      )} / DEF ${clubStrength.defence.toFixed(0)} / GK ${clubStrength.goalkeeper.toFixed(0)}${
+      )} / DEF ${clubStrength.defence.toFixed(0)} / GK ${clubStrength.goalkeeper.toFixed(0)} · ${escapeHtml(
+        clubStrength.unitRatingsLabel ||
+          (clubStrength.unitsEstimated ? "Estimated unit ratings" : "Unit ratings")
+      )}${
         clubStrength.snapshotDate ? ` · Starting data: ${escapeHtml(String(clubStrength.snapshotDate))}` : ""
       }</span>`
     : "";

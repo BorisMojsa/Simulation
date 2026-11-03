@@ -1,0 +1,78 @@
+{
+  "ok": true,
+  "base": {
+    "home": 1.5961,
+    "away": 1.5375
+  },
+  "raised": {
+    "home": 1.9768,
+    "away": 1.5375
+  },
+  "resisted": {
+    "home": 1.0347,
+    "away": 1.5961
+  },
+  "baseOppAttack": {
+    "home": 1.5375,
+    "away": 1.5961
+  },
+  "eff": {
+    "clubId": "club:synth:q70",
+    "nationId": null,
+    "name": "Synth Q70",
+    "displayName": "Synth Q70",
+    "overall": 69.5,
+    "attack": 78,
+    "midfield": 70,
+    "defence": 62,
+    "goalkeeper": 68,
+    "financialPower": 2,
+    "reputation": 70,
+    "profile": {
+      "clubId": "club:synth:q70",
+      "name": "Synth Q70",
+      "displayName": "Synth Q70",
+      "overall": 70,
+      "attack": 78,
+      "midfield": 70,
+      "defence": 62,
+      "goalkeeper": 68,
+      "replacementOvr": {
+        "GK": 65,
+        "CB": 66,
+        "RB": 65,
+        "LB": 65,
+        "CDM": 66,
+        "CM": 66,
+        "CAM": 67,
+        "RM": 66,
+        "LM": 66,
+        "RW": 69,
+        "LW": 69,
+        "ST": 68,
+        "CF": 68
+      },
+      "depth": 64,
+      "financialPower": 2,
+      "reputation": 70,
+      "componentDerivationStatus": "controlled_asymmetric_fixture",
+      "breakdownMethod": "controlled_asymmetric_fixture",
+      "sourceStatus": "controlled_fixture",
+      "sourceType": "controlled_fixture",
+      "kind": "club"
+    },
+    "playerImpact": {
+      "attack": 0,
+      "midfield": 0,
+      "defence": 0,
+      "goalkeeper": 0,
+      "deltaOvr": 0
+    },
+    "formAdj": 0,
+    "tierLabel": "Average",
+    "unitsEstimated": false,
+    "componentDerivationStatus": "controlled_asymmetric_fixture",
+    "breakdownMethod": "controlled_asymmetric_fixture",
+    "lineupImpactModelVersion": "fix10-lineup-impact-v1"
+  }
+}

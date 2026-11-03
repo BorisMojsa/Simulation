@@ -16,7 +16,9 @@ import { LEAGUES } from "../data/leagues.js";
 import { createRng, hashSeed, reseedCareerRng, setSimRng, getSimRng } from "./rng.js";
 import { clamp } from "../utils/helpers.js";
 
-export const WORLD_STATE_SCHEMA_VERSION = 3;
+export const WORLD_STATE_SCHEMA_VERSION = 4;
+/** Documented Fix 10 sporting / lineup-impact model identity (not a dataset date). */
+export const CLUB_STRENGTH_MODEL_VERSION = "fix10-club-strength-v1";
 
 function cloneProfile(p) {
   return {
@@ -165,6 +167,7 @@ export function createWorldState({ seed = null, startYear = 2026 } = {}) {
     nationContentHash: NATION_STRENGTH_CONTENT_HASH,
     nationNormalizationVersion: NATION_STRENGTH_NORMALIZATION_VERSION,
     transformVersion: CLUB_STRENGTH_TRANSFORM_VERSION || NATION_STRENGTH_TRANSFORM_VERSION,
+    clubStrengthModelVersion: CLUB_STRENGTH_MODEL_VERSION,
     baselineClubs: freezeBaselineProfiles(CLUB_PROFILES, "clubId", freezeClubBaseline),
     baselineNations: freezeBaselineProfiles(NATION_PROFILES, "nationId", freezeNationBaseline),
     seasonYear: startYear,
@@ -188,6 +191,8 @@ export function createWorldState({ seed = null, startYear = 2026 } = {}) {
         "Careers keep frozen baselineClubs/baselineNations from creation time; future bundled rebuilds do not overwrite an active career's seed qualities.",
       nationMigration:
         "schemaVersion<3 careers without baselineNations freeze values from their live nations map and mark legacyGameplayPointsPrior=1180 where applicable; they are never upgraded in place to the new secondary inventory.",
+      replacementMigration:
+        "schemaVersion<4 careers keep saved replacementOvr values; fractional evolution applies going forward without rewriting baselines from bundled data.",
     },
   };
 }
@@ -234,6 +239,7 @@ export function serializeWorldState(world = activeWorld) {
     nationContentHash: world.nationContentHash,
     nationNormalizationVersion: world.nationNormalizationVersion,
     transformVersion: world.transformVersion,
+    clubStrengthModelVersion: world.clubStrengthModelVersion || CLUB_STRENGTH_MODEL_VERSION,
     baselineClubs: world.baselineClubs,
     baselineNations: world.baselineNations,
     seasonYear: world.seasonYear,
@@ -268,8 +274,22 @@ export function deserializeWorldState(data) {
       : freezeBaselineProfiles(NATION_PROFILES, "nationId", freezeNationBaseline);
   }
 
+  const clubs = new Map(data.clubs || []);
+  const priorSchema = data.schemaVersion ?? 0;
+  // Idempotent Fix 10 migration: keep saved replacement values; enable fractional
+  // evolution going forward. Never rewrite live clubs from current bundled baselines.
+  if (priorSchema < 4) {
+    for (const profile of clubs.values()) {
+      if (!profile?.replacementOvr) continue;
+      for (const [k, v] of Object.entries(profile.replacementOvr)) {
+        const n = Number(v);
+        if (Number.isFinite(n)) profile.replacementOvr[k] = Number(n.toFixed(4));
+      }
+    }
+  }
+
   const world = {
-    schemaVersion: data.schemaVersion ?? WORLD_STATE_SCHEMA_VERSION,
+    schemaVersion: Math.max(priorSchema, WORLD_STATE_SCHEMA_VERSION),
     snapshotDate: data.snapshotDate,
     nationSnapshotDate: data.nationSnapshotDate,
     clubBaselineSnapshotId: data.clubBaselineSnapshotId || CLUB_STRENGTH_BASELINE_SNAPSHOT_ID,
@@ -277,12 +297,13 @@ export function deserializeWorldState(data) {
     nationContentHash: data.nationContentHash || null,
     nationNormalizationVersion: data.nationNormalizationVersion || null,
     transformVersion: data.transformVersion || CLUB_STRENGTH_TRANSFORM_VERSION,
+    clubStrengthModelVersion: data.clubStrengthModelVersion || CLUB_STRENGTH_MODEL_VERSION,
     baselineClubs: data.baselineClubs || freezeBaselineProfiles(CLUB_PROFILES, "clubId", freezeClubBaseline),
     baselineNations,
     seasonYear: data.seasonYear,
     rngSeed: data.rngSeed,
     rngState: data.rngState,
-    clubs: new Map(data.clubs || []),
+    clubs,
     nations,
     leagueMemberships: new Map(data.leagueMemberships || []),
     form: new Map(data.form || []),
@@ -358,17 +379,23 @@ function bumpForm(world, id, delta) {
   world.form.set(id, { form: Number(form.toFixed(3)) });
 }
 
-function adjustQuality(profile, delta) {
+/**
+ * Apply a bounded quality residual. Replacement references keep fractional state
+ * so repeated small deltas accumulate instead of rounding away.
+ */
+export function adjustQuality(profile, delta) {
   const d = clamp(delta, -0.45, 0.45);
   profile.overall = clamp(Number((profile.overall + d).toFixed(2)), 30, 96);
   profile.attack = clamp(Number((profile.attack + d * 0.9).toFixed(2)), 28, 96);
   profile.midfield = clamp(Number((profile.midfield + d).toFixed(2)), 28, 96);
   profile.defence = clamp(Number((profile.defence + d * 0.9).toFixed(2)), 28, 96);
   profile.goalkeeper = clamp(Number((profile.goalkeeper + d * 0.7).toFixed(2)), 28, 96);
-  // Refresh replacement band gently
+  // Refresh replacement band gently — retain fractions (Fix 10).
   if (profile.replacementOvr) {
     for (const k of Object.keys(profile.replacementOvr)) {
-      profile.replacementOvr[k] = Math.round(clamp(profile.replacementOvr[k] + d * 0.5, 40, 93));
+      const prev = Number(profile.replacementOvr[k]);
+      if (!Number.isFinite(prev)) continue;
+      profile.replacementOvr[k] = Number(clamp(prev + d * 0.5, 40, 93).toFixed(4));
     }
   }
 }

@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "decidedBy": "extraTime",
+  "aggregate": "2-3",
+  "pens": {
+    "home": null,
+    "away": null
+  }
+}

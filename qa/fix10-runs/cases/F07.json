@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "abilityUsedPath": "currentOverallRaw",
+  "attack": 76.01,
+  "impact": {
+    "attack": 6.013,
+    "midfield": 1.415,
+    "defence": 0,
+    "goalkeeper": 0,
+    "deltaOvr": 1.857,
+    "modelVersion": "fix10-lineup-impact-v1"
+  }
+}

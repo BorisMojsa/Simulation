@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "desc": {
+    "overall": 70,
+    "attack": 70,
+    "midfield": 70,
+    "defence": 70,
+    "goalkeeper": 70,
+    "tierLabel": "Competitive",
+    "sourceType": "controlled_fixture",
+    "sourceStatus": "controlled_fixture",
+    "unitsEstimated": true,
+    "unitRatingsLabel": "Estimated unit ratings",
+    "componentDerivationStatus": "derived_neutral",
+    "breakdownMethod": "neutral_equal_split_v1",
+    "lineupImpactModelVersion": "fix10-lineup-impact-v1"
+  },
+  "desc2": {
+    "overall": 68.75,
+    "attack": 80,
+    "midfield": 70,
+    "defence": 60,
+    "goalkeeper": 65,
+    "tierLabel": "Average",
+    "sourceType": "controlled_fixture",
+    "sourceStatus": "controlled_fixture",
+    "unitsEstimated": false,
+    "unitRatingsLabel": "Unit ratings",
+    "componentDerivationStatus": "controlled_asymmetric_fixture",
+    "breakdownMethod": "controlled_asymmetric_fixture",
+    "lineupImpactModelVersion": "fix10-lineup-impact-v1"
+  }
+}

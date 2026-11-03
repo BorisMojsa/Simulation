@@ -126,8 +126,12 @@ test("player OVR raises attack for ST and is bounded; absent player no effect", 
   const withStrong = effectiveTeamStrength(team, { player: strong, playerSide: "home", side: "home" });
   const absent = effectiveTeamStrength(team, { player: strong, playerSide: null, side: "home" });
   assert.ok(withStrong.attack > withWeak.attack);
-  assert.ok(withStrong.attack - withWeak.attack < 4, "bounded impact");
-  assert.equal(absent.attack, effectiveTeamStrength(team).attack);
+  // Fix 10: absolute unit change ≤ 12 vs same reference side (old <4 cap retired).
+  const baseline = effectiveTeamStrength(team);
+  assert.ok(withStrong.attack - baseline.attack <= 12 + 1e-9, "strong ST unit bound");
+  assert.ok(withWeak.attack - baseline.attack >= -12 - 1e-9, "weak ST unit bound");
+  assert.ok(withStrong.overall - baseline.overall <= 6 + 1e-9, "strong overall bound");
+  assert.equal(absent.attack, baseline.attack);
 });
 
 test("GK quality lowers opposing xG more than adding striker quality", () => {
@@ -253,7 +257,7 @@ test("world state round-trip", () => {
   const json = serializeWorldState(world);
   const again = deserializeWorldState(json);
   assert.equal(again.clubs.get(resolveClub("Liverpool").profile.clubId).overall, before);
-  assert.equal(again.schemaVersion, 3);
+  assert.equal(again.schemaVersion, 4);
   assert.ok(again.clubBaselineSnapshotId);
   assert.ok(again.nationBaselineSnapshotId);
   assert.ok(again.nationContentHash);

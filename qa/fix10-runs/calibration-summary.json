@@ -1,0 +1,586 @@
+{
+  "started": "2026-11-03T17:43:32.727Z",
+  "modelVersion": "fix10-club-strength-v1",
+  "inventory": {
+    "runtimeClubs": 572,
+    "nationProfiles": 79,
+    "estimatedUnitClubs": 572,
+    "xgModel": {
+      "BASE_XG": 1.25,
+      "SCALE": 18,
+      "K_ATT": 0.55,
+      "K_MID": 0.2,
+      "K_GK": 0.25,
+      "HOME_ADV": 0.12,
+      "ET_FRACTION": 0.3333333333333333,
+      "MAX_LAMBDA": 3.2,
+      "MIN_LAMBDA": 0.15
+    },
+    "lineupImpactModel": {
+      "version": "fix10-lineup-impact-v1",
+      "saturationDenominator": 30,
+      "squadFactorBase": 1.16,
+      "squadFactorSlope": 0.0125,
+      "squadFactorMin": 0.55,
+      "squadFactorMax": 1.3,
+      "unitBound": 12,
+      "overallBound": 6,
+      "referenceAttributes": {
+        "Shooting": 65,
+        "Passing": 65,
+        "Defending": 65,
+        "Reflexes": 65,
+        "Handling": 65,
+        "Positioning": 65
+      }
+    }
+  },
+  "deterministic": [
+    {
+      "quality": 55,
+      "role": "ST",
+      "ownXgPct": 30.520309971898165,
+      "oppXgPct": 0,
+      "dEp": 0.2597573128074364,
+      "fails": []
+    },
+    {
+      "quality": 55,
+      "role": "CM",
+      "ownXgPct": 19.3221493655795,
+      "oppXgPct": -5.143489738567664,
+      "dEp": 0.21137078657360964,
+      "fails": []
+    },
+    {
+      "quality": 55,
+      "role": "CB",
+      "ownXgPct": 1.8819722387805493,
+      "oppXgPct": -19.688324959550364,
+      "dEp": 0.18650784702979584,
+      "fails": []
+    },
+    {
+      "quality": 55,
+      "role": "GK",
+      "ownXgPct": 0,
+      "oppXgPct": -20.803883164438375,
+      "dEp": 0.17941542244005704,
+      "fails": []
+    },
+    {
+      "quality": 70,
+      "role": "ST",
+      "ownXgPct": 22.072000000000003,
+      "oppXgPct": 0,
+      "dEp": 0.1971945523357741,
+      "fails": []
+    },
+    {
+      "quality": 70,
+      "role": "CM",
+      "ownXgPct": 14.335999999999993,
+      "oppXgPct": -3.927999999999998,
+      "dEp": 0.16426123983294127,
+      "fails": []
+    },
+    {
+      "quality": 70,
+      "role": "CB",
+      "ownXgPct": 1.432000000000011,
+      "oppXgPct": -15.344000000000001,
+      "dEp": 0.14945340181131272,
+      "fails": []
+    },
+    {
+      "quality": 70,
+      "role": "GK",
+      "ownXgPct": 0,
+      "oppXgPct": -16.32,
+      "dEp": 0.1449747657799465,
+      "fails": []
+    }
+  ],
+  "monteCarlo": [
+    {
+      "quality": 55,
+      "role": "ST",
+      "ovr": 53,
+      "n": 5000,
+      "empirical": {
+        "w": 1843,
+        "d": 1386,
+        "l": 1771,
+        "gf": 5798,
+        "ga": 5708,
+        "ep": 1.383
+      },
+      "analyticEp": 1.3599043387604466
+    },
+    {
+      "quality": 55,
+      "role": "ST",
+      "ovr": 99,
+      "n": 5000,
+      "empirical": {
+        "w": 2278,
+        "d": 1266,
+        "l": 1456,
+        "gf": 7498,
+        "ga": 5768,
+        "ep": 1.62
+      },
+      "analyticEp": 1.619661651567883
+    },
+    {
+      "quality": 55,
+      "role": "CM",
+      "ovr": 51,
+      "n": 5000,
+      "empirical": {
+        "w": 1843,
+        "d": 1386,
+        "l": 1771,
+        "gf": 5798,
+        "ga": 5708,
+        "ep": 1.383
+      },
+      "analyticEp": 1.3599043387604466
+    },
+    {
+      "quality": 55,
+      "role": "CM",
+      "ovr": 99,
+      "n": 5000,
+      "empirical": {
+        "w": 2170,
+        "d": 1347,
+        "l": 1483,
+        "gf": 6827,
+        "ga": 5446,
+        "ep": 1.5714
+      },
+      "analyticEp": 1.5712751253340562
+    },
+    {
+      "quality": 55,
+      "role": "CB",
+      "ovr": 51,
+      "n": 5000,
+      "empirical": {
+        "w": 1843,
+        "d": 1386,
+        "l": 1771,
+        "gf": 5798,
+        "ga": 5708,
+        "ep": 1.383
+      },
+      "analyticEp": 1.3599043387604466
+    },
+    {
+      "quality": 55,
+      "role": "CB",
+      "ovr": 99,
+      "n": 5000,
+      "empirical": {
+        "w": 2099,
+        "d": 1466,
+        "l": 1435,
+        "gf": 5904,
+        "ga": 4581,
+        "ep": 1.5526
+      },
+      "analyticEp": 1.5464121857902424
+    },
+    {
+      "quality": 55,
+      "role": "GK",
+      "ovr": 50,
+      "n": 5000,
+      "empirical": {
+        "w": 1843,
+        "d": 1386,
+        "l": 1771,
+        "gf": 5798,
+        "ga": 5708,
+        "ep": 1.383
+      },
+      "analyticEp": 1.3599043387604466
+    },
+    {
+      "quality": 55,
+      "role": "GK",
+      "ovr": 99,
+      "n": 5000,
+      "empirical": {
+        "w": 2085,
+        "d": 1489,
+        "l": 1426,
+        "gf": 5798,
+        "ga": 4505,
+        "ep": 1.5488
+      },
+      "analyticEp": 1.5393197612005036
+    },
+    {
+      "quality": 70,
+      "role": "ST",
+      "ovr": 68,
+      "n": 5000,
+      "empirical": {
+        "w": 1873,
+        "d": 1321,
+        "l": 1806,
+        "gf": 6175,
+        "ga": 6091,
+        "ep": 1.388
+      },
+      "analyticEp": 1.3649767791938983
+    },
+    {
+      "quality": 70,
+      "role": "ST",
+      "ovr": 99,
+      "n": 5000,
+      "empirical": {
+        "w": 2175,
+        "d": 1248,
+        "l": 1577,
+        "gf": 7470,
+        "ga": 6178,
+        "ep": 1.5546
+      },
+      "analyticEp": 1.5621713315296724
+    },
+    {
+      "quality": 70,
+      "role": "CM",
+      "ovr": 66,
+      "n": 5000,
+      "empirical": {
+        "w": 1873,
+        "d": 1321,
+        "l": 1806,
+        "gf": 6175,
+        "ga": 6091,
+        "ep": 1.388
+      },
+      "analyticEp": 1.3649767791938983
+    },
+    {
+      "quality": 70,
+      "role": "CM",
+      "ovr": 99,
+      "n": 5000,
+      "empirical": {
+        "w": 2121,
+        "d": 1298,
+        "l": 1581,
+        "gf": 6957,
+        "ga": 5863,
+        "ep": 1.5322
+      },
+      "analyticEp": 1.5292380190268395
+    },
+    {
+      "quality": 70,
+      "role": "CB",
+      "ovr": 66,
+      "n": 5000,
+      "empirical": {
+        "w": 1873,
+        "d": 1321,
+        "l": 1806,
+        "gf": 6175,
+        "ga": 6091,
+        "ep": 1.388
+      },
+      "analyticEp": 1.3649767791938983
+    },
+    {
+      "quality": 70,
+      "role": "CB",
+      "ovr": 99,
+      "n": 5000,
+      "empirical": {
+        "w": 2091,
+        "d": 1381,
+        "l": 1528,
+        "gf": 6250,
+        "ga": 5130,
+        "ep": 1.5308
+      },
+      "analyticEp": 1.514430181005211
+    },
+    {
+      "quality": 70,
+      "role": "GK",
+      "ovr": 65,
+      "n": 5000,
+      "empirical": {
+        "w": 1873,
+        "d": 1321,
+        "l": 1806,
+        "gf": 6175,
+        "ga": 6091,
+        "ep": 1.388
+      },
+      "analyticEp": 1.3649767791938983
+    },
+    {
+      "quality": 70,
+      "role": "GK",
+      "ovr": 99,
+      "n": 5000,
+      "empirical": {
+        "w": 2083,
+        "d": 1392,
+        "l": 1525,
+        "gf": 6175,
+        "ga": 5072,
+        "ep": 1.5282
+      },
+      "analyticEp": 1.5099515449738448
+    }
+  ],
+  "realClubPairs": [
+    {
+      "home": "Hull City",
+      "away": "Burnley",
+      "homeOverall": 69.71,
+      "awayOverall": 70.41,
+      "conditions": [
+        {
+          "label": "replacement",
+          "ovr": 68,
+          "xg": {
+            "home": 1.2161,
+            "away": 1.2854
+          },
+          "expectedPoints": 1.3156008981859675,
+          "homeAttack": 69.71
+        },
+        {
+          "label": "star99",
+          "ovr": 99,
+          "xg": {
+            "home": 1.4854,
+            "away": 1.2854
+          },
+          "expectedPoints": 1.510026514312395,
+          "homeAttack": 75.74
+        }
+      ],
+      "deltaEp": 0.1944256161264275,
+      "ownXgPct": 22.144560480223685
+    },
+    {
+      "home": "Brentford",
+      "away": "Crystal Palace",
+      "homeOverall": 82.94,
+      "awayOverall": 80.73,
+      "conditions": [
+        {
+          "label": "replacement",
+          "ovr": 81,
+          "xg": {
+            "home": 1.4332,
+            "away": 1.2032
+          },
+          "expectedPoints": 1.5304460171307253,
+          "homeAttack": 82.94
+        },
+        {
+          "label": "star99",
+          "ovr": 99,
+          "xg": {
+            "home": 1.6269,
+            "away": 1.2032
+          },
+          "expectedPoints": 1.662334347533174,
+          "homeAttack": 86.76
+        }
+      ],
+      "deltaEp": 0.13188833040244874,
+      "ownXgPct": 13.515210717276016
+    },
+    {
+      "home": "Arsenal",
+      "away": "Manchester City",
+      "homeOverall": 93.26,
+      "awayOverall": 92.57,
+      "conditions": [
+        {
+          "label": "replacement",
+          "ovr": 91,
+          "xg": {
+            "home": 1.4133,
+            "away": 1.3382
+          },
+          "expectedPoints": 1.423894245877262,
+          "homeAttack": 93.26
+        },
+        {
+          "label": "star99",
+          "ovr": 99,
+          "xg": {
+            "home": 1.5038,
+            "away": 1.3382
+          },
+          "expectedPoints": 1.4869536642705086,
+          "homeAttack": 95.13
+        }
+      ],
+      "deltaEp": 0.06305941839324647,
+      "ownXgPct": 6.403452911625274
+    },
+    {
+      "home": "Železničar Pančevo",
+      "away": "Red Star Belgrade",
+      "homeOverall": 54.51,
+      "awayOverall": 71.45,
+      "conditions": [
+        {
+          "label": "replacement",
+          "ovr": 53,
+          "xg": {
+            "home": 0.6209,
+            "away": 2.3737
+          },
+          "expectedPoints": 0.39297970101387175,
+          "homeAttack": 54.51
+        },
+        {
+          "label": "star99",
+          "ovr": 99,
+          "xg": {
+            "home": 0.8104,
+            "away": 2.3737
+          },
+          "expectedPoints": 0.49811833724573884,
+          "homeAttack": 62.54
+        }
+      ],
+      "deltaEp": 0.10513863623186709,
+      "ownXgPct": 30.520212594620723
+    }
+  ],
+  "seasons": [
+    {
+      "quality": 55,
+      "role": "ST",
+      "ovr": 53,
+      "seasons": 100,
+      "meanPoints": 52.33
+    },
+    {
+      "quality": 55,
+      "role": "ST",
+      "ovr": 99,
+      "seasons": 100,
+      "meanPoints": 62.4
+    },
+    {
+      "quality": 55,
+      "role": "CM",
+      "ovr": 51,
+      "seasons": 100,
+      "meanPoints": 52.33
+    },
+    {
+      "quality": 55,
+      "role": "CM",
+      "ovr": 99,
+      "seasons": 100,
+      "meanPoints": 59.9
+    },
+    {
+      "quality": 55,
+      "role": "CB",
+      "ovr": 51,
+      "seasons": 100,
+      "meanPoints": 52.33
+    },
+    {
+      "quality": 55,
+      "role": "CB",
+      "ovr": 99,
+      "seasons": 100,
+      "meanPoints": 59.39
+    },
+    {
+      "quality": 55,
+      "role": "GK",
+      "ovr": 50,
+      "seasons": 100,
+      "meanPoints": 52.33
+    },
+    {
+      "quality": 55,
+      "role": "GK",
+      "ovr": 99,
+      "seasons": 100,
+      "meanPoints": 59.23
+    },
+    {
+      "quality": 70,
+      "role": "ST",
+      "ovr": 68,
+      "seasons": 100,
+      "meanPoints": 51.93
+    },
+    {
+      "quality": 70,
+      "role": "ST",
+      "ovr": 99,
+      "seasons": 100,
+      "meanPoints": 59.34
+    },
+    {
+      "quality": 70,
+      "role": "CM",
+      "ovr": 66,
+      "seasons": 100,
+      "meanPoints": 51.93
+    },
+    {
+      "quality": 70,
+      "role": "CM",
+      "ovr": 99,
+      "seasons": 100,
+      "meanPoints": 58.3
+    },
+    {
+      "quality": 70,
+      "role": "CB",
+      "ovr": 66,
+      "seasons": 100,
+      "meanPoints": 51.93
+    },
+    {
+      "quality": 70,
+      "role": "CB",
+      "ovr": 99,
+      "seasons": 100,
+      "meanPoints": 57.4
+    },
+    {
+      "quality": 70,
+      "role": "GK",
+      "ovr": 65,
+      "seasons": 100,
+      "meanPoints": 51.93
+    },
+    {
+      "quality": 70,
+      "role": "GK",
+      "ovr": 99,
+      "seasons": 100,
+      "meanPoints": 57.43
+    }
+  ],
+  "ok": true,
+  "failures": [],
+  "finished": "2026-11-03T17:43:33.204Z",
+  "matrixSha256": "c207aacd66be970d99b7b963fed4ec2fce01bc7a0a7e23476fe5a3d585ddcbb2"
+}
