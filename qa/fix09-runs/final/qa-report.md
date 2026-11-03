@@ -4,4 +4,4 @@
 - Cohort completed periods: 42 / 42
 - Oracle violations: 0
 - Corruption controls: PASS
-- Source: 1203cfe4ce8d5b5f619e3e8654611041d51363fd
+- Source: 93b571b2e3a932d322bc8a18b985775ddb120487
