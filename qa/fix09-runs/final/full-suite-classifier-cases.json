@@ -1,0 +1,54 @@
+{
+  "allPass": true,
+  "cases": [
+    {
+      "id": "supplied-valid-allowance",
+      "expected": true,
+      "ok": true,
+      "reason": "ok",
+      "failedFiles": [
+        "tests/playerAbility.test.mjs"
+      ],
+      "failedTests": [
+        "development: annual cap, deconditioning is recoverable",
+        "academy growth mutates attributes and charges shared annual allowance"
+      ],
+      "unexpectedFails": []
+    },
+    {
+      "id": "additional-cross-league-file",
+      "expected": false,
+      "ok": false,
+      "reason": "unexpected-failed-files",
+      "failedFiles": [
+        "tests/playerAbility.test.mjs",
+        "tests/crossLeagueCareer.test.mjs"
+      ],
+      "failedTests": [
+        "development: annual cap, deconditioning is recoverable",
+        "academy growth mutates attributes and charges shared annual allowance",
+        "loan accept/refuse/return and wage share conservation"
+      ],
+      "unexpectedFails": [
+        "loan accept/refuse/return and wage share conservation"
+      ]
+    },
+    {
+      "id": "additional-assertion-in-allowed-file",
+      "expected": false,
+      "ok": false,
+      "reason": "unexpected-failed-assertions",
+      "failedFiles": [
+        "tests/playerAbility.test.mjs"
+      ],
+      "failedTests": [
+        "development: annual cap, deconditioning is recoverable",
+        "academy growth mutates attributes and charges shared annual allowance",
+        "forecast: cached by signature, does not touch career rng"
+      ],
+      "unexpectedFails": [
+        "forecast: cached by signature, does not touch career rng"
+      ]
+    }
+  ]
+}

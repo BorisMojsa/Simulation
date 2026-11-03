@@ -24,15 +24,29 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHORT = spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const FULL = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const BASE = "984495e4c12df0c2dd1c84d124bc4cb743a0f63e";
-const PREV_TIP = "6f2c43e7e280af58e16ac85c1ce109b87f2e5f83";
+const PREV_TIP = "317129fc394957465fb7f9b68ac0cb2a033a7027";
 const FIRST_REVIEWED_TIP = "b874040211c82e8f4aafebdbde28df447112e228";
 const PRIOR_REREVIEW_TIP = "1203cfe4ce8d5b5f619e3e8654611041d51363fd";
-/** Exact full-suite allowance: one failed file, two named assertions. */
+/**
+ * Exact full-suite allowance: one failed file and exactly these two failing
+ * test identities (name + assertion marker). Extra FAIL lines inside the
+ * allowed file must reject the gate.
+ */
 const ALLOWED_FULL_SUITE = {
   failedFiles: ["tests/playerAbility.test.mjs"],
   assertionMarkers: [
     "learning 8.693485869706887",
     "big.realized <= 7 - r.realized + 1e-6",
+  ],
+  failures: [
+    {
+      testName: "development: annual cap, deconditioning is recoverable",
+      assertionMarker: "learning 8.693485869706887",
+    },
+    {
+      testName: "academy growth mutates attributes and charges shared annual allowance",
+      assertionMarker: "big.realized <= 7 - r.realized + 1e-6",
+    },
   ],
 };
 // Prefer roomy temp/Downloads over Desktop when free space is tight.
@@ -178,6 +192,8 @@ function testedShaCoversFinal() {
     changed.every(
       (p) =>
         p === "scripts/packageFix09Review.mjs" ||
+        p === "tests/fix09FullSuiteAllowance.test.mjs" ||
+        p === "reports/fix09-earned-continental-qualification-completion.md" ||
         p.startsWith("qa/fix09-runs/final/") ||
         p.startsWith("qa/fixtures/paired-controls/")
     )
@@ -188,42 +204,109 @@ const testedShaMatchesFinal = testedShaCoversFinal();
 function assessFullSuiteAllowance() {
   const logPath = join(ROOT, "qa/fix09-runs/final/full-suite.log");
   if (!existsSync(logPath)) {
-    return { ok: false, reason: "missing-full-suite-log", failedFiles: [], markersFound: [] };
+    return {
+      ok: false,
+      reason: "missing-full-suite-log",
+      failedFiles: [],
+      failedTests: [],
+      markersFound: [],
+    };
   }
   const log = readFileSync(logPath, "utf8");
-  const failedFiles = [
-    ...log.matchAll(/^# Subtest:\s+(tests\/\S+\.test\.mjs)\s*$/gm),
-  ]
-    // TAP nests file results; collect files that have a following "not ok" at file level.
-    .map((m) => m[1]);
   // Prefer explicit "not ok N - tests/...." file failures from node --test.
   const notOkFiles = [...log.matchAll(/^not ok \d+ - (tests\/\S+\.test\.mjs)\s*$/gm)].map(
     (m) => m[1]
   );
-  const uniqueFailed = [...new Set(notOkFiles.length ? notOkFiles : [])];
-  const markersFound = ALLOWED_FULL_SUITE.assertionMarkers.filter((m) => log.includes(m));
+  const uniqueFailed = [...new Set(notOkFiles)];
+  // Custom harness prints "# FAIL <test name>" / "# OK  <test name>".
+  const failedTests = [...log.matchAll(/^# FAIL (.+)$/gm)].map((m) => m[1].trim());
+  const allowedFailures =
+    Array.isArray(ALLOWED_FULL_SUITE.failures) && ALLOWED_FULL_SUITE.failures.length
+      ? ALLOWED_FULL_SUITE.failures
+      : (ALLOWED_FULL_SUITE.assertionMarkers || []).map((assertionMarker) => {
+          // Fallback when only markers are injected (portable classifier witness).
+          if (assertionMarker.includes("learning 8.693485869706887")) {
+            return {
+              testName: "development: annual cap, deconditioning is recoverable",
+              assertionMarker,
+            };
+          }
+          if (assertionMarker.includes("big.realized <= 7 - r.realized + 1e-6")) {
+            return {
+              testName: "academy growth mutates attributes and charges shared annual allowance",
+              assertionMarker,
+            };
+          }
+          return { testName: null, assertionMarker };
+        });
+  const allowedNames = allowedFailures.map((f) => f.testName).filter(Boolean);
+  const allowedMarkers = allowedFailures.map((f) => f.assertionMarker).filter(Boolean);
+  const markersFound = allowedMarkers.filter((m) => log.includes(m));
+
   const onlyAllowedFiles =
     uniqueFailed.length > 0 &&
-    uniqueFailed.every((f) => ALLOWED_FULL_SUITE.failedFiles.includes(f)) &&
-    uniqueFailed.length === ALLOWED_FULL_SUITE.failedFiles.length;
-  const markersComplete =
-    markersFound.length === ALLOWED_FULL_SUITE.assertionMarkers.length;
-  // Cross-league and other suites must not appear as failed files.
+    uniqueFailed.every((f) => (ALLOWED_FULL_SUITE.failedFiles || []).includes(f)) &&
+    uniqueFailed.length === (ALLOWED_FULL_SUITE.failedFiles || []).length;
+
+  // Exact failing-test set: no missing allowed names, no extras, no duplicates.
+  const failCounts = new Map();
+  for (const name of failedTests) failCounts.set(name, (failCounts.get(name) || 0) + 1);
+  const unexpectedFails = failedTests.filter((name) => !allowedNames.includes(name));
+  const missingFails = allowedNames.filter((name) => !failCounts.has(name));
+  const duplicateFails = [...failCounts.entries()]
+    .filter(([, n]) => n > 1)
+    .map(([name]) => name);
+  const exactFailSet =
+    unexpectedFails.length === 0 &&
+    missingFails.length === 0 &&
+    duplicateFails.length === 0 &&
+    failedTests.length === allowedNames.length;
+
+  // Each allowed failure must appear as a FAIL line with its assertion marker nearby.
+  const escapeRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pairedOk = allowedFailures.every((f) => {
+    if (!f.testName || !f.assertionMarker) return false;
+    const re = new RegExp(
+      `^# FAIL ${escapeRe(f.testName)}\\n[\\s\\S]{0,500}?${escapeRe(f.assertionMarker)}`,
+      "m"
+    );
+    return re.test(log);
+  });
+
+  const markersComplete = markersFound.length === allowedMarkers.length && allowedMarkers.length > 0;
   const hasCrossLeagueFail =
     uniqueFailed.includes("tests/crossLeagueCareer.test.mjs") ||
-    /FAIL loan accept\/refuse\/return/.test(log);
+    /FAIL loan accept\/refuse\/return/.test(log) ||
+    failedTests.some((t) => /loan accept\/refuse\/return/.test(t));
+
+  let reason = "ok";
+  if (!onlyAllowedFiles) {
+    reason = uniqueFailed.length === 0 ? "no-failed-files-parsed" : "unexpected-failed-files";
+  } else if (hasCrossLeagueFail) {
+    reason = "cross-league-failure";
+  } else if (!markersComplete) {
+    reason = "missing-allowed-assertion-markers";
+  } else if (!exactFailSet) {
+    reason =
+      unexpectedFails.length > 0
+        ? "unexpected-failed-assertions"
+        : missingFails.length > 0
+          ? "missing-allowed-failed-assertions"
+          : duplicateFails.length > 0
+            ? "duplicate-failed-assertions"
+            : "failed-assertion-set-mismatch";
+  } else if (!pairedOk) {
+    reason = "allowed-failure-marker-pairing-mismatch";
+  }
+
   return {
-    ok: onlyAllowedFiles && markersComplete && !hasCrossLeagueFail,
-    reason: onlyAllowedFiles
-      ? markersComplete
-        ? hasCrossLeagueFail
-          ? "cross-league-failure"
-          : "ok"
-        : "missing-allowed-assertion-markers"
-      : uniqueFailed.length === 0
-        ? "no-failed-files-parsed"
-        : "unexpected-failed-files",
+    ok: onlyAllowedFiles && markersComplete && exactFailSet && pairedOk && !hasCrossLeagueFail,
+    reason,
     failedFiles: uniqueFailed,
+    failedTests,
+    unexpectedFails,
+    missingFails,
+    duplicateFails,
     markersFound,
   };
 }
@@ -315,6 +398,7 @@ const manifest = {
     browser: "node scripts/browserEarnedContinentalQualificationChecklist.mjs",
     paired: "node scripts/exportFix09PairedControls.mjs",
     fullSuite: "node --test tests/*.mjs",
+    fullSuiteClassifier: "node --test tests/fix09FullSuiteAllowance.test.mjs",
   },
 };
 writeFileSync(join(PKG, "manifest.json"), JSON.stringify(manifest, null, 2));
@@ -334,12 +418,10 @@ writeFileSync(
 - QA tested source: \`${testedSha || "(missing)"}\`
 - Remote: \`${manifest.remoteSha || "(push required)"}\`
 
-## ReReview repairs (6f2c43e follow-up)
+## ReReview repairs (317129f follow-up)
 
-- Loan lifecycle fixture: affordable purchase positive + unaffordable refusal negative
-- F15 paired scores: committed \`world.matches\` evidence + corruption negative
-- Full-suite ready gate: only the exact \`playerAbility\` assertion identities
-- Preserved: canonical participants, paired RNG, B06 finance/decision equality
+- Full-suite classifier: exact FAIL test/assertion set (rejects extras inside \`playerAbility\`)
+- Preserved: affordable loan purchase, F15 committed scores, canonical participants, paired RNG, B06 finance/decision equality
 
 ## Replay
 
