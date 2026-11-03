@@ -1,6 +1,6 @@
 {
   "baseSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "finalSha": "0d7664ca5a1abff9f12e7a7e238fce4c3e92d5c1",
+  "finalSha": "debd143cc53116cebff5682fa514a4b46feb256a",
   "adapter": "exportFix09PairedControls worktree base + tip worker",
   "controls": [
     {
@@ -8,8 +8,8 @@
       "inputHash": "ac963e3128ece73d3a78b00909488ca9f1d343db79a621ec1733ed821558eef5",
       "pass": true,
       "invariant": "DNQ Brentford cannot inherit Arsenal first-place/CL",
-      "baseRng": 3373663684,
-      "currentRng": 2011218834,
+      "baseRng": 3267677010,
+      "currentRng": 2526233093,
       "observationsEqual": false,
       "baseFailedInvariant": true
     },
@@ -18,8 +18,8 @@
       "inputHash": "b5ee923888082820dbdbe4d94cd168cb56bd746abec225edfd2892c468ef8df6",
       "pass": true,
       "invariant": "Qualified destination grants Champions League",
-      "baseRng": 1294212810,
-      "currentRng": 1979478882,
+      "baseRng": 3315994444,
+      "currentRng": 2665581711,
       "observationsEqual": false,
       "baseFailedInvariant": false
     },
@@ -28,8 +28,8 @@
       "inputHash": "54b7a66f3c2d0d03732f1c246b70ecbd0ce88a4fcc449492a789a14cf8db1450",
       "pass": true,
       "invariant": "High OVR cannot override known DNQ history",
-      "baseRng": 3439102901,
-      "currentRng": 4110663436,
+      "baseRng": 2741731583,
+      "currentRng": 3996113006,
       "observationsEqual": false,
       "baseFailedInvariant": false
     },
@@ -38,8 +38,8 @@
       "inputHash": "0c98b5b1c356986dd53b7d5d28e6cc183de32d59395f53ad55bebcec7e6e1ec1",
       "pass": true,
       "invariant": "Incomplete/stale evidence unresolved without mutation",
-      "baseRng": 3461161068,
-      "currentRng": 3460542850,
+      "baseRng": 2319247372,
+      "currentRng": 3917327946,
       "observationsEqual": false,
       "baseFailedInvariant": true
     },
@@ -48,8 +48,8 @@
       "inputHash": "18918dce15b254fb226bfaccd14e731d7f73c610874143b3560692aeeceb723b",
       "pass": true,
       "invariant": "Invalid ranks/conflicting labels rejected; legacy numeric ok",
-      "baseRng": 4249818916,
-      "currentRng": 886495095,
+      "baseRng": 2125036669,
+      "currentRng": 4127950760,
       "observationsEqual": false,
       "baseFailedInvariant": true
     },
@@ -58,8 +58,8 @@
       "inputHash": "3359f9bdb98c56434007266cbfcc04a25e6834ceca0467f21129276642c82692",
       "pass": true,
       "invariant": "Soft refocus after committed MD1 preserves field/fixtures and registration gate",
-      "baseRng": 2134654553,
-      "currentRng": 3860473695,
+      "baseRng": 283453804,
+      "currentRng": 2720076915,
       "observationsEqual": false,
       "baseFailedInvariant": true
     }

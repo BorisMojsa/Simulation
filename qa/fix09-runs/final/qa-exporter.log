@@ -3,5 +3,5 @@
   "cohortPeriods": 42,
   "requiredPeriods": 42,
   "oracleViolations": 0,
-  "corruptionControlsPass": false
+  "corruptionControlsPass": true
 }
