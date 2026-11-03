@@ -360,7 +360,7 @@ walk(PKG, (p) => {
 sumLines.sort((a, b) => a.slice(66).localeCompare(b.slice(66)));
 writeFileSync(join(PKG, "SHA256SUMS.txt"), sumLines.join("\n") + "\n");
 
-sh("zip", ["-qr", ZIP, PKG_NAME], { cwd: DESK });
+sh("zip", ["-qr", ZIP, PKG_NAME], { cwd: OUT_ROOT });
 const zipHash = sha256File(ZIP);
 
 const v = spawnSync("node", [join(PKG, "verify-package.mjs")], { encoding: "utf8" });
