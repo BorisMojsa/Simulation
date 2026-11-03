@@ -218,6 +218,27 @@ const remote = spawnSync(
   { cwd: ROOT, encoding: "utf8" }
 ).stdout.trim();
 writeFileSync(join(PKG, "git/remote-sha.txt"), remote + "\n");
+writeFileSync(join(PKG, "changes/remote-head.txt"), remote + "\n");
+writeFileSync(
+  join(PKG, "source-omissions.json"),
+  JSON.stringify(
+    {
+      omitted: [
+        {
+          path: "qa/fix*-runs bulk historical artifacts",
+          reason: "Unrelated predecessor bulk evidence kept out of Fix 10 package size budget",
+        },
+        {
+          path: "node_modules / .git",
+          reason: "Excluded by policy",
+        },
+      ],
+      note: "Required Fix 10 fixtures and browser evidence are included under qa/",
+    },
+    null,
+    2
+  )
+);
 
 const manifest = {
   package: PKG_NAME,
@@ -351,6 +372,7 @@ walk(PKG, (p) => {
 });
 sumLines.sort((a, b) => a.slice(66).localeCompare(b.slice(66)));
 writeFileSync(join(PKG, "SHA256SUMS.txt"), sumLines.join("\n") + "\n");
+writeFileSync(join(PKG, "checksums.sha256"), sumLines.join("\n") + "\n");
 
 sh("zip", ["-qr", ZIP, PKG_NAME], { cwd: OUT_ROOT });
 const zipHash = sha256File(ZIP);
