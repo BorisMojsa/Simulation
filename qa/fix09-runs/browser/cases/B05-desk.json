@@ -6,15 +6,15 @@
     "rating": 82,
     "contractStatus": "active",
     "employmentClubId": "club:england:arsenal",
-    "playingClubId": "club:spain:espanyol",
+    "playingClubId": "club:ecuador:orense",
     "club": {
-      "name": "Espanyol",
-      "clubId": "club:spain:espanyol",
-      "league": "Spain - La Liga"
+      "name": "Orense",
+      "clubId": "club:ecuador:orense",
+      "league": "Ecuador - LigaPro Serie A"
     },
     "seasons": [
       {
-        "minutes": 1100,
+        "minutes": 1102,
         "europe": {
           "competition": "Champions League",
           "qualified": true,
@@ -27,18 +27,18 @@
       }
     ],
     "latestStanding": {
-      "leagueId": "league:spain-la-liga",
+      "leagueId": "league:ecuador-ligapro-serie-a",
       "seasonId": "season-1",
-      "playerRowClubId": "club:spain:espanyol",
-      "playerRowPosition": 17
+      "playerRowClubId": "club:ecuador:orense",
+      "playerRowPosition": 8
     }
   },
   "qualification": {
     "age": 23,
     "seasons": 1,
-    "club": "Espanyol",
+    "club": "Orense",
     "employmentClubId": "club:england:arsenal",
-    "playingClubId": "club:spain:espanyol",
+    "playingClubId": "club:ecuador:orense",
     "contractStatus": "active",
     "rating": 82,
     "europe": {
@@ -143,24 +143,22 @@
     "club:club:england:nottingham-forest::target:2026",
     "club:club:england:sunderland::target:2026",
     "club:club:england:tottenham-hotspur::target:2026",
-    "domestic:league:spain-la-liga::2026",
-    "club:club:spain:fc-barcelona::target:2027",
-    "club:club:spain:real-madrid::target:2027",
-    "club:club:spain:atletico-madrid::target:2027",
-    "club:club:spain:valencia::target:2027",
-    "club:club:spain:sevilla::target:2027",
-    "club:club:spain:real-betis::target:2027",
-    "club:club:spain:osasuna::target:2027",
-    "club:club:spain:celta-vigo::target:2027",
-    "club:club:spain:real-sociedad::target:2027",
-    "club:club:spain:villarreal::target:2027",
-    "club:club:spain:elche::target:2027",
-    "club:club:spain:athletic-bilbao::target:2027",
-    "club:club:spain:deportivo-de-la-coruna::target:2027",
-    "club:club:spain:racing-santander::target:2027",
-    "club:club:spain:rayo-vallecano::target:2027",
-    "club:club:spain:levante::target:2027",
-    "club:club:spain:espanyol::target:2027",
-    "club:club:spain:malaga::target:2027"
+    "domestic:league:ecuador-ligapro-serie-a::2026",
+    "club:club:ecuador:independiente-del-valle::target:2027",
+    "club:club:ecuador:universidad-catolica::target:2027",
+    "club:club:ecuador:ldu-quito::target:2027",
+    "club:club:ecuador:barcelona-sc::target:2027",
+    "club:club:ecuador:leones::target:2027",
+    "club:club:ecuador:aucas::target:2027",
+    "club:club:ecuador:mushuc-runa::target:2027",
+    "club:club:ecuador:orense::target:2027",
+    "club:club:ecuador:macara::target:2027",
+    "club:club:ecuador:libertad::target:2027",
+    "club:club:ecuador:emelec::target:2027",
+    "club:club:ecuador:guayaquil-city::target:2027",
+    "club:club:ecuador:deportivo-cuenca::target:2027",
+    "club:club:ecuador:delfin::target:2027",
+    "club:club:ecuador:manta::target:2027",
+    "club:club:ecuador:tecnico-universitario::target:2027"
   ]
 }

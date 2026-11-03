@@ -535,11 +535,31 @@ export function validateEarnedPeriodOracle({
             observed: found.seasonYear,
           };
         }
-        const worldField = found.field || found.clubs || null;
-        if (Array.isArray(worldField) && worldField.length) {
-          const inWorldField = worldField.some((p) => (p.clubId || p) === clubId);
-          if (!inWorldField) {
-            return { ok: false, reason: "participant-missing-from-world-edition", clubId };
+        // Competition-store schema: participants + lifecycle.field. Also accept
+        // legacy top-level field/clubs when present. Do not silently skip when
+        // worldEditions was supplied but the stored edition has no member lists.
+        const canonicalSets = [
+          ["participants", found.participants],
+          ["lifecycle.field", found.lifecycle?.field],
+          ["field", found.field],
+          ["clubs", found.clubs],
+        ].filter(([, list]) => Array.isArray(list) && list.length > 0);
+        if (!canonicalSets.length) {
+          return {
+            ok: false,
+            reason: "missing-canonical-participants",
+            europeEditionId,
+          };
+        }
+        for (const [label, list] of canonicalSets) {
+          const inSet = list.some((p) => (p?.clubId || p) === clubId);
+          if (!inSet) {
+            return {
+              ok: false,
+              reason: "participant-missing-from-world-edition",
+              clubId,
+              source: label,
+            };
           }
         }
       }
@@ -1075,6 +1095,80 @@ function runCorruptionControls() {
       requireParticipants: true,
     }),
   ];
+  // Canonical participant deletion: campaign projection still lists Arsenal, but
+  // world.editions participants + lifecycle.field do not — must fail.
+  const canonicalEdition = {
+    editionId: "2026-uefa-champions-league",
+    seasonYear: 2026,
+    competitionId: "uefa-champions-league",
+    participants: [{ clubId: arsenal }, { clubId: brentford }],
+    lifecycle: { field: [{ clubId: arsenal }, { clubId: brentford }] },
+  };
+  const deletedCanonical = {
+    ...canonicalEdition,
+    participants: canonicalEdition.participants.filter((p) => (p.clubId || p) !== arsenal),
+    lifecycle: {
+      field: canonicalEdition.lifecycle.field.filter((p) => (p.clubId || p) !== arsenal),
+    },
+  };
+  const canonicalPositive = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: goodDecision,
+    edition: { ...goodEdition, provenance: "legacy-migrated", sourceResults: [], matchEvidenceIds: [] },
+    participants: [{ clubId: arsenal }],
+    europeCompetition: "Champions League",
+    europeEditionId: "2026-uefa-champions-league",
+    europeCompetitionId: "uefa-champions-league",
+    europeSeasonYear: 2026,
+    worldEditions: new Map([["uefa-champions-league::2026-uefa-champions-league", canonicalEdition]]),
+    mode: "target-participation",
+    requireParticipants: true,
+  });
+  const canonicalDeletion = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: goodDecision,
+    edition: { ...goodEdition, provenance: "legacy-migrated", sourceResults: [], matchEvidenceIds: [] },
+    participants: [{ clubId: arsenal }],
+    europeCompetition: "Champions League",
+    europeEditionId: "2026-uefa-champions-league",
+    europeCompetitionId: "uefa-champions-league",
+    europeSeasonYear: 2026,
+    worldEditions: new Map([["uefa-champions-league::2026-uefa-champions-league", deletedCanonical]]),
+    mode: "target-participation",
+    requireParticipants: true,
+  });
+  const emptyCanonical = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: goodDecision,
+    edition: { ...goodEdition, provenance: "legacy-migrated", sourceResults: [], matchEvidenceIds: [] },
+    participants: [{ clubId: arsenal }],
+    europeCompetition: "Champions League",
+    europeEditionId: "2026-uefa-champions-league",
+    europeCompetitionId: "uefa-champions-league",
+    europeSeasonYear: 2026,
+    worldEditions: new Map([
+      [
+        "uefa-champions-league::2026-uefa-champions-league",
+        {
+          editionId: "2026-uefa-champions-league",
+          seasonYear: 2026,
+          competitionId: "uefa-champions-league",
+        },
+      ],
+    ]),
+    mode: "target-participation",
+    requireParticipants: true,
+  });
+  cases.push(canonicalDeletion, emptyCanonical);
   const negativesOk = cases.every((c) => c.ok === false);
   const completeOk = validateEarnedPeriodOracle({
     league,
@@ -1097,21 +1191,20 @@ function runCorruptionControls() {
     europeEditionId: "2026-uefa-champions-league",
     europeCompetitionId: "uefa-champions-league",
     europeSeasonYear: 2026,
-    worldEditions: new Map([
-      [
-        "uefa-champions-league::2026-uefa-champions-league",
-        {
-          editionId: "2026-uefa-champions-league",
-          seasonYear: 2026,
-          competitionId: "uefa-champions-league",
-          field: [{ clubId: arsenal }],
-        },
-      ],
-    ]),
+    worldEditions: new Map([["uefa-champions-league::2026-uefa-champions-league", canonicalEdition]]),
     mode: "target-participation",
     requireParticipants: true,
   });
-  return negativesOk && completeOk.ok === true && campaignOk.ok === true;
+  return (
+    negativesOk &&
+    completeOk.ok === true &&
+    campaignOk.ok === true &&
+    canonicalPositive.ok === true &&
+    canonicalDeletion.ok === false &&
+    canonicalDeletion.reason === "participant-missing-from-world-edition" &&
+    emptyCanonical.ok === false &&
+    emptyCanonical.reason === "missing-canonical-participants"
+  );
 }
 
 async function main() {

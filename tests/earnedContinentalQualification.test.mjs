@@ -1231,4 +1231,56 @@ test("F25: exporter validation path fails on missing/wrong evidence", async () =
     mode: "source-complete",
   });
   assert.equal(ok.ok, true);
+
+  // Canonical world.editions participants + lifecycle.field must be checked.
+  const worldCanon = {
+    editionId: "2026-uefa-champions-league",
+    seasonYear: 2026,
+    competitionId: "uefa-champions-league",
+    participants: [{ clubId: arsenal.clubId }, { clubId: brentford.clubId }],
+    lifecycle: { field: [{ clubId: arsenal.clubId }, { clubId: brentford.clubId }] },
+  };
+  const canonOk = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: { ...ed, provenance: "legacy-migrated", sourceResults: [], matchEvidenceIds: [] },
+    participants: [{ clubId: arsenal.clubId }],
+    europeCompetition: "Champions League",
+    europeEditionId: "2026-uefa-champions-league",
+    europeCompetitionId: "uefa-champions-league",
+    europeSeasonYear: 2026,
+    worldEditions: new Map([["uefa-champions-league::2026-uefa-champions-league", worldCanon]]),
+    mode: "target-participation",
+    requireParticipants: true,
+  });
+  assert.equal(canonOk.ok, true);
+
+  const deleted = {
+    ...worldCanon,
+    participants: worldCanon.participants.filter((p) => (p.clubId || p) !== arsenal.clubId),
+    lifecycle: {
+      field: worldCanon.lifecycle.field.filter((p) => (p.clubId || p) !== arsenal.clubId),
+    },
+  };
+  const canonDeleted = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: { ...ed, provenance: "legacy-migrated", sourceResults: [], matchEvidenceIds: [] },
+    participants: [{ clubId: arsenal.clubId }],
+    europeCompetition: "Champions League",
+    europeEditionId: "2026-uefa-champions-league",
+    europeCompetitionId: "uefa-champions-league",
+    europeSeasonYear: 2026,
+    worldEditions: new Map([["uefa-champions-league::2026-uefa-champions-league", deleted]]),
+    mode: "target-participation",
+    requireParticipants: true,
+  });
+  assert.equal(canonDeleted.ok, false);
+  assert.equal(canonDeleted.reason, "participant-missing-from-world-edition");
 });

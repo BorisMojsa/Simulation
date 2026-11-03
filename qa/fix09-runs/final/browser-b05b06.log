@@ -1,0 +1,16 @@
+[browser] start B05
+[browser] pass B05 7114ms
+[browser] start B06
+[browser] pass B06 38371ms
+{
+  "out": "/Users/mojsa/Desktop/Simulation/.worktrees/fix09/qa/fix09-runs/browser/browser-report.json",
+  "ok": false,
+  "selectedOk": true,
+  "subsetOnly": true,
+  "blocked": false,
+  "base": "http://127.0.0.1:56085",
+  "cases": {
+    "B05": true,
+    "B06": true
+  }
+}

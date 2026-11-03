@@ -1,15 +1,22 @@
 {
   "id": "F01",
-  "inputHash": "ac963e3128ece73d3a78b00909488ca9f1d343db79a621ec1733ed821558eef5",
+  "inputHash": "73968704aa6632e39db913547f6ba1b01446248ffe7b1747a6eac80af9bb4a4d",
   "inputPath": "inputs/F01.json",
   "baseSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "finalSha": "debd143cc53116cebff5682fa514a4b46feb256a",
+  "finalSha": "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118",
   "invariant": "DNQ Brentford cannot inherit Arsenal first-place/CL",
+  "expectedRngAfterRestore": 101,
   "base": {
     "side": "base",
     "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-    "rngAfterRestore": 3267677010,
-    "rngAfterRun": 3718596186,
+    "rngAfterRestore": 101,
+    "expectedRngAfterRestore": 101,
+    "rngMatchesExpected": true,
+    "rngAfterRun": 450919277,
+    "clubFinanceKeys": [
+      "club:england:brentford|2026"
+    ],
+    "inputHash": "73968704aa6632e39db913547f6ba1b01446248ffe7b1747a6eac80af9bb4a4d",
     "result": {
       "standing": {
         "position": 1,
@@ -20,27 +27,35 @@
       "decisionStatus": null,
       "decisionCompetition": null,
       "decisionPosition": 1,
-      "adapter": "base-latestStanding-inherit"
+      "staleArsenalRowPosition": 1,
+      "staleArsenalRowClubId": "club:england:arsenal",
+      "adapter": "base-latestStanding-shared-player"
     }
   },
   "current": {
     "side": "final",
-    "sourceSha": "debd143cc53116cebff5682fa514a4b46feb256a",
-    "rngAfterRestore": 2526233093,
-    "rngAfterRun": 2526233093,
+    "sourceSha": "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118",
+    "rngAfterRestore": 101,
+    "expectedRngAfterRestore": 101,
+    "rngMatchesExpected": true,
+    "rngAfterRun": 101,
     "clubFinanceKeys": [
       "club:england:brentford|2026"
     ],
+    "inputHash": "73968704aa6632e39db913547f6ba1b01446248ffe7b1747a6eac80af9bb4a4d",
     "result": {
       "standing": null,
       "editionCompetition": null,
       "eligibleCount": 0,
       "decisionStatus": "not-qualified",
       "decisionCompetition": null,
-      "decisionPosition": 17
+      "decisionPosition": 17,
+      "staleArsenalRowPosition": 1,
+      "staleArsenalRowClubId": "club:england:arsenal"
     }
   },
   "pass": true,
+  "rngGate": true,
   "baseFailedInvariant": true,
   "observationsEqual": false
 }

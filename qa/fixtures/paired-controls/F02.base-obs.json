@@ -1,12 +1,18 @@
 {
   "side": "base",
   "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "rngAfterRestore": 3315994444,
-  "rngAfterRun": 3315994444,
+  "rngAfterRestore": 102,
+  "expectedRngAfterRestore": 102,
+  "rngMatchesExpected": true,
+  "rngAfterRun": 102,
+  "clubFinanceKeys": [
+    "club:england:arsenal|2026"
+  ],
+  "inputHash": "4f696b06580c3c83ee789f78f6129226b3c693e59a1ee87e5a3120b045ec8083",
   "result": {
     "status": "qualified",
     "competition": "Champions League",
     "position": 1,
-    "adapter": "base-latestStanding"
+    "adapter": "base-latestStanding-shared-player"
   }
 }

@@ -1,17 +1,22 @@
 {
   "side": "final",
-  "sourceSha": "debd143cc53116cebff5682fa514a4b46feb256a",
-  "rngAfterRestore": 2526233093,
-  "rngAfterRun": 2526233093,
+  "sourceSha": "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118",
+  "rngAfterRestore": 101,
+  "expectedRngAfterRestore": 101,
+  "rngMatchesExpected": true,
+  "rngAfterRun": 101,
   "clubFinanceKeys": [
     "club:england:brentford|2026"
   ],
+  "inputHash": "73968704aa6632e39db913547f6ba1b01446248ffe7b1747a6eac80af9bb4a4d",
   "result": {
     "standing": null,
     "editionCompetition": null,
     "eligibleCount": 0,
     "decisionStatus": "not-qualified",
     "decisionCompetition": null,
-    "decisionPosition": 17
+    "decisionPosition": 17,
+    "staleArsenalRowPosition": 1,
+    "staleArsenalRowClubId": "club:england:arsenal"
   }
 }

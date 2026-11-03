@@ -24,13 +24,14 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHORT = spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const FULL = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const BASE = "984495e4c12df0c2dd1c84d124bc4cb743a0f63e";
-const PREV_TIP = "0d7664ca5a1abff9f12e7a7e238fce4c3e92d5c1";
+const PREV_TIP = "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118";
 const FIRST_REVIEWED_TIP = "b874040211c82e8f4aafebdbde28df447112e228";
 const PRIOR_REREVIEW_TIP = "1203cfe4ce8d5b5f619e3e8654611041d51363fd";
-const DESK = join(homedir(), "Desktop");
+// Prefer roomy temp/Downloads over Desktop when free space is tight.
+const OUT_ROOT = process.env.FIX09_REVIEW_OUT || join(homedir(), "Downloads");
 const PKG_NAME = `09-Earned-Continental-Qualification-ReReview-${SHORT}`;
-const PKG = join(DESK, PKG_NAME);
-const ZIP = join(DESK, `${PKG_NAME}.zip`);
+const PKG = join(OUT_ROOT, PKG_NAME);
+const ZIP = join(OUT_ROOT, `${PKG_NAME}.zip`);
 if (existsSync(PKG) || existsSync(ZIP)) {
   throw new Error(`Refusing to overwrite existing review package/ZIP: ${PKG_NAME}`);
 }

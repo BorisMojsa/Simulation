@@ -14,9 +14,7 @@ import {
 } from "./clubFinance.js";
 import { roundFee } from "./playerValuation.js";
 import { CONTRACT_RULES, SQUAD_REVIEW } from "../config/recruitmentConfig.js";
-
-const LOAN_DEST_MIN_SHARE = SQUAD_REVIEW.loanDestinationMinMinutesShare;
-const LOAN_MIN_IMPROVEMENT = SQUAD_REVIEW.loanMinutesImprovement;
+import { getWorldState } from "./worldState.js";
 import { resolveMoveRegistration } from "./destinationSchedule.js";
 import {
   ensureContractAuthority,
@@ -25,6 +23,9 @@ import {
   completedSeasons,
 } from "./contractLifecycle.js";
 import { recordPlayingTransition, ensurePlayingStints } from "./playingRegistration.js";
+
+const LOAN_DEST_MIN_SHARE = SQUAD_REVIEW.loanDestinationMinMinutesShare;
+const LOAN_MIN_IMPROVEMENT = SQUAD_REVIEW.loanMinutesImprovement;
 
 function settleLoanSlotsAndWages(player, loan, sk, mode = "return") {
   if (!loan || loan.settledFinance) return { ok: true, duplicate: true };
@@ -144,12 +145,16 @@ export function generateLoanOffers(player, opts = {}) {
   const careerId = player.careerId || player.name;
   const rng = opts.rng || createStreamRng(careerId, `loans:${seasonKey(player)}`);
   const clubs = opts.clubs || allSeniorClubs();
+  // Ignore in-memory scoutingEvidence so live careers and snapshot restores
+  // cannot diverge from cache fill-order; assessments recompute from stream RNG.
   const eligible = findEligibleClubs(player, clubs, {
     seasonIndex: player.seasons?.length ?? 0,
     careerId,
     preferLowerDivisions: true,
     relaxedDevelopment: true,
     dealType: "loan",
+    persist: false,
+    worldState: opts.worldState || getWorldState(),
   }).filter((c) => c.club.clubId !== player.club.clubId);
 
   // Prefer destinations projecting more minutes than current club.
@@ -200,7 +205,9 @@ export function generateLoanOffers(player, opts = {}) {
         return false;
       }
       return true;
-    });
+    })
+    // Stable order so equal-weight pools sample identically across restores.
+    .sort((a, b) => String(a.club.clubId).localeCompare(String(b.club.clubId)));
 
   // Keep weighted sampling among destinations that already pass the gates so
   // ordinary and development paths remain deterministic under the same RNG.

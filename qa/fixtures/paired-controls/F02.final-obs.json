@@ -1,11 +1,14 @@
 {
   "side": "final",
-  "sourceSha": "debd143cc53116cebff5682fa514a4b46feb256a",
-  "rngAfterRestore": 2665581711,
-  "rngAfterRun": 2665581711,
+  "sourceSha": "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118",
+  "rngAfterRestore": 102,
+  "expectedRngAfterRestore": 102,
+  "rngMatchesExpected": true,
+  "rngAfterRun": 102,
   "clubFinanceKeys": [
-    "club:england:brentford|2026"
+    "club:england:arsenal|2026"
   ],
+  "inputHash": "4f696b06580c3c83ee789f78f6129226b3c693e59a1ee87e5a3120b045ec8083",
   "result": {
     "status": "qualified",
     "competition": "Champions League",

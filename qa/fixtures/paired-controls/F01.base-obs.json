@@ -1,8 +1,14 @@
 {
   "side": "base",
   "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "rngAfterRestore": 3267677010,
-  "rngAfterRun": 3718596186,
+  "rngAfterRestore": 101,
+  "expectedRngAfterRestore": 101,
+  "rngMatchesExpected": true,
+  "rngAfterRun": 450919277,
+  "clubFinanceKeys": [
+    "club:england:brentford|2026"
+  ],
+  "inputHash": "73968704aa6632e39db913547f6ba1b01446248ffe7b1747a6eac80af9bb4a4d",
   "result": {
     "standing": {
       "position": 1,
@@ -13,6 +19,8 @@
     "decisionStatus": null,
     "decisionCompetition": null,
     "decisionPosition": 1,
-    "adapter": "base-latestStanding-inherit"
+    "staleArsenalRowPosition": 1,
+    "staleArsenalRowClubId": "club:england:arsenal",
+    "adapter": "base-latestStanding-shared-player"
   }
 }

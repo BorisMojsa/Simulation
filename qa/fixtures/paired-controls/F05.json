@@ -1,29 +1,41 @@
 {
   "id": "F05",
-  "inputHash": "0c98b5b1c356986dd53b7d5d28e6cc183de32d59395f53ad55bebcec7e6e1ec1",
+  "inputHash": "a01d3a0b2fb4a3580834bd8b2adfe35543e4c0f6c9b826c43d88bde2d99bb0aa",
   "inputPath": "inputs/F05.json",
   "baseSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "finalSha": "debd143cc53116cebff5682fa514a4b46feb256a",
+  "finalSha": "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118",
   "invariant": "Incomplete/stale evidence unresolved without mutation",
+  "expectedRngAfterRestore": 105,
   "base": {
     "side": "base",
     "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-    "rngAfterRestore": 2319247372,
-    "rngAfterRun": 2319247372,
+    "rngAfterRestore": 105,
+    "expectedRngAfterRestore": 105,
+    "rngMatchesExpected": true,
+    "rngAfterRun": 105,
+    "clubFinanceKeys": [
+      "club:england:arsenal|2026"
+    ],
+    "inputHash": "a01d3a0b2fb4a3580834bd8b2adfe35543e4c0f6c9b826c43d88bde2d99bb0aa",
     "result": {
       "staleStatus": "qualified",
       "okStatus": "qualified",
       "okCompetition": "Champions League",
       "sourceYearFor2026": 2025,
-      "adapter": "base-no-edition-registry"
+      "adapter": "base-latestStanding-year-switch"
     }
   },
   "current": {
     "side": "final",
-    "sourceSha": "debd143cc53116cebff5682fa514a4b46feb256a",
-    "rngAfterRestore": 3917327946,
-    "rngAfterRun": 3917327946,
-    "clubFinanceKeys": [],
+    "sourceSha": "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118",
+    "rngAfterRestore": 105,
+    "expectedRngAfterRestore": 105,
+    "rngMatchesExpected": true,
+    "rngAfterRun": 105,
+    "clubFinanceKeys": [
+      "club:england:arsenal|2026"
+    ],
+    "inputHash": "a01d3a0b2fb4a3580834bd8b2adfe35543e4c0f6c9b826c43d88bde2d99bb0aa",
     "result": {
       "staleStatus": "unresolved",
       "okStatus": "qualified",
@@ -32,6 +44,7 @@
     }
   },
   "pass": true,
+  "rngGate": true,
   "baseFailedInvariant": true,
   "observationsEqual": false
 }

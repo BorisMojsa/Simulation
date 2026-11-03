@@ -1,12 +1,18 @@
 {
   "side": "base",
   "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "rngAfterRestore": 2741731583,
-  "rngAfterRun": 2741731583,
+  "rngAfterRestore": 103,
+  "expectedRngAfterRestore": 103,
+  "rngMatchesExpected": true,
+  "rngAfterRun": 103,
+  "clubFinanceKeys": [
+    "club:england:brentford|2026"
+  ],
+  "inputHash": "7d53bca62ea9bcd0d5e13a1fadcc79115e23fb31b9d583b249ac4e5e3e434ece",
   "result": {
     "status": "qualified",
     "competition": null,
     "ovr": 95,
-    "adapter": "base-latestStanding-or-ovr"
+    "adapter": "base-latestStanding-shared-player"
   }
 }

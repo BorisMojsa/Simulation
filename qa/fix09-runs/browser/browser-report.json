@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-03T03:48:52.499Z",
-  "base": "http://127.0.0.1:55235",
+  "generatedAt": "2026-11-03T04:28:04.184Z",
+  "base": "http://127.0.0.1:56128",
   "cases": {
     "B01": {
       "ok": true,
@@ -777,7 +777,7 @@
       "ok": true,
       "editionPreserved": true,
       "moved": true,
-      "destination": "club:spain:espanyol",
+      "destination": "club:ecuador:orense",
       "europeAtDestination": {
         "competition": "Champions League",
         "qualified": true,
@@ -1064,9 +1064,9 @@
       "protectedCompare": {
         "worldEqual": true,
         "rngEqual": true,
-        "clubFinanceEqual": false,
+        "clubFinanceEqual": true,
         "pendingOffersEqual": true,
-        "pendingDecisionEqual": false,
+        "pendingDecisionEqual": true,
         "playingStintsEqual": true,
         "seasonsEqual": true,
         "qualificationEqual": true,

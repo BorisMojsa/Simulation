@@ -1654,7 +1654,9 @@ const cases = {
       placements: { 1: ARSENAL, 17: BRENTFORD },
     });
     await writeCase("B06-initial.json", slimEvidence(snap));
-    await restore(page, snap);
+    // Fresh page before the live branch so prior cases cannot leave module caches
+    // that a later freshRestore would wipe — otherwise live≠restored only in suite order.
+    await freshRestore(page, snap);
     const paused = await driveToMidSeasonPause(page, { seasonsBefore: 0, shotPrefix: "B06" });
     await writeCase("B06-before-continue.json", slimEvidence({ snapshot: paused.snapshot, debug: paused.debug, ui: paused.ui }));
     await writeFullSnapshot("B06-before-continue.full.json", paused.snapshot);
@@ -1793,9 +1795,6 @@ const cases = {
     assert(protectedCompare.playingStintsEqual, "B06 playingStints must match across branches");
     assert(protectedCompare.seasonsEqual, "B06 seasons evidence must match across branches");
     assert(protectedCompare.qualificationEqual, "B06 qualification maps must match across branches");
-    // Live-versus-restored can still diverge on post-season development-loan offer sampling
-    // (same Samsunspor/Trabzonspor-style split seen on prior tips). Dual-restore must remain
-    // fully equal; report the live market divergence instead of concealing it.
     const liveLoanClubs = (branchA.desk.player.pendingDecision?.loanOffers || []).map((o) => o.clubId || o.club);
     const restoredLoanClubs = (branchB.desk.player.pendingDecision?.loanOffers || []).map((o) => o.clubId || o.club);
     const marketDivergence = {
@@ -1812,16 +1811,12 @@ const cases = {
     };
     await writeCase("B06-live-market-divergence.json", marketDivergence);
     assert(dualEqual, "B06 dual-restore must keep finance/offers identical");
-    if (!protectedCompare.clubFinanceEqual || !protectedCompare.pendingDecisionEqual) {
-      assert(
-        liveLoanClubs.length > 0 && restoredLoanClubs.length > 0,
-        "live/restored market divergence must expose loan-offer samples",
-        marketDivergence
-      );
-    } else {
-      assert(protectedCompare.clubFinanceEqual, "B06 clubFinance must match across branches");
-      assert(protectedCompare.pendingDecisionEqual, "B06 pendingDecision must match across branches");
-    }
+    assert(protectedCompare.clubFinanceEqual, "B06 clubFinance must match across live/restored branches", marketDivergence);
+    assert(
+      protectedCompare.pendingDecisionEqual,
+      "B06 pendingDecision must match across live/restored branches",
+      marketDivergence
+    );
     assert(b.seasons === a.seasons && b.age === a.age, "branch seasons/age match", { a, b });
     assert(b.europe.competition === a.europe.competition, "branch Europe competition match", { a, b });
     assert(b.playingClubId === a.playingClubId, "branch playing club match", { a, b });

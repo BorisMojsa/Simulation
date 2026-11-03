@@ -1,8 +1,14 @@
 {
   "side": "base",
   "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "rngAfterRestore": 2125036669,
-  "rngAfterRun": 2125036669,
+  "rngAfterRestore": 110,
+  "expectedRngAfterRestore": 110,
+  "rngMatchesExpected": true,
+  "rngAfterRun": 110,
+  "clubFinanceKeys": [
+    "club:england:arsenal|2026"
+  ],
+  "inputHash": "64c8a2a8fed7cdc4ea6d0c91a59761ed43ffc3a7307494f58e816c079278bed7",
   "result": {
     "rejected": [
       {

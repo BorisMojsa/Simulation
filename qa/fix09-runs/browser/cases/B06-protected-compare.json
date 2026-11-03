@@ -2,9 +2,9 @@
   "protectedCompare": {
     "worldEqual": true,
     "rngEqual": true,
-    "clubFinanceEqual": false,
+    "clubFinanceEqual": true,
     "pendingOffersEqual": true,
-    "pendingDecisionEqual": false,
+    "pendingDecisionEqual": true,
     "playingStintsEqual": true,
     "seasonsEqual": true,
     "qualificationEqual": true,
@@ -18,23 +18,23 @@
   "pendingOffersA": [],
   "pendingOffersB": [],
   "ledgerKeysA": [
-    "club:colombia:atletico-bucaramanga|2026",
-    "club:colombia:cucuta-deportivo|2027",
-    "club:egypt:zamalek|2026",
     "club:england:arsenal|2026",
     "club:england:arsenal|2027",
-    "club:italy:parma|2027",
-    "club:turkey:samsunspor|2027",
-    "club:united-states:dc-united|2026"
+    "club:england:lincoln-city|2027",
+    "club:netherlands:go-ahead-eagles|2026",
+    "club:netherlands:nec|2027",
+    "club:saudi-arabia:al-taawoun|2027",
+    "club:south-korea:daegu-fc|2026",
+    "club:united-states:minnesota-united|2026"
   ],
   "ledgerKeysB": [
-    "club:colombia:atletico-bucaramanga|2026",
-    "club:colombia:deportivo-cali|2027",
-    "club:egypt:zamalek|2026",
     "club:england:arsenal|2026",
     "club:england:arsenal|2027",
-    "club:italy:udinese|2027",
-    "club:turkey:trabzonspor|2027",
-    "club:united-states:dc-united|2026"
+    "club:england:lincoln-city|2027",
+    "club:netherlands:go-ahead-eagles|2026",
+    "club:netherlands:nec|2027",
+    "club:saudi-arabia:al-taawoun|2027",
+    "club:south-korea:daegu-fc|2026",
+    "club:united-states:minnesota-united|2026"
   ]
 }

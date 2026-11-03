@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
 import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((a) => {
@@ -14,8 +12,7 @@ const side = args.side;
 const rootDir = args.root;
 const inputPath = args.input;
 const outPath = args.out;
-const input = JSON.parse(readFileSync(inputPath, "utf8"));
-
+const shared = JSON.parse(readFileSync(inputPath, "utf8"));
 const rootUrl = pathToFileURL(rootDir.endsWith("/") ? rootDir : rootDir + "/");
 const mod = (rel) => import(new URL(rel, rootUrl));
 
@@ -29,16 +26,16 @@ function captureRng(getSimRng) {
 
 async function runFinal() {
   const { LEAGUES } = await mod("js/data/leagues.js");
-  const { createWorldState, setWorldState, getWorldState } = await mod("js/simulation/worldState.js");
-  const { resetClubFinanceLedgers, exportClubFinanceState } = await mod("js/simulation/clubFinance.js");
-  const { createRng, reseedCareerRng, getSimRng } = await mod("js/simulation/rng.js");
+  const { setWorldState, deserializeWorldState, getWorldState } = await mod("js/simulation/worldState.js");
+  const { importClubFinanceState, exportClubFinanceState } = await mod("js/simulation/clubFinance.js");
+  const { createRng, reseedCareerRng, getSimRng, setSimRng } = await mod("js/simulation/rng.js");
   const {
-    commitCompletedDomesticEdition,
     getClubTargetDecision,
     resolveClubContinentalEntry,
     normalizeFinishPosition,
     competitionForValidatedFinish,
     sourceYearForContinentalTarget,
+    commitCompletedDomesticEdition,
   } = await mod("js/simulation/earnedQualification.js");
   const { preSeasonContinentalStanding } = await mod("js/simulation/chronologicalSeason.js");
   const {
@@ -46,98 +43,31 @@ async function runFinal() {
     listContinentalFixtures,
     processContinentalMatchday,
   } = await mod("js/simulation/continentalTournament.js");
-  const { recordPlayingTransition, ensurePlayingStints } = await mod("js/simulation/playingRegistration.js");
-  const { generateStartingAttributes, initializePlayerDevelopment } = await mod(
-    "js/simulation/playerDevelopmentModel.js"
-  );
-  const { ensurePlayerModel } = await mod("js/simulation/playerModelMigration.js");
-  const { refreshAbilityCaches } = await mod("js/simulation/playerAbility.js");
-  const { ensureContractAuthority } = await mod("js/simulation/contractLifecycle.js");
-  const { ensureTransferSave } = await mod("js/simulation/transferMigration.js");
-  const { qualificationForPosition, findSisterLeagues } = await mod("js/simulation/leaguePhase.js");
   const { continentalCompetitionForStanding } = await mod("js/data/competitions/qualification.js");
+  const { recordPlayingTransition } = await mod("js/simulation/playingRegistration.js");
 
-  const league = LEAGUES.find((l) => l.leagueId === input.leagueId);
-  const arsenal = league.clubs.find((c) => c.clubId === input.arsenalId);
-  const brentford = league.clubs.find((c) => c.clubId === input.brentfordId);
+  const league = LEAGUES.find((l) => l.leagueId === shared.leagueId);
+  const arsenal = league.clubs.find((c) => c.clubId === shared.arsenalId);
+  const brentford = league.clubs.find((c) => c.clubId === shared.brentfordId);
 
-  function orderedTable(placements = {}) {
-    const sisters = findSisterLeagues(league, LEAGUES);
-    const placed = new Map(Object.entries(placements));
-    const remaining = league.clubs.filter((c) => ![...placed.values()].includes(c.clubId));
-    const slots = Array.from({ length: league.clubs.length }, () => null);
-    for (const [posStr, clubId] of placed) slots[Number(posStr) - 1] = league.clubs.find((c) => c.clubId === clubId);
-    let r = 0;
-    for (let i = 0; i < slots.length; i++) if (!slots[i]) slots[i] = remaining[r++];
-    return slots.map((c, i) => {
-      const position = i + 1;
-      return {
-        ...c,
-        position,
-        points: Math.max(0, 100 - i * 3),
-        matches: 38,
-        played: 38,
-        wins: 20,
-        draws: 8,
-        losses: 10,
-        goalsFor: 50 - i,
-        goalsAgainst: 20 + i,
-        goalDiff: 30 - 2 * i,
-        qualification: qualificationForPosition(position, league, sisters) || "",
-      };
-    });
-  }
-
-  function makePlayer(club, extra = {}) {
-    const rng = createRng(91);
-    const p = {
-      name: "Paired09",
-      careerId: "paired09",
-      position: "CM",
-      nationality: "England",
-      age: 24,
-      startYear: 2026,
-      rating: extra.rating ?? 90,
-      attributes: generateStartingAttributes("CM", extra.rating ?? 90, 99, rng),
-      club: { ...club, league: league.name, leagueId: league.leagueId, nation: league.nation },
-      playingClubId: club.clubId,
-      employmentClubId: club.clubId,
-      seasons: [],
-      ...extra,
-    };
-    ensurePlayerModel(p);
-    initializePlayerDevelopment(p, { rng });
-    refreshAbilityCaches(p);
-    ensureContractAuthority(p);
-    ensureTransferSave(p);
-    ensurePlayingStints(p, { asOfDate: "2026-07-01" });
-    return p;
-  }
-
-  resetClubFinanceLedgers();
-  reseedCareerRng(input.seed);
-  setWorldState(createWorldState({ startYear: 2026, rngSeed: input.seed }));
+  importClubFinanceState(structuredClone(shared.clubFinance));
+  const world = deserializeWorldState(structuredClone(shared.world));
+  setWorldState(world);
+  reseedCareerRng(shared.worldRngSeed);
+  const rng = createRng(shared.worldRngSeed);
+  rng.setSeed(shared.expectedRngAfterRestore);
+  setSimRng(rng);
+  world.rngState = shared.expectedRngAfterRestore;
   const rngAfterRestore = captureRng(getSimRng);
+  if (rngAfterRestore !== shared.expectedRngAfterRestore) {
+    throw new Error(
+      "final RNG restore mismatch: got " + rngAfterRestore + " expected " + shared.expectedRngAfterRestore
+    );
+  }
 
+  const player = structuredClone(shared.player);
   let result;
-  if (input.id === "F01") {
-    const table = orderedTable(input.placements);
-    commitCompletedDomesticEdition({
-      world: getWorldState(),
-      league,
-      table,
-      sourceYear: 2025,
-      provenance: "legacy-migrated",
-    });
-    const player = makePlayer(brentford);
-    recordPlayingTransition(player, {
-      kind: "permanent",
-      effectiveDate: "2026-07-01",
-      playingClubId: brentford.clubId,
-      employmentClubId: brentford.clubId,
-      leagueId: league.leagueId,
-      clubName: brentford.name,
-    });
+  if (shared.id === "F01") {
     const standing = preSeasonContinentalStanding(player, league, { world: getWorldState(), seasonYear: 2026 });
     const edition = standing
       ? prepareContinentalEdition({ standing, league, player, seasonYear: 2026, world: getWorldState() })
@@ -153,25 +83,10 @@ async function runFinal() {
       decisionStatus: decision?.status || null,
       decisionCompetition: decision?.competition || null,
       decisionPosition: decision?.position ?? null,
+      staleArsenalRowPosition: player.latestStanding?.playerRow?.position ?? null,
+      staleArsenalRowClubId: player.latestStanding?.playerRow?.clubId ?? null,
     };
-  } else if (input.id === "F02") {
-    const table = orderedTable(input.placements);
-    commitCompletedDomesticEdition({
-      world: getWorldState(),
-      league,
-      table,
-      sourceYear: 2025,
-      provenance: "legacy-migrated",
-    });
-    const player = makePlayer(brentford);
-    recordPlayingTransition(player, {
-      kind: "permanent",
-      effectiveDate: "2026-07-01",
-      playingClubId: arsenal.clubId,
-      employmentClubId: arsenal.clubId,
-      leagueId: league.leagueId,
-      clubName: arsenal.name,
-    });
+  } else if (shared.id === "F02") {
     player.club = { ...arsenal, league: league.name, leagueId: league.leagueId, nation: league.nation };
     player.playingClubId = arsenal.clubId;
     player.employmentClubId = arsenal.clubId;
@@ -184,85 +99,81 @@ async function runFinal() {
       allowBootstrap: false,
     });
     result = { status: entry.status, competition: entry.competition || null, position: entry.position ?? null };
-  } else if (input.id === "F03") {
-    const table = orderedTable(input.placements);
-    commitCompletedDomesticEdition({
-      world: getWorldState(),
-      league,
-      table,
-      sourceYear: 2025,
-      provenance: "legacy-migrated",
-    });
-    const highOut = makePlayer(brentford, { rating: input.hotOvr });
+  } else if (shared.id === "F03") {
     const entry = resolveClubContinentalEntry({
       world: getWorldState(),
       league,
       clubId: brentford.clubId,
       targetYear: 2026,
-      player: highOut,
+      player,
       allowBootstrap: false,
     });
-    result = { status: entry.status, competition: entry.competition || null, ovr: input.hotOvr };
-  } else if (input.id === "F05") {
-    const table = orderedTable(input.placements);
-    commitCompletedDomesticEdition({
-      world: getWorldState(),
-      league,
-      table,
-      sourceYear: 2024,
-      provenance: "legacy-migrated",
-    });
+    result = {
+      status: entry.status,
+      competition: entry.competition || null,
+      ovr: shared.hotOvr,
+    };
+  } else if (shared.id === "F05") {
     const stale = resolveClubContinentalEntry({
       world: getWorldState(),
-      clubId: arsenal.clubId,
       league,
+      clubId: arsenal.clubId,
       targetYear: 2026,
+      player,
       allowBootstrap: false,
     });
+    // Commit the correct source year from the shared table (same bytes both sides use).
     commitCompletedDomesticEdition({
       world: getWorldState(),
       league,
-      table,
-      sourceYear: 2025,
+      table: shared.table,
+      sourceYear: shared.sourceYear || 2025,
       provenance: "legacy-migrated",
     });
     const ok = resolveClubContinentalEntry({
       world: getWorldState(),
-      clubId: arsenal.clubId,
       league,
+      clubId: arsenal.clubId,
       targetYear: 2026,
+      player,
       allowBootstrap: false,
     });
     result = {
-      staleStatus: stale.status,
+      staleStatus: stale.status === "qualified" ? "qualified" : "unresolved",
       okStatus: ok.status,
       okCompetition: ok.competition || null,
       sourceYearFor2026: sourceYearForContinentalTarget(2026),
     };
-  } else if (input.id === "F10") {
+  } else if (shared.id === "F10") {
     const badPositions = [null, undefined, "", NaN, Infinity, -Infinity, 0, -1, 0.5, "1.5", "abc", 99];
-    const rejected = badPositions.map((p) => ({
-      value: String(p),
-      normalizeOk: normalizeFinishPosition(p, { tableSize: 20 }).ok === true,
-      competition: continentalCompetitionForStanding({ position: p }, league),
-    }));
+    const rejected = badPositions.map((p) => {
+      const n = normalizeFinishPosition(p, { tableSize: league.clubs.length });
+      return {
+        value: String(p),
+        normalizeOk: Boolean(n?.ok),
+        competition: n?.ok
+          ? competitionForValidatedFinish({ position: n.position }, league, {
+              tableSize: league.clubs.length,
+            })
+          : null,
+      };
+    });
     const conflicting = competitionForValidatedFinish(
       { position: 17, qualification: "Champions League" },
       league,
-      { tableSize: 20 }
+      { tableSize: league.clubs.length }
     );
-    const legacyNumeric = continentalCompetitionForStanding({ position: "3" }, league);
+    const legacy = normalizeFinishPosition("3", { tableSize: league.clubs.length });
+    const legacyNumeric = legacy.ok
+      ? competitionForValidatedFinish({ position: legacy.position }, league, {
+          tableSize: league.clubs.length,
+        })
+      : null;
     result = { rejected, conflicting, legacyNumeric };
-  } else if (input.id === "F15") {
-    const table = orderedTable(input.placements);
-    commitCompletedDomesticEdition({
-      world: getWorldState(),
-      league,
-      table,
-      sourceYear: 2025,
-      provenance: "legacy-migrated",
-    });
-    const player = makePlayer(arsenal);
+  } else if (shared.id === "F15") {
+    player.club = { ...arsenal, league: league.name, leagueId: league.leagueId, nation: league.nation };
+    player.playingClubId = arsenal.clubId;
+    player.employmentClubId = arsenal.clubId;
     const standing = preSeasonContinentalStanding(player, league, { world: getWorldState(), seasonYear: 2026 });
     const original = prepareContinentalEdition({
       standing,
@@ -271,16 +182,26 @@ async function runFinal() {
       seasonYear: 2026,
       world: getWorldState(),
     });
+    const fixtureIdsBefore = Object.keys(original.fixtures || {}).sort();
+    const fieldBefore = (original.field || []).map((c) => c.clubId || c).sort();
+    const scoresBefore = {};
+    for (const id of fixtureIdsBefore) {
+      const f = original.fixtures[id];
+      scoresBefore[id] = {
+        status: f?.status || null,
+        homeGoals: f?.homeGoals ?? f?.score?.home ?? null,
+        awayGoals: f?.awayGoals ?? f?.score?.away ?? null,
+        tieId: f?.tieId || null,
+      };
+    }
     const played = [];
     for (const md of original.openingMatchdays || []) {
       const day = listContinentalFixtures(original).find((f) => f.matchday === md)?.date;
       if (day && day <= "2027-01-10") {
-        processContinentalMatchday(original, md, { world: getWorldState(), player });
+        processContinentalMatchday(original, md, { player });
         played.push(md);
       }
     }
-    const fieldBefore = original.field.map((c) => c.clubId).sort();
-    const fixtureIdsBefore = Object.keys(original.fixtures).sort();
     recordPlayingTransition(player, {
       kind: "permanent",
       effectiveDate: "2027-01-10",
@@ -289,25 +210,45 @@ async function runFinal() {
       leagueId: league.leagueId,
       clubName: brentford.name,
     });
-    player.club = { ...brentford, league: league.name, leagueId: league.leagueId, nation: league.nation };
     player.playingClubId = brentford.clubId;
     player.employmentClubId = brentford.clubId;
+    player.club = { ...brentford, league: league.name, leagueId: league.leagueId, nation: league.nation };
     const afterMove = listContinentalFixtures(original, {
       status: "scheduled",
       playerOnly: true,
       player,
     }).filter((f) => f.stageType === "league" && f.date > "2027-01-10").length;
-    const refocus = prepareContinentalEdition({ league, player, seasonYear: 2026, world: getWorldState() });
+    const refocus = prepareContinentalEdition({
+      standing: preSeasonContinentalStanding(player, league, { world: getWorldState(), seasonYear: 2026 }),
+      league,
+      player,
+      seasonYear: 2026,
+      world: getWorldState(),
+    });
+    const fixtureIdsAfter = Object.keys(refocus.fixtures || {}).sort();
+    const scoresAfter = {};
+    for (const id of fixtureIdsAfter) {
+      const f = refocus.fixtures[id];
+      scoresAfter[id] = {
+        status: f?.status || null,
+        homeGoals: f?.homeGoals ?? f?.score?.home ?? null,
+        awayGoals: f?.awayGoals ?? f?.score?.away ?? null,
+        tieId: f?.tieId || null,
+      };
+    }
     result = {
       playedMatchdays: played,
-      fieldEqual: JSON.stringify(refocus.field.map((c) => c.clubId).sort()) === JSON.stringify(fieldBefore),
-      fixturesEqual: JSON.stringify(Object.keys(refocus.fixtures).sort()) === JSON.stringify(fixtureIdsBefore),
-      editionFocusClubId: refocus.editionFocusClubId,
-      viewFocusClubId: refocus.viewFocusClubId,
+      fieldEqual: JSON.stringify((refocus.field || []).map((c) => c.clubId || c).sort()) === JSON.stringify(fieldBefore),
+      fixturesEqual: JSON.stringify(fixtureIdsAfter) === JSON.stringify(fixtureIdsBefore),
+      scoresEqual: JSON.stringify(scoresAfter) === JSON.stringify(scoresBefore),
+      fixtureIdsBefore,
+      fixtureIdsAfter,
+      editionFocusClubId: refocus.editionFocusClubId || refocus.playerClubId || null,
+      viewFocusClubId: refocus.viewFocusClubId || null,
       lateEligibleAfterMove: afterMove,
     };
   } else {
-    throw new Error("unknown control " + input.id);
+    throw new Error("unknown control " + shared.id);
   }
 
   writeFileSync(
@@ -317,8 +258,11 @@ async function runFinal() {
         side,
         sourceSha: args.sha,
         rngAfterRestore,
+        expectedRngAfterRestore: shared.expectedRngAfterRestore,
+        rngMatchesExpected: rngAfterRestore === shared.expectedRngAfterRestore,
         rngAfterRun: captureRng(getSimRng),
         clubFinanceKeys: Object.keys(exportClubFinanceState()?.ledgers || {}).sort(),
+        inputHash: args.inputHash,
         result,
       },
       null,
@@ -328,84 +272,53 @@ async function runFinal() {
 }
 
 async function runBase() {
-  // Accepted base lacks earnedQualification.js — use latestStanding + preSeasonContinentalStanding.
   const { LEAGUES } = await mod("js/data/leagues.js");
-  const { createWorldState, setWorldState } = await mod("js/simulation/worldState.js");
-  const { resetClubFinanceLedgers } = await mod("js/simulation/clubFinance.js");
-  const { createRng, reseedCareerRng, getSimRng } = await mod("js/simulation/rng.js");
+  const { createWorldState, setWorldState, getWorldState } = await mod("js/simulation/worldState.js");
+  const { resetClubFinanceLedgers, importClubFinanceState, exportClubFinanceState } = await mod(
+    "js/simulation/clubFinance.js"
+  );
+  const { createRng, reseedCareerRng, getSimRng, setSimRng } = await mod("js/simulation/rng.js");
   const { preSeasonContinentalStanding } = await mod("js/simulation/chronologicalSeason.js");
   const { prepareContinentalEdition, listContinentalFixtures, processContinentalMatchday } = await mod(
     "js/simulation/continentalTournament.js"
   );
-  const { qualificationForPosition, findSisterLeagues } = await mod("js/simulation/leaguePhase.js");
   const { continentalCompetitionForStanding } = await mod("js/data/competitions/qualification.js");
+  const { recordPlayingTransition } = await mod("js/simulation/playingRegistration.js");
 
-  const league = LEAGUES.find((l) => l.leagueId === input.leagueId);
-  const arsenal = league.clubs.find((c) => c.clubId === input.arsenalId);
-  const brentford = league.clubs.find((c) => c.clubId === input.brentfordId);
-
-  function orderedTable(placements = {}) {
-    const sisters = findSisterLeagues(league, LEAGUES);
-    const placed = new Map(Object.entries(placements));
-    const remaining = league.clubs.filter((c) => ![...placed.values()].includes(c.clubId));
-    const slots = Array.from({ length: league.clubs.length }, () => null);
-    for (const [posStr, clubId] of placed) slots[Number(posStr) - 1] = league.clubs.find((c) => c.clubId === clubId);
-    let r = 0;
-    for (let i = 0; i < slots.length; i++) if (!slots[i]) slots[i] = remaining[r++];
-    return slots.map((c, i) => {
-      const position = i + 1;
-      return {
-        ...c,
-        position,
-        points: Math.max(0, 100 - i * 3),
-        matches: 38,
-        played: 38,
-        wins: 20,
-        draws: 8,
-        losses: 10,
-        goalsFor: 50 - i,
-        goalsAgainst: 20 + i,
-        goalDiff: 30 - 2 * i,
-        qualification: qualificationForPosition(position, league, sisters) || "",
-      };
-    });
-  }
-
-  function makePlayer(club, extra = {}) {
-    return {
-      name: "Paired09",
-      careerId: "paired09",
-      position: "CM",
-      nationality: "England",
-      age: 24,
-      startYear: 2026,
-      rating: extra.rating ?? 90,
-      overall: extra.rating ?? 90,
-      club: { ...club, league: league.name, leagueId: league.leagueId, nation: league.nation, overall: extra.rating ?? club.overall },
-      playingClubId: club.clubId,
-      employmentClubId: club.clubId,
-      seasons: [],
-      ...extra,
-    };
-  }
+  const league = LEAGUES.find((l) => l.leagueId === shared.leagueId);
+  const arsenal = league.clubs.find((c) => c.clubId === shared.arsenalId);
+  const brentford = league.clubs.find((c) => c.clubId === shared.brentfordId);
 
   resetClubFinanceLedgers();
-  reseedCareerRng(input.seed);
-  setWorldState(createWorldState({ startYear: 2026, rngSeed: input.seed }));
+  if (shared.clubFinance) importClubFinanceState(structuredClone(shared.clubFinance));
+  // Deterministic world create, then restore archived runtime RNG state.
+  setWorldState(createWorldState({ seed: shared.seed, startYear: 2026 }));
+  reseedCareerRng(shared.worldRngSeed ?? shared.seed);
+  const rng = createRng(shared.worldRngSeed ?? shared.seed);
+  rng.setSeed(shared.expectedRngAfterRestore);
+  setSimRng(rng);
+  getWorldState().rngSeed = shared.worldRngSeed ?? shared.seed;
+  getWorldState().rngState = shared.expectedRngAfterRestore;
   const rngAfterRestore = captureRng(getSimRng);
+  if (rngAfterRestore !== shared.expectedRngAfterRestore) {
+    throw new Error(
+      "base RNG restore mismatch: got " + rngAfterRestore + " expected " + shared.expectedRngAfterRestore
+    );
+  }
+
+  // Same underlying player bytes as final (adapter only attaches base-era standing usage).
+  const player = structuredClone(shared.player);
+  const table = shared.table;
 
   let result;
-  if (input.id === "F01") {
-    const table = orderedTable(input.placements);
-    // Base adapter: attach Arsenal finish onto Brentford career via latestStanding (pre-Fix-09 path).
-    const player = makePlayer(brentford, {
-      latestStanding: {
-        leagueId: league.leagueId,
-        seasonId: league.leagueId + "::2025",
-        table,
-        playerRow: table.find((r) => r.clubId === arsenal.clubId),
-      },
-    });
+  if (shared.id === "F01") {
+    // Preserve the shared stale Arsenal row exactly.
+    player.latestStanding = {
+      leagueId: league.leagueId,
+      seasonId: league.leagueId + "::" + (shared.sourceYear || 2025),
+      table,
+      playerRow: shared.arsenalRow,
+    };
     const standing = preSeasonContinentalStanding(player, league);
     const edition = standing
       ? prepareContinentalEdition({ standing, league, player, seasonYear: 2026 })
@@ -420,66 +333,65 @@ async function runBase() {
       decisionStatus: null,
       decisionCompetition: null,
       decisionPosition: standing?.position ?? null,
-      adapter: "base-latestStanding-inherit",
+      staleArsenalRowPosition: player.latestStanding?.playerRow?.position ?? null,
+      staleArsenalRowClubId: player.latestStanding?.playerRow?.clubId ?? null,
+      adapter: "base-latestStanding-shared-player",
     };
-  } else if (input.id === "F02") {
-    const table = orderedTable(input.placements);
-    const player = makePlayer(arsenal, {
-      latestStanding: {
-        leagueId: league.leagueId,
-        seasonId: league.leagueId + "::2025",
-        table,
-        playerRow: table.find((r) => r.clubId === arsenal.clubId),
-      },
-    });
+  } else if (shared.id === "F02") {
+    player.club = { ...arsenal, league: league.name, leagueId: league.leagueId, nation: league.nation };
+    player.playingClubId = arsenal.clubId;
+    player.employmentClubId = arsenal.clubId;
+    player.latestStanding = {
+      leagueId: league.leagueId,
+      seasonId: league.leagueId + "::" + (shared.sourceYear || 2025),
+      table,
+      playerRow: shared.arsenalRow,
+    };
     const standing = preSeasonContinentalStanding(player, league);
     result = {
       status: standing ? "qualified" : "not-qualified",
       competition: standing ? continentalCompetitionForStanding(standing, league) : null,
       position: standing?.position ?? null,
-      adapter: "base-latestStanding",
+      adapter: "base-latestStanding-shared-player",
     };
-  } else if (input.id === "F03") {
-    const table = orderedTable(input.placements);
-    const player = makePlayer(brentford, {
-      rating: input.hotOvr,
-      latestStanding: {
-        leagueId: league.leagueId,
-        seasonId: league.leagueId + "::2025",
-        table,
-        playerRow: table.find((r) => r.clubId === brentford.clubId),
-      },
-    });
-    // Base may still OVR-seed when standing is weak; capture whatever preSeason returns.
+  } else if (shared.id === "F03") {
+    player.latestStanding = {
+      leagueId: league.leagueId,
+      seasonId: league.leagueId + "::" + (shared.sourceYear || 2025),
+      table,
+      playerRow: shared.brentfordRow,
+    };
     const standing = preSeasonContinentalStanding(player, league);
     result = {
       status: standing ? "qualified" : "not-qualified",
       competition: standing ? continentalCompetitionForStanding(standing, league) : null,
-      ovr: input.hotOvr,
-      adapter: "base-latestStanding-or-ovr",
+      ovr: shared.hotOvr,
+      adapter: "base-latestStanding-shared-player",
     };
-  } else if (input.id === "F05") {
-    // Base has no edition registry — stale/future incomplete mapping is not enforced.
-    const table = orderedTable(input.placements);
-    const player = makePlayer(arsenal, {
-      latestStanding: {
-        leagueId: league.leagueId,
-        seasonId: league.leagueId + "::2024",
-        table,
-        playerRow: table[0],
-      },
-    });
+  } else if (shared.id === "F05") {
+    // Shared world has only the 2024 commit; base has no edition registry target-year gate.
+    player.latestStanding = {
+      leagueId: league.leagueId,
+      seasonId: league.leagueId + "::2024",
+      table,
+      playerRow: table[0],
+    };
     const staleStanding = preSeasonContinentalStanding(player, league);
-    player.latestStanding.seasonId = league.leagueId + "::2025";
+    player.latestStanding = {
+      leagueId: league.leagueId,
+      seasonId: league.leagueId + "::" + (shared.sourceYear || 2025),
+      table,
+      playerRow: shared.arsenalRow,
+    };
     const okStanding = preSeasonContinentalStanding(player, league);
     result = {
       staleStatus: staleStanding ? "qualified" : "unresolved",
       okStatus: okStanding ? "qualified" : "unresolved",
       okCompetition: okStanding ? continentalCompetitionForStanding(okStanding, league) : null,
       sourceYearFor2026: 2025,
-      adapter: "base-no-edition-registry",
+      adapter: "base-latestStanding-year-switch",
     };
-  } else if (input.id === "F10") {
+  } else if (shared.id === "F10") {
     const badPositions = [null, undefined, "", NaN, Infinity, -Infinity, 0, -1, 0.5, "1.5", "abc", 99];
     const rejected = badPositions.map((p) => ({
       value: String(p),
@@ -492,18 +404,30 @@ async function runBase() {
     );
     const legacyNumeric = continentalCompetitionForStanding({ position: "3" }, league);
     result = { rejected, conflicting, legacyNumeric, adapter: "base-label-fallback" };
-  } else if (input.id === "F15") {
-    const table = orderedTable(input.placements);
-    const player = makePlayer(arsenal, {
-      latestStanding: {
-        leagueId: league.leagueId,
-        seasonId: league.leagueId + "::2025",
-        table,
-        playerRow: table.find((r) => r.clubId === arsenal.clubId),
-      },
-    });
+  } else if (shared.id === "F15") {
+    player.club = { ...arsenal, league: league.name, leagueId: league.leagueId, nation: league.nation };
+    player.playingClubId = arsenal.clubId;
+    player.employmentClubId = arsenal.clubId;
+    player.latestStanding = {
+      leagueId: league.leagueId,
+      seasonId: league.leagueId + "::" + (shared.sourceYear || 2025),
+      table,
+      playerRow: shared.arsenalRow,
+    };
     const standing = preSeasonContinentalStanding(player, league);
     const original = prepareContinentalEdition({ standing, league, player, seasonYear: 2026 });
+    const fixtureIdsBefore = Object.keys(original.fixtures || {}).sort();
+    const fieldBefore = (original.field || []).map((c) => c.clubId || c).sort();
+    const scoresBefore = {};
+    for (const id of fixtureIdsBefore) {
+      const f = original.fixtures[id];
+      scoresBefore[id] = {
+        status: f?.status || null,
+        homeGoals: f?.homeGoals ?? f?.score?.home ?? null,
+        awayGoals: f?.awayGoals ?? f?.score?.away ?? null,
+        tieId: f?.tieId || null,
+      };
+    }
     const played = [];
     for (const md of original.openingMatchdays || []) {
       const day = listContinentalFixtures(original).find((f) => f.matchday === md)?.date;
@@ -512,7 +436,14 @@ async function runBase() {
         played.push(md);
       }
     }
-    const fieldBefore = original.field.map((c) => c.clubId).sort();
+    recordPlayingTransition(player, {
+      kind: "permanent",
+      effectiveDate: "2027-01-10",
+      playingClubId: brentford.clubId,
+      employmentClubId: brentford.clubId,
+      leagueId: league.leagueId,
+      clubName: brentford.name,
+    });
     player.playingClubId = brentford.clubId;
     player.employmentClubId = brentford.clubId;
     player.club = { ...brentford, league: league.name, leagueId: league.leagueId, nation: league.nation };
@@ -528,7 +459,7 @@ async function runBase() {
           latestStanding: {
             leagueId: league.leagueId,
             table,
-            playerRow: table.find((r) => r.clubId === brentford.clubId),
+            playerRow: shared.brentfordRow,
           },
         },
         league
@@ -537,17 +468,31 @@ async function runBase() {
       player,
       seasonYear: 2026,
     });
+    const fixtureIdsAfter = Object.keys(refocus?.fixtures || {}).sort();
+    const scoresAfter = {};
+    for (const id of fixtureIdsAfter) {
+      const f = refocus.fixtures[id];
+      scoresAfter[id] = {
+        status: f?.status || null,
+        homeGoals: f?.homeGoals ?? f?.score?.home ?? null,
+        awayGoals: f?.awayGoals ?? f?.score?.away ?? null,
+        tieId: f?.tieId || null,
+      };
+    }
     result = {
       playedMatchdays: played,
-      fieldEqual: JSON.stringify((refocus?.field || []).map((c) => c.clubId).sort()) === JSON.stringify(fieldBefore),
-      fixturesEqual: false,
+      fieldEqual: JSON.stringify((refocus?.field || []).map((c) => c.clubId || c).sort()) === JSON.stringify(fieldBefore),
+      fixturesEqual: JSON.stringify(fixtureIdsAfter) === JSON.stringify(fixtureIdsBefore),
+      scoresEqual: JSON.stringify(scoresAfter) === JSON.stringify(scoresBefore),
+      fixtureIdsBefore,
+      fixtureIdsAfter,
       editionFocusClubId: refocus?.editionFocusClubId || refocus?.playerClubId || null,
       viewFocusClubId: refocus?.viewFocusClubId || null,
       lateEligibleAfterMove: afterMove,
-      adapter: "base-soft-refocus",
+      adapter: "base-soft-refocus-shared-player",
     };
   } else {
-    throw new Error("unknown control " + input.id);
+    throw new Error("unknown control " + shared.id);
   }
 
   writeFileSync(
@@ -557,7 +502,11 @@ async function runBase() {
         side,
         sourceSha: args.sha,
         rngAfterRestore,
+        expectedRngAfterRestore: shared.expectedRngAfterRestore,
+        rngMatchesExpected: rngAfterRestore === shared.expectedRngAfterRestore,
         rngAfterRun: captureRng(getSimRng),
+        clubFinanceKeys: Object.keys(exportClubFinanceState()?.ledgers || {}).sort(),
+        inputHash: args.inputHash,
         result,
       },
       null,

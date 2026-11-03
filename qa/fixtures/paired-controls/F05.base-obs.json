@@ -1,13 +1,19 @@
 {
   "side": "base",
   "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "rngAfterRestore": 2319247372,
-  "rngAfterRun": 2319247372,
+  "rngAfterRestore": 105,
+  "expectedRngAfterRestore": 105,
+  "rngMatchesExpected": true,
+  "rngAfterRun": 105,
+  "clubFinanceKeys": [
+    "club:england:arsenal|2026"
+  ],
+  "inputHash": "a01d3a0b2fb4a3580834bd8b2adfe35543e4c0f6c9b826c43d88bde2d99bb0aa",
   "result": {
     "staleStatus": "qualified",
     "okStatus": "qualified",
     "okCompetition": "Champions League",
     "sourceYearFor2026": 2025,
-    "adapter": "base-no-edition-registry"
+    "adapter": "base-latestStanding-year-switch"
   }
 }

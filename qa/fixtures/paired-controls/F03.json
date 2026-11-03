@@ -1,30 +1,40 @@
 {
   "id": "F03",
-  "inputHash": "54b7a66f3c2d0d03732f1c246b70ecbd0ce88a4fcc449492a789a14cf8db1450",
+  "inputHash": "7d53bca62ea9bcd0d5e13a1fadcc79115e23fb31b9d583b249ac4e5e3e434ece",
   "inputPath": "inputs/F03.json",
   "baseSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-  "finalSha": "debd143cc53116cebff5682fa514a4b46feb256a",
+  "finalSha": "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118",
   "invariant": "High OVR cannot override known DNQ history",
+  "expectedRngAfterRestore": 103,
   "base": {
     "side": "base",
     "sourceSha": "984495e4c12df0c2dd1c84d124bc4cb743a0f63e",
-    "rngAfterRestore": 2741731583,
-    "rngAfterRun": 2741731583,
+    "rngAfterRestore": 103,
+    "expectedRngAfterRestore": 103,
+    "rngMatchesExpected": true,
+    "rngAfterRun": 103,
+    "clubFinanceKeys": [
+      "club:england:brentford|2026"
+    ],
+    "inputHash": "7d53bca62ea9bcd0d5e13a1fadcc79115e23fb31b9d583b249ac4e5e3e434ece",
     "result": {
       "status": "qualified",
       "competition": null,
       "ovr": 95,
-      "adapter": "base-latestStanding-or-ovr"
+      "adapter": "base-latestStanding-shared-player"
     }
   },
   "current": {
     "side": "final",
-    "sourceSha": "debd143cc53116cebff5682fa514a4b46feb256a",
-    "rngAfterRestore": 3996113006,
-    "rngAfterRun": 3996113006,
+    "sourceSha": "c7c89d5e5aa1afae34ef698f4f0fa62d71d1b118",
+    "rngAfterRestore": 103,
+    "expectedRngAfterRestore": 103,
+    "rngMatchesExpected": true,
+    "rngAfterRun": 103,
     "clubFinanceKeys": [
       "club:england:brentford|2026"
     ],
+    "inputHash": "7d53bca62ea9bcd0d5e13a1fadcc79115e23fb31b9d583b249ac4e5e3e434ece",
     "result": {
       "status": "not-qualified",
       "competition": null,
@@ -32,6 +42,7 @@
     }
   },
   "pass": true,
+  "rngGate": true,
   "baseFailedInvariant": false,
   "observationsEqual": false
 }
