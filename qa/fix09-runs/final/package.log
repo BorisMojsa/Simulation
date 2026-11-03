@@ -1,8 +1,2 @@
-{
-  "pkg": "/Users/mojsa/Desktop/09-Earned-Continental-Qualification-ReReview-ebbe1d1",
-  "zip": "/Users/mojsa/Desktop/09-Earned-Continental-Qualification-ReReview-ebbe1d1.zip",
-  "zipSha256": "6d53ef6fe7edaac9dd1fef30d1f8520aa2a96ab6cacb9678678110120751cd61",
-  "verifyExit": 0,
-  "ready": true,
-  "finalSha": "ebbe1d19b9621da6cfe8d9c0b84f6ed778255c19"
-}
+Refusing to package with modified tracked files. Commit intentional sources first.
+M qa/fix09-runs/final/package.log
