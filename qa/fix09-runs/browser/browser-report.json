@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-03T02:07:32.005Z",
-  "base": "http://127.0.0.1:53285",
+  "generatedAt": "2026-11-03T02:51:24.370Z",
+  "base": "http://127.0.0.1:54109",
   "cases": {
     "B01": {
       "ok": true,
@@ -302,21 +302,21 @@
     },
     "B02": {
       "ok": true,
-      "sum": {
+      "january": {
         "age": 20,
         "seasons": 1,
         "club": "Brentford",
         "employmentClubId": "club:england:brentford",
         "playingClubId": "club:england:brentford",
         "contractStatus": "active",
-        "rating": 77,
+        "rating": 76,
         "europe": {
           "competition": "Champions League",
           "qualified": true,
           "showcase": false,
           "editionId": "2026-uefa-champions-league",
           "competitionId": "uefa-champions-league",
-          "result": "Winners",
+          "result": "Round of 16",
           "matchCount": 6
         },
         "arsenal2026": {
@@ -390,8 +390,8 @@
           "fieldSize": 36
         }
       },
-      "restored": {
-        "age": 20,
+      "offSeason": {
+        "age": 23,
         "seasons": 1,
         "club": "Brentford",
         "employmentClubId": "club:england:brentford",
@@ -400,12 +400,12 @@
         "rating": 77,
         "europe": {
           "competition": "Champions League",
-          "qualified": true,
-          "showcase": false,
-          "editionId": "2026-uefa-champions-league",
-          "competitionId": "uefa-champions-league",
-          "result": "Winners",
-          "matchCount": 6
+          "qualified": false,
+          "showcase": true,
+          "editionId": null,
+          "competitionId": null,
+          "result": "Not qualified",
+          "matchCount": 0
         },
         "arsenal2026": {
           "clubId": "club:england:arsenal",
@@ -433,54 +433,60 @@
           "provenance": "simulated-complete",
           "ruleVersion": "fix09-v1"
         },
-        "edition": {
-          "editionId": "2026-uefa-champions-league",
-          "competitionId": "uefa-champions-league",
-          "playerClubId": "club:england:arsenal",
-          "field": [
-            "club:belgium:club-brugge",
-            "club:england:arsenal",
-            "club:england:crystal-palace",
-            "club:england:everton",
-            "club:england:leeds-united",
-            "club:england:west-ham-united",
-            "club:france:lens",
-            "club:france:monaco",
-            "club:germany:bayer-leverkusen",
-            "club:germany:eintracht-frankfurt",
-            "club:germany:fc-augsburg",
-            "club:germany:sc-freiburg",
-            "club:italy:ac-milan",
-            "club:italy:atalanta",
-            "club:italy:fiorentina",
-            "club:italy:juventus",
-            "club:italy:napoli",
-            "club:italy:roma",
-            "club:netherlands:feyenoord",
-            "club:netherlands:psv",
-            "club:portugal:benfica",
-            "club:portugal:braga",
-            "club:portugal:porto",
-            "club:portugal:sporting-cp",
-            "club:spain:athletic-bilbao",
-            "club:spain:celta-vigo",
-            "club:spain:deportivo-alaves",
-            "club:spain:fc-barcelona",
-            "club:spain:osasuna",
-            "club:spain:rayo-vallecano",
-            "club:spain:real-betis",
-            "club:spain:real-madrid",
-            "club:spain:sevilla",
-            "club:spain:valencia",
-            "club:spain:villarreal",
-            "club:turkey:galatasaray"
-          ],
-          "fieldSize": 36
-        }
+        "edition": null
+      },
+      "restored": {
+        "age": 23,
+        "seasons": 1,
+        "club": "Brentford",
+        "employmentClubId": "club:england:brentford",
+        "playingClubId": "club:england:brentford",
+        "contractStatus": "active",
+        "rating": 77,
+        "europe": {
+          "competition": "Champions League",
+          "qualified": false,
+          "showcase": true,
+          "editionId": null,
+          "competitionId": null,
+          "result": "Not qualified",
+          "matchCount": 0
+        },
+        "arsenal2026": {
+          "clubId": "club:england:arsenal",
+          "name": "Arsenal",
+          "position": 1,
+          "qualificationLabel": "League Champions",
+          "competition": "Champions League",
+          "status": "qualified",
+          "targetCompetitionId": "uefa-champions-league",
+          "targetContinentalYear": 2026,
+          "sourceEditionYear": 2025,
+          "provenance": "simulated-complete",
+          "ruleVersion": "fix09-v1"
+        },
+        "brentford2026": {
+          "clubId": "club:england:brentford",
+          "name": "Brentford",
+          "position": 17,
+          "qualificationLabel": "",
+          "competition": null,
+          "status": "not-qualified",
+          "targetCompetitionId": null,
+          "targetContinentalYear": 2026,
+          "sourceEditionYear": 2025,
+          "provenance": "simulated-complete",
+          "ruleVersion": "fix09-v1"
+        },
+        "edition": null
       },
       "freshRestore": true,
       "transferAccepted": true,
-      "deskDecisions": []
+      "offSeasonAccepted": true,
+      "januaryAccepted": true,
+      "deskDecisions": [
+        "Decline offers and continue at Brentford (3 seasons remaining)"
+      ]
     },
     "B03": {
       "ok": true,
@@ -730,6 +736,38 @@
       },
       "borrowerWasDnq": true,
       "parentQualified": true,
+      "reverseLoan": {
+        "accepted": true,
+        "playingClubId": "club:england:arsenal",
+        "employmentClubId": "club:england:brentford",
+        "europe": {
+          "competition": "Champions League",
+          "qualified": true,
+          "showcase": false,
+          "editionId": "2026-uefa-champions-league",
+          "competitionId": "uefa-champions-league",
+          "result": "League phase",
+          "matchCount": 6
+        }
+      },
+      "crossAssociationLoan": {
+        "accepted": true,
+        "playingClubId": "club:netherlands:twente",
+        "employmentClubId": "club:england:arsenal",
+        "borrowerDecision": {
+          "clubId": "club:netherlands:twente",
+          "name": "Twente",
+          "position": 1,
+          "qualificationLabel": "League Champions",
+          "competition": "Champions League",
+          "status": "qualified",
+          "targetCompetitionId": "uefa-champions-league",
+          "targetContinentalYear": 2026,
+          "sourceEditionYear": 2025,
+          "provenance": "simulated-complete",
+          "ruleVersion": "fix09-v1"
+        }
+      },
       "employmentAtDesk": "club:england:arsenal",
       "playingAtDesk": "club:england:arsenal",
       "deskDecisions": [],
@@ -739,14 +777,14 @@
       "ok": true,
       "editionPreserved": true,
       "moved": true,
-      "destination": "club:spain:espanyol",
+      "destination": "club:spain:malaga",
       "europeAtDestination": {
         "competition": "Champions League",
         "qualified": true,
         "showcase": false,
         "editionId": "2026-uefa-champions-league",
         "competitionId": "uefa-champions-league",
-        "result": "Winners",
+        "result": "Runner-up",
         "matchCount": 6
       },
       "ed0": {
@@ -1023,6 +1061,18 @@
         }
       },
       "branchCompare": true,
+      "protectedCompare": {
+        "worldEqual": true,
+        "rngEqual": true,
+        "clubFinanceEqual": true,
+        "pendingOffersEqual": true,
+        "pendingDecisionEqual": true,
+        "playingStintsEqual": true,
+        "seasonsEqual": true,
+        "qualificationEqual": true,
+        "wageEqual": true,
+        "contractEqual": true
+      },
       "traceA": {
         "simulateClicks": 0,
         "skipClicks": 6,

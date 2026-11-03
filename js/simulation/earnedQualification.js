@@ -28,7 +28,30 @@ import { simulateMatch } from "./matchEngine.js";
 import { flattenRoundRobinFixtures } from "./seasonCalendar.js?v=89";
 import { competitionIdSlug } from "./continentalSchedule.js";
 import { formatForCompetitionName } from "../data/competitions/formats.js";
+import { LEAGUE_FORMATS } from "../data/competitions/leagueFormats.js";
 import { effectiveTeamStrength } from "./teamStrength.js";
+
+/**
+ * Expected double-round-robin (or declared format) coverage for a domestic table.
+ * Returns fixture count, total row appearances (2 per fixture), and per-club games.
+ */
+export function expectedDomesticPlayCoverage(league) {
+  const n = (league?.clubs || []).filter((c) => c?.clubId).length;
+  if (n < 2) return { fixtures: 0, appearances: 0, perClub: 0, source: null };
+  const declared = league?.leagueId ? LEAGUE_FORMATS[league.leagueId] : null;
+  const fixtures =
+    Number(declared?.fixtures) > 0
+      ? Number(declared.fixtures)
+      : n * (n - 1); // generic double round-robin
+  const perClub =
+    Number(declared?.matchdays) > 0 ? Number(declared.matchdays) : 2 * (n - 1);
+  return {
+    fixtures,
+    appearances: fixtures * 2,
+    perClub,
+    source: declared ? "declared-format" : "generic-double-rr",
+  };
+}
 
 /** Persist the real edition competitionId (e.g. uefa-champions-league), not a display-name slug. */
 function targetCompetitionIdFor(competition) {
@@ -256,6 +279,7 @@ export function validateStandingTable(table, league, {
   }
   const rowIds = [];
   const ranks = [];
+  const playedByClub = [];
   let totalPlayed = 0;
   let totalPoints = 0;
   for (const raw of table) {
@@ -269,6 +293,7 @@ export function validateStandingTable(table, league, {
     if (!norm.ok) return { ok: false, reason: "invalid-positions", detail: norm.reason };
     ranks.push(norm.position);
     const played = Number(raw.matches ?? raw.played ?? 0) || 0;
+    playedByClub.push({ clubId, played });
     totalPlayed += played;
     totalPoints += Number(raw.points ?? 0) || 0;
   }
@@ -289,11 +314,29 @@ export function validateStandingTable(table, league, {
       if (totalPlayed <= 0 && totalPoints <= 0) {
         return { ok: false, reason: "unplayed-table" };
       }
-      // Partially played full roster still lacks completion evidence without match IDs.
-      const expectedMatches = expectedSize > 1 ? expectedSize * (expectedSize - 1) : 0;
-      // Each match increments two clubs' played counts.
-      if (expectedMatches > 0 && totalPlayed < expectedMatches) {
-        return { ok: false, reason: "incomplete-play-evidence", totalPlayed, expectedMatches };
+      const coverage = expectedDomesticPlayCoverage(league);
+      // Appearances = 2 × fixtures. Comparing against fixture count alone accepts a half season.
+      if (coverage.appearances > 0 && totalPlayed < coverage.appearances) {
+        return {
+          ok: false,
+          reason: "incomplete-play-evidence",
+          totalPlayed,
+          expectedMatches: coverage.appearances,
+          expectedFixtures: coverage.fixtures,
+          expectedPerClub: coverage.perClub,
+        };
+      }
+      // Uneven per-club coverage can hide unfinished rows behind overcounted ones.
+      if (coverage.perClub > 0) {
+        const short = playedByClub.filter((r) => r.played < coverage.perClub);
+        if (short.length) {
+          return {
+            ok: false,
+            reason: "uneven-or-incomplete-club-coverage",
+            expectedPerClub: coverage.perClub,
+            shortClubs: short.slice(0, 5),
+          };
+        }
       }
     }
   }

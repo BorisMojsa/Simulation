@@ -1,9 +1,9 @@
 {
   "player": {
     "name": "Ownership Transfer",
-    "careerId": "fix09-b02",
+    "careerId": "fix09-b02-january",
     "age": 20,
-    "rating": 77,
+    "rating": 76,
     "contractStatus": "active",
     "employmentClubId": "club:england:brentford",
     "playingClubId": "club:england:brentford",
@@ -14,14 +14,14 @@
     },
     "seasons": [
       {
-        "minutes": 713,
+        "minutes": 509,
         "europe": {
           "competition": "Champions League",
           "qualified": true,
           "showcase": false,
           "editionId": "2026-uefa-champions-league",
           "competitionId": "uefa-champions-league",
-          "result": "Winners",
+          "result": "Round of 16",
           "matchCount": 6
         }
       }
@@ -30,7 +30,7 @@
       "leagueId": "league:england-premier-league",
       "seasonId": "season-1",
       "playerRowClubId": "club:england:brentford",
-      "playerRowPosition": 17
+      "playerRowPosition": 9
     }
   },
   "qualification": {
@@ -40,14 +40,14 @@
     "employmentClubId": "club:england:brentford",
     "playingClubId": "club:england:brentford",
     "contractStatus": "active",
-    "rating": 77,
+    "rating": 76,
     "europe": {
       "competition": "Champions League",
       "qualified": true,
       "showcase": false,
       "editionId": "2026-uefa-champions-league",
       "competitionId": "uefa-champions-league",
-      "result": "Winners",
+      "result": "Round of 16",
       "matchCount": 6
     },
     "arsenal2026": {
@@ -144,23 +144,23 @@
     "club:club:england:sunderland::target:2026",
     "club:club:england:tottenham-hotspur::target:2026",
     "domestic:league:england-premier-league::2026",
-    "club:club:england:liverpool::target:2027",
-    "club:club:england:arsenal::target:2027",
-    "club:club:england:everton::target:2027",
     "club:club:england:chelsea::target:2027",
-    "club:club:england:newcastle-united::target:2027",
-    "club:club:england:manchester-city::target:2027",
-    "club:club:england:fulham::target:2027",
+    "club:club:england:arsenal::target:2027",
+    "club:club:england:liverpool::target:2027",
     "club:club:england:brighton-and-hove-albion::target:2027",
-    "club:club:england:aston-villa::target:2027",
-    "club:club:england:nottingham-forest::target:2027",
-    "club:club:england:tottenham-hotspur::target:2027",
     "club:club:england:manchester-united::target:2027",
-    "club:club:england:leeds-united::target:2027",
-    "club:club:england:crystal-palace::target:2027",
-    "club:club:england:afc-bournemouth::target:2027",
-    "club:club:england:sunderland::target:2027",
+    "club:club:england:manchester-city::target:2027",
+    "club:club:england:tottenham-hotspur::target:2027",
+    "club:club:england:newcastle-united::target:2027",
     "club:club:england:brentford::target:2027",
-    "club:club:england:coventry-city::target:2027"
+    "club:club:england:aston-villa::target:2027",
+    "club:club:england:leeds-united::target:2027",
+    "club:club:england:fulham::target:2027",
+    "club:club:england:afc-bournemouth::target:2027",
+    "club:club:england:everton::target:2027",
+    "club:club:england:nottingham-forest::target:2027",
+    "club:club:england:crystal-palace::target:2027",
+    "club:club:england:coventry-city::target:2027",
+    "club:club:england:sunderland::target:2027"
   ]
 }

@@ -1,0 +1,55 @@
+{
+  "sourceSha": "1203cfe4ce8d5b5f619e3e8654611041d51363fd",
+  "generatedAt": "2026-11-03T02:45:59.957Z",
+  "controls": [
+    {
+      "id": "F01",
+      "inputHash": "e46dbe0e9dbcc261c8ea031e91d64a63db7c323dee32b7437f88022690fece02",
+      "pass": true,
+      "invariant": "DNQ destination has zero eligible late fixtures and no CL inheritance",
+      "baseRng": 1,
+      "currentRng": 3325529024
+    },
+    {
+      "id": "F02",
+      "inputHash": "b3dc917a27ca5dd806306073e4403742314c45ddd75138c5da3664dd28048c3c",
+      "pass": true,
+      "invariant": "Qualified destination grants Champions League",
+      "baseRng": 3325529024,
+      "currentRng": 102
+    },
+    {
+      "id": "F03",
+      "inputHash": "b0d4310d47293923550b98bde85f0e952ff00d62846d77c1099c65983b37c8ee",
+      "pass": true,
+      "invariant": "High OVR cannot override known DNQ history",
+      "baseRng": 102,
+      "currentRng": 103
+    },
+    {
+      "id": "F05",
+      "inputHash": "b74befdcbff40f911ada7882d07a9ec36e9c2e4dc14f450831b79eb9cb0a7f97",
+      "pass": true,
+      "invariant": "Incomplete/stale evidence unresolved without mutation",
+      "baseRng": 103,
+      "currentRng": 105
+    },
+    {
+      "id": "F10",
+      "inputHash": "2ef1a51638fb1a4af9da55a35259d66decf0821082b7e1ecc8bc5ea593e8b6bc",
+      "pass": true,
+      "invariant": "Duplicate ranks cannot grant entry",
+      "baseRng": 105,
+      "currentRng": 110
+    },
+    {
+      "id": "F15",
+      "inputHash": "900e5fd8c3638c125345243801ec517e5137f1832bdfe7271eb0ae42f3302acf",
+      "pass": true,
+      "invariant": "Soft refocus preserves field/fixtures and immutable edition focus",
+      "baseRng": 110,
+      "currentRng": 74848409
+    }
+  ],
+  "allPass": true
+}

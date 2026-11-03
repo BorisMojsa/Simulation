@@ -26,16 +26,22 @@ export function buildOwnershipTransferBrowserFixture(opts = {}) {
   reseedCareerRng(cfg.seed);
   setWorldState(createWorldState({ startYear: cfg.startYear }));
 
-  const league = LEAGUE_BY_ID.get("league:england-premier-league");
-  const arsenal = league.clubs.find((c) => c.clubId === "club:england:arsenal");
-  const brentford = allSeniorClubs().find((c) => c.clubId === "club:england:brentford");
-  if (!arsenal || !brentford) {
+  const league = LEAGUE_BY_ID.get(cfg.leagueId || "league:england-premier-league");
+  const fromClubId = cfg.fromClubId || "club:england:arsenal";
+  const toClubId = cfg.toClubId || "club:england:brentford";
+  const fromClub =
+    league?.clubs?.find((c) => c.clubId === fromClubId) ||
+    allSeniorClubs().find((c) => c.clubId === fromClubId);
+  const toClub = allSeniorClubs().find((c) => c.clubId === toClubId);
+  if (!league || !fromClub || !toClub) {
     return { ok: false, reason: "clubs-missing", player: null, offers: [], checkpoint: null };
   }
+  const arsenal = fromClub;
+  const brentford = toClub;
 
   const player = createPlayerIdentity({
     name: "Ownership Transfer",
-    nationality: "England",
+    nationality: fromClub.nation || "England",
     position: "CM",
     age: 19,
   });

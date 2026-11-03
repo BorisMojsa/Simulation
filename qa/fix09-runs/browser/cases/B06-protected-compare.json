@@ -1,0 +1,36 @@
+{
+  "protectedCompare": {
+    "worldEqual": true,
+    "rngEqual": true,
+    "clubFinanceEqual": true,
+    "pendingOffersEqual": true,
+    "pendingDecisionEqual": true,
+    "playingStintsEqual": true,
+    "seasonsEqual": true,
+    "qualificationEqual": true,
+    "wageEqual": true,
+    "contractEqual": true
+  },
+  "pendingOffersA": [],
+  "pendingOffersB": [],
+  "ledgerKeysA": [
+    "club:colombia:cucuta-deportivo|2026",
+    "club:colombia:deportivo-cali|2027",
+    "club:egypt:zamalek|2026",
+    "club:england:arsenal|2026",
+    "club:england:arsenal|2027",
+    "club:italy:udinese|2027",
+    "club:turkey:trabzonspor|2027",
+    "club:united-states:columbus-crew|2026"
+  ],
+  "ledgerKeysB": [
+    "club:colombia:cucuta-deportivo|2026",
+    "club:colombia:deportivo-cali|2027",
+    "club:egypt:zamalek|2026",
+    "club:england:arsenal|2026",
+    "club:england:arsenal|2027",
+    "club:italy:udinese|2027",
+    "club:turkey:trabzonspor|2027",
+    "club:united-states:columbus-crew|2026"
+  ]
+}

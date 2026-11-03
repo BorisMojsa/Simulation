@@ -1,0 +1,99 @@
+{
+  "id": "F05",
+  "inputHash": "b74befdcbff40f911ada7882d07a9ec36e9c2e4dc14f450831b79eb9cb0a7f97",
+  "sourceSha": "1203cfe4ce8d5b5f619e3e8654611041d51363fd",
+  "input": {
+    "id": "F05",
+    "seed": 105,
+    "partial": [
+      {
+        "name": "Arsenal",
+        "displayName": "Arsenal",
+        "slug": "arsenal",
+        "badge": "badges/England - Premier League/Arsenal.png",
+        "clubId": "club:england:arsenal",
+        "financialTier": 4,
+        "reputation": 91.77,
+        "overall": 93.26,
+        "attack": 93.26,
+        "midfield": 93.26,
+        "defence": 93.26,
+        "goalkeeper": 93.26,
+        "strengthTier": "Elite",
+        "tier": 5,
+        "divisionLevel": 1,
+        "league": "England - Premier League",
+        "leagueDisplay": "Premier League",
+        "leagueId": "league:england-premier-league",
+        "nation": "England",
+        "associationId": "assoc:england",
+        "confederation": "UEFA",
+        "position": 1,
+        "points": 100,
+        "matches": 38,
+        "played": 38,
+        "wins": 20,
+        "draws": 8,
+        "losses": 10,
+        "goalsFor": 50,
+        "goalsAgainst": 20,
+        "goalDiff": 30,
+        "qualification": "League Champions"
+      },
+      {
+        "name": "Aston Villa",
+        "displayName": "Aston Villa",
+        "slug": "aston-villa",
+        "badge": "badges/England - Premier League/Aston Villa.png",
+        "clubId": "club:england:aston-villa",
+        "financialTier": 4,
+        "reputation": 84.62,
+        "overall": 84.85,
+        "attack": 84.85,
+        "midfield": 84.85,
+        "defence": 84.85,
+        "goalkeeper": 84.85,
+        "strengthTier": "Strong",
+        "tier": 5,
+        "divisionLevel": 1,
+        "league": "England - Premier League",
+        "leagueDisplay": "Premier League",
+        "leagueId": "league:england-premier-league",
+        "nation": "England",
+        "associationId": "assoc:england",
+        "confederation": "UEFA",
+        "position": 2,
+        "points": 97,
+        "matches": 38,
+        "played": 38,
+        "wins": 20,
+        "draws": 8,
+        "losses": 10,
+        "goalsFor": 49,
+        "goalsAgainst": 21,
+        "goalDiff": 28,
+        "qualification": "Champions League"
+      }
+    ]
+  },
+  "base": {
+    "label": "base",
+    "beforeRng": 103,
+    "afterRng": 105,
+    "result": {
+      "status": "unresolved",
+      "registryDelta": 0
+    }
+  },
+  "current": {
+    "label": "current",
+    "beforeRng": 105,
+    "afterRng": 105,
+    "result": {
+      "status": "unresolved",
+      "registryDelta": 0
+    }
+  },
+  "invariant": "Incomplete/stale evidence unresolved without mutation",
+  "pass": true
+}

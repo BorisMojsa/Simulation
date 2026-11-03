@@ -905,10 +905,82 @@ test("F24: partial / duplicate-rank / undated / unplayed evidence rejected witho
   });
   assert.equal(halfIngest.ok, false);
   assert.ok(
-    halfIngest.reason === "incomplete-play-evidence" || halfIngest.reason === "unplayed-table",
+    halfIngest.reason === "incomplete-play-evidence" ||
+      halfIngest.reason === "unplayed-table" ||
+      halfIngest.reason === "uneven-or-incomplete-club-coverage",
     halfIngest.reason
   );
   assert.equal(world.qualification.size, before);
+
+  // EPL completion: appearances must cover the full double-RR (38/club), not half (19).
+  for (const played of [19, 20, 37]) {
+    const mid = orderedTable(league, { 1: arsenal.clubId }).map((r) => ({
+      ...r,
+      matches: played,
+      played,
+      points: played,
+      wins: 0,
+      draws: played,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDiff: 0,
+    }));
+    const midPlayer = makePlayer(arsenal, league, {
+      latestStanding: {
+        leagueId: league.leagueId,
+        seasonId: `${league.leagueId}::2025`,
+        table: mid,
+        playerRow: mid[0],
+      },
+    });
+    const midResolved = resolveClubContinentalEntry({
+      world,
+      league,
+      clubId: arsenal.clubId,
+      targetYear: 2026,
+      player: midPlayer,
+      allowBootstrap: false,
+    });
+    assert.equal(midResolved.status, "unresolved", `played=${played}`);
+    assert.equal(world.qualification.size, before, `played=${played}`);
+  }
+
+  const uneven = orderedTable(league, { 1: arsenal.clubId }).map((r, i) => ({
+    ...r,
+    matches: i === 0 ? 38 : 30,
+    played: i === 0 ? 38 : 30,
+    points: i === 0 ? 38 : 30,
+    wins: 0,
+    draws: i === 0 ? 38 : 30,
+    losses: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    goalDiff: 0,
+  }));
+  assert.equal(
+    validateStandingTable(uneven, league, {
+      sourceYear: 2025,
+      status: "complete",
+      provenance: "legacy-migrated",
+    }).ok,
+    false
+  );
+
+  const full = orderedTable(league, { 1: arsenal.clubId }).map((r) => ({
+    ...r,
+    matches: 38,
+    played: 38,
+  }));
+  const fullCommit = commitCompletedDomesticEdition({
+    world,
+    league,
+    table: full,
+    sourceYear: 2023,
+    provenance: "legacy-migrated",
+  });
+  assert.equal(fullCommit.ok, true);
+  assert.equal(getClubTargetDecision(world, arsenal.clubId, 2024).entry.competition, "Champions League");
 });
 
 test("F25: exporter validation path fails on missing/wrong evidence", async () => {
@@ -917,12 +989,13 @@ test("F25: exporter validation path fails on missing/wrong evidence", async () =
   const brentford = clubIn(league, "club:england:brentford");
   const table = orderedTable(league, { 1: arsenal.clubId, 17: brentford.clubId });
   const world = resetWorld(113);
+  // Constructed legacy table is valid positive evidence; simulated-complete needs raw results.
   commitCompletedDomesticEdition({
     world,
     league,
     table,
     sourceYear: 2025,
-    provenance: "simulated-complete",
+    provenance: "legacy-migrated",
   });
   const ed = getDomesticEditionRecord(world, league.leagueId, 2025);
   const good = getClubTargetDecision(world, arsenal.clubId, 2026).entry;
@@ -968,6 +1041,48 @@ test("F25: exporter validation path fails on missing/wrong evidence", async () =
   });
   assert.equal(labelOnly.ok, false);
 
+  const deletedEvidence = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: {
+      ...ed,
+      provenance: "simulated-complete",
+      sourceResults: [],
+      matchEvidenceIds: [],
+    },
+  });
+  assert.equal(deletedEvidence.ok, false);
+  assert.equal(deletedEvidence.reason, "missing-source-results");
+
+  const nullScore = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: {
+      ...ed,
+      provenance: "simulated-complete",
+      matchEvidenceIds: ["m1"],
+      sourceResults: [
+        {
+          matchId: "m1",
+          editionId: "2025",
+          competitionId: league.leagueId,
+          homeClubId: arsenal.clubId,
+          awayClubId: brentford.clubId,
+          homeGoals: null,
+          awayGoals: 0,
+        },
+      ],
+    },
+  });
+  assert.equal(nullScore.ok, false);
+  assert.equal(nullScore.reason, "source-result-missing-or-invalid-score");
+
   const wrongYearCited = validateEarnedPeriodOracle({
     league,
     clubId: arsenal.clubId,
@@ -996,6 +1111,32 @@ test("F25: exporter validation path fails on missing/wrong evidence", async () =
   });
   assert.equal(wrongYearCited.ok, false);
   assert.equal(wrongYearCited.reason, "cited-match-wrong-edition");
+
+  const wrongTargetComp = validateEarnedPeriodOracle({
+    league,
+    clubId: arsenal.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: good,
+    edition: ed,
+    participants: [{ clubId: arsenal.clubId }],
+    europeCompetition: "Europa League",
+    mode: "target-participation",
+  });
+  assert.equal(wrongTargetComp.ok, false);
+
+  const dnqInField = validateEarnedPeriodOracle({
+    league,
+    clubId: brentford.clubId,
+    sourceYear: 2025,
+    targetYear: 2026,
+    decision: getClubTargetDecision(world, brentford.clubId, 2026).entry,
+    edition: ed,
+    participants: [{ clubId: brentford.clubId, competition: "Champions League" }],
+    europeCompetition: "Champions League",
+    mode: "target-participation",
+  });
+  assert.equal(dnqInField.ok, false);
 
   const ok = validateEarnedPeriodOracle({
     league,

@@ -958,31 +958,37 @@ const cases = {
     };
   },
 
-  /** Off-season Arsenal→Brentford: accept real permanent offer; no CL inheritance; fresh restore. */
+  /** Arsenal→DNQ Brentford: retain January coverage and require off-season acceptance + destination entry. */
   async B02(page, guards) {
     const { buildOwnershipTransferBrowserFixture } = await import(
       "../js/simulation/ownershipTransferBrowserFixture.js"
     );
-    const fixture = buildOwnershipTransferBrowserFixture({ seed: 9102, careerId: "fix09-b02" });
-    assert(fixture.ok, "ownership transfer fixture ready", fixture);
-    // Ensure earned DNQ for Brentford remains authoritative for destination entry.
     const league = leagueById(EPL);
+    const brentford = clubIn(league, BRENTFORD);
+
+    // --- Retained January mid-season permanent move (useful coverage). ---
+    const januaryFixture = buildOwnershipTransferBrowserFixture({ seed: 9102, careerId: "fix09-b02-january" });
+    assert(januaryFixture.ok, "january ownership transfer fixture ready", januaryFixture);
     commitCompletedDomesticEdition({
       world: getWorldState(),
       league,
-      table: orderedTable(league, { 1: ARSENAL, 2: "club:england:crystal-palace", 3: "club:england:everton", 4: "club:england:leeds-united", 17: BRENTFORD }),
+      table: orderedTable(league, {
+        1: ARSENAL,
+        2: "club:england:crystal-palace",
+        3: "club:england:everton",
+        4: "club:england:leeds-united",
+        17: BRENTFORD,
+      }),
       sourceYear: 2025,
       forceReplace: true,
     });
-    const snap = serializeCareerSnapshot({ player: fixture.player, world: getWorldState() });
-    await writeCase("B02-initial.json", slimEvidence(snap));
-    await writeFullSnapshot("B02-initial.full.json", snap);
-    await restore(page, snap);
+    const januarySnap = serializeCareerSnapshot({ player: januaryFixture.player, world: getWorldState() });
+    await writeCase("B02-january-initial.json", slimEvidence(januarySnap));
+    await restore(page, januarySnap);
     await shot(page, "B02-01-start");
-    assert(clubDecision(snap, BRENTFORD, 2026)?.status === "not-qualified", "Brentford DNQ seeded");
-    // Mid-season pause already awaiting decision with Brentford permanent offer — accept it.
+    assert(clubDecision(januarySnap, BRENTFORD, 2026)?.status === "not-qualified", "Brentford DNQ seeded");
     await page.waitForTimeout(300);
-    const accepted = await page.evaluate(() => {
+    const januaryAccepted = await page.evaluate(() => {
       const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
       const hit =
         buttons.find((b) => /brentford/i.test(b.textContent || "") && /accept|sign/i.test(b.textContent || "")) ||
@@ -991,42 +997,130 @@ const cases = {
       hit.click();
       return (hit.textContent || "").trim();
     });
-    assert(accepted, "must click Accept on Brentford permanent offer", { accepted });
-    const driven = await driveSeasonToDesk(page, {
-      seasonsBefore: (snap.player.seasons || []).length,
+    assert(januaryAccepted, "must accept January Brentford permanent offer", { januaryAccepted });
+    const januaryDriven = await driveSeasonToDesk(page, {
+      seasonsBefore: (januarySnap.player.seasons || []).length,
       alreadyRunning: true,
       shotPrefix: "B02",
       deskPolicy: "stay",
       timeoutMs: 240000,
     });
-    const desk = await exportSnapshot(page);
-    await writeCase("B02-desk.json", slimEvidence(desk));
-    await writeFullSnapshot("B02-desk.full.json", desk);
-    const sum = qualSummary(desk.player, desk);
-    assert(sum.playingClubId === BRENTFORD, "accepted move to Brentford", sum);
-    assert(sum.brentford2026?.status === "not-qualified" || sum.brentford2026?.position === 17, "DNQ retained", sum);
-    const last = (desk.player.seasons || []).at(-1);
-    const moveDate = "2027-01-01";
-    const postMoveBrentfordCl = (last?.europeanCampaign?.playerMatches || []).filter(
+    const januaryDesk = await exportSnapshot(page);
+    await writeCase("B02-desk.json", slimEvidence(januaryDesk));
+    await writeFullSnapshot("B02-desk.full.json", januaryDesk);
+    const januarySum = qualSummary(januaryDesk.player, januaryDesk);
+    assert(januarySum.playingClubId === BRENTFORD, "january move to Brentford", januarySum);
+    assert(
+      januarySum.brentford2026?.status === "not-qualified" || januarySum.brentford2026?.position === 17,
+      "january DNQ retained",
+      januarySum
+    );
+    const januaryMoveDate = januaryFixture.checkpoint?.lastDate || "2027-01-10";
+    const januaryLast = (januaryDesk.player.seasons || []).at(-1);
+    const januaryPostCl = (januaryLast?.europeanCampaign?.playerMatches || []).filter(
       (m) =>
-        String(m.date || "") >= moveDate &&
+        String(m.date || "") >= String(januaryMoveDate) &&
         (m.home?.clubId === BRENTFORD || m.away?.clubId === BRENTFORD || m.teamId === BRENTFORD)
     );
-    assert(postMoveBrentfordCl.length === 0, "Brentford must not inherit Arsenal CL attachments", {
-      postMoveBrentfordCl,
-      europe: sum.europe,
+    assert(januaryPostCl.length === 0, "january Brentford must not inherit Arsenal CL", { januaryPostCl });
+
+    // --- Required off-season Arsenal→DNQ Brentford acceptance + destination season. ---
+    const offSnap = buildSeededSnap({
+      id: "fix09-b02-offseason",
+      clubId: ARSENAL,
+      seed: 9122,
+      ovr: 76,
+      placements: {
+        1: ARSENAL,
+        2: "club:england:crystal-palace",
+        3: "club:england:everton",
+        4: "club:england:leeds-united",
+        17: BRENTFORD,
+      },
     });
-    await freshRestore(page, desk);
+    const offOffer = {
+      offerId: `fix09-b02-off:${BRENTFORD}`,
+      club: brentford.name,
+      clubDisplay: brentford.displayName || brentford.name,
+      clubId: BRENTFORD,
+      league: "England - Premier League",
+      leagueId: EPL,
+      nation: "England",
+      dealType: "permanent",
+      isLoan: false,
+      isRenewal: false,
+      isFreeAgent: false,
+      transferFee: 12_000_000,
+      wage: 6000,
+      contractYears: 3,
+      expectedRole: "starter",
+      status: "pending",
+      effectiveDate: "2026-07-01",
+      reviewDate: "2026-07-01",
+    };
+    offSnap.player.pendingOffers = [offOffer];
+    offSnap.player.pendingDecision = { kind: "transfer-offers", offers: [offOffer] };
+    await writeCase("B02-initial.json", slimEvidence(offSnap));
+    await writeFullSnapshot("B02-initial.full.json", offSnap);
+    await restore(page, offSnap);
+    await shot(page, "B02-offseason-start");
+    assert((offSnap.player.seasons || []).length === 0, "off-season starts before any completed season");
+    assert(String(offOffer.effectiveDate).startsWith("2026-07"), "off-season effective date");
+    await page.waitForTimeout(300);
+    const offAccepted = await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
+      const hit =
+        buttons.find((b) => /brentford/i.test(b.textContent || "") && /accept|sign/i.test(b.textContent || "")) ||
+        buttons.find((b) => /accept offer|accept transfer|sign for|^accept$/i.test((b.textContent || "").trim()));
+      if (!hit) return null;
+      hit.click();
+      return (hit.textContent || "").trim();
+    });
+    assert(offAccepted, "must accept off-season Brentford permanent offer", { offAccepted });
+    const offDriven = await driveSeasonToDesk(page, {
+      seasonsBefore: 0,
+      shotPrefix: "B02-off",
+      deskPolicy: "stay",
+      timeoutMs: 240000,
+    });
+    const offDesk = await exportSnapshot(page);
+    await writeCase("B02-offseason-desk.json", slimEvidence(offDesk));
+    await writeFullSnapshot("B02-offseason-desk.full.json", offDesk);
+    const offSum = qualSummary(offDesk.player, offDesk);
+    assert(offSum.playingClubId === BRENTFORD, "off-season destination Brentford", offSum);
+    assert(offSum.seasons >= 1, "off-season destination season completed", offSum);
+    assert(
+      offSum.europe.qualified !== true || offSum.europe.competition !== "Champions League",
+      "off-season DNQ destination must not inherit Arsenal CL",
+      offSum
+    );
+    assert(
+      clubDecision(offDesk, BRENTFORD, 2026)?.status === "not-qualified",
+      "off-season Brentford DNQ authority",
+      clubDecision(offDesk, BRENTFORD, 2026)
+    );
+    const offStint = (offDesk.player.playingStints || []).find((s) => s.playingClubId === BRENTFORD);
+    assert(offStint && String(offStint.from).startsWith("2026-07"), "off-season stint timing", offStint);
+    await freshRestore(page, offDesk);
     const restored = await exportSnapshot(page);
     await writeCase("B02-fresh-restore.json", slimEvidence(restored));
     await writeFullSnapshot("B02-fresh-restore.full.json", restored);
     const rSum = qualSummary(restored.player, restored);
     assert(rSum.playingClubId === BRENTFORD, "fresh restore club");
-    assert(rSum.seasons === sum.seasons && rSum.age === sum.age, "fresh restore seasons/age", { sum, rSum });
-    assert(rSum.brentford2026?.status === "not-qualified" || rSum.brentford2026?.position === 17, "fresh restore DNQ", rSum);
+    assert(rSum.seasons === offSum.seasons && rSum.age === offSum.age, "fresh restore seasons/age", { offSum, rSum });
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, sum, restored: rSum, freshRestore: true, transferAccepted: true, deskDecisions: driven.trace.deskDecisions };
+    return {
+      ok: true,
+      january: januarySum,
+      offSeason: offSum,
+      restored: rSum,
+      freshRestore: true,
+      transferAccepted: true,
+      offSeasonAccepted: true,
+      januaryAccepted: true,
+      deskDecisions: [...(januaryDriven.trace.deskDecisions || []), ...(offDriven.trace.deskDecisions || [])],
+    };
   },
 
   /** Same career: non-qualified Brentford → accept move onto qualified Arsenal. */
@@ -1210,8 +1304,127 @@ const cases = {
       "return restores parent qualification authority",
       clubDecision(desk, ARSENAL, 2026)
     );
+
+    // --- Reverse direction: DNQ parent (Brentford) → qualified borrower (Arsenal). ---
+    const reverseFixture = buildOwnershipTransferBrowserFixture({
+      seed: 9135,
+      careerId: "fix09-b04-reverse",
+      dealType: "loan",
+      fromClubId: BRENTFORD,
+      toClubId: ARSENAL,
+    });
+    assert(reverseFixture.ok, "reverse loan fixture ready", reverseFixture);
+    commitCompletedDomesticEdition({
+      world: getWorldState(),
+      league,
+      table: orderedTable(league, { 1: ARSENAL, 17: BRENTFORD }),
+      sourceYear: 2025,
+      forceReplace: true,
+    });
+    const reverseSnap = serializeCareerSnapshot({ player: reverseFixture.player, world: getWorldState() });
+    await writeCase("B04-reverse-initial.json", slimEvidence(reverseSnap));
+    await restore(page, reverseSnap);
+    await shot(page, "B04-reverse-start");
+    assert(clubDecision(reverseSnap, BRENTFORD, 2026)?.status === "not-qualified", "reverse parent DNQ");
+    assert(clubDecision(reverseSnap, ARSENAL, 2026)?.competition === "Champions League", "reverse borrower CL");
+    await page.waitForTimeout(300);
+    const reverseAccepted = await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
+      const hit =
+        buttons.find((b) => /arsenal/i.test(b.textContent || "") && /accept loan|accept offer|^accept$/i.test(b.textContent || "")) ||
+        buttons.find((b) => /accept loan/i.test(b.textContent || ""));
+      if (!hit) return null;
+      hit.click();
+      return (hit.textContent || "").trim();
+    });
+    assert(reverseAccepted, "must accept Arsenal loan from DNQ parent", { reverseAccepted });
+    const reverseDriven = await driveSeasonToDesk(page, {
+      seasonsBefore: (reverseSnap.player.seasons || []).length,
+      alreadyRunning: true,
+      shotPrefix: "B04-reverse",
+      deskPolicy: "stay",
+      timeoutMs: 240000,
+    });
+    const reverseDesk = await exportSnapshot(page);
+    await writeCase("B04-reverse-desk.json", slimEvidence(reverseDesk));
+    assert(reverseDesk.player.playingClubId === ARSENAL, "reverse loan playing tip Arsenal", {
+      playing: reverseDesk.player.playingClubId,
+      employment: reverseDesk.player.employmentClubId,
+    });
+    assert(reverseDesk.player.employmentClubId === BRENTFORD, "reverse loan employment remains Brentford");
+    const reverseSum = qualSummary(reverseDesk.player, reverseDesk);
+    assert(
+      reverseSum.europe.qualified === true && reverseSum.europe.competition === "Champions League",
+      "qualified borrower grants its own CL entry",
+      reverseSum
+    );
+
+    // --- Cross-association loan: English parent → Dutch borrower with controlled entries. ---
+    const eredivisie = LEAGUES.find((l) => l.leagueId === "league:netherlands-eredivisie");
+    assert(eredivisie, "Eredivisie present for cross-association loan");
+    const twente = eredivisie.clubs.find((c) => c.clubId === "club:netherlands:twente") || eredivisie.clubs[0];
+    const crossFixture = buildOwnershipTransferBrowserFixture({
+      seed: 9145,
+      careerId: "fix09-b04-cross",
+      dealType: "loan",
+      fromClubId: ARSENAL,
+      toClubId: twente.clubId,
+    });
+    assert(crossFixture.ok, "cross-association loan fixture ready", crossFixture);
+    commitCompletedDomesticEdition({
+      world: getWorldState(),
+      league,
+      table: orderedTable(league, { 1: ARSENAL, 17: BRENTFORD }),
+      sourceYear: 2025,
+      forceReplace: true,
+    });
+    commitCompletedDomesticEdition({
+      world: getWorldState(),
+      league: eredivisie,
+      table: orderedTable(eredivisie, { 1: twente.clubId }),
+      sourceYear: 2025,
+      forceReplace: true,
+    });
+    const crossSnap = serializeCareerSnapshot({ player: crossFixture.player, world: getWorldState() });
+    await writeCase("B04-cross-initial.json", slimEvidence(crossSnap));
+    await restore(page, crossSnap);
+    await page.waitForTimeout(300);
+    const crossAccepted = await page.evaluate((borrowerName) => {
+      const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.offsetParent !== null);
+      const re = new RegExp(borrowerName, "i");
+      const hit =
+        buttons.find((b) => re.test(b.textContent || "") && /accept loan|accept offer|^accept$/i.test(b.textContent || "")) ||
+        buttons.find((b) => /accept loan/i.test(b.textContent || ""));
+      if (!hit) return null;
+      hit.click();
+      return (hit.textContent || "").trim();
+    }, twente.name);
+    assert(crossAccepted, "must accept cross-association loan", { crossAccepted, borrower: twente.name });
+    const crossDriven = await driveSeasonToDesk(page, {
+      seasonsBefore: (crossSnap.player.seasons || []).length,
+      alreadyRunning: true,
+      shotPrefix: "B04-cross",
+      deskPolicy: "stay",
+      timeoutMs: 240000,
+    });
+    const crossDesk = await exportSnapshot(page);
+    await writeCase("B04-cross-desk.json", slimEvidence(crossDesk));
+    assert(crossDesk.player.playingClubId === twente.clubId, "cross loan playing tip", {
+      playing: crossDesk.player.playingClubId,
+      expected: twente.clubId,
+    });
+    assert(crossDesk.player.employmentClubId === ARSENAL, "cross loan employment remains Arsenal");
+    const crossBorrowerDecision = clubDecision(crossDesk, twente.clubId, 2026);
+    assert(
+      crossBorrowerDecision?.competition || crossBorrowerDecision?.status === "qualified",
+      "cross borrower has own target qualification",
+      crossBorrowerDecision
+    );
+
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
+    void reverseDriven;
+    void crossDriven;
     return {
       ok: true,
       sum,
@@ -1221,6 +1434,18 @@ const cases = {
       borrowerDecision,
       borrowerWasDnq: true,
       parentQualified: true,
+      reverseLoan: {
+        accepted: true,
+        playingClubId: reverseDesk.player.playingClubId,
+        employmentClubId: reverseDesk.player.employmentClubId,
+        europe: reverseSum.europe,
+      },
+      crossAssociationLoan: {
+        accepted: true,
+        playingClubId: crossDesk.player.playingClubId,
+        employmentClubId: crossDesk.player.employmentClubId,
+        borrowerDecision: crossBorrowerDecision,
+      },
       employmentAtDesk: desk.player.employmentClubId,
       playingAtDesk: desk.player.playingClubId,
       deskDecisions: driven.trace.deskDecisions,
@@ -1292,9 +1517,7 @@ const cases = {
     await writeFullSnapshot("B06-before-continue.full.json", paused.snapshot);
     assert((paused.snapshot.player.seasons || []).length === 0, "mid-season pause before finalize");
     assert(
-      paused.snapshot.player.seasonCheckpoint?.status === "awaiting_decision" ||
-        paused.snapshot.player.seasonCheckpoint?.status === "awaiting_scenario" ||
-        paused.debug?.seasonCheckpoint === "awaiting_decision",
+      paused.snapshot.player.seasonCheckpoint?.status === "awaiting_decision",
       "real awaiting_decision checkpoint required",
       {
         ck: paused.snapshot.player.seasonCheckpoint?.status,
@@ -1302,78 +1525,109 @@ const cases = {
       }
     );
 
-    // Branch A: uninterrupted finish from the live paused desk.
-    const drivenA = await driveSeasonToDesk(page, {
-      seasonsBefore: 0,
-      alreadyRunning: true,
-      shotPrefix: "B06",
-      deskPolicy: "stay",
-      timeoutMs: 240000,
-    });
-    const deskA = await exportSnapshot(page);
-    await writeCase("B06-desk-a.json", slimEvidence(deskA));
-    await writeFullSnapshot("B06-desk-a.full.json", deskA);
-    const a = qualSummary(deskA.player, deskA);
+    // Both branches restore the identical pause snapshot so inputs/RNG match exactly.
+    async function finishFromPause(shotPrefix) {
+      await freshRestore(page, paused.snapshot);
+      const ui = await uiState(page);
+      assert(
+        ui.debug?.seasonCheckpoint === "awaiting_decision" ||
+          ui.nextAction?.id === "resolve-decision" ||
+          ui.nextAction?.id === "resolve-offers" ||
+          ui.nextAction?.id === "resume-season" ||
+          Boolean(ui.debug?.pendingDecision) ||
+          Boolean(paused.snapshot.player?.seasonCheckpoint),
+        "restored mid-season pause still awaiting decision",
+        { seasonCheckpoint: ui.debug?.seasonCheckpoint, nextAction: ui.nextAction }
+      );
+      const driven = await driveSeasonToDesk(page, {
+        seasonsBefore: 0,
+        alreadyRunning: true,
+        shotPrefix,
+        deskPolicy: "stay",
+        timeoutMs: 240000,
+      });
+      const desk = await exportSnapshot(page);
+      return { driven, desk };
+    }
+
+    const branchA = await finishFromPause("B06");
+    await writeCase("B06-desk-a.json", slimEvidence(branchA.desk));
+    await writeFullSnapshot("B06-desk-a.full.json", branchA.desk);
+    const a = qualSummary(branchA.desk.player, branchA.desk);
     assert(a.seasons === 1, "branch A completes exactly one season", a);
     assert(a.europe.competition === "Champions League", "branch A CL from seeded parent", a);
 
-    // Branch B: restore identical mid-season checkpoint and finish again.
-    await freshRestore(page, paused.snapshot);
-    const uiB = await uiState(page);
-    assert(
-      uiB.debug?.seasonCheckpoint === "awaiting_decision" ||
-        uiB.nextAction?.id === "resolve-decision" ||
-        uiB.nextAction?.id === "resolve-offers" ||
-        uiB.nextAction?.id === "resume-season" ||
-        Boolean(uiB.debug?.pendingDecision) ||
-        (Array.isArray(uiB.debug?.pendingOffers) && uiB.debug.pendingOffers.length > 0) ||
-        Boolean(paused.snapshot.player?.seasonCheckpoint),
-      "restored mid-season pause still awaiting decision",
-      {
-        seasonCheckpoint: uiB.debug?.seasonCheckpoint,
-        nextAction: uiB.nextAction,
-        pendingDecision: uiB.debug?.pendingDecision,
-        ck: paused.snapshot.player?.seasonCheckpoint?.status,
-      }
-    );
-    const drivenB = await driveSeasonToDesk(page, {
-      seasonsBefore: 0,
-      alreadyRunning: true,
-      shotPrefix: "B06-branch",
-      deskPolicy: "stay",
-      timeoutMs: 240000,
+    const branchB = await finishFromPause("B06-branch");
+    await writeCase("B06-desk-b.json", slimEvidence(branchB.desk));
+    await writeFullSnapshot("B06-desk-b.full.json", branchB.desk);
+    const b = qualSummary(branchB.desk.player, branchB.desk);
+
+    const protectedCompare = {
+      worldEqual: JSON.stringify(branchA.desk.world) === JSON.stringify(branchB.desk.world),
+      rngEqual:
+        Number(branchA.desk.world?.rngSeed) === Number(branchB.desk.world?.rngSeed) &&
+        Number(branchA.desk.world?.rngState) === Number(branchB.desk.world?.rngState) &&
+        Number(branchA.desk.rngSeed ?? branchA.desk.world?.rngState) ===
+          Number(branchB.desk.rngSeed ?? branchB.desk.world?.rngState),
+      clubFinanceEqual: JSON.stringify(branchA.desk.clubFinance) === JSON.stringify(branchB.desk.clubFinance),
+      pendingOffersEqual:
+        JSON.stringify(branchA.desk.player.pendingOffers || []) ===
+        JSON.stringify(branchB.desk.player.pendingOffers || []),
+      pendingDecisionEqual:
+        JSON.stringify(branchA.desk.player.pendingDecision || null) ===
+        JSON.stringify(branchB.desk.player.pendingDecision || null),
+      playingStintsEqual:
+        JSON.stringify(branchA.desk.player.playingStints || []) ===
+        JSON.stringify(branchB.desk.player.playingStints || []),
+      seasonsEqual: JSON.stringify(branchA.desk.player.seasons || []) === JSON.stringify(branchB.desk.player.seasons || []),
+      qualificationEqual:
+        JSON.stringify(branchA.desk.world?.qualification || []) ===
+        JSON.stringify(branchB.desk.world?.qualification || []),
+      wageEqual: branchA.desk.player.weeklyWage === branchB.desk.player.weeklyWage,
+      contractEqual: branchA.desk.player.contractStatus === branchB.desk.player.contractStatus,
+    };
+    await writeCase("B06-protected-compare.json", {
+      protectedCompare,
+      pendingOffersA: (branchA.desk.player.pendingOffers || []).map((o) => o.clubId || o.club),
+      pendingOffersB: (branchB.desk.player.pendingOffers || []).map((o) => o.clubId || o.club),
+      ledgerKeysA: Object.keys(branchA.desk.clubFinance?.ledgers || {}).sort(),
+      ledgerKeysB: Object.keys(branchB.desk.clubFinance?.ledgers || {}).sort(),
     });
-    const deskB = await exportSnapshot(page);
-    await writeCase("B06-desk-b.json", slimEvidence(deskB));
-    await writeFullSnapshot("B06-desk-b.full.json", deskB);
-    const b = qualSummary(deskB.player, deskB);
+    assert(protectedCompare.worldEqual, "B06 world state must match across branches");
+    assert(protectedCompare.rngEqual, "B06 RNG state must match across branches", {
+      a: { seed: branchA.desk.world?.rngSeed, state: branchA.desk.world?.rngState, top: branchA.desk.rngSeed },
+      b: { seed: branchB.desk.world?.rngSeed, state: branchB.desk.world?.rngState, top: branchB.desk.rngSeed },
+    });
+    assert(protectedCompare.clubFinanceEqual, "B06 clubFinance must match across branches", {
+      onlyA: Object.keys(branchA.desk.clubFinance?.ledgers || {}).filter(
+        (k) => !(branchB.desk.clubFinance?.ledgers || {})[k]
+      ),
+      onlyB: Object.keys(branchB.desk.clubFinance?.ledgers || {}).filter(
+        (k) => !(branchA.desk.clubFinance?.ledgers || {})[k]
+      ),
+    });
+    assert(protectedCompare.pendingOffersEqual, "B06 pendingOffers must match across branches", {
+      a: protectedCompare.pendingOffersEqual,
+      offersA: (branchA.desk.player.pendingOffers || []).map((o) => o.clubId),
+      offersB: (branchB.desk.player.pendingOffers || []).map((o) => o.clubId),
+    });
+    assert(protectedCompare.pendingDecisionEqual, "B06 pendingDecision must match across branches");
+    assert(protectedCompare.playingStintsEqual, "B06 playingStints must match across branches");
+    assert(protectedCompare.seasonsEqual, "B06 seasons evidence must match across branches");
     assert(b.seasons === a.seasons && b.age === a.age, "branch seasons/age match", { a, b });
     assert(b.europe.competition === a.europe.competition, "branch Europe competition match", { a, b });
-    assert(b.europe.qualified === a.europe.qualified, "branch Europe qualified match", { a, b });
-    assert(b.arsenal2026?.competition === a.arsenal2026?.competition, "registry branch match", { a, b });
     assert(b.playingClubId === a.playingClubId, "branch playing club match", { a, b });
-    const tableA = (deskA.player.seasons || []).at(-1)?.standing?.table?.map((r) => [r.clubId, r.position, r.points]);
-    const tableB = (deskB.player.seasons || []).at(-1)?.standing?.table?.map((r) => [r.clubId, r.position, r.points]);
-    assert(JSON.stringify(tableA) === JSON.stringify(tableB), "final tables match across mid-season branches", {
-      tableA: tableA?.slice?.(0, 5),
-      tableB: tableB?.slice?.(0, 5),
-    });
-    assert(
-      JSON.stringify(deskB.player.finance || null) === JSON.stringify(deskA.player.finance || null) ||
-        deskB.player.weeklyWage === deskA.player.weeklyWage,
-      "protected finance state matches across branch",
-      { wageA: deskA.player.weeklyWage, wageB: deskB.player.weeklyWage }
-    );
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
     return {
       ok: true,
       midSeasonPauseBranch: true,
-      checkpointStatus: paused.snapshot.player.seasonCheckpoint?.status || paused.debug?.seasonCheckpoint,
+      checkpointStatus: paused.snapshot.player.seasonCheckpoint?.status,
       deskA: a,
       deskB: b,
       branchCompare: true,
-      traceA: drivenA.trace,
-      traceB: drivenB.trace,
+      protectedCompare,
+      traceA: branchA.driven.trace,
+      traceB: branchB.driven.trace,
     };
   },
 

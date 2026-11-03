@@ -24,8 +24,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHORT = spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const FULL = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const BASE = "984495e4c12df0c2dd1c84d124bc4cb743a0f63e";
-const PREV_TIP = "ebbe1d19b9621da6cfe8d9c0b84f6ed778255c19";
+const PREV_TIP = "1203cfe4ce8d5b5f619e3e8654611041d51363fd";
 const FIRST_REVIEWED_TIP = "b874040211c82e8f4aafebdbde28df447112e228";
+const PRIOR_REREVIEW_TIP = "ebbe1d19b9621da6cfe8d9c0b84f6ed778255c19";
 const DESK = join(homedir(), "Desktop");
 const PKG_NAME = `09-Earned-Continental-Qualification-ReReview-${SHORT}`;
 const PKG = join(DESK, PKG_NAME);
@@ -196,6 +197,7 @@ copyTree(join(ROOT, "qa/fix09-runs/browser"), join(PKG, "qa/browser"));
 copyTree(join(ROOT, "qa/screenshots/checklist-earned-continental"), join(PKG, "qa/browser/screenshots"));
 ensureDir(join(PKG, "qa/fixtures"));
 ensureDir(join(PKG, "qa/regressions"));
+copyTree(join(ROOT, "qa/fixtures/paired-controls"), join(PKG, "qa/fixtures/paired-controls"));
 if (existsSync(join(ROOT, "qa/fix09-runs/final/engine-regression.log"))) {
   copyFile(join(ROOT, "qa/fix09-runs/final/engine-regression.log"), join(PKG, "qa/regressions/engine-regression.log"));
 }
@@ -222,6 +224,7 @@ const manifest = {
   branch: "fix/09-earned-continental-qualification",
   baseSha: BASE,
   firstReviewedTip: FIRST_REVIEWED_TIP,
+  priorReReviewTip: PRIOR_REREVIEW_TIP,
   previousReviewedTip: PREV_TIP,
   finalSha: FULL,
   testedSourceSha: testedSha,
@@ -253,19 +256,18 @@ writeFileSync(
 - Branch: \`fix/09-earned-continental-qualification\`
 - Accepted predecessor: \`${BASE}\`
 - First reviewed tip: \`${FIRST_REVIEWED_TIP}\`
-- Previous reviewed tip (ebbe1d1): \`${PREV_TIP}\`
+- Prior ReReview tip (ebbe1d1): \`${PRIOR_REREVIEW_TIP}\`
+- Previous reviewed tip (1203cfe): \`${PREV_TIP}\`
 - Final: \`${FULL}\`
 - QA tested source: \`${testedSha || "(missing)"}\`
 - Remote: \`${manifest.remoteSha || "(push required)"}\`
 
-## ReReview repairs
+## ReReview repairs (1203cfe follow-up)
 
-- R1: known non-qualifiers / wrong-competition clubs blocked from fields and player attachment
-- R2: incomplete / undated / invalid tables rejected without registry mutation
-- R3: soft view-focus no longer bypasses subsequent-registration policy
-- R4: cohort oracle fails missing/wrong evidence; exports fuller snapshots
-- R5: browser journeys require real moves/loans/re-signing and all nine IDs
-- R6: injury twin fixture seeds world RNG; package gates require full evidence
+- R2: half-played / uneven coverage rejected via appearances + per-club play evidence
+- R4: simulated-complete requires sourceResults; target-participation + six paired controls
+- R5: B06 dual-restore protected compare; B02 off-season path; B04 reverse/cross loan
+- R1/R3/R6: preserved from prior tips
 
 ## Replay
 

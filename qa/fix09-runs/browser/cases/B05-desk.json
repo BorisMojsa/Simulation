@@ -6,10 +6,10 @@
     "rating": 82,
     "contractStatus": "active",
     "employmentClubId": "club:england:arsenal",
-    "playingClubId": "club:spain:espanyol",
+    "playingClubId": "club:spain:malaga",
     "club": {
-      "name": "Espanyol",
-      "clubId": "club:spain:espanyol",
+      "name": "Málaga",
+      "clubId": "club:spain:malaga",
       "league": "Spain - La Liga"
     },
     "seasons": [
@@ -21,7 +21,7 @@
           "showcase": false,
           "editionId": "2026-uefa-champions-league",
           "competitionId": "uefa-champions-league",
-          "result": "Winners",
+          "result": "Runner-up",
           "matchCount": 6
         }
       }
@@ -29,16 +29,16 @@
     "latestStanding": {
       "leagueId": "league:spain-la-liga",
       "seasonId": "season-1",
-      "playerRowClubId": "club:spain:espanyol",
-      "playerRowPosition": 17
+      "playerRowClubId": "club:spain:malaga",
+      "playerRowPosition": 10
     }
   },
   "qualification": {
     "age": 23,
     "seasons": 1,
-    "club": "Espanyol",
+    "club": "Málaga",
     "employmentClubId": "club:england:arsenal",
-    "playingClubId": "club:spain:espanyol",
+    "playingClubId": "club:spain:malaga",
     "contractStatus": "active",
     "rating": 82,
     "europe": {
@@ -47,7 +47,7 @@
       "showcase": false,
       "editionId": "2026-uefa-champions-league",
       "competitionId": "uefa-champions-league",
-      "result": "Winners",
+      "result": "Runner-up",
       "matchCount": 6
     },
     "arsenal2026": {
@@ -144,23 +144,23 @@
     "club:club:england:sunderland::target:2026",
     "club:club:england:tottenham-hotspur::target:2026",
     "domestic:league:spain-la-liga::2026",
-    "club:club:spain:fc-barcelona::target:2027",
     "club:club:spain:real-madrid::target:2027",
+    "club:club:spain:fc-barcelona::target:2027",
     "club:club:spain:atletico-madrid::target:2027",
-    "club:club:spain:valencia::target:2027",
-    "club:club:spain:sevilla::target:2027",
     "club:club:spain:real-betis::target:2027",
-    "club:club:spain:osasuna::target:2027",
-    "club:club:spain:celta-vigo::target:2027",
-    "club:club:spain:real-sociedad::target:2027",
-    "club:club:spain:villarreal::target:2027",
     "club:club:spain:elche::target:2027",
-    "club:club:spain:athletic-bilbao::target:2027",
-    "club:club:spain:deportivo-de-la-coruna::target:2027",
-    "club:club:spain:racing-santander::target:2027",
+    "club:club:spain:sevilla::target:2027",
+    "club:club:spain:valencia::target:2027",
+    "club:club:spain:osasuna::target:2027",
+    "club:club:spain:villarreal::target:2027",
+    "club:club:spain:malaga::target:2027",
     "club:club:spain:rayo-vallecano::target:2027",
-    "club:club:spain:levante::target:2027",
-    "club:club:spain:espanyol::target:2027",
-    "club:club:spain:malaga::target:2027"
+    "club:club:spain:real-sociedad::target:2027",
+    "club:club:spain:celta-vigo::target:2027",
+    "club:club:spain:deportivo-alaves::target:2027",
+    "club:club:spain:deportivo-de-la-coruna::target:2027",
+    "club:club:spain:athletic-bilbao::target:2027",
+    "club:club:spain:racing-santander::target:2027",
+    "club:club:spain:getafe::target:2027"
   ]
 }

@@ -1,36 +1,28 @@
-# Fix 09 audit — ebbe1d1 ReReview follow-up
+# Fix 09 audit — 1203cfe ReReview follow-up
 
 ## Scope
 
-Continue Fix 09 on `fix/09-earned-continental-qualification` from `ebbe1d1`. Do not open Fix 10. Preserve R6 and Premier League controls.
+Continue Fix 09 on `fix/09-earned-continental-qualification` from `1203cfe`. Do not open Fix 10. Preserve R6 and Premier League controls.
 
 ## Appendix A controls (repaired)
 
-| Control | Before (ebbe1d1) | After |
+| Control | Before (1203cfe) | After |
 | --- | --- | --- |
-| AFC regional known DNQs | 13 Saudi DNQs in 32-team regional field | 0 conflicts; earned Saudis retained; regional falls through when inventory infeasible |
-| Zero-played full roster | migrated as completed CL | `unresolved`, registry untouched |
-| Oracle wrong identity / label-only | ok true | ok false; valid source-complete still ok |
-| New arrival at immutable focus | January league fixtures exposed | 0 late league-phase attachments |
-
-## Appendix B source-match audit
-
-| Metric | ebbe1d1 archive | Current cohort |
-| --- | --- | --- |
-| Correct played source editions | 14/42 | **42/42** |
-| Wrong-year citations | 28/42 | **0** |
-
-Root cause: chronological league events dropped `fixtureId` from the calendar builder, so every season reused yearless `${leagueId}:md:${index}` IDs. Fix preserves edition-scoped calendar IDs and stamps `editionId` / `sourceResults` on commit.
+| Half-played EPL (19/20/37) | Accepted as complete via fixtures-count | Rejected: appearances must be `2×fixtures`; per-club coverage enforced |
+| Uneven per-club coverage | Accepted | Rejected without registry mutation |
+| Full 38-match EPL | Qualified | Still qualifies (positive) |
+| Oracle empty `sourceResults` | Passed via table fallback | `missing-source-results` |
+| Null score rebuild | Coerced to 0 | Rebuild rejected |
+| Target participation field IDs | Required annotated `p.competition` (false fails on real fields) | Club-ID presence + campaign competition / DNQ checks |
+| Paired F01/F02/F03/F05/F10/F15 | Missing | Archived under `qa/fixtures/paired-controls/` |
 
 ## Browser journeys
 
 | Case | Evidence |
 | --- | --- |
-| B01 | Second season entry matches played finish competition/DNQ (not label-only) |
-| B04 | Controlled Brentford loan via ownership loan fixture; DNQ borrower; return to parent CL |
-| B06 | Real `awaiting_decision` mid-season pause; restore+finish tables/finance match uninterrupted branch |
-| B07 | Brazil calendar-year rollover from played source table |
-| B09 | FA search/train advances age/season, then post-search resign + destination season |
+| B02 | January Arsenal→Brentford retained; off-season `2026-07` acceptance + destination season + fresh restore |
+| B04 | Arsenal→Brentford DNQ loan + return; reverse Brentford→Arsenal loan; Twente cross-association loan |
+| B06 | Both branches `freshRestore` the same mid-season pause; world/RNG/`clubFinance`/pendingOffers/decision/stints/seasons equal |
 
 ## Residual allowance
 
