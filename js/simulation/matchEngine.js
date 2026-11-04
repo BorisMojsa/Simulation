@@ -729,20 +729,59 @@ function simulateExtraTime(match, { player, rng }) {
 }
 
 /**
+ * Strength vector eligible for a shootout.
+ * Players who did not complete regulation (or did not continue through ET) are absent.
+ * When ET already rebuilt phase strength, reuse it; otherwise rebuild from regulation.
+ */
+export function shootoutEffectiveStrength(match, { player = null } = {}) {
+  if (match?.etEffectiveStrength?.home && match?.etEffectiveStrength?.away) {
+    return match.etEffectiveStrength;
+  }
+  const regulationStrength =
+    match?.regulationEffectiveStrength || match?.effectiveStrength || {};
+  const matchDuration = Number(player?.matchParticipation?.matchDuration) || 90;
+  const regMinutes = Number(match?.playerStats?.minutes) || 0;
+  // Same continuation rule as ET: only full-regulation participants remain eligible.
+  const continues = Boolean(match?.playerSide && player && regMinutes >= matchDuration);
+  const phaseMinutes = continues ? 1 : 0;
+  return {
+    home: phaseEffectiveStrength(regulationStrength.home, {
+      player,
+      playerSide: match?.playerSide,
+      side: "home",
+      phaseMinutes,
+      phaseDuration: 1,
+    }),
+    away: phaseEffectiveStrength(regulationStrength.away, {
+      player,
+      playerSide: match?.playerSide,
+      side: "away",
+      phaseMinutes,
+      phaseDuration: 1,
+    }),
+  };
+}
+
+/** Deterministic first-kick success probability (exposed for audit gates). */
+export function penaltyKickProbability(taker, oppGk) {
+  return clamp(0.72 + (taker - oppGk) / 120, 0.55, 0.85);
+}
+
+/**
  * Penalty shootout — weakly linked to GK quality; not dominated by overall strength.
  * Kick tallies are NOT added to homeGoals/awayGoals / GD / player goals.
  */
 export function simulatePenaltyShootout(match, { player = null, rng = null } = {}) {
   const r = rngOr(rng);
-  const homeGk = match.effectiveStrength?.home?.goalkeeper ?? 70;
-  const awayGk = match.effectiveStrength?.away?.goalkeeper ?? 70;
+  const shootoutStrength = shootoutEffectiveStrength(match, { player });
+  const homeGk = shootoutStrength?.home?.goalkeeper ?? 70;
+  const awayGk = shootoutStrength?.away?.goalkeeper ?? 70;
   // Taker quality ≈ attack; weak effect
-  const homeTake = match.effectiveStrength?.home?.attack ?? 70;
-  const awayTake = match.effectiveStrength?.away?.attack ?? 70;
+  const homeTake = shootoutStrength?.home?.attack ?? 70;
+  const awayTake = shootoutStrength?.away?.attack ?? 70;
 
   function kickSuccess(taker, oppGk) {
-    const p = clamp(0.72 + (taker - oppGk) / 120, 0.55, 0.85);
-    return r.chance(p);
+    return r.chance(penaltyKickProbability(taker, oppGk));
   }
 
   let homePens = 0;
@@ -807,6 +846,13 @@ export function simulatePenaltyShootout(match, { player = null, rng = null } = {
     decidedBy: "penalties",
     scoreline,
     events,
+    // Preserve regulation evidence; record the actual shootout vector used for kicks.
+    shootoutEffectiveStrength: shootoutStrength,
+    effectiveStrength: shootoutStrength,
+    penaltyKickOdds: {
+      homeVsAwayGk: Number(penaltyKickProbability(homeTake, awayGk).toFixed(4)),
+      awayVsHomeGk: Number(penaltyKickProbability(awayTake, homeGk).toFixed(4)),
+    },
   };
 
   // Finalize from open-play events only; shootout kicks never become goals/assists.
@@ -963,6 +1009,14 @@ export function resolveTwoLeggedTie(firstLeg, secondLeg, {
     // Carry finalized KO playerStats (goals+assists+cards+minutes+rating) onto the second leg.
     playerStats: afterKo.playerStats ?? secondLeg.playerStats,
     winnerSide: afterKo.winnerSide ?? null,
+    // Preserve phase audit fields from the KO resolver (do not drop via ...secondLeg alone).
+    regulationEffectiveStrength:
+      afterKo.regulationEffectiveStrength || secondLeg.regulationEffectiveStrength || null,
+    etEffectiveStrength: afterKo.etEffectiveStrength || null,
+    shootoutEffectiveStrength: afterKo.shootoutEffectiveStrength || null,
+    effectiveStrength: afterKo.effectiveStrength || secondLeg.effectiveStrength,
+    expectedGoals: afterKo.expectedGoals || secondLeg.expectedGoals,
+    penaltyKickOdds: afterKo.penaltyKickOdds || null,
   };
 
   // Map second-leg winner orientation → first-leg-home relative side.

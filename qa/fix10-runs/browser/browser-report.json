@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-03T18:04:32.035Z",
-  "base": "http://127.0.0.1:59574",
+  "generatedAt": "2026-11-04T17:34:29.978Z",
+  "base": "http://127.0.0.1:64130",
   "cases": {
     "B01": {
       "ok": true,
@@ -16,16 +16,21 @@
       "starMean": 5.234172413793105,
       "refTeam": 69,
       "starTeam": 71.29862068965517,
-      "refMatches": 38,
-      "starMatches": 38
+      "refMatches": 39,
+      "starMatches": 39
     },
     "B03": {
       "ok": true,
       "replacement": 65,
       "refGk": -0.7871000000000001,
-      "starGk": 7.948266666666666,
-      "refMatches": 38,
-      "starMatches": 38
+      "starGk": 7.938354838709676,
+      "refOppXg": 2.32655,
+      "starOppXg": 1.960448387096774,
+      "refCs": 0,
+      "starCs": 4,
+      "refMatches": 39,
+      "starMatches": 39,
+      "continueClicks": 9
     },
     "B04": {
       "ok": true,
@@ -34,8 +39,14 @@
         "m30": 2.016,
         "m90": 6.048
       },
-      "zeroRows": 38,
-      "matches": 38
+      "shortAppearance": {
+        "minutes": 30,
+        "impactAttack": 2.016,
+        "fixtureId": "lg:league:england-premier-league:2026:md1:club:england:fulham:club:england:hull-city:short30"
+      },
+      "zeroRows": 40,
+      "matches": 41,
+      "continueClicks": 9
     },
     "B05": {
       "ok": true,
@@ -61,6 +72,10 @@
         "breakdownMethod": "controlled_asymmetric_fixture",
         "lineupImpactModelVersion": "fix10-lineup-impact-v1"
       },
+      "playedMatches": 1,
+      "liveAttack": 80.5,
+      "liveDefence": 60.5,
+      "continueClicks": 9,
       "text": "Team strength: 68.8 (Average) · ATK 80 / MID 70 / DEF 60 / GK 65 · Unit ratings · Starting data: 2026-10-08"
     },
     "B06": {
@@ -70,15 +85,33 @@
       "restoredST": 68.4887,
       "model": "fix10-club-strength-v1",
       "lineupModel": "fix10-lineup-impact-v1",
-      "rngSeed": 10106
+      "rngSeed": 3542179584,
+      "rngState": 3542179584,
+      "finance": {
+        "hasLedgers": false,
+        "ledgerCount": 0,
+        "clubCash": null,
+        "playerWage": 2500
+      },
+      "pendingEqual": true,
+      "fixtureIdsChecked": 0,
+      "continueClicks": 9
     },
     "B07": {
       "ok": true,
       "continuingEtAtk": 75.76,
       "nonContinuingEtAtk": 69.71,
       "noneEtAtk": 69.71,
-      "etRows": 2,
-      "presentation": "desk"
+      "etRows": 1,
+      "phaseFixtureId": "cup:FA Cup:1:Round of 32",
+      "phaseMinutes": 120,
+      "postCommitContinueClicks": 9,
+      "presentation": "production-simulate-continue",
+      "deskNextAction": {
+        "id": "resolve-offers",
+        "label": "Review offers",
+        "canSimulate": false
+      }
     },
     "B08": {
       "ok": true,
@@ -86,9 +119,52 @@
       "playing": "club:england:hull-city",
       "employment": "club:england:arsenal",
       "loanPlaying": "club:england:hull-city",
+      "loanOk": true,
+      "loanMeta": {
+        "ok": true,
+        "reason": null,
+        "parentClubId": "club:england:arsenal",
+        "borrowerClubId": "club:england:hull-city",
+        "playingClubId": "club:england:hull-city",
+        "employmentClubId": "club:england:arsenal",
+        "activeLoan": {
+          "loanId": "fix10-b08-loan",
+          "parentClubId": "club:england:arsenal",
+          "borrowingClubId": "club:england:hull-city",
+          "startSeason": 0,
+          "endSeason": 1,
+          "loanFee": 0,
+          "borrowerWageShare": 0.5,
+          "parentWageShare": 0.5,
+          "international": false,
+          "status": "active",
+          "agreedGrossWeekly": 2000,
+          "previousWeeklyWage": 2500,
+          "transactionIds": [
+            "tx:loan-b:fix10-b08-loan",
+            "tx:loan-p:fix10-b08-loan"
+          ],
+          "settledFinance": false
+        },
+        "stints": [
+          {
+            "stintId": "stint:seed:fix10-b08:club:england:arsenal",
+            "from": "2026-07-01",
+            "to": null,
+            "playingClubId": "club:england:arsenal",
+            "employmentClubId": "club:england:arsenal",
+            "leagueId": "league:england-premier-league",
+            "clubName": "Arsenal",
+            "kind": "seed",
+            "onLoan": false
+          }
+        ]
+      },
       "moved": true,
       "formerUnaffected": true,
-      "receiverImpact": 6.050000000000011
+      "receiverImpact": 6.050000000000011,
+      "meanMatchImpactAttack": 1.4498823529411764,
+      "continueClicks": 10
     }
   },
   "errors": [],

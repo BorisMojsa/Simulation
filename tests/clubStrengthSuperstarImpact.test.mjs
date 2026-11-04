@@ -28,8 +28,10 @@ import {
   CLUB_PROFILES,
   NATION_PROFILES,
   ROOT,
+  finiteNumber,
+  profileUnit,
 } from "../scripts/lib/fix10StrengthQa.mjs";
-import { resolveTwoLeggedTie } from "../js/simulation/matchEngine.js";
+import { resolveTwoLeggedTie, penaltyKickProbability } from "../js/simulation/matchEngine.js";
 import {
   createWorldState,
   setWorldState,
@@ -561,4 +563,158 @@ test("F16 corrupt evidence fails validation helper", () => {
   const fails = assertContractRow(row);
   assert.ok(fails.length > 0);
   exportCase("F16", { ok: true, fails });
+});
+
+test("F17 null/blank ability and replacement stay absent; units stay finite", () => {
+  const team = synthProfile(70);
+  const withNullRaw = playerLineupImpact(team, {
+    position: "ST",
+    currentOverall: 99,
+    currentOverallRaw: null,
+    attributes: { ...NEUTRAL_ATTRS },
+  });
+  const omitRaw = playerLineupImpact(team, {
+    position: "ST",
+    currentOverall: 99,
+    attributes: { ...NEUTRAL_ATTRS },
+  });
+  assert.equal(withNullRaw.attack, omitRaw.attack);
+  assert.ok(withNullRaw.attack > 0);
+
+  const nullRepl = playerLineupImpact(
+    { ...team, replacementOvr: { ...team.replacementOvr, ST: null } },
+    { position: "ST", rating: 66, attributes: { ...NEUTRAL_ATTRS } }
+  );
+  // overall-minus-four fallback → 66 vs 66 → neutral
+  assert.equal(nullRepl.attack, 0);
+
+  assert.equal(finiteNumber(null), null);
+  assert.equal(finiteNumber(""), null);
+  assert.equal(finiteNumber(true), null);
+  assert.equal(finiteNumber("70"), 70);
+  assert.equal(profileUnit({ overall: 70, attack: "70" }, "attack"), 70);
+  assert.equal(profileUnit({ overall: 70 }, "attack"), 70);
+  assert.equal(profileUnit({ overall: 70, attack: Infinity }, "attack"), 70);
+
+  const world = worldWithProfiles([
+    synthProfile(70, { clubId: "club:r1:str", asymmetric: null }),
+  ]);
+  // Force string/missing/non-finite units on the live profile.
+  const live = world.clubs.get("club:r1:str");
+  live.attack = "70";
+  assert.equal(effectiveTeamStrength(teamRef(live), { worldState: world }).attack, 70);
+  delete live.attack;
+  assert.equal(effectiveTeamStrength(teamRef(live), { worldState: world }).attack, 70);
+  live.attack = Infinity;
+  assert.equal(effectiveTeamStrength(teamRef(live), { worldState: world }).attack, 70);
+
+  // Legacy save round-trip: null replacement preserved (not coerced to 0).
+  const world2 = createWorldState({ seed: 77, startYear: 2026 });
+  const club = [...world2.clubs.values()][0];
+  club.replacementOvr.ST = null;
+  const data = serializeWorldState(world2);
+  data.schemaVersion = 3; // force migration path
+  const restored = deserializeWorldState(JSON.parse(JSON.stringify(data)));
+  assert.equal(restored.clubs.get(club.clubId).replacementOvr.ST, null);
+  exportCase("F17", {
+    ok: true,
+    withNullRaw: withNullRaw.attack,
+    omitRaw: omitRaw.attack,
+    nullRepl: nullRepl.attack,
+  });
+});
+
+test("F18 shootout and two-legged phase evidence use eligible lineup", () => {
+  const home = synthProfile(70, { clubId: "club:r2:h" });
+  const away = synthProfile(70, { clubId: "club:r2:a" });
+  const world = worldWithProfiles([home, away]);
+  const gk = makePlayer({ position: "GK", ovr: 99, minutes: 30 });
+
+  const reg = simulateMatch(teamRef(home), teamRef(away), {
+    worldState: world,
+    venue: "neutral",
+    player: gk,
+    playerSide: "home",
+    playerMinutes: 30,
+    rng: createRng(11),
+  });
+  const drawn = {
+    ...reg,
+    homeGoals: 1,
+    awayGoals: 1,
+    regulationHomeGoals: 1,
+    regulationAwayGoals: 1,
+    matchHomeGoals: 1,
+    matchAwayGoals: 1,
+    winnerSide: null,
+    decidedBy: null,
+  };
+  const pens = resolveKnockout(drawn, {
+    player: gk,
+    allowExtraTime: false,
+    allowPenalties: true,
+    rng: createRng(12),
+  });
+  assert.equal(pens.decidedBy, "penalties");
+  assert.ok(pens.shootoutEffectiveStrength);
+  assert.equal(pens.shootoutEffectiveStrength.home.goalkeeper, 70);
+  assert.ok(pens.regulationEffectiveStrength.home.goalkeeper > 70);
+  assert.equal(pens.penaltyKickOdds.awayVsHomeGk, Number(penaltyKickProbability(70, 70).toFixed(4)));
+  assert.equal(pens.penaltyKickOdds.awayVsHomeGk, 0.72);
+
+  // Two-legged: ET evidence must survive second-leg assembly.
+  const first = simulateMatch(teamRef(home), teamRef(away), {
+    worldState: world,
+    venue: "home",
+    player: gk,
+    playerSide: "home",
+    playerMinutes: 30,
+    rng: createRng(21),
+  });
+  first.homeGoals = 1;
+  first.awayGoals = 1;
+  first.regulationHomeGoals = 1;
+  first.regulationAwayGoals = 1;
+  first.matchHomeGoals = 1;
+  first.matchAwayGoals = 1;
+  const second = simulateMatch(teamRef(away), teamRef(home), {
+    worldState: world,
+    venue: "home",
+    player: gk,
+    playerSide: "away",
+    playerMinutes: 30,
+    rng: createRng(22),
+  });
+  second.homeGoals = 1;
+  second.awayGoals = 1;
+  second.regulationHomeGoals = 1;
+  second.regulationAwayGoals = 1;
+  second.matchHomeGoals = 1;
+  second.matchAwayGoals = 1;
+  const tie = resolveTwoLeggedTie(first, second, {
+    player: gk,
+    allowExtraTime: true,
+    allowPenalties: true,
+    rng: createRng(23),
+  });
+  assert.ok(tie.secondLeg.etEffectiveStrength, "ET strength retained on second leg");
+  assert.ok(Number.isFinite(tie.secondLeg.expectedGoals?.etHome), "ET xG retained");
+  assert.ok(tie.secondLeg.regulationEffectiveStrength, "regulation strength retained");
+  if (tie.decidedBy === "penalties") {
+    assert.ok(tie.secondLeg.shootoutEffectiveStrength);
+    assert.ok(tie.secondLeg.penaltyKickOdds);
+    // Non-continuing 30' GK must not improve home/away kick odds vs 0.72 baseline.
+    assert.equal(tie.secondLeg.shootoutEffectiveStrength.away.goalkeeper, 70);
+  }
+  exportCase("F18", {
+    ok: true,
+    pensOdds: pens.penaltyKickOdds,
+    shootoutGk: pens.shootoutEffectiveStrength.home.goalkeeper,
+    regulationGk: pens.regulationEffectiveStrength.home.goalkeeper,
+    twoLeg: {
+      decidedBy: tie.decidedBy,
+      etHome: tie.secondLeg.expectedGoals?.etHome,
+      hasEt: Boolean(tie.secondLeg.etEffectiveStrength),
+    },
+  });
 });

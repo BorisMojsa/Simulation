@@ -52,9 +52,29 @@ function emptyImpact() {
   return { attack: 0, midfield: 0, defence: 0, goalkeeper: 0, deltaOvr: 0 };
 }
 
-function finiteNumber(value, fallback = null) {
-  const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? n : fallback;
+/**
+ * Parse a finite number, treating absent/invalid values as absent.
+ * null, undefined, "", booleans, NaN, Infinity and non-numeric strings
+ * must NOT coerce through Number() (Number(null)===0 is rejected here).
+ */
+export function finiteNumber(value, fallback = null) {
+  if (value == null) return fallback;
+  if (typeof value === "boolean") return fallback;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "") return fallback;
+    const n = Number(trimmed);
+    return Number.isFinite(n) ? n : fallback;
+  }
+  if (typeof value === "number") return Number.isFinite(value) ? value : fallback;
+  return fallback;
+}
+
+/** Profile unit with overall fallback; never string-concat or NaN into strength. */
+export function profileUnit(profile, key, overallFallback = 70) {
+  const overall = finiteNumber(profile?.overall, overallFallback) ?? overallFallback;
+  const direct = finiteNumber(profile?.[key], null);
+  return direct != null ? direct : overall;
 }
 
 function roleWeights(pos) {
@@ -263,13 +283,13 @@ export function playerLineupImpact(profile, player, { participates = true, minut
 
   const pos = player.position || "CM";
   const replacementRaw = profile.replacementOvr?.[pos];
-  const replacement =
-    finiteNumber(replacementRaw, null) ??
-    finiteNumber(profile.overall, 70) - 4;
+  const overall = finiteNumber(profile.overall, 70) ?? 70;
+  // Null/blank replacement → documented overall-minus-four fallback (not zero).
+  const replacement = finiteNumber(replacementRaw, null) ?? overall - 4;
   const ability = playerAbility(player);
   const delta = ability - replacement;
 
-  const sf = squadFactor(profile.overall);
+  const sf = squadFactor(overall);
   // Soft map of OVR gap; role weights are the unit share (avoid 1/11 then /4 dilution).
   const saturated = softSaturate(delta);
   const ovrScaled = saturated * sf * minuteShare;
@@ -351,10 +371,14 @@ export function phaseEffectiveStrength(regulationEff, {
     };
   }
 
-  const attack = clamp(profile.attack + impact.attack + form * 0.35, 25, 99);
-  const midfield = clamp(profile.midfield + impact.midfield + form * 0.4, 25, 99);
-  const defence = clamp(profile.defence + impact.defence + form * 0.3, 25, 99);
-  const goalkeeper = clamp(profile.goalkeeper + impact.goalkeeper + form * 0.2, 25, 99);
+  const baseAtk = profileUnit(profile, "attack");
+  const baseMid = profileUnit(profile, "midfield");
+  const baseDef = profileUnit(profile, "defence");
+  const baseGk = profileUnit(profile, "goalkeeper");
+  const attack = clamp(baseAtk + impact.attack + form * 0.35, 25, 99);
+  const midfield = clamp(baseMid + impact.midfield + form * 0.4, 25, 99);
+  const defence = clamp(baseDef + impact.defence + form * 0.3, 25, 99);
+  const goalkeeper = clamp(baseGk + impact.goalkeeper + form * 0.2, 25, 99);
   const overall = clamp((attack + midfield + defence + goalkeeper) / 4, 25, 99);
 
   return {
@@ -427,10 +451,14 @@ export function effectiveTeamStrength(team, {
   });
   const form = clamp(finiteNumber(formAdj, 0) ?? 0, -2.5, 2.5);
 
-  const attack = clamp(profile.attack + impact.attack + form * 0.35, 25, 99);
-  const midfield = clamp(profile.midfield + impact.midfield + form * 0.4, 25, 99);
-  const defence = clamp(profile.defence + impact.defence + form * 0.3, 25, 99);
-  const goalkeeper = clamp(profile.goalkeeper + impact.goalkeeper + form * 0.2, 25, 99);
+  const baseAtk = profileUnit(profile, "attack");
+  const baseMid = profileUnit(profile, "midfield");
+  const baseDef = profileUnit(profile, "defence");
+  const baseGk = profileUnit(profile, "goalkeeper");
+  const attack = clamp(baseAtk + impact.attack + form * 0.35, 25, 99);
+  const midfield = clamp(baseMid + impact.midfield + form * 0.4, 25, 99);
+  const defence = clamp(baseDef + impact.defence + form * 0.3, 25, 99);
+  const goalkeeper = clamp(baseGk + impact.goalkeeper + form * 0.2, 25, 99);
   const overall = clamp(
     (attack + midfield + defence + goalkeeper) / 4,
     25,

@@ -282,7 +282,10 @@ export function deserializeWorldState(data) {
     for (const profile of clubs.values()) {
       if (!profile?.replacementOvr) continue;
       for (const [k, v] of Object.entries(profile.replacementOvr)) {
-        const n = Number(v);
+        // Absent/null must not become 0 via Number(null).
+        if (v == null || v === "") continue;
+        if (typeof v === "boolean") continue;
+        const n = typeof v === "number" ? v : Number(typeof v === "string" ? v.trim() : v);
         if (Number.isFinite(n)) profile.replacementOvr[k] = Number(n.toFixed(4));
       }
     }

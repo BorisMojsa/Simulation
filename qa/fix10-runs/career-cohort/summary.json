@@ -988,5 +988,14 @@
       "restoreOk": true,
       "excluded": false
     }
-  ]
+  ],
+  "supplemental": {
+    "completed": 1,
+    "seeds": [
+      9124
+    ],
+    "replacesExclusionSeed": 9109,
+    "reason": "Declared supplemental after Yokohama AFC league-phase schedule failure",
+    "path": "supplemental-summary.json"
+  }
 }

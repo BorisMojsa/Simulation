@@ -202,8 +202,13 @@ for (const [homeName, awayName] of PAIRS) {
   report.realClubPairs.push(pairOut);
 }
 
-// --- Controlled league-season proxy: 38 fixed opponents, frozen participation ---
+// --- Synthetic league-season PROXY only (self-vs-self × 38). Production-schedule
+// study lives in scripts/qaFix10ProductionSeasons.mjs (weak/mid clubs, per-fixture
+// GF/GA/points + paired deltas). Keep this block labeled so it is not mistaken
+// for the R4 production gate.
 const SEASON_N = Number(process.env.FIX10_SEASON_N || 100);
+report.seasonStudyKind = "synthetic-self-vs-self-proxy";
+report.productionSeasonStudy = "qa/fix10-runs/production-seasons/summary.json";
 for (const quality of [55, 70]) {
   for (const role of ["ST", "CM", "CB", "GK"]) {
     for (const ovr of [roleReference(quality, role), 99]) {
@@ -236,7 +241,14 @@ for (const quality of [55, 70]) {
         points.push({ pts, gf, ga });
       }
       const mean = points.reduce((s, p) => s + p.pts, 0) / points.length;
-      report.seasons.push({ quality, role, ovr, seasons: SEASON_N, meanPoints: mean });
+      report.seasons.push({
+        kind: "synthetic-proxy",
+        quality,
+        role,
+        ovr,
+        seasons: SEASON_N,
+        meanPoints: mean,
+      });
     }
   }
 }

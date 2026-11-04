@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 /**
- * Package Fix 10 review tree under ~/Downloads.
+ * Package Fix 10 ReReview tree under ~/Downloads.
  * Requires a clean committed tip (no modified tracked files).
  *
  *   node scripts/packageFix10Review.mjs
  *
- * Output: ~/Downloads/10-Club-Strength-Profiles-Superstar-Impact-Review-<shortSHA>/
+ * `ready` is re-derived from the packaged bytes by scripts/lib/fix10ReviewEvidence.mjs
+ * (F01–F18 content, calibration, matched compare, browser B01–B08, career cohort,
+ * full-suite evidence, tested-source content manifest). Mere file existence never passes.
+ *
+ * Output: ~/Downloads/10-Club-Strength-Profiles-Superstar-Impact-ReReview-<shortSHA>/
  * Env: FIX10_REVIEW_OUT — override Downloads root
  */
 import { createHash } from "node:crypto";
@@ -24,6 +28,13 @@ import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
+import {
+  assessPackageEvidence,
+  computeSourceManifest,
+  cmp,
+  FOCUSED_IDS,
+  EVIDENCE_SCHEMA,
+} from "./lib/fix10ReviewEvidence.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHORT = spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
@@ -31,7 +42,7 @@ const FULL = spawnSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf
 /** Fix 09 tip — accepted predecessor for Fix 10. */
 const BASE = "296a14f2e921e68a946a802605e472662cb0894e";
 const OUT_ROOT = process.env.FIX10_REVIEW_OUT || join(homedir(), "Downloads");
-const PKG_NAME = `10-Club-Strength-Profiles-Superstar-Impact-Review-${SHORT}`;
+const PKG_NAME = `10-Club-Strength-Profiles-Superstar-Impact-ReReview-${SHORT}`;
 const PKG = join(OUT_ROOT, PKG_NAME);
 const ZIP = join(OUT_ROOT, `${PKG_NAME}.zip`);
 
@@ -153,54 +164,37 @@ for (const name of [
   if (existsSync(src)) copyFile(src, join(PKG, "reports", name));
 }
 
-const browser = readJson(join(ROOT, "qa/fix10-runs/browser/browser-report.json"));
-const calibration = readJson(join(ROOT, "qa/fix10-runs/calibration-summary.json"));
-const calibrationGate = readJson(join(ROOT, "qa/fix10-runs/cases/calibration-gate.json"));
-const matched = readJson(join(ROOT, "qa/fix10-runs/matched/baseline-vs-final-summary.json")) ||
-  readJson(join(ROOT, "qa/fix10-runs/baseline-vs-final-summary.json"));
-
-const focusedOk =
-  existsSync(join(ROOT, "qa/fix10-runs/logs/focused-strength.log")) ||
-  existsSync(join(ROOT, "qa/fix10-runs/cases/F01.json"));
-const calibrationOk = calibration?.ok === true || calibrationGate?.ok === true;
-const browserCaseIds = Object.keys(browser?.cases || {});
-const browserCasesPass =
-  ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08"].every((id) => {
-    const c = browser?.cases?.[id];
-    return c === true || c?.ok === true;
-  });
-const browserOk =
-  browser?.ok === true &&
-  browser?.selectedOk === true &&
-  browser?.subsetOnly !== true &&
-  browser?.blocked !== true &&
-  browserCasesPass &&
-  browserCaseIds.length >= 8;
-const matchedOk =
-  matched?.ok === true ||
-  matched?.pass === true ||
-  matched?.selfReplayExact === true;
-
-const ready = focusedOk && calibrationOk && browserOk && !browser?.blocked;
-
-writeFileSync(
-  join(PKG, "reports/qa-matrix.md"),
-  `# Fix 10 QA matrix
-
-| Gate | Status | Evidence |
-| --- | --- | --- |
-| Focused F01–F16 | ${focusedOk ? "PASS/present" : "MISSING"} | \`qa/fix10-runs/cases/F*.json\`, \`tests/clubStrengthSuperstarImpact.test.mjs\` |
-| Calibration | ${calibrationOk ? "PASS" : "FAIL/missing"} | \`qa/fix10-runs/calibration-summary.json\` |
-| Browser B01–B08 | ${browserOk ? "PASS" : "FAIL/missing"} | \`qa/fix10-runs/browser/browser-report.json\` |
-| Matched compare | ${matchedOk ? "PASS" : "see matched/"} | \`qa/fix10-runs/matched/\` |
-`
-);
-
 copyTree(join(ROOT, "qa/fix10-runs"), join(PKG, "qa/fix10-runs"));
 copyTree(join(ROOT, "qa/fix10-runs/browser"), join(PKG, "qa/browser"));
 if (existsSync(join(ROOT, "qa/fix10-runs/browser/screenshots"))) {
   copyTree(join(ROOT, "qa/fix10-runs/browser/screenshots"), join(PKG, "qa/browser/screenshots"));
 }
+
+// Tested-source content manifest (per-file sha256 + aggregate), then re-derive every gate from PACKAGED bytes.
+const sourceManifest = computeSourceManifest(join(PKG, "source"));
+writeFileSync(join(PKG, "source-content-manifest.json"), JSON.stringify({ commit: FULL, ...sourceManifest }, null, 2));
+const assessed = assessPackageEvidence(PKG, { baseSha: BASE, finalSha: FULL });
+const { ready, gates } = assessed;
+const gp = (k) => (gates[k].ok ? "PASS" : `FAIL (${gates[k].reason})`);
+writeFileSync(
+  join(PKG, "evidence.json"),
+  JSON.stringify({ ...assessed.evidence, generatedAt: new Date().toISOString() }, null, 2)
+);
+writeFileSync(
+  join(PKG, "reports/qa-matrix.md"),
+  `# Fix 10 ReReview QA matrix
+
+| Gate | Status | Evidence |
+| --- | --- | --- |
+| Focused ${FOCUSED_IDS[0]}–${FOCUSED_IDS.at(-1)} (parsed, ok:true, required keys) | ${gp("focused")} | \`qa/fix10-runs/cases/F*.json\` |
+| Calibration | ${gp("calibration")} | \`qa/fix10-runs/calibration-summary.json\` |
+| Matched baseline-vs-final | ${gp("matched")} | \`qa/fix10-runs/matched/\` |
+| Browser B01–B08 (requiredComplete) | ${gp("browser")} | \`qa/fix10-runs/browser/browser-report.json\` |
+| Career cohort >= 24 | ${gp("cohort")} | \`qa/fix10-runs/career-cohort/summary.json\` |
+| Full-suite evidence | ${gp("fullSuite")} | \`qa/fix10-runs/logs/full-suite.log\`, \`commands.json\` |
+| Tested-source manifest | ${gp("sourceManifest")} | \`source-content-manifest.json\` |
+`
+);
 
 ensureDir(join(PKG, "git"));
 writeFileSync(join(PKG, "git/status.txt"), sh("git", ["status", "--porcelain=v1"]).stdout || "(clean)\n");
@@ -249,15 +243,11 @@ const manifest = {
   remoteSha: remote.split(/\s+/)[0] || null,
   createdAt: new Date().toISOString(),
   provenanceVersion: 1,
-  gates: {
-    focused: focusedOk,
-    calibration: calibrationOk,
-    browser: browserOk,
-    matched: matchedOk,
-    ready,
-  },
+  evidenceSchema: EVIDENCE_SCHEMA,
+  sourceContentSha256: sourceManifest.sha256,
+  gates: { ...Object.fromEntries(Object.entries(gates).map(([k, g]) => [k, g.ok])), ready },
   commands: {
-    focused: "node --test tests/clubStrengthSuperstarImpact.test.mjs tests/teamStrength.test.mjs",
+    focused: "node --test tests/clubStrengthSuperstarImpact.test.mjs tests/teamStrength.test.mjs tests/strengthProvenance.test.mjs",
     calibration: "node scripts/qaClubStrengthSuperstarImpact.mjs",
     matched: "node scripts/qaFix10MatchedCompare.mjs",
     browser: "node scripts/browserClubStrengthSuperstarImpactChecklist.mjs",
@@ -268,7 +258,7 @@ writeFileSync(join(PKG, "manifest.json"), JSON.stringify(manifest, null, 2));
 
 writeFileSync(
   join(PKG, "README.md"),
-  `# Fix 10 — Club strength profiles + superstar impact
+  `# Fix 10 ReReview — Club strength profiles + superstar impact
 
 **Verdict: ${ready ? "READY FOR REVIEW" : "BLOCKED / incomplete gates"}**
 
@@ -296,88 +286,44 @@ node verify-package.mjs
 
 ## Gates
 
-- Focused F01–F16: ${focusedOk ? "PASS/present" : "MISSING"}
-- Calibration: ${calibrationOk ? "PASS" : "FAIL/missing"}
-- Browser B01–B08: ${browserOk ? "PASS" : "FAIL/missing"}
-- Matched compare: ${matchedOk ? "PASS" : "see matched/"}
+${Object.keys(gates)
+  .map((k) => `- ${k}: ${gp(k)}`)
+  .join("\n")}
 `
 );
 
-const verifyScript = `#!/usr/bin/env node
-import { createHash } from "node:crypto";
-import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { join, relative, dirname } from "node:path";
+// Package-local verifier: the real checks live in verifier/ (copied from scripts/); this is a thin entry point.
+ensureDir(join(PKG, "verifier/lib"));
+copyFile(join(ROOT, "scripts/verifyFix10Review.mjs"), join(PKG, "verifier/verifyFix10Review.mjs"));
+copyFile(join(ROOT, "scripts/lib/fix10ReviewEvidence.mjs"), join(PKG, "verifier/lib/fix10ReviewEvidence.mjs"));
+writeFileSync(
+  join(PKG, "verify-package.mjs"),
+  `#!/usr/bin/env node
+import { spawnSync } from "node:child_process";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-const root = join(dirname(fileURLToPath(import.meta.url)));
-function walk(dir, out=[]) {
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) walk(p, out);
-    else out.push(p);
-  }
-  return out;
-}
-const sums = readFileSync(join(root, "SHA256SUMS.txt"), "utf8").trim().split(/\\n/).filter(Boolean);
-let bad = 0;
-for (const line of sums) {
-  const hash = line.slice(0, 64);
-  const path = line.slice(66);
-  if (path === "SHA256SUMS.txt") continue;
-  const full = join(root, path);
-  if (!existsSync(full)) { console.error("missing", path); bad++; continue; }
-  const h = createHash("sha256").update(readFileSync(full)).digest("hex");
-  if (h !== hash) { console.error("mismatch", path); bad++; }
-}
-const index = JSON.parse(readFileSync(join(root, "source-git-blob-index.json"), "utf8"));
-const sourceFiles = walk(join(root, "source")).map((p) => relative(join(root, "source"), p));
-const indexed = new Set(index.files.map((f) => f.path));
-for (const p of sourceFiles) if (!indexed.has(p)) { console.error("extra source", p); bad++; }
-for (const p of indexed) if (!sourceFiles.includes(p)) { console.error("missing source", p); bad++; }
-const manifest = JSON.parse(readFileSync(join(root, "manifest.json"), "utf8"));
-if (!manifest.finalSha || !manifest.baseSha) {
-  console.error("manifest missing identity fields");
-  bad++;
-}
-function parseJson(path) {
-  try { JSON.parse(readFileSync(path, "utf8")); }
-  catch (err) { console.error("json-parse-fail", relative(root, path), err.message); bad++; }
-}
-for (const p of walk(root)) {
-  if (p.endsWith(".json")) parseJson(p);
-}
-for (const f of index.files) {
-  const full = join(root, "source", f.path);
-  if (!existsSync(full)) { console.error("missing blob path", f.path); bad++; continue; }
-  const blob = createHash("sha1").update(Buffer.concat([
-    Buffer.from("blob " + statSync(full).size + "\\0"),
-    readFileSync(full),
-  ])).digest("hex");
-  if (f.blob && f.blob !== blob) { console.error("blob-mismatch", f.path, f.blob, blob); bad++; }
-}
-console.log(JSON.stringify({ ok: bad === 0, bad, package: manifest.package, finalSha: manifest.finalSha }, null, 2));
-process.exit(bad ? 1 : 0);
-`;
-writeFileSync(join(PKG, "verify-package.mjs"), verifyScript);
-
-// Also copy standalone verifier for convenience.
-if (existsSync(join(ROOT, "scripts/verifyFix10Review.mjs"))) {
-  copyFile(join(ROOT, "scripts/verifyFix10Review.mjs"), join(PKG, "scripts-verifyFix10Review.mjs"));
-}
+const root = dirname(fileURLToPath(import.meta.url));
+const r = spawnSync("node", [join(root, "verifier/verifyFix10Review.mjs"), root], { stdio: "inherit" });
+process.exit(r.status ?? 1);
+`
+);
 
 const sumLines = [];
 walk(PKG, (p) => {
-  const rel = relative(PKG, p);
-  if (rel === "SHA256SUMS.txt") return;
+  const rel = relative(PKG, p).split("\\").join("/");
+  if (rel === "SHA256SUMS.txt" || rel === "checksums.sha256") return;
   sumLines.push(`${sha256File(p)}  ${rel}`);
 });
-sumLines.sort((a, b) => a.slice(66).localeCompare(b.slice(66)));
+sumLines.sort((a, b) => cmp(a.slice(66), b.slice(66)));
 writeFileSync(join(PKG, "SHA256SUMS.txt"), sumLines.join("\n") + "\n");
 writeFileSync(join(PKG, "checksums.sha256"), sumLines.join("\n") + "\n");
 
 sh("zip", ["-qr", ZIP, PKG_NAME], { cwd: OUT_ROOT });
 const zipHash = sha256File(ZIP);
 
-const v = spawnSync("node", [join(PKG, "verify-package.mjs")], { encoding: "utf8" });
+// Authoritative verification uses the repo verifier, which re-derives readiness from package bytes.
+const v = spawnSync("node", [join(ROOT, "scripts/verifyFix10Review.mjs"), PKG], { encoding: "utf8" });
+if (v.status !== 0) console.error(v.stdout);
 console.log(
   JSON.stringify(
     {
@@ -386,6 +332,7 @@ console.log(
       zipSha256: zipHash,
       verifyExit: v.status,
       ready,
+      gates: Object.fromEntries(Object.entries(gates).map(([k, g]) => [k, g.ok ? "ok" : g.reason])),
       finalSha: FULL,
     },
     null,

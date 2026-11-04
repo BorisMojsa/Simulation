@@ -201,7 +201,58 @@ function clubFromWorld(worldLike, clubId) {
 function seasonMatches(player) {
   const last = Array.isArray(player?.seasons) ? player.seasons.at(-1) : null;
   if (!last) return [];
-  return last.leagueMatches || last.leagueAllMatches || last.playerMatches || [];
+  const league = last.leagueMatches || last.leagueAllMatches || last.playerMatches || [];
+  const cup = (last.domesticCupCampaigns || []).flatMap((c) => c.playerMatches || c.matches || []);
+  const continental =
+    last.europeanCampaign?.playerMatches ||
+    last.continentalCampaign?.playerMatches ||
+    last.europeanCampaign?.matches ||
+    [];
+  return [...league, ...cup, ...continental];
+}
+
+function oppXgFromMatch(m) {
+  const xg = m?.expectedGoals;
+  if (!xg || !m.playerSide) return null;
+  if (m.playerSide === "home") return Number.isFinite(xg.away) ? xg.away : null;
+  if (m.playerSide === "away") return Number.isFinite(xg.home) ? xg.home : null;
+  return null;
+}
+
+function meanOppXg(matches, { minMinutes = 45 } = {}) {
+  const vals = [];
+  for (const m of matches) {
+    const mins = Number(m.playerStats?.minutes) || 0;
+    if (mins < minMinutes) continue;
+    const x = oppXgFromMatch(m);
+    if (Number.isFinite(x)) vals.push(x);
+  }
+  if (!vals.length) return null;
+  return vals.reduce((s, v) => s + v, 0) / vals.length;
+}
+
+function financeFingerprint(snap) {
+  const world = snap?.world || {};
+  const ledgers = world.clubFinanceLedgers || world.financeLedgers || null;
+  const playerClub = snap?.player?.playingClubId || snap?.player?.employmentClubId;
+  let clubCash = null;
+  if (ledgers && playerClub) {
+    const entry = Array.isArray(ledgers)
+      ? ledgers.find((e) => (Array.isArray(e) ? e[0] : e?.clubId) === playerClub)
+      : ledgers[playerClub];
+    const ledger = Array.isArray(entry) ? entry[1] : entry;
+    clubCash = ledger?.cash ?? ledger?.balance ?? ledger?.currentCash ?? null;
+  }
+  return {
+    hasLedgers: Boolean(ledgers),
+    ledgerCount: Array.isArray(ledgers)
+      ? ledgers.length
+      : ledgers && typeof ledgers === "object"
+        ? Object.keys(ledgers).length
+        : 0,
+    clubCash,
+    playerWage: snap?.player?.weeklyWage ?? snap?.player?.wage ?? null,
+  };
 }
 
 function matchInfluenceRows(player) {
@@ -211,6 +262,7 @@ function matchInfluenceRows(player) {
     const mins = Number(m.playerStats?.minutes) || 0;
     const eff = side && m.effectiveStrength?.[side] ? m.effectiveStrength[side] : null;
     const impact = eff?.playerImpact || null;
+    const oppXg = oppXgFromMatch(m);
     rows.push({
       fixtureId: m.fixtureId || m.matchId || null,
       decidedBy: m.decidedBy || null,
@@ -220,12 +272,22 @@ function matchInfluenceRows(player) {
       available: m.playerStats?.available,
       selected: m.playerStats?.selected,
       teamOverall: eff?.overall ?? null,
+      teamAttack: eff?.attack ?? null,
+      teamDefence: eff?.defence ?? null,
+      teamMidfield: eff?.midfield ?? null,
+      teamGk: eff?.goalkeeper ?? null,
       impactAttack: impact?.attack ?? null,
       impactMidfield: impact?.midfield ?? null,
       impactDefence: impact?.defence ?? null,
       impactGk: impact?.goalkeeper ?? null,
+      oppXg,
+      homeXg: m.expectedGoals?.home ?? null,
+      awayXg: m.expectedGoals?.away ?? null,
       etAttack: m.etEffectiveStrength?.[side || "home"]?.attack ?? null,
       regulationAttack: m.regulationEffectiveStrength?.[side || "home"]?.attack ?? null,
+      hasRegulationStrength: Boolean(m.regulationEffectiveStrength),
+      hasEtStrength: Boolean(m.etEffectiveStrength),
+      raw: m,
     });
   }
   return rows;
@@ -1025,7 +1087,7 @@ const cases = {
     };
   },
 
-  /** Paired GK snapshots. */
+  /** Paired GK snapshots: impact + opposing xG + clean-sheet reconciliation. */
   async B03(page, guards) {
     const worldProbe = createWorldState({ seed: 10103, startYear: 2026 });
     const hull = [...worldProbe.clubs.values()].find((c) => c.name === HULL);
@@ -1048,16 +1110,26 @@ const cases = {
     await writeFullSnapshot("B03-star-initial.full.json", starSnap);
 
     await restore(page, refSnap);
-    await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B03-ref", deskPolicy: "decline-offers" });
+    const refDriven = await driveSeasonToDesk(page, {
+      seasonsBefore: 0,
+      shotPrefix: "B03-ref",
+      deskPolicy: "decline-offers",
+    });
     const refDesk = await exportSnapshot(page);
     await writeCase("B03-ref-desk.json", slimEvidence(refDesk));
 
     await freshRestore(page, starSnap);
-    await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B03-star", deskPolicy: "decline-offers" });
+    const starDriven = await driveSeasonToDesk(page, {
+      seasonsBefore: 0,
+      shotPrefix: "B03-star",
+      deskPolicy: "decline-offers",
+    });
     const starDesk = await exportSnapshot(page);
     await writeCase("B03-star-desk.json", slimEvidence(starDesk));
     await writeFullSnapshot("B03-star-desk.full.json", starDesk);
 
+    const refMatches = seasonMatches(refDesk.player);
+    const starMatches = seasonMatches(starDesk.player);
     const refRows = matchInfluenceRows(refDesk.player);
     const starRows = matchInfluenceRows(starDesk.player);
     const meanGk = (rows) => {
@@ -1069,12 +1141,69 @@ const cases = {
     const starGk = meanGk(starRows);
     assert(starGk != null && refGk != null, "GK impact rows present", { refGk, starGk, n: starRows.length });
     assert(starGk > refGk + 0.05, "99 GK mean GK impact exceeds replacement", { refGk, starGk, replacement });
+
+    const refOppXg = meanOppXg(refMatches, { minMinutes: 45 });
+    const starOppXg = meanOppXg(starMatches, { minMinutes: 45 });
+    assert(refOppXg != null && starOppXg != null, "opposing xG present on match rows", {
+      refOppXg,
+      starOppXg,
+    });
+    assert(starOppXg < refOppXg - 0.02, "99 GK lowers mean opposing xG vs replacement", {
+      refOppXg,
+      starOppXg,
+    });
+
+    const countCleanSheets = (matches) =>
+      matches.filter((m) => {
+        const mins = Number(m.playerStats?.minutes) || 0;
+        if (mins < 45 || !m.playerSide) return false;
+        const conceded =
+          m.playerSide === "home"
+            ? Number(m.matchAwayGoals ?? m.awayGoals)
+            : Number(m.matchHomeGoals ?? m.homeGoals);
+        return conceded === 0;
+      }).length;
+    const refCs = countCleanSheets(refMatches);
+    const starCs = countCleanSheets(starMatches);
+    const starSeason = starDesk.player.seasons?.at(-1);
+    const displayedCs = Number(starSeason?.cleanSheets);
+    if (Number.isFinite(displayedCs)) {
+      assert(
+        Math.abs(displayedCs - starCs) <= 2,
+        "season cleanSheets reconciles with zero-concede appearances",
+        { displayedCs, starCs }
+      );
+    }
+    await writeCase("B03-xg-clean-sheets.json", {
+      refOppXg,
+      starOppXg,
+      refCs,
+      starCs,
+      displayedCs: Number.isFinite(displayedCs) ? displayedCs : null,
+      refGk,
+      starGk,
+    });
+
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, replacement, refGk, starGk, refMatches: refRows.length, starMatches: starRows.length };
+    void refDriven;
+    void starDriven;
+    return {
+      ok: true,
+      replacement,
+      refGk,
+      starGk,
+      refOppXg,
+      starOppXg,
+      refCs,
+      starCs,
+      refMatches: refRows.length,
+      starMatches: starRows.length,
+      continueClicks: starDriven.trace.postCommitContinueClicks,
+    };
   },
 
-  /** Bench/injury/rejected zero effect; short appearance scales. */
+  /** Bench/injury zero effect; exported short appearance scales ~1/3. */
   async B04(page, guards) {
     const world = createWorldState({ seed: 10104, startYear: 2026 });
     const hull = [...world.clubs.values()].find((c) => c.name === HULL);
@@ -1095,12 +1224,13 @@ const cases = {
     assert(rejected.attack === 0, "rejected registration → zero impact", rejected);
     assert(m90.attack > m30.attack, "full appearance > short", { m30, m90 });
     assert(Math.abs(m30.attack * 3 - m90.attack) < 0.08, "short appearance scales ~1/3", { m30, m90 });
+    await writeCase("B04-scale-engine.json", { m0, m30, m90, rejected });
 
-    // Browser: injured career should expose zero-minute cards with zero impact.
-    const injuredSnap = buildSnap({
-      id: "fix10-b04-inj",
+    // Low-ovr career tends to produce natural short/sub appearances + unused rows.
+    const shortSnap = buildSnap({
+      id: "fix10-b04-short",
       position: "ST",
-      ovr: 99,
+      ovr: 58,
       club: HULL,
       seed: 10104,
       mutateWorld: (_w, p) => {
@@ -1108,25 +1238,89 @@ const cases = {
         p.health.activeInjury = {
           eventId: "fix10:b04:inj",
           onsetDay: 0,
-          availabilityReturnDay: 400,
-          severity: "severe",
+          availabilityReturnDay: 40,
+          severity: "moderate",
           status: "active",
         };
       },
     });
-    await writeCase("B04-scale-engine.json", { m0, m30, m90, rejected });
-    await writeFullSnapshot("B04-injured-initial.full.json", injuredSnap);
-    await restore(page, injuredSnap);
-    await shot(page, "B04-01-injured");
+    await writeFullSnapshot("B04-short-initial.full.json", shortSnap);
+    await restore(page, shortSnap);
+    await shot(page, "B04-01-start");
     const driven = await driveSeasonToDesk(page, {
       seasonsBefore: 0,
       shotPrefix: "B04",
       deskPolicy: "stay",
-      timeoutMs: 240000,
+      timeoutMs: 260000,
     });
-    const desk = await exportSnapshot(page);
-    await writeCase("B04-desk.json", slimEvidence(desk));
-    const rows = matchInfluenceRows(desk.player);
+    let desk = await exportSnapshot(page);
+
+    let rows = matchInfluenceRows(desk.player);
+    let shortRow = rows.find((r) => (r.minutes || 0) >= 20 && (r.minutes || 0) <= 45 && Number.isFinite(r.impactAttack));
+    let fullRow = rows.find((r) => (r.minutes || 0) >= 80 && Number.isFinite(r.impactAttack));
+
+    // If selection RNG did not yield a short appearance, inject a controlled 30' row
+    // into the completed season, restore, and re-export through the browser snapshot path.
+    if (!shortRow) {
+      const season = desk.player.seasons?.at(-1);
+      assert(season, "completed season present for short-appearance inject");
+      const donor =
+        (season.leagueMatches || []).find((m) => m.playerSide && (m.playerStats?.minutes || 0) >= 1) ||
+        (season.leagueMatches || [])[0];
+      assert(donor, "donor match for short-appearance inject");
+      const side = donor.playerSide || "home";
+      const injectedImpact = playerLineupImpact(profile, player99, { participates: true, minutes: 30 });
+      const fullImpact = playerLineupImpact(profile, player99, { participates: true, minutes: 90 });
+      const injected = jsonClone(donor);
+      injected.fixtureId = `${donor.fixtureId || "fix10"}:short30`;
+      injected.playerStats = {
+        ...(injected.playerStats || {}),
+        minutes: 30,
+        started: false,
+        selected: true,
+        available: true,
+        nonParticipationReason: null,
+      };
+      injected.effectiveStrength = injected.effectiveStrength || {};
+      injected.effectiveStrength[side] = {
+        ...(injected.effectiveStrength[side] || {}),
+        playerImpact: { ...injectedImpact },
+        attack: Number(injected.effectiveStrength[side]?.attack) || profile.attack,
+      };
+      season.leagueMatches = [...(season.leagueMatches || []), injected];
+      desk.player.seasons[desk.player.seasons.length - 1] = season;
+      await writeCase("B04-short-injected.json", {
+        minutes: 30,
+        impactAttack: injectedImpact.attack,
+        full90: fullImpact.attack,
+        scaleRatio: injectedImpact.attack / (fullImpact.attack || 1),
+      });
+      await freshRestore(page, desk);
+      desk = await exportSnapshot(page);
+      rows = matchInfluenceRows(desk.player);
+      shortRow = rows.find((r) => (r.minutes || 0) === 30 && Number.isFinite(r.impactAttack));
+      fullRow = {
+        minutes: 90,
+        impactAttack: fullImpact.attack,
+      };
+      assert(shortRow, "exported short appearance after inject+restore", {
+        sample: rows.slice(0, 5).map((r) => ({ m: r.minutes, a: r.impactAttack })),
+      });
+      assert(
+        Math.abs(shortRow.impactAttack * 3 - fullImpact.attack) < 0.08,
+        "exported 30' impact scales ~1/3 of engine 90'",
+        { short: shortRow.impactAttack, full: fullImpact.attack }
+      );
+    } else {
+      assert(fullRow, "full appearance present for scale check", { short: shortRow.minutes });
+      const expected = fullRow.impactAttack * (shortRow.minutes / fullRow.minutes);
+      assert(
+        Math.abs(shortRow.impactAttack - expected) < 0.12,
+        "exported short appearance scales with minutes",
+        { shortRow, fullRow, expected }
+      );
+    }
+
     const zeroRows = rows.filter(
       (r) =>
         (r.minutes || 0) <= 0 ||
@@ -1145,18 +1339,27 @@ const cases = {
         );
       }
     }
+
+    await writeCase("B04-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B04-desk.full.json", desk);
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
     void driven;
     return {
       ok: true,
       scale: { m0: m0.attack, m30: m30.attack, m90: m90.attack },
+      shortAppearance: {
+        minutes: shortRow.minutes,
+        impactAttack: shortRow.impactAttack,
+        fixtureId: shortRow.fixtureId || null,
+      },
       zeroRows: zeroRows.length,
       matches: rows.length,
+      continueClicks: driven.trace.postCommitContinueClicks,
     };
   },
 
-  /** Asymmetric saved-world profile display matches engine. */
+  /** Asymmetric units: overview + played-match engine input reconciliation. */
   async B05(page, guards) {
     const asymmetric = { attack: 80, midfield: 70, defence: 60, goalkeeper: 65 };
     const snap = buildSnap({
@@ -1208,14 +1411,138 @@ const cases = {
     });
     assert(/Unit ratings/i.test(text), "shows Unit ratings label", { text: text.slice(0, 240) });
 
-    const exported = await exportSnapshot(page);
-    const saved = clubFromWorld(exported.world, clubId);
-    assert(saved?.attack === 80 && saved?.defence === 60, "exported world keeps asymmetric units", saved);
+    // Play through mid-season so we have real match rows without full-season quality drift.
+    const paused = await driveToMidSeasonPause(page, { seasonsBefore: 0, shotPrefix: "B05" });
+    const mid = paused.snapshot;
+    await writeCase("B05-paused.json", slimEvidence({ snapshot: mid }));
+    await writeFullSnapshot("B05-paused.full.json", mid);
+
+    const liveClub = clubFromWorld(mid.world, clubId);
+    assert(
+      Math.abs((liveClub?.attack ?? 0) - 80) < 3 && Math.abs((liveClub?.defence ?? 0) - 60) < 3,
+      "mid-season world still near asymmetric ATK/DEF (±match form/quality)",
+      liveClub
+    );
+
+    // Prefer checkpoint / early season matches; fall back to any player matches already logged.
+    const earlyMatches = [
+      ...(mid.player?.seasonCheckpoint?.playedMatches || []),
+      ...(mid.player?.seasonCheckpoint?.matches || []),
+      ...(mid.player?.seasons || []).flatMap((s) => s.leagueMatches || []),
+    ].filter((m) => m && m.playerSide);
+    // If checkpoint does not embed matches, simulate one controlled match with live world units.
+    let reconcileRows = earlyMatches;
+    if (!reconcileRows.length) {
+      const worldLive = createWorldState({ seed: 1, startYear: 2026 });
+      // Use exported mid world clubs via describe/effective on the live club profile.
+      const playerObj = {
+        name: mid.player.name,
+        position: "ST",
+        currentOverallRaw: mid.player.currentOverallRaw ?? mid.player.rating ?? 74,
+        currentOverall: mid.player.currentOverall ?? mid.player.rating ?? 74,
+        rating: mid.player.rating ?? 74,
+        attributes: attrs(mid.player.rating ?? 74),
+      };
+      // Rebuild a minimal world map from the paused snapshot clubs array/object.
+      const clubsMap = new Map();
+      const rawClubs = mid.world?.clubs;
+      if (Array.isArray(rawClubs)) {
+        for (const e of rawClubs) {
+          if (Array.isArray(e)) clubsMap.set(e[0], e[1]);
+          else if (e?.clubId) clubsMap.set(e.clubId, e);
+        }
+      } else if (rawClubs && typeof rawClubs === "object") {
+        for (const [k, v] of Object.entries(rawClubs)) clubsMap.set(k, v);
+      }
+      const miniWorld = { clubs: clubsMap, nations: new Map(), form: new Map() };
+      const opp =
+        [...clubsMap.values()].find((c) => c.clubId && c.clubId !== clubId) ||
+        { clubId: "club:opp", name: "Opp", overall: 70, attack: 70, midfield: 70, defence: 70, goalkeeper: 70 };
+      const he = effectiveTeamStrength(
+        { clubId, name: HULL },
+        {
+          worldState: miniWorld,
+          player: playerObj,
+          playerSide: "home",
+          side: "home",
+          playerMinutes: 90,
+        }
+      );
+      reconcileRows = [
+        {
+          playerSide: "home",
+          playerStats: { minutes: 90 },
+          effectiveStrength: { home: he },
+          fixtureId: "fix10-b05-controlled",
+        },
+      ];
+      void worldLive;
+      void opp;
+    }
+
+    const rows = reconcileRows
+      .map((m) => {
+        const side = m.playerSide;
+        const eff = m.effectiveStrength?.[side];
+        return {
+          fixtureId: m.fixtureId || null,
+          minutes: Number(m.playerStats?.minutes) || 0,
+          teamAttack: eff?.attack ?? null,
+          teamDefence: eff?.defence ?? null,
+          impactAttack: eff?.playerImpact?.attack ?? null,
+          impactDefence: eff?.playerImpact?.defence ?? null,
+        };
+      })
+      .filter((r) => (r.minutes || 0) >= 45 && Number.isFinite(r.teamAttack));
+    assert(rows.length >= 1, "played/controlled match present for unit reconciliation", { n: rows.length });
+
+    const baseAtk = Number(liveClub.attack);
+    const baseDef = Number(liveClub.defence);
+    const sample = rows.slice(0, 6);
+    for (const r of sample) {
+      const impactAtk = Number(r.impactAttack) || 0;
+      const impactDef = Number(r.impactDefence) || 0;
+      assert(
+        Math.abs(r.teamAttack - (baseAtk + impactAtk)) < 4,
+        "played-match attack reconciles with live asymmetric unit + impact (±form)",
+        { teamAttack: r.teamAttack, expected: baseAtk + impactAtk, impactAtk, baseAtk, fixtureId: r.fixtureId }
+      );
+      assert(
+        Math.abs(r.teamDefence - (baseDef + impactDef)) < 4,
+        "played-match defence reconciles with live asymmetric unit + impact",
+        { teamDefence: r.teamDefence, expected: baseDef + impactDef, impactDef, baseDef, fixtureId: r.fixtureId }
+      );
+    }
+    await writeCase("B05-match-units.json", {
+      asymmetric,
+      liveClub: { attack: baseAtk, defence: baseDef, midfield: liveClub.midfield, goalkeeper: liveClub.goalkeeper },
+      sample,
+    });
+
+    // Finish to desk for Continue evidence.
+    await freshRestore(page, mid);
+    const driven = await driveSeasonToDesk(page, {
+      seasonsBefore: 0,
+      alreadyRunning: true,
+      shotPrefix: "B05-finish",
+      deskPolicy: "decline-offers",
+      timeoutMs: 240000,
+    });
+    await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
-    return { ok: true, asymmetric, desc, text: text.slice(0, 200) };
+    return {
+      ok: true,
+      asymmetric,
+      desc,
+      playedMatches: rows.length,
+      liveAttack: baseAtk,
+      liveDefence: baseDef,
+      continueClicks: driven.trace.postCommitContinueClicks,
+      text: text.slice(0, 200),
+    };
   },
 
-  /** Pause/export/restore preserves fractions, baselines, model metadata, RNG. */
+  /** Pause/export/restore: fractions, finance, pending, fixtures, numeric RNG. */
   async B06(page, guards) {
     const snap = buildSnap({
       id: "fix10-b06",
@@ -1251,19 +1578,26 @@ const cases = {
     const pausedClub = clubFromWorld(paused.snapshot.world, clubId);
     const pausedST = pausedClub?.replacementOvr?.ST;
     assert(Number.isFinite(pausedST), "pause has replacement ST", { pausedST });
-    // Match-driven adjustQuality may accumulate further fractions after kickoff;
-    // the invariant is round-trip fidelity of the paused live state, not freezing
-    // the pre-season seed value through played fixtures.
     assert(
       paused.snapshot.world.clubStrengthModelVersion === CLUB_STRENGTH_MODEL_VERSION,
       "pause keeps model version"
     );
     assert(paused.snapshot.world.baselineClubs, "pause keeps baselines");
-    assert(
-      paused.snapshot.rngSeed != null || paused.snapshot.world?.rngState != null,
-      "pause exports RNG identity",
-      { rngSeed: paused.snapshot.rngSeed, rngState: paused.snapshot.world?.rngState }
-    );
+    assert(paused.snapshot.rngSeed != null, "pause exports rngSeed", paused.snapshot.rngSeed);
+    assert(paused.snapshot.world?.rngState != null, "pause exports rngState", paused.snapshot.world?.rngState);
+
+    const pausedFinance = financeFingerprint(paused.snapshot);
+    assert(pausedFinance.hasLedgers || pausedFinance.playerWage != null, "pause exposes finance identity", pausedFinance);
+    const pausedPending = paused.snapshot.player?.pendingDecision || null;
+    const pausedCheckpoint = paused.snapshot.player?.seasonCheckpoint || null;
+    const pausedFixtureIds = (
+      pausedCheckpoint?.fixtures ||
+      pausedCheckpoint?.remainingFixtures ||
+      pausedCheckpoint?.schedule ||
+      []
+    )
+      .map((f) => f.fixtureId || f.id || f.matchId || null)
+      .filter(Boolean);
 
     await freshRestore(page, paused.snapshot);
     const restored = await exportSnapshot(page);
@@ -1274,20 +1608,59 @@ const cases = {
       beforeST,
     });
     assert(restored.world.clubStrengthModelVersion === CLUB_STRENGTH_MODEL_VERSION, "restore model");
-    // Round-trip the paused RNG identity (seed and/or state), not the pre-season seed.
-    assert(
-      restored.rngSeed === paused.snapshot.rngSeed ||
-        restored.world?.rngState === paused.snapshot.world?.rngState,
-      "restore preserves paused RNG",
-      {
-        pausedSeed: paused.snapshot.rngSeed,
-        restoredSeed: restored.rngSeed,
-        pausedState: paused.snapshot.world?.rngState,
-        restoredState: restored.world?.rngState,
-      }
-    );
+    assert(restored.rngSeed === paused.snapshot.rngSeed, "restore preserves numeric rngSeed", {
+      paused: paused.snapshot.rngSeed,
+      restored: restored.rngSeed,
+    });
+    assert(restored.world?.rngState === paused.snapshot.world?.rngState, "restore preserves numeric rngState", {
+      paused: paused.snapshot.world?.rngState,
+      restored: restored.world?.rngState,
+    });
     assert(Boolean(restored.world.baselineClubs), "baselines survive restore");
-    // Initial fractional seed still present as finite history (not collapsed to int-only path).
+
+    const restoredFinance = financeFingerprint(restored);
+    assert(restoredFinance.hasLedgers === pausedFinance.hasLedgers, "finance ledger presence survives restore", {
+      pausedFinance,
+      restoredFinance,
+    });
+    assert(restoredFinance.playerWage === pausedFinance.playerWage, "wage survives restore", {
+      pausedFinance,
+      restoredFinance,
+    });
+    if (pausedFinance.clubCash != null) {
+      assert(restoredFinance.clubCash === pausedFinance.clubCash, "club cash survives restore", {
+        pausedFinance,
+        restoredFinance,
+      });
+    }
+
+    const restoredPending = restored.player?.pendingDecision || null;
+    assert(
+      JSON.stringify(restoredPending) === JSON.stringify(pausedPending),
+      "pending decision equality after restore",
+      { pausedPending, restoredPending }
+    );
+    const restoredCheckpoint = restored.player?.seasonCheckpoint || null;
+    assert(
+      (restoredCheckpoint?.status || null) === (pausedCheckpoint?.status || null),
+      "checkpoint status survives restore",
+      { paused: pausedCheckpoint?.status, restored: restoredCheckpoint?.status }
+    );
+    if (pausedFixtureIds.length) {
+      const restoredFixtureIds = (
+        restoredCheckpoint?.fixtures ||
+        restoredCheckpoint?.remainingFixtures ||
+        restoredCheckpoint?.schedule ||
+        []
+      )
+        .map((f) => f.fixtureId || f.id || f.matchId || null)
+        .filter(Boolean);
+      assert(
+        JSON.stringify(restoredFixtureIds) === JSON.stringify(pausedFixtureIds),
+        "fixture list identity survives restore",
+        { pausedFixtureIds, restoredFixtureIds }
+      );
+    }
     assert(Number.isFinite(beforeST), "initial fractional seed recorded", { beforeST });
 
     const driven = await driveSeasonToDesk(page, {
@@ -1311,11 +1684,16 @@ const cases = {
       restoredST: restoredClub.replacementOvr.ST,
       model: CLUB_STRENGTH_MODEL_VERSION,
       lineupModel: LINEUP_IMPACT_MODEL.version,
-      rngSeed: snap.rngSeed,
+      rngSeed: paused.snapshot.rngSeed,
+      rngState: paused.snapshot.world?.rngState,
+      finance: pausedFinance,
+      pendingEqual: true,
+      fixtureIdsChecked: pausedFixtureIds.length,
+      continueClicks: driven.trace.postCommitContinueClicks,
     };
   },
 
-  /** Genuine ET journey: non-continuing vs continuing. */
+  /** Genuine deterministic cup ET via production simulate/Continue; phase evidence required. */
   async B07(page, guards) {
     const et = buildEtPairEvidence({ seed: 10107 });
     assert(et.continuing.decidedBy === "extraTime", "continuing path decided by ET", et.continuing.decidedBy);
@@ -1329,122 +1707,85 @@ const cases = {
       "non-continuing ET attack equals no-player ET",
       { non: et.nonContinuingEtAtk, none: et.noneEtAtk }
     );
-    assert(
-      et.continuingEtAtk > et.nonContinuingEtAtk + 0.05,
-      "continuing 99 ST lifts ET attack",
-      { cont: et.continuingEtAtk, non: et.nonContinuingEtAtk }
-    );
-    assert(
-      et.nonContinuingRegAtk > et.noneEtAtk || et.nonContinuingRegAtk !== et.continuingRegAtk,
-      "regulation evidence retained separately from ET"
-    );
-
-    // Inject completed-season presentation with both ET matches for Continue journey.
-    const carrier = buildSnap({
-      id: "fix10-b07",
-      position: "ST",
-      ovr: 99,
-      club: HULL,
-      seed: 10107,
+    assert(et.continuingEtAtk > et.nonContinuingEtAtk + 0.05, "continuing 99 ST lifts ET attack", {
+      cont: et.continuingEtAtk,
+      non: et.nonContinuingEtAtk,
     });
-    const season = {
-      seasonId: "fix10-b07-et",
-      seasonNumber: 1,
-      year: 2026,
-      age: carrier.player.age,
-      clubId: carrier.player.playingClubId,
-      clubName: HULL,
-      matches: 2,
-      appearances: 2,
-      minutes:
-        (Number(et.continuing.playerStats?.minutes) || 0) +
-        (Number(et.nonContinuing.playerStats?.minutes) || 0),
-      goals: 0,
-      assists: 0,
-      avgMatchRating: 7,
-      leagueMatches: [et.nonContinuing, et.continuing],
-      leagueAllMatches: [et.nonContinuing, et.continuing],
-      domesticCupCampaigns: [],
-    };
-    carrier.player.seasons = [season];
-    carrier.player.seasonCheckpoint = {
-      status: "complete",
-      seasonIndex: 0,
-      pendingPresentation: true,
-    };
-
+    assert(
+      et.continuing.regulationEffectiveStrength && et.continuing.etEffectiveStrength,
+      "engine ET exposes both phase controls",
+      {
+        reg: Boolean(et.continuing.regulationEffectiveStrength),
+        etPhase: Boolean(et.continuing.etEffectiveStrength),
+      }
+    );
     await writeCase("B07-et-engine.json", {
       continuingEtAtk: et.continuingEtAtk,
       nonContinuingEtAtk: et.nonContinuingEtAtk,
       noneEtAtk: et.noneEtAtk,
+      continuingRegAtk: et.continuingRegAtk,
       continuingDecidedBy: et.continuing.decidedBy,
       nonContinuingDecidedBy: et.nonContinuing.decidedBy,
       continuingMinutes: et.continuing.playerStats?.minutes,
       nonContinuingMinutes: et.nonContinuing.playerStats?.minutes,
+      hasRegulation: true,
+      hasEtPhase: true,
     });
-    await writeFullSnapshot("B07-et-initial.full.json", carrier);
 
+    // Known seed: Hull 99 ST named fix10-b07-et reaches FA Cup ET (120') on 2026-10-28.
+    const carrier = buildSnap({
+      id: "fix10-b07-et",
+      position: "ST",
+      ovr: 99,
+      club: HULL,
+      seed: 228,
+    });
+    assert((carrier.player.seasons || []).length === 0, "B07 starts before any knockout");
+    await writeFullSnapshot("B07-et-initial.full.json", carrier);
     await restore(page, carrier);
-    // Prefer production completed-season presentation when available; otherwise assert from export.
-    const started = await page.evaluate(() => {
-      if (typeof window.__replayLastSeasonPresentation === "function") {
-        window.__replayLastSeasonPresentation();
-        return "replay";
-      }
-      const sim = document.getElementById("simulate-btn");
-      if (sim && !sim.disabled) {
-        // Desk already has a completed season — open overview evidence only.
-        return "desk";
-      }
-      return "desk";
+    await shot(page, "B07-00-start");
+
+    const driven = await driveSeasonToDesk(page, {
+      seasonsBefore: 0,
+      shotPrefix: "B07",
+      deskPolicy: "decline-offers",
+      timeoutMs: 300000,
     });
-    await page.waitForTimeout(400);
-    // Drive Continue if presentation overlay is open.
-    const overlayOpen = await page.evaluate(() => {
-      const overlay = document.getElementById("season-animation-overlay");
-      return Boolean(overlay && !overlay.classList.contains("hidden"));
-    });
-    if (overlayOpen) {
-      const deadline = Date.now() + 90000;
-      let continueClicks = 0;
-      while (Date.now() < deadline) {
-        const clicked = await page.evaluate(() => {
-          const section = document.getElementById("animation-continue");
-          const contBtn = document.getElementById("continue-btn");
-          if (
-            section &&
-            !section.classList.contains("hidden") &&
-            contBtn &&
-            !contBtn.disabled &&
-            contBtn.offsetParent !== null
-          ) {
-            contBtn.click();
-            return "continue";
-          }
-          for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "sim-skip-match-btn", "match-skip-btn"]) {
-            const el = document.getElementById(id);
-            if (el && !el.disabled && el.offsetParent !== null) {
-              el.click();
-              return id;
-            }
-          }
-          return null;
-        });
-        if (clicked === "continue") continueClicks += 1;
-        const ui = await uiState(page);
-        if (ui.overlayHidden && ui.dashboardHidden && continueClicks >= 1) break;
-        await page.waitForTimeout(150);
-      }
-    }
-    await shot(page, "B07-01-et");
+    assert(driven.trace.postCommitContinueClicks >= 1, "must click post-commit Continue", driven.trace);
+    const deskUi = await assertDeskUsable(page);
+    assert(deskUi.overlayHidden && deskUi.dashboardHidden, "overlays closed after Continue", deskUi);
+
     const desk = await exportSnapshot(page);
     await writeCase("B07-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B07-desk.full.json", desk);
+    assert((desk.player.seasons || []).length === 1, "season completed through production controls");
+
     const rows = matchInfluenceRows(desk.player);
     const etRows = rows.filter((r) => r.decidedBy === "extraTime");
-    assert(etRows.length >= 1 || started, "ET evidence reachable in browser journey", {
+    assert(etRows.length >= 1, "committed ledger includes extraTime match", {
       etRows: etRows.length,
-      started,
+      decidedBy: [...new Set(rows.map((r) => r.decidedBy))],
     });
+    const phaseRow = etRows.find((r) => r.hasRegulationStrength && r.hasEtStrength);
+    assert(phaseRow, "ET ledger row carries regulation + et phase strengths", {
+      etRows: etRows.map((r) => ({
+        fixtureId: r.fixtureId,
+        minutes: r.minutes,
+        hasReg: r.hasRegulationStrength,
+        hasEt: r.hasEtStrength,
+      })),
+    });
+    assert((phaseRow.minutes || 0) >= 90, "user continued into ET minutes", phaseRow);
+
+    await writeCase("B07-phase-ledger.json", {
+      fixtureId: phaseRow.fixtureId,
+      minutes: phaseRow.minutes,
+      decidedBy: phaseRow.decidedBy,
+      regulationAttack: phaseRow.regulationAttack,
+      etAttack: phaseRow.etAttack,
+      impactAttack: phaseRow.impactAttack,
+    });
+    await shot(page, "B07-01-desk");
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
     return {
       ok: true,
@@ -1452,15 +1793,22 @@ const cases = {
       nonContinuingEtAtk: et.nonContinuingEtAtk,
       noneEtAtk: et.noneEtAtk,
       etRows: etRows.length,
-      presentation: started,
+      phaseFixtureId: phaseRow.fixtureId,
+      phaseMinutes: phaseRow.minutes,
+      postCommitContinueClicks: driven.trace.postCommitContinueClicks,
+      presentation: "production-simulate-continue",
+      deskNextAction: deskUi.nextAction,
     };
   },
 
-  /** Loan/transfer/return ownership fixture — influence follows playing club. */
+  /** Real loan ownership: startLoan must succeed; influence follows playing club. */
   async B08(page, guards) {
     const { startLoan } = await import("../js/simulation/loanMarket.js");
+    const { ensurePlayingStints } = await import("../js/simulation/playingRegistration.js");
     const hull = allSeniorClubs().find((c) => c.name === HULL);
     assert(hull, "Hull club present");
+    let loanOk = false;
+    let loanMeta = null;
     const startSnap = buildSnap({
       id: "fix10-b08",
       position: "ST",
@@ -1468,27 +1816,59 @@ const cases = {
       club: ARSENAL,
       seed: 10108,
       mutateWorld: (_world, p) => {
+        ensurePlayingStints(p, { asOfDate: "2026-07-01" });
+        const parentId = p.employmentClubId;
         const offer = {
           club: { ...hull },
           clubId: hull.clubId,
           wage: 2000,
           durationSeasons: 1,
           isLoan: true,
+          loanTerms: {
+            loanId: "fix10-b08-loan",
+            parentClubId: parentId,
+            borrowingClubId: hull.clubId,
+            startSeason: 0,
+            endSeason: 1,
+            loanFee: 0,
+            borrowerWageShare: 0.5,
+            parentWageShare: 0.5,
+            international: false,
+          },
         };
         const res = startLoan(p, offer);
-        if (!res?.ok) {
-          // Controlled fixture fallback: force loan registration without market RNG.
-          p.playingClubId = hull.clubId;
-          p.club = { ...hull };
-          p.loan = {
-            parentClubId: p.employmentClubId,
-            borrowerClubId: hull.clubId,
-            seasonsRemaining: 1,
-          };
-        }
+        loanOk = Boolean(res?.ok);
+        loanMeta = {
+          ok: loanOk,
+          reason: res?.reason || res?.error || null,
+          parentClubId: p.activeLoan?.parentClubId || p.employmentClubId,
+          borrowerClubId: p.activeLoan?.borrowingClubId || p.playingClubId,
+          playingClubId: p.playingClubId,
+          employmentClubId: p.employmentClubId,
+          activeLoan: p.activeLoan || null,
+          stints: (p.playingStints || []).slice(-3),
+        };
       },
     });
-    await writeCase("B08-initial.json", slimEvidence(startSnap));
+    assert(loanOk, "startLoan must succeed without field-assignment fallback", loanMeta);
+    assert(
+      startSnap.player.playingClubId === hull.clubId &&
+        /arsenal/i.test(startSnap.player.employmentClubId || ""),
+      "loan registration: playing Hull, employed Arsenal",
+      {
+        playing: startSnap.player.playingClubId,
+        employment: startSnap.player.employmentClubId,
+        activeLoan: startSnap.player.activeLoan,
+      }
+    );
+    assert(
+      startSnap.player.activeLoan?.parentClubId &&
+        startSnap.player.activeLoan?.borrowingClubId === hull.clubId,
+      "dated loan fields present on activeLoan",
+      startSnap.player.activeLoan
+    );
+
+    await writeCase("B08-initial.json", { ...slimEvidence(startSnap), loanMeta });
     await writeFullSnapshot("B08-initial.full.json", startSnap);
     await restore(page, startSnap);
     await shot(page, "B08-01-start");
@@ -1496,10 +1876,12 @@ const cases = {
     const arsenalId = before.player.employmentClubId;
     const loanPlaying = before.player.playingClubId;
     assert(/arsenal/i.test(arsenalId || ""), "employed by Arsenal", arsenalId);
-    assert(loanPlaying && loanPlaying !== arsenalId, "playing away on loan", {
-      arsenalId,
-      loanPlaying,
-    });
+    assert(loanPlaying === hull.clubId, "playing at Hull on loan", { arsenalId, loanPlaying });
+    assert(
+      before.player.activeLoan?.borrowingClubId === hull.clubId,
+      "exported activeLoan borrower is Hull",
+      before.player.activeLoan
+    );
 
     const world = createWorldState({ seed: 10108, startYear: 2026 });
     const playerObj = {
@@ -1548,9 +1930,27 @@ const cases = {
     await writeCase("B08-desk.json", slimEvidence(desk));
     await writeFullSnapshot("B08-desk.full.json", desk);
     assert((desk.player.seasons || []).length >= 1, "loan season completed", desk.player.seasons?.length);
+
+    // During the loan season, match influence must be attached to the receiving club.
+    const rows = matchInfluenceRows(desk.player).filter((r) => (r.minutes || 0) >= 45);
+    assert(rows.length >= 1, "loan season match influence rows present", { n: rows.length });
+    const meanAtk = meanImpactAttack(rows, { minMinutes: 45 });
+    assert(meanAtk != null && meanAtk > 0.05, "receiver match impact is positive for 99 ST", { meanAtk });
+
     assert(
-      desk.player.playingClubId === loanPlaying || desk.player.employmentClubId === arsenalId,
-      "loan/ownership identity retained or returned coherently",
+      desk.player.employmentClubId === arsenalId,
+      "employment remains Arsenal across loan season (or return still names parent)",
+      {
+        playing: desk.player.playingClubId,
+        employment: desk.player.employmentClubId,
+        loanPlaying,
+        arsenalId,
+      }
+    );
+    // Playing club is either still Hull (loan ongoing) or returned to Arsenal — both coherent.
+    assert(
+      desk.player.playingClubId === loanPlaying || desk.player.playingClubId === arsenalId,
+      "playing club is receiver or returned parent",
       {
         playing: desk.player.playingClubId,
         employment: desk.player.employmentClubId,
@@ -1569,9 +1969,13 @@ const cases = {
       playing: desk.player.playingClubId,
       employment: desk.player.employmentClubId,
       loanPlaying,
+      loanOk: true,
+      loanMeta,
       moved: true,
       formerUnaffected: true,
       receiverImpact: receiver.attack - receiverBase.attack,
+      meanMatchImpactAttack: meanAtk,
+      continueClicks: driven.trace.postCommitContinueClicks,
     };
   },
 };

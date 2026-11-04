@@ -1,5 +1,5 @@
 {
-  "started": "2026-11-03T17:43:32.727Z",
+  "started": "2026-11-04T17:26:39.342Z",
   "modelVersion": "fix10-club-strength-v1",
   "inventory": {
     "runtimeClubs": 572,
@@ -467,6 +467,7 @@
   ],
   "seasons": [
     {
+      "kind": "synthetic-proxy",
       "quality": 55,
       "role": "ST",
       "ovr": 53,
@@ -474,6 +475,7 @@
       "meanPoints": 52.33
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 55,
       "role": "ST",
       "ovr": 99,
@@ -481,6 +483,7 @@
       "meanPoints": 62.4
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 55,
       "role": "CM",
       "ovr": 51,
@@ -488,6 +491,7 @@
       "meanPoints": 52.33
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 55,
       "role": "CM",
       "ovr": 99,
@@ -495,6 +499,7 @@
       "meanPoints": 59.9
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 55,
       "role": "CB",
       "ovr": 51,
@@ -502,6 +507,7 @@
       "meanPoints": 52.33
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 55,
       "role": "CB",
       "ovr": 99,
@@ -509,6 +515,7 @@
       "meanPoints": 59.39
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 55,
       "role": "GK",
       "ovr": 50,
@@ -516,6 +523,7 @@
       "meanPoints": 52.33
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 55,
       "role": "GK",
       "ovr": 99,
@@ -523,6 +531,7 @@
       "meanPoints": 59.23
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 70,
       "role": "ST",
       "ovr": 68,
@@ -530,6 +539,7 @@
       "meanPoints": 51.93
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 70,
       "role": "ST",
       "ovr": 99,
@@ -537,6 +547,7 @@
       "meanPoints": 59.34
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 70,
       "role": "CM",
       "ovr": 66,
@@ -544,6 +555,7 @@
       "meanPoints": 51.93
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 70,
       "role": "CM",
       "ovr": 99,
@@ -551,6 +563,7 @@
       "meanPoints": 58.3
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 70,
       "role": "CB",
       "ovr": 66,
@@ -558,6 +571,7 @@
       "meanPoints": 51.93
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 70,
       "role": "CB",
       "ovr": 99,
@@ -565,6 +579,7 @@
       "meanPoints": 57.4
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 70,
       "role": "GK",
       "ovr": 65,
@@ -572,6 +587,7 @@
       "meanPoints": 51.93
     },
     {
+      "kind": "synthetic-proxy",
       "quality": 70,
       "role": "GK",
       "ovr": 99,
@@ -581,6 +597,8 @@
   ],
   "ok": true,
   "failures": [],
-  "finished": "2026-11-03T17:43:33.204Z",
+  "seasonStudyKind": "synthetic-self-vs-self-proxy",
+  "productionSeasonStudy": "qa/fix10-runs/production-seasons/summary.json",
+  "finished": "2026-11-04T17:26:39.853Z",
   "matrixSha256": "c207aacd66be970d99b7b963fed4ec2fce01bc7a0a7e23476fe5a3d585ddcbb2"
 }

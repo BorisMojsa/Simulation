@@ -1,31 +1,39 @@
 #!/usr/bin/env node
 /**
- * Verify a Fix 10 review package directory (or its embedded verify-package.mjs).
+ * Verify a Fix 10 ReReview package directory.
  *
- *   node scripts/verifyFix10Review.mjs ~/Downloads/10-Club-Strength-Profiles-Superstar-Impact-Review-<shortSHA>
- *   node scripts/verifyFix10Review.mjs 10-Club-Strength-Profiles-Superstar-Impact-Review-<shortSHA>
+ *   node scripts/verifyFix10Review.mjs ~/Downloads/10-Club-Strength-Profiles-Superstar-Impact-ReReview-<shortSHA>
+ *   node scripts/verifyFix10Review.mjs 10-Club-Strength-Profiles-Superstar-Impact-ReReview-<shortSHA>
  *
  * When given a bare package name, looks under FIX10_REVIEW_OUT or ~/Downloads.
+ *
+ * Readiness is RE-DERIVED from package bytes (scripts/lib/fix10ReviewEvidence.mjs); claims in
+ * manifest.json / evidence.json are only cross-checked, never trusted. A package that is not
+ * fully ready (missing QA, empty source, empty blob index, ...) fails verification even when
+ * checksums were recomputed after tampering.
  */
-import { createHash } from "node:crypto";
-import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
-import { join, relative, dirname, isAbsolute, resolve } from "node:path";
+import { readFileSync, existsSync, statSync } from "node:fs";
+import { join, dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
-import { spawnSync } from "node:child_process";
+import {
+  assessPackageEvidence,
+  EVIDENCE_SCHEMA,
+  listFiles,
+  readJson,
+  sha256File,
+} from "./lib/fix10ReviewEvidence.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
-
-function walk(dir, out = []) {
-  if (!existsSync(dir)) return out;
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) walk(p, out);
-    else out.push(p);
-  }
-  return out;
-}
+const SUM_FILES = ["SHA256SUMS.txt", "checksums.sha256"];
+const REQUIRED_CHANGES = [
+  "changes/base-to-final.patch",
+  "changes/changed-files.txt",
+  "changes/git-log.txt",
+  "changes/git-status.txt",
+  "changes/remote-head.txt",
+];
 
 function resolvePackageDir(arg) {
   if (!arg) {
@@ -45,123 +53,99 @@ function resolvePackageDir(arg) {
 }
 
 function verifyPackage(root) {
-  let bad = 0;
   const issues = [];
+  const fail = (msg) => issues.push(msg);
 
-  const sumsPath = join(root, "SHA256SUMS.txt");
-  if (!existsSync(sumsPath)) {
-    issues.push("missing SHA256SUMS.txt");
-    bad += 1;
-  } else {
-    const sums = readFileSync(sumsPath, "utf8").trim().split("\n").filter(Boolean);
-    for (const line of sums) {
-      const hash = line.slice(0, 64);
-      const path = line.slice(66);
-      if (path === "SHA256SUMS.txt") continue;
+  // --- checksums: both files present, identical, cover every file, every hash matches.
+  const sumTexts = SUM_FILES.map((f) => (existsSync(join(root, f)) ? readFileSync(join(root, f), "utf8") : null));
+  SUM_FILES.forEach((f, i) => sumTexts[i] === null && fail(`missing ${f}`));
+  if (sumTexts[0] !== null && sumTexts[1] !== null && sumTexts[0] !== sumTexts[1]) {
+    fail("SHA256SUMS.txt and checksums.sha256 differ");
+  }
+  const sumText = sumTexts[0] ?? sumTexts[1];
+  if (sumText !== null) {
+    const listed = new Set();
+    for (const line of sumText.trim().split("\n").filter(Boolean)) {
+      const m = line.match(/^([0-9a-f]{64})  (.+)$/);
+      if (!m) {
+        fail(`malformed checksum line: ${line.slice(0, 80)}`);
+        continue;
+      }
+      const [, hash, path] = m;
+      if (path.startsWith("/") || path.split("/").includes("..")) {
+        fail(`unsafe checksum path ${path}`);
+        continue;
+      }
+      listed.add(path);
       const full = join(root, path);
-      if (!existsSync(full)) {
-        issues.push(`missing ${path}`);
-        bad += 1;
-        continue;
-      }
-      const h = createHash("sha256").update(readFileSync(full)).digest("hex");
-      if (h !== hash) {
-        issues.push(`mismatch ${path}`);
-        bad += 1;
-      }
+      if (!existsSync(full)) fail(`missing ${path}`);
+      else if (sha256File(full) !== hash) fail(`mismatch ${path}`);
+    }
+    if (listed.size === 0) fail("checksum list is empty");
+    for (const rel of listFiles(root)) {
+      if (!SUM_FILES.includes(rel) && !listed.has(rel)) fail(`unlisted file ${rel}`);
     }
   }
 
-  const indexPath = join(root, "source-git-blob-index.json");
-  const manifestPath = join(root, "manifest.json");
-  if (!existsSync(indexPath)) {
-    issues.push("missing source-git-blob-index.json");
-    bad += 1;
+  // --- manifest / identity / layout
+  const mf = readJson(join(root, "manifest.json"));
+  const manifest = mf.value;
+  if (!mf.ok) fail(`manifest ${mf.error}`);
+  else {
+    if (!manifest.finalSha || !manifest.baseSha) fail("manifest missing identity fields");
+    if (!/ReReview-/.test(manifest.package || "")) fail(`manifest package is not a ReReview package: ${manifest.package}`);
   }
-  if (!existsSync(manifestPath)) {
-    issues.push("missing manifest.json");
-    bad += 1;
+  for (const rel of REQUIRED_CHANGES) {
+    if (!existsSync(join(root, rel))) fail(`missing ${rel}`);
+  }
+  if (existsSync(join(root, "changes/base-to-final.patch")) && statSync(join(root, "changes/base-to-final.patch")).size === 0) {
+    fail("changes/base-to-final.patch is empty");
+  }
+  const idx = readJson(join(root, "source-git-blob-index.json"));
+  if (idx.ok && manifest?.finalSha && idx.value?.commit !== manifest.finalSha) fail("blob index commit != manifest.finalSha");
+
+  // Every non-source JSON must parse (source/ bytes are covered by the blob index + content manifest).
+  for (const rel of listFiles(root)) {
+    if (!rel.endsWith(".json") || rel.startsWith("source/")) continue;
+    const r = readJson(join(root, rel));
+    if (!r.ok) fail(`json-parse-fail ${rel}: ${r.error}`);
   }
 
-  let manifest = null;
-  if (existsSync(manifestPath)) {
-    try {
-      manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    } catch (err) {
-      issues.push(`manifest parse: ${err.message}`);
-      bad += 1;
+  // --- evidence: recompute readiness from bytes, then cross-check recorded claims.
+  const assessed = assessPackageEvidence(root, { baseSha: manifest?.baseSha, finalSha: manifest?.finalSha });
+  for (const [name, g] of Object.entries(assessed.gates)) {
+    if (!g.ok) fail(`gate ${name}: ${g.reason}${g.problems?.length ? ` [${g.problems.slice(0, 5).join("; ")}]` : ""}`);
+  }
+  const ev = readJson(join(root, "evidence.json"));
+  if (!ev.ok) fail(`evidence.json ${ev.error}`);
+  else {
+    const e = ev.value || {};
+    if (e.schema !== EVIDENCE_SCHEMA) fail(`evidence.json schema != ${EVIDENCE_SCHEMA}`);
+    if (e.ready !== true) fail("evidence.json ready is not true");
+    if (e.finalSha !== manifest?.finalSha) fail("evidence.json finalSha != manifest.finalSha");
+    if (e.sourceManifest?.sha256 !== assessed.sourceManifest.sha256) fail("evidence.json source hash != recomputed source hash");
+    if (e.matched?.commonInputSha256 !== assessed.evidence.matched.commonInputSha256) {
+      fail("evidence.json input hash != recomputed input hash");
+    }
+    for (const [name, g] of Object.entries(assessed.gates)) {
+      if (e.gates?.[name]?.ok !== g.ok) fail(`evidence.json gate ${name} disagrees with recomputed result`);
     }
   }
-  if (manifest && (!manifest.finalSha || !manifest.baseSha)) {
-    issues.push("manifest missing identity fields");
-    bad += 1;
+  if (manifest?.gates?.ready === true && ev.ok && ev.value?.schema !== EVIDENCE_SCHEMA) {
+    fail("manifest claims ready:true without evidence schema");
   }
-
-  if (existsSync(indexPath)) {
-    const index = JSON.parse(readFileSync(indexPath, "utf8"));
-    const sourceRoot = join(root, "source");
-    const sourceFiles = walk(sourceRoot).map((p) => relative(sourceRoot, p).split("\\").join("/"));
-    const indexed = new Set((index.files || []).map((f) => f.path));
-    for (const p of sourceFiles) {
-      if (!indexed.has(p)) {
-        issues.push(`extra source ${p}`);
-        bad += 1;
-      }
-    }
-    for (const p of indexed) {
-      if (!sourceFiles.includes(p)) {
-        issues.push(`missing source ${p}`);
-        bad += 1;
-      }
-    }
-    for (const f of index.files || []) {
-      const full = join(sourceRoot, f.path);
-      if (!existsSync(full)) {
-        issues.push(`missing blob path ${f.path}`);
-        bad += 1;
-        continue;
-      }
-      const blob = createHash("sha1")
-        .update(Buffer.concat([Buffer.from(`blob ${statSync(full).size}\0`), readFileSync(full)]))
-        .digest("hex");
-      if (f.blob && f.blob !== blob) {
-        issues.push(`blob-mismatch ${f.path}`);
-        bad += 1;
-      }
-    }
-  }
-
-  for (const p of walk(root)) {
-    if (!p.endsWith(".json")) continue;
-    try {
-      JSON.parse(readFileSync(p, "utf8"));
-    } catch (err) {
-      issues.push(`json-parse-fail ${relative(root, p)}: ${err.message}`);
-      bad += 1;
-    }
-  }
-
-  // Prefer embedded verifier when present (byte-identical to packageFix09 style).
-  const embedded = join(root, "verify-package.mjs");
-  let embeddedExit = null;
-  if (existsSync(embedded)) {
-    const r = spawnSync("node", [embedded], { encoding: "utf8" });
-    embeddedExit = r.status;
-    if (r.status !== 0) {
-      issues.push(`embedded verify-package.mjs exited ${r.status}`);
-      bad += 1;
-    }
-  }
+  if (manifest?.gates?.ready !== true) fail("manifest.gates.ready is not true");
+  if (manifest?.sourceContentSha256 !== assessed.sourceManifest.sha256) fail("manifest source hash != recomputed source hash");
 
   const result = {
-    ok: bad === 0,
-    bad,
+    ok: issues.length === 0,
+    bad: issues.length,
     packageDir: root,
     package: manifest?.package || null,
     finalSha: manifest?.finalSha || null,
     baseSha: manifest?.baseSha || null,
-    gates: manifest?.gates || null,
-    embeddedExit,
+    ready: assessed.ready,
+    gates: Object.fromEntries(Object.entries(assessed.gates).map(([k, g]) => [k, g.ok])),
     issues: issues.slice(0, 40),
   };
   console.log(JSON.stringify(result, null, 2));

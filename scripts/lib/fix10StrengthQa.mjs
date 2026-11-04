@@ -10,6 +10,8 @@ import {
   playerLineupImpact,
   describeTeamStrength,
   LINEUP_IMPACT_MODEL,
+  finiteNumber,
+  profileUnit,
 } from "../../js/simulation/teamStrength.js";
 import { expectedGoals, XG_MODEL, simulateMatch, resolveKnockout } from "../../js/simulation/matchEngine.js";
 import { createRng } from "../../js/simulation/rng.js";
@@ -256,4 +258,6 @@ export {
   XG_MODEL,
   clamp,
   ROOT,
+  finiteNumber,
+  profileUnit,
 };
