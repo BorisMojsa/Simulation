@@ -114,7 +114,7 @@ function verifyPackage(root) {
   // --- evidence: recompute readiness from bytes, then cross-check recorded claims.
   const assessed = assessPackageEvidence(root, { baseSha: manifest?.baseSha, finalSha: manifest?.finalSha });
   for (const [name, g] of Object.entries(assessed.gates)) {
-    if (!g.ok) fail(`gate ${name}: ${g.reason}${g.problems?.length ? ` [${g.problems.slice(0, 5).join("; ")}]` : ""}`);
+    if (!g.ok) fail(`gate ${name}: ${g.reason}${g.problems?.length ? ` [${g.problems.slice(0, 8).join("; ")}]` : ""}`);
   }
   const ev = readJson(join(root, "evidence.json"));
   if (!ev.ok) fail(`evidence.json ${ev.error}`);
@@ -129,6 +129,15 @@ function verifyPackage(root) {
     }
     for (const [name, g] of Object.entries(assessed.gates)) {
       if (e.gates?.[name]?.ok !== g.ok) fail(`evidence.json gate ${name} disagrees with recomputed result`);
+    }
+    // Every recomputed gate must be recorded (a stale evidence.json that predates a gate cannot pass).
+    for (const name of Object.keys(assessed.gates)) {
+      if (!(name in (e.gates || {}))) fail(`evidence.json missing gate ${name}`);
+    }
+    // Substantive counts (production seasonN/paired seeds, cohort snapshots, full-suite TAP counts)
+    // must match what the verifier re-derives from bytes.
+    if (JSON.stringify(e.summary ?? null) !== JSON.stringify(assessed.evidence.summary)) {
+      fail("evidence.json summary counts != recomputed counts");
     }
   }
   if (manifest?.gates?.ready === true && ev.ok && ev.value?.schema !== EVIDENCE_SCHEMA) {

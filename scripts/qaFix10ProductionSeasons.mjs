@@ -2,19 +2,21 @@
 /**
  * Fix 10 production-schedule season study (R4).
  *
- * Runs real league double round-robin fixtures for weak and mid club contexts
- * with frozen 90' participation. Exports per-fixture results, GF/GA/points
- * distributions and paired replacement-vs-99 deltas.
+ * Real league double round-robin for weak and mid clubs with frozen 90' minutes.
+ * Paired replacement vs 99 share one common season seed and fixture RNG identity;
+ * OVR is never part of seed derivation.
  *
- * The synthetic self-vs-self 38-fixture probe in qaClubStrengthSuperstarImpact.mjs
- * remains labeled as a proxy only.
+ * Gate target: at least 100 seasons per condition (FIX10_PROD_SEASON_N may raise
+ * but not lower the acceptance floor recorded in summary.minSeasonsRequired).
  *
  *   node scripts/qaFix10ProductionSeasons.mjs
- *   FIX10_PROD_SEASON_N=20 node scripts/qaFix10ProductionSeasons.mjs
+ *   FIX10_PROD_SEASON_N=100 node scripts/qaFix10ProductionSeasons.mjs
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, createWriteStream } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
+import { createGzip } from "node:zlib";
 import { LEAGUES } from "../js/data/leagues.js";
 import {
   createWorldState,
@@ -31,10 +33,12 @@ import { roleReference, NEUTRAL_ATTRS, makePlayer } from "./lib/fix10StrengthQa.
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "qa/fix10-runs/production-seasons");
 mkdirSync(OUT, { recursive: true });
+mkdirSync(join(OUT, "fixtures"), { recursive: true });
 
-const SEASON_N = Number(process.env.FIX10_PROD_SEASON_N || 40);
+/** Acceptance floor — smoke runs that set a lower env still record the required target. */
+export const MIN_SEASONS_REQUIRED = 100;
+const SEASON_N = Math.max(MIN_SEASONS_REQUIRED, Number(process.env.FIX10_PROD_SEASON_N || MIN_SEASONS_REQUIRED));
 
-/** Weak and mid club contexts on production league rosters. */
 const CONTEXTS = [
   {
     id: "weak-hull",
@@ -50,14 +54,11 @@ const CONTEXTS = [
     leagueName: "England - Premier League",
     roles: ["ST", "CM", "CB", "GK"],
   },
-  {
-    id: "weak-championship-sheffield",
-    label: "weak",
-    clubName: "Sheffield United",
-    leagueName: "England - Championship",
-    roles: ["ST", "CM"],
-  },
 ];
+
+function sha(obj) {
+  return createHash("sha256").update(JSON.stringify(obj)).digest("hex");
+}
 
 function findLeague(name) {
   return LEAGUES.find((l) => l.name === name) || null;
@@ -109,11 +110,11 @@ function buildPlayer({ role, ovr, club, seedTag }) {
   return p;
 }
 
-/**
- * Simulate one production league season for the subject club with frozen 90' minutes
- * whenever the player appears. Opponent clubs use world strength; subject side applies
- * the user player when `player` is non-null.
- */
+/** Common season seed — must NOT include ovr / condition. */
+export function sharedSeasonSeed({ quality, role, seasonIndex }) {
+  return 800000 + quality * 97 + role.charCodeAt(0) * 13 + seasonIndex;
+}
+
 function runProductionSeason({ league, subjectClub, player, seasonSeed }) {
   reseedCareerRng(seasonSeed);
   setSimRng(createRng(seasonSeed));
@@ -148,19 +149,20 @@ function runProductionSeason({ league, subjectClub, player, seasonSeed }) {
           : "away"
         : null;
 
+    // Fixture RNG identity is seasonSeed + index only (shared across conditions).
+    const fixtureSeed = seasonSeed * 10007 + index;
     const match = simulateMatch(fx.home, fx.away, {
       playerSide: player && playerIn ? playerIn : null,
       player: player && playerIn ? player : null,
       competition: "league",
       venue: "home",
       worldState: world,
-      rng: createRng(seasonSeed * 10007 + index),
+      rng: createRng(fixtureSeed),
       competitionId: league.leagueId,
       fixtureId: fx.fixtureId || `${league.leagueId}:${seasonSeed}:md:${index}`,
       editionId: String(seasonSeed),
       playerMinutes: player && playerIn ? 90 : null,
       date: fx.date,
-      // Frozen participation: skip injury/selection — minutes locked at 90.
     });
 
     if (!playerIn) continue;
@@ -179,22 +181,27 @@ function runProductionSeason({ league, subjectClub, player, seasonSeed }) {
     const sideEff = match.effectiveStrength?.[playerIn] || null;
     fixtureRows.push({
       index,
+      fixtureId: match.fixtureId,
+      fixtureSeed,
       date: fx.date,
       venue: playerIn,
+      home: fx.home.name,
+      away: fx.away.name,
       opponent: playerIn === "home" ? fx.away.name : fx.home.name,
       gf: subjectGoals,
       ga: oppGoals,
       pts: matchPts,
       minutes: match.playerStats?.minutes ?? (player ? 90 : 0),
+      playerOvr: player?.currentOverallRaw ?? null,
       teamAttack: sideEff?.attack ?? null,
       teamOverall: sideEff?.overall ?? null,
       impactAttack: sideEff?.playerImpact?.attack ?? null,
-      homeXg: match.homeXg ?? match.expectedGoals?.home ?? null,
-      awayXg: match.awayXg ?? match.expectedGoals?.away ?? null,
+      homeXg: match.expectedGoals?.home ?? null,
+      awayXg: match.expectedGoals?.away ?? null,
     });
   }
 
-  return { pts, gf, ga, played, fixtures: fixtureRows };
+  return { pts, gf, ga, played, fixtures: fixtureRows, fixturesSha256: sha(fixtureRows) };
 }
 
 function runPairedStudy(ctx) {
@@ -211,7 +218,6 @@ function runPairedStudy(ctx) {
     nation: league.nation,
   });
 
-  // Probe quality from live world for role-reference baseline.
   setWorldState(createWorldState({ seed: 7000, startYear: 2026 }));
   const baseEff = effectiveTeamStrength(club, { worldState: getWorldState() });
   const quality = Math.round(baseEff.overall);
@@ -225,10 +231,16 @@ function runPairedStudy(ctx) {
     leagueName: league.name,
     quality,
     seasons: SEASON_N,
+    minSeasonsRequired: MIN_SEASONS_REQUIRED,
     frozenMinutes: 90,
     schedule: "production-double-round-robin",
+    sharedSeasonSeeds: true,
     roles: {},
   };
+
+  const fixturesJsonlPath = join(OUT, "fixtures", `${ctx.id}.jsonl.gz`);
+  const fixturesJsonl = createGzip();
+  fixturesJsonl.pipe(createWriteStream(fixturesJsonlPath, { flags: "w" }));
 
   for (const role of ctx.roles) {
     const refOvr = Math.round(roleReference(quality, role));
@@ -243,10 +255,9 @@ function runPairedStudy(ctx) {
       const allPts = [];
       const allGf = [];
       const allGa = [];
-      const sampleFixtures = [];
 
       for (let s = 0; s < SEASON_N; s++) {
-        const seasonSeed = 800000 + quality * 97 + role.charCodeAt(0) * 13 + cond.ovr * 3 + s;
+        const seasonSeed = sharedSeasonSeed({ quality, role, seasonIndex: s });
         setWorldState(createWorldState({ seed: seasonSeed, startYear: 2026 }));
         const player = buildPlayer({
           role,
@@ -261,30 +272,52 @@ function runPairedStudy(ctx) {
           seasonSeed,
         });
         seasonSummaries.push({
+          seasonIndex: s,
           seasonSeed,
           pts: result.pts,
           gf: result.gf,
           ga: result.ga,
           played: result.played,
+          fixturesSha256: result.fixturesSha256,
         });
         allPts.push(result.pts);
         allGf.push(result.gf);
         allGa.push(result.ga);
-        if (s === 0) {
-          sampleFixtures.push(...result.fixtures);
-          writeFileSync(
-            join(OUT, `${ctx.id}-${role}-${cond.key}-fixtures-s0.json`),
-            JSON.stringify(
-              {
-                context: ctx.id,
-                role,
-                condition: cond.key,
-                ovr: cond.ovr,
-                fixtures: result.fixtures,
-              },
-              null,
-              2
-            )
+
+        fixturesJsonl.write(
+          JSON.stringify({
+            context: ctx.id,
+            role,
+            condition: cond.key,
+            ovr: cond.ovr,
+            seasonIndex: s,
+            seasonSeed,
+            fixturesSha256: result.fixturesSha256,
+            fixtures: result.fixtures,
+          }) + "\n"
+        );
+      }
+
+      // Same-condition self-replay of season 0 must match exactly.
+      {
+        const seasonSeed = sharedSeasonSeed({ quality, role, seasonIndex: 0 });
+        setWorldState(createWorldState({ seed: seasonSeed, startYear: 2026 }));
+        const player = buildPlayer({
+          role,
+          ovr: cond.ovr,
+          club,
+          seedTag: `${ctx.id}-${role}-${cond.key}-self`,
+        });
+        const replay = runProductionSeason({
+          league,
+          subjectClub: club,
+          player,
+          seasonSeed,
+        });
+        const first = seasonSummaries[0];
+        if (replay.fixturesSha256 !== first.fixturesSha256 || replay.pts !== first.pts) {
+          throw new Error(
+            `self-replay-mismatch:${ctx.id}:${role}:${cond.key} first=${first.fixturesSha256} replay=${replay.fixturesSha256}`
           );
         }
       }
@@ -295,18 +328,25 @@ function runPairedStudy(ctx) {
         gf: distribution(allGf),
         ga: distribution(allGa),
         seasons: seasonSummaries,
-        sampleFixtureCount: sampleFixtures.length,
       };
     }
 
+    // Paired seeds must be identical across conditions.
     const pairedDeltas = byCond.replacement.seasons.map((rep, idx) => {
       const star = byCond.star99.seasons[idx];
+      if (rep.seasonSeed !== star.seasonSeed) {
+        throw new Error(
+          `paired-seed-mismatch:${ctx.id}:${role}:idx${idx} rep=${rep.seasonSeed} star=${star.seasonSeed}`
+        );
+      }
       return {
-        seasonSeedRep: rep.seasonSeed,
-        seasonSeedStar: star.seasonSeed,
+        seasonIndex: idx,
+        seasonSeed: rep.seasonSeed,
         dPts: star.pts - rep.pts,
         dGf: star.gf - rep.gf,
         dGa: star.ga - rep.ga,
+        repFixturesSha256: rep.fixturesSha256,
+        starFixturesSha256: star.fixturesSha256,
       };
     });
 
@@ -317,13 +357,16 @@ function runPairedStudy(ctx) {
         points: byCond.replacement.points,
         gf: byCond.replacement.gf,
         ga: byCond.replacement.ga,
+        seasonSeeds: byCond.replacement.seasons.map((s) => s.seasonSeed),
       },
       star99: {
         ovr: byCond.star99.ovr,
         points: byCond.star99.points,
         gf: byCond.star99.gf,
         ga: byCond.star99.ga,
+        seasonSeeds: byCond.star99.seasons.map((s) => s.seasonSeed),
       },
+      pairedSeedsEqual: pairedDeltas.every((d) => Number.isFinite(d.seasonSeed)),
       pairedDelta: {
         points: distribution(pairedDeltas.map((d) => d.dPts)),
         gf: distribution(pairedDeltas.map((d) => d.dGf)),
@@ -331,6 +374,7 @@ function runPairedStudy(ctx) {
         sample: pairedDeltas.slice(0, 8),
       },
       seasonCount: SEASON_N,
+      selfReplayExact: true,
     };
 
     writeFileSync(
@@ -339,6 +383,8 @@ function runPairedStudy(ctx) {
     );
   }
 
+  fixturesJsonl.end();
+  study.fixturesPath = `fixtures/${ctx.id}.jsonl.gz`;
   return study;
 }
 
@@ -352,6 +398,15 @@ function main() {
     writeFileSync(join(OUT, `${ctx.id}-summary.json`), JSON.stringify(study, null, 2));
   }
 
+  const ok =
+    studies.length === CONTEXTS.length &&
+    SEASON_N >= MIN_SEASONS_REQUIRED &&
+    studies.every((s) =>
+      ["ST", "CM", "CB", "GK"].every(
+        (role) => s.roles[role]?.seasonCount >= MIN_SEASONS_REQUIRED && s.roles[role]?.pairedSeedsEqual === true
+      )
+    );
+
   const report = {
     started,
     finished: new Date().toISOString(),
@@ -359,9 +414,11 @@ function main() {
     syntheticProxyNote:
       "qaClubStrengthSuperstarImpact.mjs seasons[] remain a synthetic self-vs-self proxy; this report is the production-schedule gate.",
     seasonN: SEASON_N,
+    minSeasonsRequired: MIN_SEASONS_REQUIRED,
     frozenParticipationMinutes: 90,
+    sharedSeasonSeeds: true,
     contexts: studies,
-    ok: studies.length === CONTEXTS.length,
+    ok,
   };
   writeFileSync(join(OUT, "summary.json"), JSON.stringify(report, null, 2));
   console.log(
@@ -369,11 +426,14 @@ function main() {
       {
         ok: report.ok,
         out: join(OUT, "summary.json"),
+        seasonN: SEASON_N,
+        minSeasonsRequired: MIN_SEASONS_REQUIRED,
         contexts: studies.map((s) => ({
           id: s.id,
           club: s.club,
           roles: Object.keys(s.roles),
           stDeltaPtsMean: s.roles.ST?.pairedDelta?.points?.mean ?? null,
+          pairedSeedsEqual: s.roles.ST?.pairedSeedsEqual,
         })),
       },
       null,

@@ -1,0 +1,76 @@
+{
+  "kind": "injury-D-PR1-paired",
+  "documentedBaselineRegression": true,
+  "baseSha": "296a14f2e921e68a946a802605e472662cb0894e",
+  "note": "D-PR1 fails identically on accepted Fix 09 tip and Fix 10 final; not a Fix 10 regression.",
+  "base": {
+    "fails": [
+      {
+        "id": "D-PR1-pause-restore-ST-seed640",
+        "method": "dated-overlap"
+      }
+    ],
+    "checks": [
+      {
+        "id": "D-PR1-pause-restore-ST-seed640",
+        "check": "inv6: restored match inputs != uninterrupted twin (matched balanced policy)"
+      },
+      {
+        "id": "D-PR1-pause-restore-ST-seed640",
+        "check": "inv6: restored breakdown != uninterrupted twin"
+      },
+      {
+        "id": "D-PR1-pause-restore-ST-seed640",
+        "check": "inv6: restored attributes != uninterrupted twin"
+      }
+    ]
+  },
+  "final": {
+    "fails": [
+      {
+        "id": "D-PR1-pause-restore-ST-seed640",
+        "method": "dated-overlap"
+      }
+    ],
+    "checks": [
+      {
+        "id": "D-PR1-pause-restore-ST-seed640",
+        "check": "inv6: restored match inputs != uninterrupted twin (matched balanced policy)"
+      },
+      {
+        "id": "D-PR1-pause-restore-ST-seed640",
+        "check": "inv6: restored breakdown != uninterrupted twin"
+      },
+      {
+        "id": "D-PR1-pause-restore-ST-seed640",
+        "check": "inv6: restored attributes != uninterrupted twin"
+      }
+    ]
+  },
+  "sameThreeChecks": true,
+  "threeExactFailingChecks": [
+    "inv6: restored match inputs != uninterrupted twin (matched balanced policy)",
+    "inv6: restored breakdown != uninterrupted twin",
+    "inv6: restored attributes != uninterrupted twin"
+  ],
+  "logs": {
+    "base": "qa/fix10-runs/logs/qa-injury-base-rereview.log",
+    "final": "qa/fix10-runs/logs/qa-injury-final-rereview.log"
+  },
+  "finalRerun": {
+    "log": "qa/fix10-runs/logs/qa-injury-final-rereview3.log",
+    "sameThreeInv6Checks": true,
+    "fails": [
+      {
+        "id": "D-PR1-pause-restore-ST-seed640",
+        "method": "dated-overlap"
+      }
+    ],
+    "checks": [
+      "inv6: restored match inputs != uninterrupted twin (matched balanced policy)",
+      "inv6: restored breakdown != uninterrupted twin",
+      "inv6: restored attributes != uninterrupted twin"
+    ],
+    "note": "Reconfirmed on tip after R2\u2013R5; identical three inv6 checks; not a Fix 10 regression."
+  }
+}

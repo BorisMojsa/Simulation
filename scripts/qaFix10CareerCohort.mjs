@@ -9,7 +9,7 @@
  *   node scripts/qaFix10CareerCohort.mjs --supplemental-only
  *   FIX10_COHORT_N=3 node scripts/qaFix10CareerCohort.mjs   # smoke
  */
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createPlayerIdentity } from "../js/simulation/playerDevelopment.js";
@@ -21,10 +21,14 @@ import {
   createWorldState,
   setWorldState,
   serializeWorldState,
-  deserializeWorldState,
   CLUB_STRENGTH_MODEL_VERSION,
 } from "../js/simulation/worldState.js";
-import { reseedCareerRng } from "../js/simulation/rng.js";
+import { reseedCareerRng, getSimRng, setSimRng, createRng } from "../js/simulation/rng.js";
+import {
+  serializeCareerSnapshot,
+  deserializeCareerSnapshot,
+  CAREER_SNAPSHOT_VERSION,
+} from "../js/simulation/careerSnapshot.js";
 import { resetClubFinanceLedgers } from "../js/simulation/clubFinance.js";
 import { allSeniorClubs } from "../js/simulation/seniorClubs.js";
 import { LEAGUES, LEAGUE_LOOKUP } from "../js/data/leagues.js";
@@ -139,6 +143,58 @@ function drainSeason(player) {
   return data;
 }
 
+const NATIONAL_PLAYER_KEYS = [
+  "nationalTeam",
+  "nationalTeamCaps",
+  "nationalSelection",
+  "nationalSelections",
+  "internationalCaps",
+  "internationalGoals",
+  "internationalStatus",
+  "nationalCallups",
+];
+
+/** Collect national-selection fields that are present on the player / last season. */
+function nationalSelectionEvidence(player, last) {
+  const out = {};
+  for (const k of NATIONAL_PLAYER_KEYS) {
+    if (player[k] !== undefined) out[k] = structuredClone(player[k]);
+  }
+  const intl = last?.internationalSeason;
+  if (intl && typeof intl === "object") {
+    // Compact: selection decision + player's own tournament matches (full data lives in the snapshots).
+    const playerMatches = Array.isArray(intl.playerMatches) ? intl.playerMatches : [];
+    out.lastSeason = {
+      year: intl.year ?? null,
+      confederation: intl.confederation ?? null,
+      hasTournaments: intl.hasTournaments ?? null,
+      calledUp: intl.calledUp ?? null,
+      callUpChance: intl.callUpChance ?? null,
+      announcementTone: intl.announcementTone ?? null,
+      callUpTournament: intl.callUpTournament ?? null,
+      playerMatchCount: playerMatches.length,
+      playerMatchIds: playerMatches.slice(0, 12).map((m) => m.matchId || m.fixtureId || null),
+      primaryEditionId: intl.primary?.editionId ?? null,
+      primaryWon: intl.primary?.won ?? null,
+    };
+  }
+  return out;
+}
+
+function stintRow(s) {
+  return {
+    stintId: s.stintId || null,
+    playingClubId: s.playingClubId || s.clubId || null,
+    employmentClubId: s.employmentClubId || null,
+    from: s.from || s.startDate || null,
+    to: s.to ?? s.endDate ?? null,
+    kind: s.kind || s.type || null,
+    onLoan: Boolean(s.onLoan),
+    leagueId: s.leagueId || null,
+    clubName: s.clubName || null,
+  };
+}
+
 function periodEvidence(player) {
   const world = serializeWorldState();
   const entry = (world.clubs || []).find((e) =>
@@ -148,18 +204,33 @@ function periodEvidence(player) {
   const last = player.seasons?.at(-1) || null;
   const nationalCaps = Array.isArray(player.nationalTeamCaps)
     ? player.nationalTeamCaps.length
-    : Number(player.internationalCaps) || 0;
-  const stints = (player.playingStints || player.registrationHistory || []).slice(-4).map((s) => ({
-    clubId: s.clubId || s.playingClubId || null,
-    employmentClubId: s.employmentClubId || null,
-    startDate: s.startDate || s.from || null,
-    endDate: s.endDate || s.to || null,
-    kind: s.kind || s.type || null,
-  }));
+    : Number(player.internationalCaps) || Number(player.nationalTeam?.caps) || 0;
+  const allStints = player.playingStints || player.registrationHistory || [];
+  const stints = allStints.slice(-4).map(stintRow);
+  const loan = player.activeLoan
+    ? {
+        loanId: player.activeLoan.loanId ?? null,
+        status: player.activeLoan.status ?? null,
+        parentClubId: player.activeLoan.parentClubId ?? player.activeLoan.lenderClubId ?? null,
+        borrowerClubId: player.activeLoan.borrowerClubId ?? player.activeLoan.clubId ?? null,
+        startDate: player.activeLoan.startDate ?? player.activeLoan.from ?? null,
+        endDate: player.activeLoan.endDate ?? player.activeLoan.to ?? null,
+      }
+    : player.loan
+      ? structuredClone(player.loan)
+      : null;
   return {
     seasons: player.seasons?.length ?? 0,
     playingClubId: player.playingClubId,
     employmentClubId: player.employmentClubId,
+    datedOwnership: {
+      stintCount: allStints.length,
+      stints: allStints.map(stintRow),
+      openStint: allStints.find((s) => (s.to ?? s.endDate) == null) ? stintRow(allStints.findLast((s) => (s.to ?? s.endDate) == null)) : null,
+      loan,
+      loanStints: allStints.filter((s) => s.onLoan).map(stintRow),
+    },
+    nationalSelection: nationalSelectionEvidence(player, last),
     modelVersion: world.clubStrengthModelVersion,
     schema: world.schemaVersion,
     replacementST: profile?.replacementOvr?.ST ?? null,
@@ -246,21 +317,38 @@ export function runCareerFixture({ i, club: clubName, role, seed, ovr, loan = fa
     periods,
     modelVersion: CLUB_STRENGTH_MODEL_VERSION,
   };
-  writeFileSync(join(OUT, `input-${seed}.json`), JSON.stringify(input, null, 2));
+  const initialSnapshotPath = `initial-${seed}.full.json`;
+  const finalSnapshotPath = `final-${seed}.full.json`;
+  // Recipe is a pointer only; the full snapshots are the replayable evidence.
+  writeFileSync(
+    join(OUT, `input-${seed}.json`),
+    JSON.stringify({ ...input, kind: "recipe-pointer", initialSnapshotPath, finalSnapshotPath }, null, 2)
+  );
+
+  // FULL career snapshot at career start, BEFORE any season is simulated.
+  const initialSnap = serializeCareerSnapshot({ player, world: undefined });
+  writeFileSync(join(OUT, initialSnapshotPath), JSON.stringify(initialSnap));
 
   const periodRows = [];
-  for (let period = 0; period < periods; period++) {
-    reseedCareerRng(seed + period * 97);
-    drainSeason(player);
-    periodRows.push({ period, ...periodEvidence(player) });
+  try {
+    for (let period = 0; period < periods; period++) {
+      reseedCareerRng(seed + period * 97);
+      drainSeason(player);
+      periodRows.push({ period, ...periodEvidence(player) });
+    }
+  } catch (err) {
+    // Only completed careers keep snapshots on disk (no orphan initial for excluded seeds).
+    rmSync(join(OUT, initialSnapshotPath), { force: true });
+    throw err;
   }
 
-  const snap = serializeWorldState();
-  writeFileSync(join(OUT, `world-final-${seed}.json`), JSON.stringify(snap));
-  const restored = deserializeWorldState(JSON.parse(JSON.stringify(snap)));
-  const restoreOk =
-    restored.clubStrengthModelVersion === CLUB_STRENGTH_MODEL_VERSION &&
-    (restored.schemaVersion || 0) >= 4;
+  // FULL career snapshot after all periods.
+  const finalSnap = serializeCareerSnapshot({ player, world: undefined });
+  writeFileSync(join(OUT, finalSnapshotPath), JSON.stringify(finalSnap));
+
+  // Restore validation: read final from disk and round-trip through deserializeCareerSnapshot.
+  const onDisk = JSON.parse(readFileSync(join(OUT, finalSnapshotPath), "utf8"));
+  const restoreChecks = validateFinalRestore(onDisk, finalSnap);
 
   return {
     i,
@@ -271,10 +359,67 @@ export function runCareerFixture({ i, club: clubName, role, seed, ovr, loan = fa
     ovr,
     loan,
     periods: periodRows,
-    restoreOk,
+    restoreOk: restoreChecks.ok,
+    restoreChecks,
     excluded: false,
     inputPath: `input-${seed}.json`,
-    worldFinalPath: `world-final-${seed}.json`,
+    initialSnapshotPath,
+    finalSnapshotPath,
+    snapshots: {
+      initial: initialSnapshotPath,
+      final: finalSnapshotPath,
+      initialSeasons: initialSnap.player?.seasons?.length ?? 0,
+      finalSeasons: finalSnap.player?.seasons?.length ?? 0,
+    },
+  };
+}
+
+/**
+ * Round-trip the on-disk final snapshot through deserializeCareerSnapshot and
+ * compare identity-critical fields (not world-only).
+ */
+function validateFinalRestore(onDisk, expected) {
+  const restored = deserializeCareerSnapshot(JSON.parse(JSON.stringify(onDisk)));
+  // Re-install the snapshot RNG state and read it back (deserialize does not touch the RNG).
+  setSimRng(createRng(onDisk.rngSeed));
+  const restoredRngState = getSimRng().seed();
+  const rp = restored?.player || {};
+  const ep = expected.player || {};
+  const checks = {
+    snapshotSchema: onDisk.schemaVersion === CAREER_SNAPSHOT_VERSION && restored != null,
+    worldClubStrengthModelVersion:
+      restored?.world?.clubStrengthModelVersion === CLUB_STRENGTH_MODEL_VERSION &&
+      onDisk.world?.clubStrengthModelVersion === CLUB_STRENGTH_MODEL_VERSION,
+    worldSchema: (restored?.world?.schemaVersion || 0) >= 4 && restored?.world?.schemaVersion === expected.world?.schemaVersion,
+    // Equality incl. null: players released at contract end legitimately have no tip club.
+    playingClubId: (rp.playingClubId ?? null) === (ep.playingClubId ?? null),
+    employmentClubId: (rp.employmentClubId ?? null) === (ep.employmentClubId ?? null),
+    playingStints:
+      Array.isArray(rp.playingStints) &&
+      rp.playingStints.length > 0 &&
+      JSON.stringify(rp.playingStints) === JSON.stringify(ep.playingStints),
+    seasons: (rp.seasons?.length ?? -1) === (ep.seasons?.length ?? -2),
+    clubFinanceLedgers:
+      Object.keys(onDisk.clubFinance?.ledgers || {}).length > 0 &&
+      Object.keys(onDisk.clubFinance?.ledgers || {}).length ===
+        Object.keys(expected.clubFinance?.ledgers || {}).length,
+    rngSeed: Number.isFinite(onDisk.rngSeed) && onDisk.rngSeed === expected.rngSeed,
+    rngState: restoredRngState === expected.rngSeed,
+  };
+  return {
+    ok: Object.values(checks).every(Boolean),
+    ...checks,
+    values: {
+      clubStrengthModelVersion: restored?.world?.clubStrengthModelVersion ?? null,
+      worldSchemaVersion: restored?.world?.schemaVersion ?? null,
+      snapshotSchemaVersion: onDisk.schemaVersion,
+      playingClubId: rp.playingClubId ?? null,
+      employmentClubId: rp.employmentClubId ?? null,
+      contractStatus: rp.contractStatus ?? null,
+      playingStintCount: rp.playingStints?.length ?? 0,
+      rngSeed: onDisk.rngSeed,
+      rngState: restoredRngState,
+    },
   };
 }
 
@@ -359,6 +504,7 @@ function runSupplemental() {
     completed,
     seeds,
     rows,
+    snapshots: snapshotIndex(rows),
     replacesExclusionSeed: SUPPLEMENTAL_PLAN[0]?.replacesExclusionSeed ?? null,
     reason: SUPPLEMENTAL_PLAN[0]?.reason ?? null,
   };
@@ -366,9 +512,29 @@ function runSupplemental() {
   return summary;
 }
 
+function snapshotIndex(rows) {
+  return (rows || [])
+    .filter((r) => r && !r.excluded)
+    .map((r) => ({
+      seed: r.seed,
+      club: r.club,
+      role: r.role,
+      supplemental: Boolean(r.supplemental),
+      input: r.inputPath,
+      initial: r.initialSnapshotPath,
+      final: r.finalSnapshotPath,
+      initialOnDisk: existsSync(join(OUT, r.initialSnapshotPath || "")),
+      finalOnDisk: existsSync(join(OUT, r.finalSnapshotPath || "")),
+      restoreOk: Boolean(r.restoreOk),
+    }));
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   let primary = { rows: [], exclusions: [], failures: 0 };
+
+  // Drop superseded world-only artifacts from earlier runner versions.
+  for (const f of readdirSync(OUT)) if (/^world-final-\d+\.json$/.test(f)) rmSync(join(OUT, f), { force: true });
 
   if (!args.supplementalOnly) {
     primary = runPrimary(args.n);
@@ -380,6 +546,8 @@ function main() {
       exclusions: primary.exclusions,
       completed,
       rows: primary.rows,
+      snapshotFormat: "serializeCareerSnapshot (player+world+clubFinance+rngSeed)",
+      snapshots: snapshotIndex(primary.rows),
       runner: "scripts/qaFix10CareerCohort.mjs",
       plan: COHORT_PLAN,
       baseSeed: BASE_SEED,
@@ -404,25 +572,42 @@ function main() {
       replacesExclusionSeed: supplemental.replacesExclusionSeed,
       reason: supplemental.reason,
       path: "supplemental-summary.json",
+      snapshots: supplemental.snapshots,
+    };
+    const allSnaps = [...(summary.snapshots || []), ...supplemental.snapshots];
+    summary.totals = {
+      completedPrimary: summary.completed,
+      completedSupplemental: supplemental.completed,
+      completedTotal: summary.completed + supplemental.completed,
+      snapshotPairsOnDisk: allSnaps.filter((s) => s.initialOnDisk && s.finalOnDisk).length,
+      restoreOk: allSnaps.filter((s) => s.restoreOk).length,
     };
     writeFileSync(join(OUT, "summary.json"), JSON.stringify(summary, null, 2));
   }
 
   const completed = (primary.rows || []).filter((r) => !r.excluded).length;
+  const allSnaps = [...snapshotIndex(primary.rows), ...supplemental.snapshots];
+  const pairsOnDisk = allSnaps.filter((s) => s.initialOnDisk && s.finalOnDisk).length;
+  const restoreOkCount = allSnaps.filter((s) => s.restoreOk).length;
+  const total = completed + supplemental.completed;
   console.log(
     JSON.stringify(
       {
-        ok: completed + supplemental.completed >= 24,
+        ok: total >= 24 && pairsOnDisk === total && restoreOkCount === total,
         completed,
         supplementalCompleted: supplemental.completed,
+        completedTotal: total,
+        snapshotPairsOnDisk: pairsOnDisk,
+        restoreOk: restoreOkCount,
         exclusions: primary.exclusions,
+        snapshotPaths: allSnaps.map((s) => ({ seed: s.seed, supplemental: s.supplemental, initial: s.initial, final: s.final })),
         out: OUT,
       },
       null,
       2
     )
   );
-  if (completed + supplemental.completed < 24) process.exitCode = 1;
+  if (total < 24 || pairsOnDisk !== total || restoreOkCount !== total) process.exitCode = 1;
 }
 
 main();

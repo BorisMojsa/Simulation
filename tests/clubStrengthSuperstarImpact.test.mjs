@@ -628,41 +628,69 @@ test("F18 shootout and two-legged phase evidence use eligible lineup", () => {
   const home = synthProfile(70, { clubId: "club:r2:h" });
   const away = synthProfile(70, { clubId: "club:r2:a" });
   const world = worldWithProfiles([home, away]);
-  const gk = makePlayer({ position: "GK", ovr: 99, minutes: 30 });
 
-  const reg = simulateMatch(teamRef(home), teamRef(away), {
-    worldState: world,
-    venue: "neutral",
-    player: gk,
-    playerSide: "home",
-    playerMinutes: 30,
-    rng: createRng(11),
-  });
-  const drawn = {
-    ...reg,
-    homeGoals: 1,
-    awayGoals: 1,
-    regulationHomeGoals: 1,
-    regulationAwayGoals: 1,
-    matchHomeGoals: 1,
-    matchAwayGoals: 1,
-    winnerSide: null,
-    decidedBy: null,
-  };
-  const pens = resolveKnockout(drawn, {
-    player: gk,
-    allowExtraTime: false,
-    allowPenalties: true,
-    rng: createRng(12),
-  });
-  assert.equal(pens.decidedBy, "penalties");
-  assert.ok(pens.shootoutEffectiveStrength);
-  assert.equal(pens.shootoutEffectiveStrength.home.goalkeeper, 70);
-  assert.ok(pens.regulationEffectiveStrength.home.goalkeeper > 70);
-  assert.equal(pens.penaltyKickOdds.awayVsHomeGk, Number(penaltyKickProbability(70, 70).toFixed(4)));
-  assert.equal(pens.penaltyKickOdds.awayVsHomeGk, 0.72);
+  function directPens(gk, seed) {
+    const reg = simulateMatch(teamRef(home), teamRef(away), {
+      worldState: world,
+      venue: "neutral",
+      player: gk,
+      playerSide: "home",
+      playerMinutes: 30,
+      rng: createRng(seed),
+    });
+    reg.playerStats.minutes = 30;
+    reg.playerStats.started = gk.matchParticipation.started;
+    const drawn = {
+      ...reg,
+      homeGoals: 1,
+      awayGoals: 1,
+      regulationHomeGoals: 1,
+      regulationAwayGoals: 1,
+      matchHomeGoals: 1,
+      matchAwayGoals: 1,
+      winnerSide: null,
+      decidedBy: null,
+    };
+    return resolveKnockout(drawn, {
+      player: gk,
+      allowExtraTime: false,
+      allowPenalties: true,
+      rng: createRng(seed + 1),
+    });
+  }
 
-  // Two-legged: ET evidence must survive second-leg assembly.
+  // Early-substituted starter: same OVR/minutes as late sub, but absent from shootout.
+  const earlyOff = makePlayer({ position: "GK", ovr: 99, minutes: 30, started: true });
+  const pensEarly = directPens(earlyOff, 11);
+  assert.equal(pensEarly.decidedBy, "penalties");
+  assert.equal(pensEarly.shootoutEffectiveStrength.home.goalkeeper, 70);
+  assert.ok(pensEarly.regulationEffectiveStrength.home.goalkeeper > 70);
+  assert.equal(pensEarly.penaltyKickOdds.awayVsHomeGk, 0.72);
+  assert.equal(
+    pensEarly.penaltyKickOdds.awayVsHomeGk,
+    Number(penaltyKickProbability(70, 70).toFixed(4))
+  );
+
+  // Late-entering substitute: on pitch at end of regulation → remains for shootout.
+  const lateOn = makePlayer({ position: "GK", ovr: 99, minutes: 30, started: false });
+  const pensLate = directPens(lateOn, 11);
+  assert.equal(pensLate.decidedBy, "penalties");
+  assert.ok(
+    pensLate.shootoutEffectiveStrength.home.goalkeeper > 70,
+    "late-entry 99 GK must influence shootout GK"
+  );
+  assert.ok(
+    pensLate.penaltyKickOdds.awayVsHomeGk < 0.72,
+    `late-entry GK must reduce opposing kick probability (${pensLate.penaltyKickOdds.awayVsHomeGk})`
+  );
+  // Regulation averages match between early-off and late-on (same minutes/OVR).
+  assert.equal(
+    pensEarly.regulationEffectiveStrength.home.goalkeeper,
+    pensLate.regulationEffectiveStrength.home.goalkeeper
+  );
+
+  // Two-legged: ET evidence must survive; early-off starter still absent after ET-less path.
+  const gk = makePlayer({ position: "GK", ovr: 99, minutes: 30, started: true });
   const first = simulateMatch(teamRef(home), teamRef(away), {
     worldState: world,
     venue: "home",
@@ -703,14 +731,16 @@ test("F18 shootout and two-legged phase evidence use eligible lineup", () => {
   if (tie.decidedBy === "penalties") {
     assert.ok(tie.secondLeg.shootoutEffectiveStrength);
     assert.ok(tie.secondLeg.penaltyKickOdds);
-    // Non-continuing 30' GK must not improve home/away kick odds vs 0.72 baseline.
+    // Early-off starter does not continue into ET → shootout reuses absent ET strength.
     assert.equal(tie.secondLeg.shootoutEffectiveStrength.away.goalkeeper, 70);
   }
   exportCase("F18", {
     ok: true,
-    pensOdds: pens.penaltyKickOdds,
-    shootoutGk: pens.shootoutEffectiveStrength.home.goalkeeper,
-    regulationGk: pens.regulationEffectiveStrength.home.goalkeeper,
+    pensOdds: pensEarly.penaltyKickOdds,
+    shootoutGk: pensEarly.shootoutEffectiveStrength.home.goalkeeper,
+    regulationGk: pensEarly.regulationEffectiveStrength.home.goalkeeper,
+    lateEntryShootoutGk: pensLate.shootoutEffectiveStrength.home.goalkeeper,
+    lateEntryOdds: pensLate.penaltyKickOdds.awayVsHomeGk,
     twoLeg: {
       decidedBy: tie.decidedBy,
       etHome: tie.secondLeg.expectedGoals?.etHome,

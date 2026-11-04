@@ -1,5 +1,5 @@
 {
-  "started": "2026-11-04T17:26:39.342Z",
+  "started": "2026-11-04T17:59:35.899Z",
   "modelVersion": "fix10-club-strength-v1",
   "inventory": {
     "runtimeClubs": 572,
@@ -599,6 +599,6 @@
   "failures": [],
   "seasonStudyKind": "synthetic-self-vs-self-proxy",
   "productionSeasonStudy": "qa/fix10-runs/production-seasons/summary.json",
-  "finished": "2026-11-04T17:26:39.853Z",
+  "finished": "2026-11-04T17:59:36.507Z",
   "matrixSha256": "c207aacd66be970d99b7b963fed4ec2fce01bc7a0a7e23476fe5a3d585ddcbb2"
 }

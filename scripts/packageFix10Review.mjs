@@ -6,8 +6,10 @@
  *   node scripts/packageFix10Review.mjs
  *
  * `ready` is re-derived from the packaged bytes by scripts/lib/fix10ReviewEvidence.mjs
- * (F01–F18 content, calibration, matched compare, browser B01–B08, career cohort,
- * full-suite evidence, tested-source content manifest). Mere file existence never passes.
+ * (F01–F18 content, calibration, matched compare, browser B01–B08 incl. substantive B04/B06,
+ * production-schedule season study (seasonN >= 100, paired seeds equal), career cohort with
+ * initial+final career snapshots, REQUIRED full-suite.log with coherent TAP, tested-source
+ * content manifest). Mere file existence — or a commands.json note — never passes.
  *
  * Output: ~/Downloads/10-Club-Strength-Profiles-Superstar-Impact-ReReview-<shortSHA>/
  * Env: FIX10_REVIEW_OUT — override Downloads root
@@ -189,9 +191,10 @@ writeFileSync(
 | Focused ${FOCUSED_IDS[0]}–${FOCUSED_IDS.at(-1)} (parsed, ok:true, required keys) | ${gp("focused")} | \`qa/fix10-runs/cases/F*.json\` |
 | Calibration | ${gp("calibration")} | \`qa/fix10-runs/calibration-summary.json\` |
 | Matched baseline-vs-final | ${gp("matched")} | \`qa/fix10-runs/matched/\` |
-| Browser B01–B08 (requiredComplete) | ${gp("browser")} | \`qa/fix10-runs/browser/browser-report.json\` |
-| Career cohort >= 24 | ${gp("cohort")} | \`qa/fix10-runs/career-cohort/summary.json\` |
-| Full-suite evidence | ${gp("fullSuite")} | \`qa/fix10-runs/logs/full-suite.log\`, \`commands.json\` |
+| Browser B01–B08 (requiredComplete; B04 natural short row, B06 pause/restore finance + checkpoint) | ${gp("browser")} | \`qa/fix10-runs/browser/browser-report.json\`, \`browser/snapshots/\` |
+| Production-season study (seasonN >= 100, paired seeds equal) | ${gp("productionSeasons")} | \`qa/fix10-runs/production-seasons/summary.json\` |
+| Career cohort >= 24 (input + initial + final career snapshots) | ${gp("cohort")} | \`qa/fix10-runs/career-cohort/summary.json\` |
+| Full-suite evidence (log required, coherent TAP) | ${gp("fullSuite")} | \`qa/fix10-runs/logs/full-suite.log\` |
 | Tested-source manifest | ${gp("sourceManifest")} | \`source-content-manifest.json\` |
 `
 );
@@ -251,6 +254,10 @@ const manifest = {
     calibration: "node scripts/qaClubStrengthSuperstarImpact.mjs",
     matched: "node scripts/qaFix10MatchedCompare.mjs",
     browser: "node scripts/browserClubStrengthSuperstarImpactChecklist.mjs",
+    productionSeasons: "FIX10_PROD_SEASON_N=100 node scripts/qaFix10ProductionSeasons.mjs",
+    careerCohort: "node scripts/qaFix10CareerCohort.mjs",
+    fullSuite: "node --test tests/*.test.mjs > qa/fix10-runs/logs/full-suite.log 2>&1",
+    negativeVerify: "node scripts/qaFix10NegativeVerify.mjs <package-dir>",
     verify: "node scripts/verifyFix10Review.mjs <package-dir>",
   },
 };

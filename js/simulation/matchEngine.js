@@ -729,9 +729,31 @@ function simulateExtraTime(match, { player, rng }) {
 }
 
 /**
+ * Direct-shootout eligibility: was the player on the pitch at the end of regulation?
+ * - Starter (started !== false): only if they completed regulation (did not go off early).
+ * - Late substitute (started === false): yes whenever they recorded regulation minutes
+ *   (exposure already places them in the final segment).
+ * ET continuation policy is unchanged and lives in simulateExtraTime; when ET phase
+ * strengths exist this helper reuses them and does not re-apply the rule below.
+ */
+export function onPitchAtEndOfRegulation(match, player) {
+  if (!match?.playerSide || !player) return false;
+  const matchDuration = Number(player?.matchParticipation?.matchDuration) || 90;
+  const regMinutes = Number(match?.playerStats?.minutes) || 0;
+  if (!(regMinutes > 0)) return false;
+  const startedFlag =
+    player?.matchParticipation?.started !== undefined
+      ? player.matchParticipation.started
+      : match?.playerStats?.started;
+  const started = startedFlag !== false;
+  if (!started) return true;
+  return regMinutes >= matchDuration;
+}
+
+/**
  * Strength vector eligible for a shootout.
- * Players who did not complete regulation (or did not continue through ET) are absent.
- * When ET already rebuilt phase strength, reuse it; otherwise rebuild from regulation.
+ * After ET, reuse etEffectiveStrength (continuation already applied).
+ * For direct-to-penalties, use actual final on-pitch state — not "completed 90".
  */
 export function shootoutEffectiveStrength(match, { player = null } = {}) {
   if (match?.etEffectiveStrength?.home && match?.etEffectiveStrength?.away) {
@@ -739,11 +761,8 @@ export function shootoutEffectiveStrength(match, { player = null } = {}) {
   }
   const regulationStrength =
     match?.regulationEffectiveStrength || match?.effectiveStrength || {};
-  const matchDuration = Number(player?.matchParticipation?.matchDuration) || 90;
-  const regMinutes = Number(match?.playerStats?.minutes) || 0;
-  // Same continuation rule as ET: only full-regulation participants remain eligible.
-  const continues = Boolean(match?.playerSide && player && regMinutes >= matchDuration);
-  const phaseMinutes = continues ? 1 : 0;
+  const eligible = onPitchAtEndOfRegulation(match, player);
+  const phaseMinutes = eligible ? 1 : 0;
   return {
     home: phaseEffectiveStrength(regulationStrength.home, {
       player,

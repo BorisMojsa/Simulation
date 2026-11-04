@@ -11,15 +11,23 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-export const EVIDENCE_SCHEMA = "fix10-rereview-evidence-v1";
+export const EVIDENCE_SCHEMA = "fix10-rereview-evidence-v2";
 export const FOCUSED_IDS = Array.from({ length: 18 }, (_, i) => `F${String(i + 1).padStart(2, "0")}`);
 export const BROWSER_IDS = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08"];
 export const COHORT_TARGET = 24;
+/** Fixed production-season target; a smoke run (FIX10_PROD_SEASON_N < 100) can never pass readiness. */
+export const PROD_SEASON_MIN = 100;
+export const PROD_REQUIRED_ROLES = ["ST", "CM", "CB", "GK"];
+export const PROD_FROZEN_MINUTES = 90;
 export const REQUIRED_SOURCE_FILES = [
   "js/simulation/teamStrength.js",
   "tests/clubStrengthSuperstarImpact.test.mjs",
   "scripts/packageFix10Review.mjs",
   "scripts/verifyFix10Review.mjs",
+  "scripts/lib/fix10ReviewEvidence.mjs",
+  "scripts/qaFix10NegativeVerify.mjs",
+  "scripts/qaFix10ProductionSeasons.mjs",
+  "scripts/qaFix10CareerCohort.mjs",
 ];
 
 /** Per-case keys that must be present so an `{ ok: true }` stub cannot satisfy F01–F18. */
@@ -103,11 +111,50 @@ export function computeSourceManifest(sourceDir) {
   return { algorithm: "sha256-lines(sha256  size  path)", fileCount: files.length, sha256: aggregate, files };
 }
 
-/* ------------------------------------------------------------------ gates */
-
 function gate(ok, reason, extra = {}) {
   return { ok: ok === true, reason: ok ? "ok" : reason, ...extra };
 }
+
+/* ------------------------------------------------------- shared helpers */
+
+/** Resolve a package-relative reference; null for absolute / traversal / non-string refs. */
+function safeJoin(dir, rel) {
+  if (typeof rel !== "string" || rel === "" || rel.startsWith("/") || rel.includes("\\")) return null;
+  if (rel.split("/").includes("..")) return null;
+  return join(dir, rel);
+}
+
+const isFiniteNum = (v) => typeof v === "number" && Number.isFinite(v);
+const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+
+/** Shape of a `serializeCareerSnapshot` payload (world + player + clubFinance + rngSeed). */
+function careerSnapshotShapeProblems(tag, snap) {
+  const out = [];
+  if (!isObj(snap)) return [`${tag}:not-object`];
+  if (!isFiniteNum(snap.schemaVersion)) out.push(`${tag}:schemaVersion`);
+  if (!isObj(snap.world)) out.push(`${tag}:world`);
+  else if (!snap.world.clubStrengthModelVersion) out.push(`${tag}:world.clubStrengthModelVersion`);
+  if (!isObj(snap.player)) out.push(`${tag}:player`);
+  if (!isObj(snap.clubFinance)) out.push(`${tag}:clubFinance`);
+  if (!isFiniteNum(snap.rngSeed)) out.push(`${tag}:rngSeed`);
+  return out;
+}
+
+/** Real finance = >=1 ledger under clubFinance.ledgers with clubId + numeric cash. */
+function ledgerProblems(tag, snap) {
+  const ledgers = snap?.clubFinance?.ledgers;
+  if (!isObj(ledgers) || Object.keys(ledgers).length === 0) return [`${tag}:clubFinance.ledgers-empty`];
+  const out = [];
+  for (const [k, v] of Object.entries(ledgers)) {
+    if (!isObj(v) || typeof v.clubId !== "string" || !isFiniteNum(v.cashAvailable)) {
+      out.push(`${tag}:ledger-not-real:${k}`);
+      break;
+    }
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------------- gates */
 
 function assessFocused(qa) {
   const bad = [];
@@ -178,8 +225,23 @@ function assessMatched(qa, baseSha) {
   };
 }
 
+/** Flatten the last committed season's player matches (league + domestic cup + continental). */
+function lastSeasonMatches(player) {
+  const last = Array.isArray(player?.seasons) ? player.seasons.at(-1) : null;
+  if (!last) return [];
+  const league = last.leagueMatches || last.leagueAllMatches || last.playerMatches || [];
+  const cup = (last.domesticCupCampaigns || []).flatMap((c) => c.playerMatches || c.matches || []);
+  const cont =
+    last.europeanCampaign?.playerMatches ||
+    last.continentalCampaign?.playerMatches ||
+    last.europeanCampaign?.matches ||
+    [];
+  return [...league, ...cup, ...cont];
+}
+
 function assessBrowser(qa) {
-  const r = readJson(join(qa, "browser", "browser-report.json"));
+  const bdir = join(qa, "browser");
+  const r = readJson(join(bdir, "browser-report.json"));
   if (!r.ok) return gate(false, `browser-report-${r.error}`);
   const b = r.value || {};
   const problems = [];
@@ -190,8 +252,350 @@ function assessBrowser(qa) {
   for (const id of BROWSER_IDS) {
     const c = b.cases?.[id];
     if (!(c === true || c?.ok === true)) problems.push(`${id}-not-ok`);
+    if (!b.requiredIds?.includes?.(id) || !b.selectedIds?.includes?.(id)) problems.push(`${id}-not-required-and-selected`);
+    // File reference: each case must have written at least one case-evidence file.
+    const caseFiles = listFiles(join(bdir, "cases")).filter((f) => f.startsWith(`${id}-`));
+    if (caseFiles.length === 0) problems.push(`${id}-no-case-evidence-files`);
   }
+
+  /* ---- B04: substantive scale evidence, no injected short-appearance fixture ---- */
+  const b04 = b.cases?.B04 || {};
+  const b04Files = [
+    ...listFiles(join(bdir, "cases")).filter((f) => f.startsWith("B04-")).map((f) => join(bdir, "cases", f)),
+    ...listFiles(join(bdir, "snapshots")).filter((f) => f.startsWith("B04-")).map((f) => join(bdir, "snapshots", f)),
+  ];
+  if (existsSync(join(bdir, "cases", "B04-short-injected.json"))) problems.push("B04-injected-short-fixture-case-present");
+  if (/:short\d+/.test(JSON.stringify(b04))) problems.push("B04-report-has-injected-short-fixture-id");
+  for (const f of b04Files) {
+    if (/:short\d+/.test(readFileSync(f, "utf8"))) problems.push(`B04-injected-short-fixture-id:${f.slice(qa.length + 1)}`);
+  }
+  const sc = b04.scale || {};
+  // Below-replacement careers produce negative impact; require nonzero scale ≈ 1/3.
+  if (
+    !(
+      isFiniteNum(sc.m0) &&
+      Math.abs(sc.m0) < 1e-6 &&
+      isFiniteNum(sc.m30) &&
+      isFiniteNum(sc.m90) &&
+      Math.abs(sc.m30) > 1e-6 &&
+      Math.abs(sc.m30 * 3 - sc.m90) < 0.15
+    )
+  ) {
+    problems.push("B04-scale-not-substantive");
+  }
+  const sa = b04.shortAppearance || {};
+  if (!(sa.minutes >= 20 && sa.minutes <= 45 && isFiniteNum(sa.impactAttack) && typeof sa.fixtureId === "string" && sa.fixtureId)) {
+    problems.push("B04-short-appearance-missing");
+  }
+  if (!(b04.zeroRows >= 1)) problems.push("B04-no-zero-participation-rows");
+  const b04Desk = readJson(join(bdir, "snapshots", "B04-desk.full.json"));
+  if (!b04Desk.ok) problems.push(`B04-desk-snapshot-${b04Desk.error}`);
+  else {
+    const rows = lastSeasonMatches(b04Desk.value?.player).map((m) => ({
+      id: m.fixtureId || m.matchId || null,
+      minutes: Number(m.playerStats?.minutes) || 0,
+      impact: m.effectiveStrength?.[m.playerSide]?.playerImpact?.attack,
+    }));
+    const shortRows = rows.filter((x) => x.minutes >= 20 && x.minutes <= 45 && isFiniteNum(x.impact));
+    // The report's short appearance must be an actual exported row (not just a claimed id).
+    const short = shortRows.find((x) => x.id === sa.fixtureId) || null;
+    const full = rows.find((x) => x.minutes >= 80 && isFiniteNum(x.impact));
+    if (shortRows.length === 0) problems.push("B04-desk-no-natural-short-appearance-row");
+    else if (!short) problems.push("B04-desk-short-row-vs-report-fixtureId");
+    if (!full) problems.push("B04-desk-no-full-appearance-row");
+    if (short && full && Math.abs(short.impact - full.impact * (short.minutes / full.minutes)) >= 0.12) {
+      problems.push("B04-desk-short-vs-full-impact-scale");
+    }
+    if (!rows.some((x) => x.minutes <= 0)) problems.push("B04-desk-no-zero-minute-row");
+  }
+  if (!existsSync(join(bdir, "snapshots", "B04-short-initial.full.json"))) problems.push("B04-short-initial-snapshot-missing");
+
+  /* ---- B06: pause + restore with real finance and non-empty checkpoint evidence ---- */
+  const b06 = b.cases?.B06 || {};
+  const paused = readJson(join(bdir, "snapshots", "B06-paused.full.json"));
+  const desk = readJson(join(bdir, "snapshots", "B06-desk.full.json"));
+  const init = readJson(join(bdir, "snapshots", "B06-initial.full.json"));
+  if (!paused.ok) problems.push(`B06-paused-snapshot-${paused.error}`);
+  if (!desk.ok) problems.push(`B06-restored-desk-snapshot-${desk.error}`);
+  if (!init.ok) problems.push(`B06-initial-snapshot-${init.error}`);
+  if (paused.ok) {
+    problems.push(...careerSnapshotShapeProblems("B06-paused", paused.value));
+    problems.push(...ledgerProblems("B06-paused", paused.value));
+    const ck = paused.value?.seasonCheckpoint || paused.value?.player?.seasonCheckpoint;
+    if (!isObj(ck)) problems.push("B06-paused-checkpoint-missing");
+    else {
+      if (!Array.isArray(ck.ordered) || ck.ordered.length === 0) problems.push("B06-paused-checkpoint-ordered-empty");
+      if (!Array.isArray(ck.processedEventIds) || ck.processedEventIds.length === 0 || !ck.processedEventIds.every((x) => typeof x === "string" && x)) {
+        problems.push("B06-paused-checkpoint-processedEventIds-empty");
+      } else if (Array.isArray(ck.ordered) && ck.processedEventIds.length > ck.ordered.length) {
+        problems.push("B06-paused-checkpoint-processed-exceeds-ordered");
+      }
+    }
+    if (!isFiniteNum(paused.value?.world?.rngState)) problems.push("B06-paused-rngState-missing");
+    if (b06.rngSeed !== paused.value?.rngSeed) problems.push("B06-report-rngSeed-vs-paused-snapshot");
+    if ((paused.value?.player?.seasons || []).length !== 0) problems.push("B06-paused-snapshot-has-committed-season");
+  }
+  if (desk.ok) {
+    problems.push(...careerSnapshotShapeProblems("B06-restored-desk", desk.value));
+    problems.push(...ledgerProblems("B06-restored-desk", desk.value));
+    if ((desk.value?.player?.seasons || []).length < 1) problems.push("B06-restored-desk-season-not-completed");
+  }
+  if (init.ok) problems.push(...careerSnapshotShapeProblems("B06-initial", init.value));
+  if (!(isFiniteNum(b06.pausedST) && b06.pausedST === b06.restoredST)) problems.push("B06-report-pausedST-vs-restoredST");
+  if (b06.pendingEqual !== true) problems.push("B06-report-pendingEqual-not-true");
+  if (!(b06.finance?.hasLedgers === true && b06.finance?.ledgerCount > 0)) problems.push("B06-report-finance-no-real-ledgers");
+
   return gate(problems.length === 0, "browser-incomplete", { problems });
+}
+
+/* ---------------------------------------------------- production seasons */
+
+/** Per-fixture exports (jsonl: every season/condition; or legacy season-0 JSON) at frozen 90'. */
+function prodFixtureProblems(dir, cid, role, ro, tag, N, deltas, deltaSeeds, jsonlCache) {
+  const out = [];
+  const jsonlPath = join(dir, "fixtures", `${cid}.jsonl`);
+  if (existsSync(jsonlPath)) {
+    if (!jsonlCache.has(cid)) {
+      const map = new Map();
+      let bad = 0;
+      for (const line of readFileSync(jsonlPath, "utf8").split("\n")) {
+        if (!line.trim()) continue;
+        try {
+          const o = JSON.parse(line);
+          map.set(`${o.role}|${o.condition}|${o.seasonIndex}`, o);
+        } catch {
+          bad += 1;
+        }
+      }
+      jsonlCache.set(cid, { map, bad });
+    }
+    const { map, bad } = jsonlCache.get(cid);
+    if (bad > 0) out.push(`${tag}:fixtures-jsonl-unparseable-lines:${bad}`);
+    let missing = 0;
+    let badRows = 0;
+    let seedMismatch = 0;
+    let hashMismatch = 0;
+    let scheduleMismatch = 0;
+    for (let i = 0; i < N; i++) {
+      const rep = map.get(`${role}|replacement|${i}`);
+      const star = map.get(`${role}|star99|${i}`);
+      if (!rep || !star) {
+        missing += 1;
+        continue;
+      }
+      for (const [o, cond] of [[rep, "replacement"], [star, "star99"]]) {
+        if (!Array.isArray(o.fixtures) || o.fixtures.length < 30 || !o.fixtures.every((x) => x.minutes === PROD_FROZEN_MINUTES)) badRows += 1;
+        if (o.seasonSeed !== deltaSeeds[i] || o.ovr !== ro[cond]?.ovr) seedMismatch += 1;
+        if (o.fixturesSha256 && Array.isArray(o.fixtures) && o.fixturesSha256 !== sha256Buf(Buffer.from(JSON.stringify(o.fixtures)))) hashMismatch += 1;
+      }
+      if (rep.fixtures?.length === star.fixtures?.length) {
+        for (let k = 0; k < rep.fixtures.length; k++) {
+          const x = rep.fixtures[k];
+          const y = star.fixtures[k];
+          if (x.index !== y.index || x.opponent !== y.opponent || x.venue !== y.venue || x.fixtureSeed !== y.fixtureSeed) {
+            scheduleMismatch += 1;
+            break;
+          }
+        }
+      } else scheduleMismatch += 1;
+      const d = deltas[i];
+      if (d?.repFixturesSha256 && d.repFixturesSha256 !== rep.fixturesSha256) hashMismatch += 1;
+      if (d?.starFixturesSha256 && d.starFixturesSha256 !== star.fixturesSha256) hashMismatch += 1;
+    }
+    if (missing) out.push(`${tag}:fixtures-jsonl-missing-seasons:${missing}`);
+    if (badRows) out.push(`${tag}:fixtures-jsonl-short-or-unfrozen:${badRows}`);
+    if (seedMismatch) out.push(`${tag}:fixtures-jsonl-seed-or-ovr-mismatch:${seedMismatch}`);
+    if (hashMismatch) out.push(`${tag}:fixtures-jsonl-hash-mismatch:${hashMismatch}`);
+    if (scheduleMismatch) out.push(`${tag}:fixtures-jsonl-paired-schedule-mismatch:${scheduleMismatch}`);
+    return out;
+  }
+  for (const cond of ["replacement", "star99"]) {
+    const ff = readJson(join(dir, `${cid}-${role}-${cond}-fixtures-s0.json`));
+    const fx = ff.value?.fixtures;
+    if (!ff.ok || !Array.isArray(fx) || fx.length < 30) out.push(`${tag}:${cond}-fixtures-missing-or-short`);
+    else {
+      if (!fx.every((x) => x.minutes === PROD_FROZEN_MINUTES)) out.push(`${tag}:${cond}-fixtures-minutes-not-frozen`);
+      if (ff.value.ovr !== ro[cond]?.ovr) out.push(`${tag}:${cond}-fixtures-ovr`);
+    }
+  }
+  return out;
+}
+
+function assessProductionSeasons(qa) {
+  const dir = join(qa, "production-seasons");
+  const r = readJson(join(dir, "summary.json"));
+  if (!r.ok) return gate(false, `production-summary-${r.error}`);
+  const s = r.value || {};
+  const problems = [];
+  const N = s.seasonN;
+  if (s.kind !== "production-schedule") problems.push("kind-not-production-schedule");
+  if (s.ok !== true) problems.push("summary-ok-not-true");
+  if (!(Number.isInteger(N) && N >= PROD_SEASON_MIN)) problems.push(`seasonN-below-${PROD_SEASON_MIN}:${N}`);
+  if (s.frozenParticipationMinutes !== PROD_FROZEN_MINUTES) problems.push("frozen-minutes-not-90");
+  const contexts = Array.isArray(s.contexts) ? s.contexts : [];
+  if (contexts.length === 0) problems.push("contexts-empty");
+  const fullLabels = new Set();
+  let pairedChecked = 0;
+  let pairedSeedsChecked = 0;
+  const jsonlCache = new Map();
+
+  for (const ctx of contexts) {
+    const cid = ctx?.id;
+    if (typeof cid !== "string" || !/^[A-Za-z0-9-]+$/.test(cid)) {
+      problems.push("context-id-invalid");
+      continue;
+    }
+    if (ctx.seasons !== N) problems.push(`${cid}:seasons-vs-seasonN`);
+    if (ctx.frozenMinutes !== PROD_FROZEN_MINUTES) problems.push(`${cid}:frozenMinutes`);
+    if (ctx.schedule !== "production-double-round-robin") problems.push(`${cid}:schedule`);
+    const roles = isObj(ctx.roles) ? ctx.roles : {};
+    if (PROD_REQUIRED_ROLES.every((x) => roles[x])) fullLabels.add(ctx.label);
+    for (const [role, ro] of Object.entries(roles)) {
+      const tag = `${cid}/${role}`;
+      if (ro.seasonCount !== N) problems.push(`${tag}:seasonCount`);
+      for (const k of ["replacement", "star99"]) {
+        for (const m of ["points", "gf", "ga"]) {
+          if (ro[k]?.[m]?.n !== N) problems.push(`${tag}:${k}.${m}.n`);
+        }
+      }
+      if (ro.star99?.ovr !== 99 || !(ro.replacement?.ovr < 99) || ro.replacement?.ovr !== ro.refOvr) {
+        problems.push(`${tag}:ovr-conditions`);
+      }
+
+      // Paired seeds: the SAME seasonSeed drives replacement and 99 (seed must not depend on ovr).
+      // Role-level per-condition seed lists (when emitted) must be identical element-wise.
+      const repSeeds = ro.replacement?.seasonSeeds;
+      const starSeeds = ro.star99?.seasonSeeds;
+      const haveSeedLists = Array.isArray(repSeeds) && Array.isArray(starSeeds);
+      if ((repSeeds !== undefined || starSeeds !== undefined) && !haveSeedLists) problems.push(`${tag}:seasonSeeds-list-incomplete`);
+      if (haveSeedLists) {
+        if (repSeeds.length !== N || starSeeds.length !== N) problems.push(`${tag}:seasonSeeds-list-length`);
+        else if (repSeeds.some((x, i) => !Number.isInteger(x) || x !== starSeeds[i])) {
+          problems.push(`${tag}:unequal-paired-seeds-in-summary`);
+        }
+      }
+      const seedsOf = (row) => {
+        const rep = row?.seasonSeedRep ?? row?.seasonSeed;
+        const star = row?.seasonSeedStar ?? row?.seasonSeed;
+        const explicit = row?.seasonSeedRep !== undefined || row?.seasonSeedStar !== undefined;
+        const conflict = row?.seasonSeed !== undefined && explicit && (rep !== row.seasonSeed || star !== row.seasonSeed);
+        return { rep, star, explicit, conflict };
+      };
+      const sample = Array.isArray(ro.pairedDelta?.sample) ? ro.pairedDelta.sample : [];
+      if (sample.length === 0) problems.push(`${tag}:paired-sample-missing`);
+      for (const row of sample) {
+        const sd = seedsOf(row);
+        if (!(Number.isInteger(sd.rep) && sd.rep === sd.star) || sd.conflict) {
+          problems.push(`${tag}:unequal-paired-seeds-in-summary`);
+          break;
+        }
+        if (!sd.explicit && !haveSeedLists) {
+          problems.push(`${tag}:paired-seed-identity-unproven`);
+          break;
+        }
+      }
+      const pf = readJson(join(dir, `${cid}-${role}-paired.json`));
+      if (!pf.ok) {
+        problems.push(`${tag}:paired-file-${pf.error}`);
+        continue;
+      }
+      pairedChecked += 1;
+      const deltas = Array.isArray(pf.value?.pairedDeltas) ? pf.value.pairedDeltas : [];
+      if (deltas.length !== N) problems.push(`${tag}:pairedDeltas-count:${deltas.length}`);
+      const seeds = new Set();
+      let unequal = 0;
+      let malformed = 0;
+      let unproven = 0;
+      const deltaSeeds = [];
+      for (const d of deltas) {
+        const sd = seedsOf(d);
+        if (!(Number.isInteger(sd.rep) && Number.isInteger(sd.star))) malformed += 1;
+        else if (sd.rep !== sd.star || sd.conflict) unequal += 1;
+        else {
+          seeds.add(sd.rep);
+          if (!sd.explicit && !haveSeedLists) unproven += 1;
+        }
+        deltaSeeds.push(sd.rep);
+        if (!(isFiniteNum(d?.dPts) && isFiniteNum(d?.dGf) && isFiniteNum(d?.dGa))) malformed += 1;
+      }
+      pairedSeedsChecked += deltas.length;
+      if (unequal > 0) problems.push(`${tag}:unequal-paired-seeds:${unequal}`);
+      if (unproven > 0) problems.push(`${tag}:paired-seed-identity-unproven`);
+      if (malformed > 0) problems.push(`${tag}:paired-rows-malformed:${malformed}`);
+      if (seeds.size !== deltas.length) problems.push(`${tag}:seasonSeeds-not-distinct`);
+      if (haveSeedLists && repSeeds.length === deltaSeeds.length && repSeeds.some((x, i) => x !== deltaSeeds[i])) {
+        problems.push(`${tag}:summary-seed-list-vs-paired-rows`);
+      }
+      if (pf.value?.refOvr !== ro.refOvr) problems.push(`${tag}:paired-file-refOvr`);
+      // Summary must be derived from the per-season rows, not stand alone.
+      const meanPts = deltas.length ? deltas.reduce((a, d) => a + d.dPts, 0) / deltas.length : NaN;
+      if (!(Math.abs(meanPts - ro.pairedDelta?.points?.mean) < 1e-6)) problems.push(`${tag}:summary-mean-vs-paired-rows`);
+      for (let i = 0; i < Math.min(sample.length, deltas.length); i++) {
+        if (JSON.stringify(sample[i]) !== JSON.stringify(deltas[i])) {
+          problems.push(`${tag}:summary-sample-vs-paired-rows`);
+          break;
+        }
+      }
+      problems.push(...prodFixtureProblems(dir, cid, role, ro, tag, N, deltas, deltaSeeds, jsonlCache));
+    }
+  }
+  if (!fullLabels.has("weak")) problems.push("no-weak-context-with-ST-CM-CB-GK");
+  if (!fullLabels.has("mid")) problems.push("no-mid-context-with-ST-CM-CB-GK");
+  return gate(problems.length === 0, "production-seasons-invalid", {
+    seasonN: N ?? null,
+    contexts: contexts.length,
+    pairedFiles: pairedChecked,
+    pairedSeedsChecked,
+    problems: problems.slice(0, 20),
+  });
+}
+
+/* ---------------------------------------------------------------- cohort */
+
+function cohortRowProblems(dir, row, tag, periodsEach, seen) {
+  const out = [];
+  if (!isObj(row) || !Number.isInteger(row.seed)) return [`${tag}:row-or-seed-invalid`];
+  const t = `${tag}:${row.seed}`;
+  if (seen.has(row.seed)) out.push(`${t}:duplicate-seed`);
+  seen.add(row.seed);
+  if (Number.isFinite(periodsEach) && !(Array.isArray(row.periods) && row.periods.length >= periodsEach)) {
+    out.push(`${t}:periods-short`);
+  }
+  // Slim recipe input: must exist and be this career's, but is NOT sufficient on its own.
+  const inputPath = safeJoin(dir, row.inputPath);
+  const input = inputPath ? readJson(inputPath) : { ok: false, error: "bad-ref" };
+  if (!input.ok) out.push(`${t}:input-${input.error}`);
+  else if (input.value?.seed !== row.seed) out.push(`${t}:input-seed-mismatch`);
+
+  const snaps = {};
+  for (const [key, label] of [
+    ["initialSnapshotPath", "initial-snapshot"],
+    ["finalSnapshotPath", "final-snapshot"],
+  ]) {
+    const p = safeJoin(dir, row[key]);
+    if (!p || row[key] === row.inputPath) {
+      out.push(`${t}:${label}-ref-missing`);
+      continue;
+    }
+    const j = readJson(p);
+    if (!j.ok) {
+      out.push(`${t}:${label}-${j.error}`);
+      continue;
+    }
+    const shape = careerSnapshotShapeProblems(`${t}:${label}`, j.value);
+    out.push(...shape);
+    snaps[label] = j.value;
+  }
+  const a = snaps["initial-snapshot"];
+  const z = snaps["final-snapshot"];
+  if (a && z) {
+    if (row.initialSnapshotPath === row.finalSnapshotPath) out.push(`${t}:initial-equals-final-ref`);
+    const sa = (a.player?.seasons || []).length;
+    const sz = (z.player?.seasons || []).length;
+    if (!(sz > sa)) out.push(`${t}:final-snapshot-not-advanced`);
+    if (Number.isFinite(periodsEach) && sz < periodsEach) out.push(`${t}:final-snapshot-seasons-short`);
+  }
+  return out;
 }
 
 function assessCohort(qa) {
@@ -201,37 +605,87 @@ function assessCohort(qa) {
   const s = r.value || {};
   const completed = Number(s.completed);
   if (!Number.isFinite(completed)) return gate(false, "cohort-completed-missing");
-  if (completed >= COHORT_TARGET) return gate(true, "ok", { completed, supplemental: 0 });
   const exclusions = Array.isArray(s.exclusions) ? s.exclusions : [];
   const documented = exclusions.filter((e) => e && e.seed != null && (e.error || e.reason));
-  let supp = s.supplemental;
-  if (!supp) {
-    const f = readJson(join(dir, "supplemental-summary.json"));
-    if (f.ok) supp = f.value;
+  // summary.supplemental may be a pointer (path/seeds/completed) without rows;
+  // load supplemental-summary.json whenever rows are absent.
+  let supp = s.supplemental && typeof s.supplemental === "object" ? s.supplemental : null;
+  if (!supp || !Array.isArray(supp.rows)) {
+    const rel = typeof supp?.path === "string" && supp.path ? supp.path : "supplemental-summary.json";
+    const f = readJson(join(dir, rel));
+    if (f.ok && f.value && typeof f.value === "object") supp = f.value;
   }
   const suppCompleted = Number(supp?.completed) || 0;
-  const needed = COHORT_TARGET - completed;
+  const needed = Math.max(0, COHORT_TARGET - completed);
   const problems = [];
-  if (documented.length < needed) problems.push("exclusions-not-documented");
-  if (completed + suppCompleted < COHORT_TARGET) problems.push("supplemental-short-of-target");
-  if (suppCompleted > 0 && !(Array.isArray(supp?.seeds) && supp.seeds.length >= suppCompleted)) {
-    problems.push("supplemental-seeds-missing");
+  if (completed < COHORT_TARGET) {
+    if (documented.length < needed) problems.push("exclusions-not-documented");
+    if (completed + suppCompleted < COHORT_TARGET) problems.push("supplemental-short-of-target");
+    if (suppCompleted > 0 && !(Array.isArray(supp?.seeds) && supp.seeds.length >= suppCompleted)) {
+      problems.push("supplemental-seeds-missing");
+    }
   }
-  return gate(problems.length === 0, "cohort-below-target", { completed, supplemental: suppCompleted, problems });
+
+  // Every completed career (primary + supplemental) needs input + initial + final career snapshots.
+  const periodsEach = Number(s.periodsEach);
+  const seen = new Set();
+  const primaryRows = (Array.isArray(s.rows) ? s.rows : []).filter((x) => x && x.excluded !== true);
+  if (primaryRows.length !== completed) problems.push(`primary-rows-vs-completed:${primaryRows.length}/${completed}`);
+  const suppRows = Array.isArray(supp?.rows) ? supp.rows.filter((x) => x && x.excluded !== true) : [];
+  if (suppRows.length !== suppCompleted) problems.push(`supplemental-rows-vs-completed:${suppRows.length}/${suppCompleted}`);
+  for (const row of primaryRows) problems.push(...cohortRowProblems(dir, row, "career", periodsEach, seen));
+  for (const row of suppRows) problems.push(...cohortRowProblems(dir, row, "supplemental", periodsEach, seen));
+  if (seen.size < COHORT_TARGET) problems.push(`distinct-career-seeds-below-target:${seen.size}`);
+  for (const e of documented) if (seen.has(e.seed)) problems.push(`excluded-seed-also-completed:${e.seed}`);
+
+  return gate(problems.length === 0, "cohort-incomplete", {
+    completed,
+    supplemental: suppCompleted,
+    careersWithSnapshots: seen.size,
+    problems: problems.slice(0, 20),
+  });
 }
+
+/* ------------------------------------------------------------ full suite */
 
 function escapeRe(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function classifyFullSuiteLog(log) {
+export function classifyFullSuiteLog(logText) {
+  const log = typeof logText === "string" ? logText : "";
   const failedFiles = [...new Set([...log.matchAll(/^not ok \d+ - (tests\/\S+\.test\.mjs)\s*$/gm)].map((m) => m[1]))];
   const anyNotOk = [...log.matchAll(/^not ok \d+ - (.+)$/gm)].map((m) => m[1].trim());
   const failedTests = [...log.matchAll(/^# FAIL (.+)$/gm)].map((m) => m[1].trim());
-  if (!/^# (pass|fail) \d+/m.test(log)) return { ok: false, reason: "log-has-no-tap-summary", failedFiles, failedTests };
-  if (failedFiles.length === 0 && anyNotOk.length === 0 && failedTests.length === 0 && /^# fail 0\s*$/m.test(log)) {
-    return { ok: true, reason: "ok", failedFiles, failedTests, mode: "clean" };
-  }
+  const base = { failedFiles, failedTests };
+
+  // --- TAP coherence: a bare `# fail 0` (or any cut-off log) must never read as clean.
+  const count = (k) => {
+    const m = log.match(new RegExp(`^# ${k} (\\d+)\\s*$`, "m"));
+    return m ? Number(m[1]) : null;
+  };
+  const tests = count("tests");
+  const pass = count("pass");
+  const fail = count("fail");
+  const plan = log.match(/^1\.\.(\d+)\s*$/m);
+  if (!plan && tests === null) return { ok: false, reason: "truncated-tap-no-plan-or-summary", ...base };
+  if (!plan) return { ok: false, reason: "truncated-tap-no-plan", ...base };
+  if (tests === null || pass === null || fail === null) return { ok: false, reason: "truncated-tap-incomplete-summary", ...base };
+  const cancelled = count("cancelled") ?? 0;
+  const skipped = count("skipped") ?? 0;
+  const todo = count("todo") ?? 0;
+  const topLevel = [...log.matchAll(/^(?:not )?ok \d+ /gm)].length;
+  const planN = Number(plan[1]);
+  if (!(planN > 0) || topLevel !== planN) return { ok: false, reason: "tap-plan-vs-results-mismatch", ...base, planN, topLevel };
+  if (log.indexOf(plan[0]) > log.search(/^# tests \d+/m)) return { ok: false, reason: "tap-plan-after-summary", ...base };
+  if (!(tests > 0 && pass > 0 && tests >= planN)) return { ok: false, reason: "tap-summary-empty-or-below-plan", ...base };
+  if (pass + fail + cancelled + skipped + todo !== tests) return { ok: false, reason: "tap-summary-counts-inconsistent", ...base };
+  if (cancelled > 0) return { ok: false, reason: "tap-cancelled-tests", ...base };
+  const hasFailureLines = anyNotOk.length > 0 || failedTests.length > 0;
+  if ((fail === 0) === hasFailureLines) return { ok: false, reason: "tap-fail-count-vs-failure-lines", ...base };
+
+  if (fail === 0) return { ok: true, reason: "ok", mode: "clean", ...base, tests, pass, fail };
+
   const allowed = ALLOWED_FULL_SUITE.failures;
   const names = allowed.map((f) => f.testName);
   const filesOk =
@@ -242,9 +696,7 @@ export function classifyFullSuiteLog(log) {
   for (const n of failedTests) counts.set(n, (counts.get(n) || 0) + 1);
   const unexpected = failedTests.filter((n) => !names.includes(n));
   const exactSet =
-    unexpected.length === 0 &&
-    failedTests.length === names.length &&
-    names.every((n) => counts.get(n) === 1);
+    unexpected.length === 0 && failedTests.length === names.length && names.every((n) => counts.get(n) === 1);
   const paired = allowed.every((f) =>
     new RegExp(`^# FAIL ${escapeRe(f.testName)}\\n[\\s\\S]{0,500}?${escapeRe(f.assertionMarker)}`, "m").test(log)
   );
@@ -252,20 +704,31 @@ export function classifyFullSuiteLog(log) {
   if (!filesOk) reason = "unexpected-failed-files";
   else if (!exactSet) reason = unexpected.length ? "unexpected-failed-assertions" : "failed-assertion-set-mismatch";
   else if (!paired) reason = "allowed-failure-marker-pairing-mismatch";
-  return { ok: filesOk && exactSet && paired, reason, failedFiles, failedTests, unexpected, mode: "established-ability-exception" };
+  return {
+    ok: filesOk && exactSet && paired,
+    reason,
+    ...base,
+    unexpected,
+    mode: "established-ability-exception",
+    tests,
+    pass,
+    fail,
+  };
 }
 
 function assessFullSuite(qa) {
   const logPath = join(qa, "logs", "full-suite.log");
-  if (existsSync(logPath)) {
-    // A log, when present, is authoritative: a commands.json note can never override it.
-    const c = classifyFullSuiteLog(readFileSync(logPath, "utf8"));
-    return gate(c.ok, `full-suite-log-${c.reason}`, { source: "log", mode: c.mode || null, failedFiles: c.failedFiles });
-  }
-  const cmds = readJson(join(qa, "commands.json"));
-  const note = String(cmds.value?.note || "");
-  const ok = cmds.ok && typeof cmds.value?.fullSuite === "string" && /established ability exception/i.test(note);
-  return gate(ok, "full-suite-log-missing-and-no-documented-exception", { source: "commands.json" });
+  // The log is REQUIRED. A commands.json note (or any other prose) can never stand in for it.
+  if (!existsSync(logPath) || statSync(logPath).size === 0) return gate(false, "full-suite-log-missing");
+  const c = classifyFullSuiteLog(readFileSync(logPath, "utf8"));
+  return gate(c.ok, `full-suite-log-${c.reason}`, {
+    source: "log",
+    mode: c.mode || null,
+    failedFiles: c.failedFiles,
+    tests: c.tests ?? null,
+    pass: c.pass ?? null,
+    fail: c.fail ?? null,
+  });
 }
 
 function assessSource(pkgRoot) {
@@ -314,6 +777,7 @@ export function assessPackageEvidence(pkgRoot, { baseSha, finalSha = null } = {}
     calibration: assessCalibration(qa),
     matched: matched.gate,
     browser: assessBrowser(qa),
+    productionSeasons: assessProductionSeasons(qa),
     cohort: assessCohort(qa),
     fullSuite: assessFullSuite(qa),
     sourceManifest: source.gate,
@@ -327,6 +791,26 @@ export function assessPackageEvidence(pkgRoot, { baseSha, finalSha = null } = {}
     gates,
     sourceManifest: { sha256: source.manifest.sha256, fileCount: source.manifest.fileCount },
     matched: { commonInputSha256: matched.commonInputSha256 },
+    // Substantive counts re-derived from bytes; verifier cross-checks these against its own recompute.
+    summary: {
+      productionSeasons: {
+        seasonN: gates.productionSeasons.seasonN ?? null,
+        contexts: gates.productionSeasons.contexts ?? null,
+        pairedFiles: gates.productionSeasons.pairedFiles ?? null,
+        pairedSeedsChecked: gates.productionSeasons.pairedSeedsChecked ?? null,
+      },
+      cohort: {
+        completed: gates.cohort.completed ?? null,
+        supplemental: gates.cohort.supplemental ?? null,
+        careersWithSnapshots: gates.cohort.careersWithSnapshots ?? null,
+      },
+      fullSuite: {
+        mode: gates.fullSuite.mode ?? null,
+        tests: gates.fullSuite.tests ?? null,
+        pass: gates.fullSuite.pass ?? null,
+        fail: gates.fullSuite.fail ?? null,
+      },
+    },
   };
   return { ready, gates, evidence, sourceManifest: source.manifest };
 }

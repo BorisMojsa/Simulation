@@ -1,0 +1,283 @@
+{
+  "completed": 1,
+  "seeds": [
+    9124
+  ],
+  "rows": [
+    {
+      "i": 10124,
+      "role": "CM",
+      "club": "Brighton & Hove Albion",
+      "leagueId": "league:england-premier-league",
+      "seed": 9124,
+      "ovr": 72,
+      "loan": false,
+      "periods": [
+        {
+          "period": 0,
+          "seasons": 1,
+          "playingClubId": "club:england:brighton-and-hove-albion",
+          "employmentClubId": "club:england:brighton-and-hove-albion",
+          "datedOwnership": {
+            "stintCount": 1,
+            "stints": [
+              {
+                "stintId": "stint:seed:fix10-c10124-s9124:club:england:brighton-and-hove-albion",
+                "playingClubId": "club:england:brighton-and-hove-albion",
+                "employmentClubId": "club:england:brighton-and-hove-albion",
+                "from": "2026-07-01",
+                "to": null,
+                "kind": "seed",
+                "onLoan": false,
+                "leagueId": "league:england-premier-league",
+                "clubName": "Brighton & Hove Albion"
+              }
+            ],
+            "openStint": {
+              "stintId": "stint:seed:fix10-c10124-s9124:club:england:brighton-and-hove-albion",
+              "playingClubId": "club:england:brighton-and-hove-albion",
+              "employmentClubId": "club:england:brighton-and-hove-albion",
+              "from": "2026-07-01",
+              "to": null,
+              "kind": "seed",
+              "onLoan": false,
+              "leagueId": "league:england-premier-league",
+              "clubName": "Brighton & Hove Albion"
+            },
+            "loan": null,
+            "loanStints": []
+          },
+          "nationalSelection": {
+            "lastSeason": {
+              "year": 2026,
+              "confederation": "UEFA",
+              "hasTournaments": true,
+              "calledUp": false,
+              "callUpChance": 0.11,
+              "announcementTone": "out",
+              "callUpTournament": "FIFA World Cup",
+              "playerMatchCount": 0,
+              "playerMatchIds": [],
+              "primaryEditionId": null,
+              "primaryWon": null
+            }
+          },
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 83.0679,
+          "lastMinutes": 435,
+          "lastGoals": 1,
+          "ownershipSplit": false,
+          "nationalCaps": 0,
+          "recentStints": [
+            {
+              "stintId": "stint:seed:fix10-c10124-s9124:club:england:brighton-and-hove-albion",
+              "playingClubId": "club:england:brighton-and-hove-albion",
+              "employmentClubId": "club:england:brighton-and-hove-albion",
+              "from": "2026-07-01",
+              "to": null,
+              "kind": "seed",
+              "onLoan": false,
+              "leagueId": "league:england-premier-league",
+              "clubName": "Brighton & Hove Albion"
+            }
+          ]
+        },
+        {
+          "period": 1,
+          "seasons": 2,
+          "playingClubId": "club:england:brighton-and-hove-albion",
+          "employmentClubId": "club:england:brighton-and-hove-albion",
+          "datedOwnership": {
+            "stintCount": 1,
+            "stints": [
+              {
+                "stintId": "stint:seed:fix10-c10124-s9124:club:england:brighton-and-hove-albion",
+                "playingClubId": "club:england:brighton-and-hove-albion",
+                "employmentClubId": "club:england:brighton-and-hove-albion",
+                "from": "2026-07-01",
+                "to": null,
+                "kind": "seed",
+                "onLoan": false,
+                "leagueId": "league:england-premier-league",
+                "clubName": "Brighton & Hove Albion"
+              }
+            ],
+            "openStint": {
+              "stintId": "stint:seed:fix10-c10124-s9124:club:england:brighton-and-hove-albion",
+              "playingClubId": "club:england:brighton-and-hove-albion",
+              "employmentClubId": "club:england:brighton-and-hove-albion",
+              "from": "2026-07-01",
+              "to": null,
+              "kind": "seed",
+              "onLoan": false,
+              "leagueId": "league:england-premier-league",
+              "clubName": "Brighton & Hove Albion"
+            },
+            "loan": null,
+            "loanStints": []
+          },
+          "nationalSelection": {
+            "lastSeason": {
+              "year": 2027,
+              "confederation": "UEFA",
+              "hasTournaments": true,
+              "calledUp": false,
+              "callUpChance": 0,
+              "announcementTone": "neutral",
+              "callUpTournament": null,
+              "playerMatchCount": 0,
+              "playerMatchIds": [],
+              "primaryEditionId": null,
+              "primaryWon": null
+            }
+          },
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 83.038,
+          "lastMinutes": 1038,
+          "lastGoals": 0,
+          "ownershipSplit": false,
+          "nationalCaps": 0,
+          "recentStints": [
+            {
+              "stintId": "stint:seed:fix10-c10124-s9124:club:england:brighton-and-hove-albion",
+              "playingClubId": "club:england:brighton-and-hove-albion",
+              "employmentClubId": "club:england:brighton-and-hove-albion",
+              "from": "2026-07-01",
+              "to": null,
+              "kind": "seed",
+              "onLoan": false,
+              "leagueId": "league:england-premier-league",
+              "clubName": "Brighton & Hove Albion"
+            }
+          ]
+        },
+        {
+          "period": 2,
+          "seasons": 3,
+          "playingClubId": "club:england:brighton-and-hove-albion",
+          "employmentClubId": "club:england:brighton-and-hove-albion",
+          "datedOwnership": {
+            "stintCount": 1,
+            "stints": [
+              {
+                "stintId": "stint:seed:fix10-c10124-s9124:club:england:brighton-and-hove-albion",
+                "playingClubId": "club:england:brighton-and-hove-albion",
+                "employmentClubId": "club:england:brighton-and-hove-albion",
+                "from": "2026-07-01",
+                "to": null,
+                "kind": "seed",
+                "onLoan": false,
+                "leagueId": "league:england-premier-league",
+                "clubName": "Brighton & Hove Albion"
+              }
+            ],
+            "openStint": {
+              "stintId": "stint:seed:fix10-c10124-s9124:club:england:brighton-and-hove-albion",
+              "playingClubId": "club:england:brighton-and-hove-albion",
+              "employmentClubId": "club:england:brighton-and-hove-albion",
+              "from": "2026-07-01",
+              "to": null,
+              "kind": "seed",
+              "onLoan": false,
+              "leagueId": "league:england-premier-league",
+              "clubName": "Brighton & Hove Albion"
+            },
+            "loan": null,
+            "loanStints": []
+          },
+          "nationalSelection": {
+            "lastSeason": {
+              "year": 2028,
+              "confederation": "UEFA",
+              "hasTournaments": true,
+              "calledUp": false,
+              "callUpChance": 0.11,
+              "announcementTone": "out",
+              "callUpTournament": "UEFA European Championship",
+              "playerMatchCount": 0,
+              "playerMatchIds": [],
+              "primaryEditionId": null,
+              "primaryWon": null
+            }
+          },
+          "modelVersion": "fix10-club-strength-v1",
+          "schema": 4,
+          "replacementST": 83.231,
+          "lastMinutes": 891,
+          "lastGoals": 2,
+          "ownershipSplit": false,
+          "nationalCaps": 0,
+          "recentStints": [
+            {
+              "stintId": "stint:seed:fix10-c10124-s9124:club:england:brighton-and-hove-albion",
+              "playingClubId": "club:england:brighton-and-hove-albion",
+              "employmentClubId": "club:england:brighton-and-hove-albion",
+              "from": "2026-07-01",
+              "to": null,
+              "kind": "seed",
+              "onLoan": false,
+              "leagueId": "league:england-premier-league",
+              "clubName": "Brighton & Hove Albion"
+            }
+          ]
+        }
+      ],
+      "restoreOk": true,
+      "restoreChecks": {
+        "ok": true,
+        "snapshotSchema": true,
+        "worldClubStrengthModelVersion": true,
+        "worldSchema": true,
+        "playingClubId": true,
+        "employmentClubId": true,
+        "playingStints": true,
+        "seasons": true,
+        "clubFinanceLedgers": true,
+        "rngSeed": true,
+        "rngState": true,
+        "values": {
+          "clubStrengthModelVersion": "fix10-club-strength-v1",
+          "worldSchemaVersion": 4,
+          "snapshotSchemaVersion": 1,
+          "playingClubId": "club:england:brighton-and-hove-albion",
+          "employmentClubId": "club:england:brighton-and-hove-albion",
+          "contractStatus": "expired",
+          "playingStintCount": 1,
+          "rngSeed": 1810864920,
+          "rngState": 1810864920
+        }
+      },
+      "excluded": false,
+      "inputPath": "input-9124.json",
+      "initialSnapshotPath": "initial-9124.full.json",
+      "finalSnapshotPath": "final-9124.full.json",
+      "snapshots": {
+        "initial": "initial-9124.full.json",
+        "final": "final-9124.full.json",
+        "initialSeasons": 0,
+        "finalSeasons": 3
+      },
+      "supplemental": true,
+      "replacesExclusionSeed": 9109,
+      "reason": "Declared supplemental after Yokohama AFC league-phase schedule failure"
+    }
+  ],
+  "snapshots": [
+    {
+      "seed": 9124,
+      "club": "Brighton & Hove Albion",
+      "role": "CM",
+      "supplemental": true,
+      "input": "input-9124.json",
+      "initial": "initial-9124.full.json",
+      "final": "final-9124.full.json",
+      "initialOnDisk": true,
+      "finalOnDisk": true,
+      "restoreOk": true
+    }
+  ],
+  "replacesExclusionSeed": 9109,
+  "reason": "Declared supplemental after Yokohama AFC league-phase schedule failure"
+}

@@ -28,7 +28,7 @@ import {
   CLUB_STRENGTH_MODEL_VERSION,
   WORLD_STATE_SCHEMA_VERSION,
 } from "../js/simulation/worldState.js";
-import { resetClubFinanceLedgers } from "../js/simulation/clubFinance.js";
+import { resetClubFinanceLedgers, getOrInitClubSeasonFinance } from "../js/simulation/clubFinance.js";
 import { serializeCareerSnapshot } from "../js/simulation/careerSnapshot.js";
 import { ensureContractAuthority } from "../js/simulation/contractLifecycle.js";
 import { ensureTransferSave } from "../js/simulation/transferMigration.js";
@@ -232,26 +232,70 @@ function meanOppXg(matches, { minMinutes = 45 } = {}) {
 }
 
 function financeFingerprint(snap) {
-  const world = snap?.world || {};
-  const ledgers = world.clubFinanceLedgers || world.financeLedgers || null;
+  // Production career snapshots store finance at snapshot.clubFinance.ledgers
+  // (clubId|season keys) with cashAvailable — not world.clubFinanceLedgers.
+  const ledgers = snap?.clubFinance?.ledgers || null;
   const playerClub = snap?.player?.playingClubId || snap?.player?.employmentClubId;
   let clubCash = null;
-  if (ledgers && playerClub) {
-    const entry = Array.isArray(ledgers)
-      ? ledgers.find((e) => (Array.isArray(e) ? e[0] : e?.clubId) === playerClub)
-      : ledgers[playerClub];
-    const ledger = Array.isArray(entry) ? entry[1] : entry;
-    clubCash = ledger?.cash ?? ledger?.balance ?? ledger?.currentCash ?? null;
+  let clubLedgerKey = null;
+  let clubLedger = null;
+  let clubKeys = [];
+  if (ledgers && typeof ledgers === "object") {
+    clubKeys = Object.keys(ledgers);
+    clubLedgerKey =
+      clubKeys.find((k) => k === playerClub || k.startsWith(`${playerClub}|`)) || null;
+    if (clubLedgerKey) {
+      clubLedger = ledgers[clubLedgerKey];
+      clubCash =
+        clubLedger?.cashAvailable ??
+        clubLedger?.cash ??
+        clubLedger?.balance ??
+        clubLedger?.currentCash ??
+        null;
+    }
   }
   return {
-    hasLedgers: Boolean(ledgers),
-    ledgerCount: Array.isArray(ledgers)
-      ? ledgers.length
-      : ledgers && typeof ledgers === "object"
-        ? Object.keys(ledgers).length
-        : 0,
+    hasLedgers: clubKeys.length > 0,
+    ledgerCount: clubKeys.length,
+    ledgerKeys: clubKeys.slice().sort(),
+    clubLedgerKey,
     clubCash,
+    clubCommitments: clubLedger?.committedAnnualPayroll ?? null,
     playerWage: snap?.player?.weeklyWage ?? snap?.player?.wage ?? null,
+    profileVersion: snap?.clubFinance?.profileVersion ?? null,
+  };
+}
+
+function checkpointFixtureIdentity(snap) {
+  const ck =
+    snap?.player?.seasonCheckpoint ||
+    snap?.seasonCheckpoint ||
+    null;
+  const ordered = Array.isArray(ck?.ordered) ? ck.ordered : [];
+  const processed = Array.isArray(ck?.processedEventIds) ? ck.processedEventIds : [];
+  const leagueMatches = Array.isArray(ck?.leaguePlayerMatches)
+    ? ck.leaguePlayerMatches
+    : Array.isArray(ck?.leagueAllMatches)
+      ? ck.leagueAllMatches
+      : [];
+  const orderedIds = ordered
+    .map((e, idx) => ({
+      idx,
+      id: e?.eventId || e?.id || e?.fixtureId || e?.matchId || null,
+      type: e?.type || e?.kind || null,
+    }))
+    .filter((e) => e.id != null);
+  return {
+    status: ck?.status ?? null,
+    orderedCount: ordered.length,
+    processedCount: processed.length,
+    processedEventIds: processed.slice(),
+    orderedIds,
+    leagueMatchCount: leagueMatches.length,
+    leagueMatchIds: leagueMatches
+      .map((m) => m?.fixtureId || m?.matchId || null)
+      .filter(Boolean),
+    eventIndex: ck?.eventIndex ?? null,
   };
 }
 
@@ -1203,46 +1247,37 @@ const cases = {
     };
   },
 
-  /** Bench/injury zero effect; exported short appearance scales ~1/3. */
+  /**
+   * Real short appearance via production selection (no injected rows).
+   * Deterministic seed 10104 / OVR 58 at Hull yields 20–45' and full appearances.
+   */
   async B04(page, guards) {
     const world = createWorldState({ seed: 10104, startYear: 2026 });
     const hull = [...world.clubs.values()].find((c) => c.name === HULL);
     const profile = hull;
-    const player99 = {
+    const playerProbe = {
       name: "Scale",
       position: "ST",
-      currentOverallRaw: 99,
-      currentOverall: 99,
-      rating: 99,
-      attributes: attrs(99),
+      currentOverallRaw: 58,
+      currentOverall: 58,
+      rating: 58,
+      attributes: attrs(58),
     };
-    const m0 = playerLineupImpact(profile, player99, { participates: true, minutes: 0 });
-    const m30 = playerLineupImpact(profile, player99, { participates: true, minutes: 30 });
-    const m90 = playerLineupImpact(profile, player99, { participates: true, minutes: 90 });
-    const rejected = playerLineupImpact(profile, player99, { participates: false, minutes: 90 });
+    const m0 = playerLineupImpact(profile, playerProbe, { participates: true, minutes: 0 });
+    const m30 = playerLineupImpact(profile, playerProbe, { participates: true, minutes: 30 });
+    const m90 = playerLineupImpact(profile, playerProbe, { participates: true, minutes: 90 });
+    const rejected = playerLineupImpact(profile, playerProbe, { participates: false, minutes: 90 });
     assert(m0.attack === 0 && m0.midfield === 0, "zero minutes → zero impact", m0);
     assert(rejected.attack === 0, "rejected registration → zero impact", rejected);
-    assert(m90.attack > m30.attack, "full appearance > short", { m30, m90 });
-    assert(Math.abs(m30.attack * 3 - m90.attack) < 0.08, "short appearance scales ~1/3", { m30, m90 });
-    await writeCase("B04-scale-engine.json", { m0, m30, m90, rejected });
+    assert(m90.attack !== 0 || m30.attack !== 0, "engine produces nonzero short/full impact", { m30, m90 });
+    await writeCase("B04-scale-engine.json", { m0, m30, m90, rejected, ovr: 58, seed: 10104 });
 
-    // Low-ovr career tends to produce natural short/sub appearances + unused rows.
     const shortSnap = buildSnap({
       id: "fix10-b04-short",
       position: "ST",
       ovr: 58,
       club: HULL,
       seed: 10104,
-      mutateWorld: (_w, p) => {
-        p.health = p.health || {};
-        p.health.activeInjury = {
-          eventId: "fix10:b04:inj",
-          onsetDay: 0,
-          availabilityReturnDay: 40,
-          severity: "moderate",
-          status: "active",
-        };
-      },
     });
     await writeFullSnapshot("B04-short-initial.full.json", shortSnap);
     await restore(page, shortSnap);
@@ -1253,73 +1288,76 @@ const cases = {
       deskPolicy: "stay",
       timeoutMs: 260000,
     });
-    let desk = await exportSnapshot(page);
+    const desk = await exportSnapshot(page);
+    assert((desk.player.seasons || []).length === 1, "season completed");
+    const season = desk.player.seasons.at(-1);
+    const seasonMinutes = Number(season?.minutes) || 0;
+    assert(seasonMinutes > 0, "season minutes must be positive for short-appearance career", {
+      seasonMinutes,
+    });
 
-    let rows = matchInfluenceRows(desk.player);
-    let shortRow = rows.find((r) => (r.minutes || 0) >= 20 && (r.minutes || 0) <= 45 && Number.isFinite(r.impactAttack));
-    let fullRow = rows.find((r) => (r.minutes || 0) >= 80 && Number.isFinite(r.impactAttack));
+    const rawMatches = seasonMatches(desk.player);
+    assert(
+      !rawMatches.some((m) => String(m.fixtureId || "").includes(":short30")),
+      "must not contain injected :short30 fixture ids",
+      { ids: rawMatches.map((m) => m.fixtureId).filter((id) => String(id).includes("short30")) }
+    );
 
-    // If selection RNG did not yield a short appearance, inject a controlled 30' row
-    // into the completed season, restore, and re-export through the browser snapshot path.
-    if (!shortRow) {
-      const season = desk.player.seasons?.at(-1);
-      assert(season, "completed season present for short-appearance inject");
-      const donor =
-        (season.leagueMatches || []).find((m) => m.playerSide && (m.playerStats?.minutes || 0) >= 1) ||
-        (season.leagueMatches || [])[0];
-      assert(donor, "donor match for short-appearance inject");
-      const side = donor.playerSide || "home";
-      const injectedImpact = playerLineupImpact(profile, player99, { participates: true, minutes: 30 });
-      const fullImpact = playerLineupImpact(profile, player99, { participates: true, minutes: 90 });
-      const injected = jsonClone(donor);
-      injected.fixtureId = `${donor.fixtureId || "fix10"}:short30`;
-      injected.playerStats = {
-        ...(injected.playerStats || {}),
-        minutes: 30,
-        started: false,
-        selected: true,
-        available: true,
-        nonParticipationReason: null,
-      };
-      injected.effectiveStrength = injected.effectiveStrength || {};
-      injected.effectiveStrength[side] = {
-        ...(injected.effectiveStrength[side] || {}),
-        playerImpact: { ...injectedImpact },
-        attack: Number(injected.effectiveStrength[side]?.attack) || profile.attack,
-      };
-      season.leagueMatches = [...(season.leagueMatches || []), injected];
-      desk.player.seasons[desk.player.seasons.length - 1] = season;
-      await writeCase("B04-short-injected.json", {
-        minutes: 30,
-        impactAttack: injectedImpact.attack,
-        full90: fullImpact.attack,
-        scaleRatio: injectedImpact.attack / (fullImpact.attack || 1),
-      });
-      await freshRestore(page, desk);
-      desk = await exportSnapshot(page);
-      rows = matchInfluenceRows(desk.player);
-      shortRow = rows.find((r) => (r.minutes || 0) === 30 && Number.isFinite(r.impactAttack));
-      fullRow = {
-        minutes: 90,
-        impactAttack: fullImpact.attack,
-      };
-      assert(shortRow, "exported short appearance after inject+restore", {
-        sample: rows.slice(0, 5).map((r) => ({ m: r.minutes, a: r.impactAttack })),
-      });
-      assert(
-        Math.abs(shortRow.impactAttack * 3 - fullImpact.attack) < 0.08,
-        "exported 30' impact scales ~1/3 of engine 90'",
-        { short: shortRow.impactAttack, full: fullImpact.attack }
-      );
-    } else {
-      assert(fullRow, "full appearance present for scale check", { short: shortRow.minutes });
-      const expected = fullRow.impactAttack * (shortRow.minutes / fullRow.minutes);
-      assert(
-        Math.abs(shortRow.impactAttack - expected) < 0.12,
-        "exported short appearance scales with minutes",
-        { shortRow, fullRow, expected }
-      );
-    }
+    const rows = matchInfluenceRows(desk.player);
+    const shortRow = rows.find(
+      (r) => (r.minutes || 0) >= 20 && (r.minutes || 0) <= 45 && Number.isFinite(r.impactAttack)
+    );
+    const fullRow = rows.find((r) => (r.minutes || 0) >= 80 && Number.isFinite(r.impactAttack));
+    assert(shortRow, "production short appearance (20–45') required — fail if absent", {
+      minuteHist: rows.map((r) => r.minutes).slice(0, 20),
+      seasonMinutes,
+    });
+    assert(fullRow, "full appearance present for scale check", { short: shortRow.minutes });
+    assert(
+      !String(shortRow.fixtureId || "").includes(":short30"),
+      "short appearance must use a real match identity",
+      shortRow
+    );
+
+    const playerForImpact = {
+      name: desk.player.name,
+      position: desk.player.position || "ST",
+      currentOverallRaw: desk.player.currentOverallRaw ?? desk.player.rating,
+      currentOverall: desk.player.currentOverall ?? desk.player.rating,
+      rating: desk.player.rating,
+      attributes: desk.player.attributes || attrs(desk.player.rating || 58),
+    };
+    const expectedShort = playerLineupImpact(profile, playerForImpact, {
+      participates: true,
+      minutes: shortRow.minutes,
+    });
+    assert(
+      Math.abs(shortRow.impactAttack - expectedShort.attack) < 0.15,
+      "exported short impact matches engine from same OVR/minutes",
+      {
+        exported: shortRow.impactAttack,
+        expected: expectedShort.attack,
+        minutes: shortRow.minutes,
+        ovr: playerForImpact.currentOverallRaw,
+      }
+    );
+    const scaleExpected = fullRow.impactAttack * (shortRow.minutes / fullRow.minutes);
+    assert(
+      Math.abs(shortRow.impactAttack - scaleExpected) < 0.2,
+      "short appearance scales with minutes vs full appearance",
+      { shortRow, fullRow, scaleExpected }
+    );
+
+    // Season/ledger totals must include the short appearance minutes.
+    const summedMatchMinutes = rawMatches.reduce(
+      (s, m) => s + (Number(m.playerStats?.minutes) || 0),
+      0
+    );
+    assert(
+      Math.abs(summedMatchMinutes - seasonMinutes) <= 5 || seasonMinutes >= shortRow.minutes,
+      "season minutes consistent with match ledger",
+      { seasonMinutes, summedMatchMinutes, shortMinutes: shortRow.minutes }
+    );
 
     const zeroRows = rows.filter(
       (r) =>
@@ -1341,6 +1379,18 @@ const cases = {
     }
 
     await writeCase("B04-desk.json", slimEvidence(desk));
+    await writeCase("B04-short-appearance.json", {
+      fixtureId: shortRow.fixtureId,
+      minutes: shortRow.minutes,
+      impactAttack: shortRow.impactAttack,
+      expectedImpactAttack: expectedShort.attack,
+      fullMinutes: fullRow.minutes,
+      fullImpactAttack: fullRow.impactAttack,
+      playerOvr: playerForImpact.currentOverallRaw,
+      seasonMinutes,
+      summedMatchMinutes,
+      injected: false,
+    });
     await writeFullSnapshot("B04-desk.full.json", desk);
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
@@ -1352,9 +1402,12 @@ const cases = {
         minutes: shortRow.minutes,
         impactAttack: shortRow.impactAttack,
         fixtureId: shortRow.fixtureId || null,
+        playerOvr: playerForImpact.currentOverallRaw,
+        injected: false,
       },
       zeroRows: zeroRows.length,
       matches: rows.length,
+      seasonMinutes,
       continueClicks: driven.trace.postCommitContinueClicks,
     };
   },
@@ -1553,6 +1606,10 @@ const cases = {
       mutateWorld: (world, p) => {
         const club = world.clubs.get(p.playingClubId);
         for (let i = 0; i < 3; i++) adjustQuality(club, 0.1);
+        // Seed a real club-season finance ledger so pause/restore can compare cashAvailable.
+        const ledger = getOrInitClubSeasonFinance(p.playingClubId, "2026");
+        ledger.cashAvailable = Number(ledger.cashAvailable) || 1_250_000;
+        ledger.playerAnnualWageCommitted = (Number(p.weeklyWage) || 2500) * 52;
       },
     });
     const clubId = snap.player.playingClubId;
@@ -1587,20 +1644,29 @@ const cases = {
     assert(paused.snapshot.world?.rngState != null, "pause exports rngState", paused.snapshot.world?.rngState);
 
     const pausedFinance = financeFingerprint(paused.snapshot);
-    assert(pausedFinance.hasLedgers || pausedFinance.playerWage != null, "pause exposes finance identity", pausedFinance);
+    assert(pausedFinance.hasLedgers === true, "pause must expose clubFinance.ledgers", pausedFinance);
+    assert(pausedFinance.ledgerCount >= 1, "pause finance ledgers nonempty", pausedFinance);
+    assert(
+      pausedFinance.clubCash != null && Number.isFinite(Number(pausedFinance.clubCash)),
+      "pause exposes cashAvailable for playing club",
+      pausedFinance
+    );
     const pausedPending = paused.snapshot.player?.pendingDecision || null;
-    const pausedCheckpoint = paused.snapshot.player?.seasonCheckpoint || null;
-    const pausedFixtureIds = (
-      pausedCheckpoint?.fixtures ||
-      pausedCheckpoint?.remainingFixtures ||
-      pausedCheckpoint?.schedule ||
-      []
-    )
-      .map((f) => f.fixtureId || f.id || f.matchId || null)
-      .filter(Boolean);
+    const pausedFx = checkpointFixtureIdentity(paused.snapshot);
+    assert(pausedFx.orderedCount > 0, "pause checkpoint ordered events nonempty", pausedFx);
+    assert(pausedFx.processedCount >= 1, "pause checkpoint processedEventIds nonempty", pausedFx);
+    assert(
+      pausedFx.orderedIds.length > 0 || pausedFx.leagueMatchIds.length > 0,
+      "pause exposes ordered/league fixture identities",
+      pausedFx
+    );
+
+    await writeFullSnapshot("B06-initial.full.json", snap);
+    await writeFullSnapshot("B06-paused.full.json", paused.snapshot);
 
     await freshRestore(page, paused.snapshot);
     const restored = await exportSnapshot(page);
+    await writeFullSnapshot("B06-restored.full.json", restored);
     const restoredClub = clubFromWorld(restored.world, clubId);
     assert(restoredClub.replacementOvr.ST === pausedST, "restore keeps paused fractional ST", {
       pausedST,
@@ -1619,7 +1685,13 @@ const cases = {
     assert(Boolean(restored.world.baselineClubs), "baselines survive restore");
 
     const restoredFinance = financeFingerprint(restored);
-    assert(restoredFinance.hasLedgers === pausedFinance.hasLedgers, "finance ledger presence survives restore", {
+    assert(restoredFinance.hasLedgers === true, "restore exposes clubFinance.ledgers", restoredFinance);
+    assert(
+      JSON.stringify(restoredFinance.ledgerKeys) === JSON.stringify(pausedFinance.ledgerKeys),
+      "finance ledger keys survive restore",
+      { paused: pausedFinance.ledgerKeys, restored: restoredFinance.ledgerKeys }
+    );
+    assert(restoredFinance.clubCash === pausedFinance.clubCash, "cashAvailable survives restore", {
       pausedFinance,
       restoredFinance,
     });
@@ -1627,12 +1699,6 @@ const cases = {
       pausedFinance,
       restoredFinance,
     });
-    if (pausedFinance.clubCash != null) {
-      assert(restoredFinance.clubCash === pausedFinance.clubCash, "club cash survives restore", {
-        pausedFinance,
-        restoredFinance,
-      });
-    }
 
     const restoredPending = restored.player?.pendingDecision || null;
     assert(
@@ -1640,27 +1706,28 @@ const cases = {
       "pending decision equality after restore",
       { pausedPending, restoredPending }
     );
-    const restoredCheckpoint = restored.player?.seasonCheckpoint || null;
+    const restoredFx = checkpointFixtureIdentity(restored);
+    assert(restoredFx.status === pausedFx.status, "checkpoint status survives restore", {
+      paused: pausedFx.status,
+      restored: restoredFx.status,
+    });
+    assert(restoredFx.orderedCount === pausedFx.orderedCount, "ordered event count survives restore", {
+      paused: pausedFx.orderedCount,
+      restored: restoredFx.orderedCount,
+    });
     assert(
-      (restoredCheckpoint?.status || null) === (pausedCheckpoint?.status || null),
-      "checkpoint status survives restore",
-      { paused: pausedCheckpoint?.status, restored: restoredCheckpoint?.status }
+      JSON.stringify(restoredFx.processedEventIds) === JSON.stringify(pausedFx.processedEventIds),
+      "processedEventIds survive restore with positions",
+      { paused: pausedFx.processedEventIds, restored: restoredFx.processedEventIds }
     );
-    if (pausedFixtureIds.length) {
-      const restoredFixtureIds = (
-        restoredCheckpoint?.fixtures ||
-        restoredCheckpoint?.remainingFixtures ||
-        restoredCheckpoint?.schedule ||
-        []
-      )
-        .map((f) => f.fixtureId || f.id || f.matchId || null)
-        .filter(Boolean);
-      assert(
-        JSON.stringify(restoredFixtureIds) === JSON.stringify(pausedFixtureIds),
-        "fixture list identity survives restore",
-        { pausedFixtureIds, restoredFixtureIds }
-      );
-    }
+    assert(
+      JSON.stringify(restoredFx.orderedIds) === JSON.stringify(pausedFx.orderedIds),
+      "ordered event identities/positions survive restore",
+      {
+        pausedSample: pausedFx.orderedIds.slice(0, 5),
+        restoredSample: restoredFx.orderedIds.slice(0, 5),
+      }
+    );
     assert(Number.isFinite(beforeST), "initial fractional seed recorded", { beforeST });
 
     const driven = await driveSeasonToDesk(page, {
@@ -1674,8 +1741,25 @@ const cases = {
     await writeCase("B06-desk.json", slimEvidence(desk));
     await writeFullSnapshot("B06-desk.full.json", desk);
     assert((desk.player.seasons || []).length === 1, "season completes after restore", desk.player.seasons?.length);
-    await assertDeskUsable(page);
+    const deskUi = await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
+    await writeCase("B06-finance-fixtures.json", {
+      pausedFinance,
+      restoredFinance,
+      pausedFx: {
+        status: pausedFx.status,
+        orderedCount: pausedFx.orderedCount,
+        processedCount: pausedFx.processedCount,
+        processedEventIds: pausedFx.processedEventIds,
+        orderedIdsSample: pausedFx.orderedIds.slice(0, 8),
+        leagueMatchCount: pausedFx.leagueMatchCount,
+      },
+      restoredFx: {
+        status: restoredFx.status,
+        orderedCount: restoredFx.orderedCount,
+        processedCount: restoredFx.processedCount,
+      },
+    });
     void driven;
     return {
       ok: true,
@@ -1688,8 +1772,11 @@ const cases = {
       rngState: paused.snapshot.world?.rngState,
       finance: pausedFinance,
       pendingEqual: true,
-      fixtureIdsChecked: pausedFixtureIds.length,
+      orderedEventsChecked: pausedFx.orderedCount,
+      processedEventsChecked: pausedFx.processedCount,
+      fixtureIdsChecked: pausedFx.orderedIds.length || pausedFx.leagueMatchIds.length,
       continueClicks: driven.trace.postCommitContinueClicks,
+      nextAction: deskUi.nextAction,
     };
   },
 

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-04T17:34:29.978Z",
-  "base": "http://127.0.0.1:64130",
+  "generatedAt": "2026-11-04T17:58:02.001Z",
+  "base": "http://127.0.0.1:65340",
   "cases": {
     "B01": {
       "ok": true,
@@ -36,16 +36,19 @@
       "ok": true,
       "scale": {
         "m0": 0,
-        "m30": 2.016,
-        "m90": 6.048
+        "m30": -0.99,
+        "m90": -2.971
       },
       "shortAppearance": {
-        "minutes": 30,
-        "impactAttack": 2.016,
-        "fixtureId": "lg:league:england-premier-league:2026:md1:club:england:fulham:club:england:hull-city:short30"
+        "minutes": 28,
+        "impactAttack": -0.924,
+        "fixtureId": "lg:league:england-premier-league:2026:md1:club:england:fulham:club:england:hull-city",
+        "playerOvr": 57.021078707369874,
+        "injected": false
       },
-      "zeroRows": 40,
-      "matches": 41,
+      "zeroRows": 28,
+      "matches": 39,
+      "seasonMinutes": 438,
       "continueClicks": 9
     },
     "B05": {
@@ -88,14 +91,31 @@
       "rngSeed": 3542179584,
       "rngState": 3542179584,
       "finance": {
-        "hasLedgers": false,
-        "ledgerCount": 0,
-        "clubCash": null,
-        "playerWage": 2500
+        "hasLedgers": true,
+        "ledgerCount": 5,
+        "ledgerKeys": [
+          "club:england:hull-city|2026",
+          "club:france:sochaux|2026",
+          "club:germany:1-fc-nurnberg|2026",
+          "club:poland:widzew-odz|2026",
+          "club:turkey:antalyaspor|2026"
+        ],
+        "clubLedgerKey": "club:england:hull-city|2026",
+        "clubCash": 97212500,
+        "clubCommitments": 126945000,
+        "playerWage": 2500,
+        "profileVersion": "club-finance-v1-2026-10-09"
       },
       "pendingEqual": true,
-      "fixtureIdsChecked": 0,
-      "continueClicks": 9
+      "orderedEventsChecked": 389,
+      "processedEventsChecked": 2,
+      "fixtureIdsChecked": 381,
+      "continueClicks": 9,
+      "nextAction": {
+        "id": "resolve-decision",
+        "label": "Resolve squad discussion",
+        "canSimulate": false
+      }
     },
     "B07": {
       "ok": true,

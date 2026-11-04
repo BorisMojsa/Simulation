@@ -13,7 +13,15 @@ import {
   finiteNumber,
   profileUnit,
 } from "../../js/simulation/teamStrength.js";
-import { expectedGoals, XG_MODEL, simulateMatch, resolveKnockout } from "../../js/simulation/matchEngine.js";
+import {
+  expectedGoals,
+  XG_MODEL,
+  simulateMatch,
+  resolveKnockout,
+  shootoutEffectiveStrength,
+  onPitchAtEndOfRegulation,
+  penaltyKickProbability,
+} from "../../js/simulation/matchEngine.js";
 import { createRng } from "../../js/simulation/rng.js";
 import { CLUB_PROFILES } from "../../js/data/identity/resolver.js";
 import { NATION_PROFILES } from "../../js/data/strength/nationProfiles.js";
@@ -89,8 +97,10 @@ export function makePlayer({
   minutes = 90,
   attributes = NEUTRAL_ATTRS,
   side = "home",
+  started = null,
 } = {}) {
   const attrs = { ...attributes };
+  const startedFlag = started == null ? minutes >= 45 : Boolean(started);
   return {
     name: `QA ${position} ${ovr}`,
     position,
@@ -98,7 +108,7 @@ export function makePlayer({
     currentOverall: ovr,
     rating: ovr,
     attributes: attrs,
-    matchParticipation: { minutes, matchDuration: 90, started: minutes >= 45 },
+    matchParticipation: { minutes, matchDuration: 90, started: startedFlag },
     _qaSide: side,
   };
 }
@@ -251,6 +261,9 @@ export {
   expectedGoals,
   simulateMatch,
   resolveKnockout,
+  shootoutEffectiveStrength,
+  onPitchAtEndOfRegulation,
+  penaltyKickProbability,
   createRng,
   CLUB_PROFILES,
   NATION_PROFILES,

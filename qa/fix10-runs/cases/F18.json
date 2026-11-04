@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "pensOdds": {
+    "homeVsAwayGk": 0.72,
+    "awayVsHomeGk": 0.72
+  },
+  "shootoutGk": 70,
+  "regulationGk": 72.96,
+  "lateEntryShootoutGk": 78.87,
+  "lateEntryOdds": 0.6461,
+  "twoLeg": {
+    "decidedBy": "penalties",
+    "etHome": 0.4698,
+    "hasEt": true
+  }
+}

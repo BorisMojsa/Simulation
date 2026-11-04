@@ -9,11 +9,18 @@
  * repo verifier. Exits non-zero if the unmutated package does not verify (controls would be
  * meaningless) or if ANY mutation incorrectly passes.
  *
- * Four control groups (each sub-mutation is run independently):
+ * Control groups (each sub-mutation is run independently, checksums recomputed afterwards, and the
+ * rejection must NAME the intended gate/reason — an incidental failure does not count):
  *   1 package-omissions : empty source/, empty blob index
  *   2 missing-evidence   : browser-report.json removed; ready:true without evidence schema
  *   3 tamper             : altered matched input hash; changed source bytes
  *   4 full-suite         : extra failed playerAbility assertion marker
+ *   5 full-suite-log     : full-suite.log missing (commands.json note kept); truncated `# fail 0` log;
+ *                          TAP summary counts inconsistent
+ *   6 production-seasons : output absent; smoke seasonN; unequal paired seeds (summary / per-season file)
+ *   7 cohort             : missing input / initial snapshot / final snapshot / snapshot reference
+ *   8 browser            : missing B06 pause snapshot; empty finance ledgers; empty checkpoint
+ *                          processedEventIds / ordered; injected `:short30` row in B04 evidence
  */
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -41,6 +48,31 @@ function recomputeChecksums(dir) {
 }
 const readJ = (p) => JSON.parse(readFileSync(p, "utf8"));
 const writeJ = (p, v) => writeFileSync(p, JSON.stringify(v, null, 2));
+const QA = "qa/fix10-runs";
+const PROD = `${QA}/production-seasons`;
+const COHORT = `${QA}/career-cohort`;
+const SNAP = `${QA}/browser/snapshots`;
+
+/** First completed (non-excluded) primary cohort row: negatives target real referenced files. */
+function firstCohortRow(d) {
+  const s = readJ(join(d, COHORT, "summary.json"));
+  const row = (s.rows || []).find((r) => r && r.excluded !== true);
+  if (!row) throw new Error("no completed cohort row to mutate");
+  return { s, row };
+}
+/** First production context/role whose paired file exists. */
+function firstProdRole(d) {
+  const s = readJ(join(d, PROD, "summary.json"));
+  const ctx = s.contexts[0];
+  const role = Object.keys(ctx.roles)[0];
+  return { s, ctx, role, pairedPath: join(d, PROD, `${ctx.id}-${role}-paired.json`) };
+}
+function mutateB06Paused(d, fn) {
+  const p = join(d, SNAP, "B06-paused.full.json");
+  const snap = readJ(p);
+  fn(snap, snap.seasonCheckpoint || snap.player?.seasonCheckpoint);
+  writeFileSync(p, JSON.stringify(snap));
+}
 
 const MUTATIONS = [
   {
@@ -113,6 +145,204 @@ const MUTATIONS = [
         readFileSync(p, "utf8") +
           "\n# FAIL playerAbility: injected extra assertion\n# AssertionError [ERR_ASSERTION]: injected\n#     at tests/playerAbility.test.mjs:999\n"
       );
+    },
+  },
+  {
+    group: "5-full-suite-log",
+    name: "missing-full-suite-log-with-commands-note",
+    expect: /gate fullSuite: full-suite-log-missing/,
+    apply(d) {
+      // A commands.json note must never substitute for the log, so make sure the note is present.
+      const c = join(d, QA, "commands.json");
+      const cj = existsSync(c) ? readJ(c) : {};
+      cj.fullSuite = cj.fullSuite || "node --test tests/*.test.mjs";
+      cj.note = "Full suite passed with the established ability exception only.";
+      writeJ(c, cj);
+      rmSync(join(d, QA, "logs/full-suite.log"), { force: true });
+    },
+  },
+  {
+    group: "5-full-suite-log",
+    name: "truncated-clean-log-fail-0-only",
+    expect: /gate fullSuite: full-suite-log-truncated-tap/,
+    apply(d) {
+      writeFileSync(join(d, QA, "logs/full-suite.log"), "# fail 0\n");
+    },
+  },
+  {
+    group: "5-full-suite-log",
+    name: "tap-summary-counts-inconsistent",
+    expect: /gate fullSuite: full-suite-log-tap-summary-counts-inconsistent/,
+    apply(d) {
+      const p = join(d, QA, "logs/full-suite.log");
+      const t = readFileSync(p, "utf8");
+      if (!/^# pass \d+/m.test(t)) throw new Error("log has no `# pass N` line to corrupt");
+      writeFileSync(p, t.replace(/^# pass \d+/m, "# pass 1"));
+    },
+  },
+  {
+    group: "6-production-seasons",
+    name: "absent-production-season-output",
+    expect: /gate productionSeasons: production-summary-missing/,
+    apply(d) {
+      rmSync(join(d, PROD), { recursive: true, force: true });
+    },
+  },
+  {
+    group: "6-production-seasons",
+    name: "smoke-seasonN-below-100",
+    expect: /gate productionSeasons:.*seasonN-below-100/,
+    apply(d) {
+      const p = join(d, PROD, "summary.json");
+      const s = readJ(p);
+      s.seasonN = 40;
+      writeJ(p, s);
+    },
+  },
+  {
+    group: "6-production-seasons",
+    name: "unequal-paired-seeds-in-summary",
+    expect: /gate productionSeasons:.*unequal-paired-seeds-in-summary/,
+    apply(d) {
+      const p = join(d, PROD, "summary.json");
+      const { s, ctx, role } = firstProdRole(d);
+      const ro = s.contexts[0].roles[role];
+      let touched = false;
+      if (Array.isArray(ro.star99?.seasonSeeds)) {
+        ro.star99.seasonSeeds[0] += 1; // seed now depends on the condition
+        touched = true;
+      }
+      const first = (ro.pairedDelta?.sample || [])[0];
+      if (first && first.seasonSeedStar !== undefined) {
+        first.seasonSeedStar += 1; // explicit rep/star seed fields (older schema)
+        touched = true;
+      }
+      if (!touched) throw new Error(`no seed field to mutate in ${ctx.id}/${role}`);
+      writeJ(p, s);
+    },
+  },
+  {
+    group: "6-production-seasons",
+    name: "unequal-paired-seeds-in-paired-file",
+    expect: /gate productionSeasons:.*unequal-paired-seeds:/,
+    apply(d) {
+      const { pairedPath } = firstProdRole(d);
+      const pf = readJ(pairedPath);
+      const row = pf.pairedDeltas[0];
+      const seed = row.seasonSeedRep ?? row.seasonSeed;
+      row.seasonSeedRep = seed;
+      row.seasonSeedStar = seed + 3; // e.g. an ovr-derived offset
+      writeJ(pairedPath, pf);
+    },
+  },
+  {
+    group: "7-cohort",
+    name: "missing-cohort-input",
+    expect: /gate cohort:.*input-missing/,
+    apply(d) {
+      const { row } = firstCohortRow(d);
+      rmSync(join(d, COHORT, row.inputPath), { force: true });
+    },
+  },
+  {
+    group: "7-cohort",
+    name: "missing-cohort-initial-snapshot",
+    expect: /gate cohort:.*initial-snapshot-missing/,
+    apply(d) {
+      const { row } = firstCohortRow(d);
+      rmSync(join(d, COHORT, row.initialSnapshotPath), { force: true });
+    },
+  },
+  {
+    group: "7-cohort",
+    name: "missing-cohort-final-snapshot",
+    expect: /gate cohort:.*final-snapshot-missing/,
+    apply(d) {
+      const { row } = firstCohortRow(d);
+      rmSync(join(d, COHORT, row.finalSnapshotPath), { force: true });
+    },
+  },
+  {
+    group: "7-cohort",
+    name: "cohort-slim-recipe-input-only",
+    expect: /gate cohort:.*initial-snapshot-ref-missing/,
+    apply(d) {
+      const p = join(d, COHORT, "summary.json");
+      const { s, row } = firstCohortRow(d);
+      delete row.initialSnapshotPath;
+      delete row.finalSnapshotPath;
+      writeJ(p, s);
+    },
+  },
+  {
+    group: "8-browser",
+    name: "missing-B06-pause-snapshot",
+    expect: /gate browser:.*B06-paused-snapshot-missing/,
+    apply(d) {
+      rmSync(join(d, SNAP, "B06-paused.full.json"), { force: true });
+    },
+  },
+  {
+    group: "8-browser",
+    name: "B06-pause-without-finance-ledgers",
+    expect: /gate browser:.*B06-paused:clubFinance\.ledgers-empty/,
+    apply(d) {
+      mutateB06Paused(d, (snap) => {
+        snap.clubFinance = { ...(snap.clubFinance || {}), ledgers: {} };
+      });
+    },
+  },
+  {
+    group: "8-browser",
+    name: "B06-checkpoint-processedEventIds-empty",
+    expect: /gate browser:.*B06-paused-checkpoint-processedEventIds-empty/,
+    apply(d) {
+      mutateB06Paused(d, (_snap, ck) => {
+        ck.processedEventIds = [];
+      });
+    },
+  },
+  {
+    group: "8-browser",
+    name: "B06-checkpoint-ordered-empty",
+    expect: /gate browser:.*B06-paused-checkpoint-ordered-empty/,
+    apply(d) {
+      mutateB06Paused(d, (_snap, ck) => {
+        ck.ordered = [];
+      });
+    },
+  },
+  {
+    group: "8-browser",
+    name: "missing-B06-restored-desk-snapshot",
+    expect: /gate browser:.*B06-restored-desk-snapshot-missing/,
+    apply(d) {
+      rmSync(join(d, SNAP, "B06-desk.full.json"), { force: true });
+    },
+  },
+  {
+    group: "8-browser",
+    name: "inserted-short30-row-in-B04-evidence",
+    expect: /gate browser:.*B04-injected-short-fixture-id/,
+    apply(d) {
+      const p = join(d, SNAP, "B04-desk.full.json");
+      const snap = readJ(p);
+      const season = snap.player.seasons.at(-1);
+      const rows = season.leagueMatches || season.leagueAllMatches || season.playerMatches;
+      const donor = rows.find((m) => m.playerSide && (m.playerStats?.minutes || 0) >= 1) || rows[0];
+      const injected = structuredClone(donor);
+      injected.fixtureId = `${donor.fixtureId || "fix10"}:short30`;
+      injected.playerStats = { ...(injected.playerStats || {}), minutes: 30, started: false, selected: true };
+      rows.push(injected);
+      writeFileSync(p, JSON.stringify(snap));
+    },
+  },
+  {
+    group: "8-browser",
+    name: "B04-injected-short-case-file-present",
+    expect: /gate browser:.*B04-injected-short-fixture-case-present/,
+    apply(d) {
+      writeJ(join(d, QA, "browser/cases/B04-short-injected.json"), { minutes: 30, impactAttack: 2.016, full90: 6.048 });
     },
   },
 ];
