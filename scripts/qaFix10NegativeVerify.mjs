@@ -4,10 +4,14 @@
  *
  *   node scripts/qaFix10NegativeVerify.mjs <package-dir>
  *
- * Copies the package to a temp dir per mutation, applies the mutation, RECOMPUTES
- * SHA256SUMS.txt / checksums.sha256 so checksum drift cannot be what rejects it, and runs the
- * repo verifier. Exits non-zero if the unmutated package does not verify (controls would be
- * meaningless) or if ANY mutation incorrectly passes.
+ * Runs against the package directory in place: verifies the unmutated tree, then for each
+ * mutation backs up touched paths, applies the mutation, RECOMPUTES SHA256SUMS.txt /
+ * checksums.sha256 so checksum drift cannot be what rejects it, runs the repo verifier, and
+ * restores the backup. Exits non-zero if the unmutated package does not verify (controls would
+ * be meaningless) or if ANY mutation incorrectly passes.
+ *
+ * In-place restore keeps peak disk near one package tree (full per-mutation copies do not fit
+ * when cohort/browser snapshots are multi-gigabyte).
  *
  * Control groups (each sub-mutation is run independently, checksums recomputed afterwards, and the
  * rejection must NAME the intended gate/reason — an incidental failure does not count):
@@ -22,9 +26,18 @@
  *   8 browser            : missing B06 pause snapshot; empty finance ledgers; empty checkpoint
  *                          processedEventIds / ordered; injected `:short30` row in B04 evidence
  */
-import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { cmp, listFiles, sha256File } from "./lib/fix10ReviewEvidence.mjs";
@@ -74,11 +87,14 @@ function mutateB06Paused(d, fn) {
   writeFileSync(p, JSON.stringify(snap));
 }
 
+const CHECKSUM_RELS = ["SHA256SUMS.txt", "checksums.sha256"];
+
 const MUTATIONS = [
   {
     group: "1-package-omissions",
     name: "empty-source",
     expect: /source-empty|required-source-missing/,
+    targets: () => ["source"],
     apply(d) {
       for (const n of readdirSync(join(d, "source"))) rmSync(join(d, "source", n), { recursive: true, force: true });
     },
@@ -87,6 +103,7 @@ const MUTATIONS = [
     group: "1-package-omissions",
     name: "empty-blob-index",
     expect: /blob-index-empty/,
+    targets: () => ["source-git-blob-index.json"],
     apply(d) {
       const p = join(d, "source-git-blob-index.json");
       writeJ(p, { ...readJ(p), files: [] });
@@ -96,6 +113,7 @@ const MUTATIONS = [
     group: "2-missing-evidence",
     name: "missing-browser-report",
     expect: /gate browser: browser-report-missing/,
+    targets: () => ["qa/fix10-runs/browser/browser-report.json"],
     apply(d) {
       rmSync(join(d, "qa/fix10-runs/browser/browser-report.json"), { force: true });
     },
@@ -104,6 +122,7 @@ const MUTATIONS = [
     group: "2-missing-evidence",
     name: "ready-true-without-evidence-schema",
     expect: /evidence\.json schema !=/,
+    targets: () => ["manifest.json", "evidence.json"],
     apply(d) {
       const m = join(d, "manifest.json");
       const mj = readJ(m);
@@ -119,6 +138,7 @@ const MUTATIONS = [
     group: "3-tamper",
     name: "altered-input-hash",
     expect: /gate matched.*common-input/,
+    targets: () => ["qa/fix10-runs/matched/inputs/common-input.sha256"],
     apply(d) {
       const p = join(d, "qa/fix10-runs/matched/inputs/common-input.sha256");
       const cur = readFileSync(p, "utf8");
@@ -129,6 +149,7 @@ const MUTATIONS = [
     group: "3-tamper",
     name: "changed-source-bytes",
     expect: /content-manifest-hash-mismatch|blob-mismatch/,
+    targets: () => ["source/js/simulation/teamStrength.js"],
     apply(d) {
       const p = join(d, "source/js/simulation/teamStrength.js");
       writeFileSync(p, readFileSync(p, "utf8") + "\n// tampered\n");
@@ -138,6 +159,7 @@ const MUTATIONS = [
     group: "4-full-suite",
     name: "extra-playerAbility-failed-assertion",
     expect: /gate fullSuite: full-suite-log-unexpected-failed-assertions/,
+    targets: () => [`${QA}/logs/full-suite.log`],
     apply(d) {
       const p = join(d, "qa/fix10-runs/logs/full-suite.log");
       writeFileSync(
@@ -151,6 +173,7 @@ const MUTATIONS = [
     group: "5-full-suite-log",
     name: "missing-full-suite-log-with-commands-note",
     expect: /gate fullSuite: full-suite-log-missing/,
+    targets: () => [`${QA}/commands.json`, `${QA}/logs/full-suite.log`],
     apply(d) {
       // A commands.json note must never substitute for the log, so make sure the note is present.
       const c = join(d, QA, "commands.json");
@@ -165,6 +188,7 @@ const MUTATIONS = [
     group: "5-full-suite-log",
     name: "truncated-clean-log-fail-0-only",
     expect: /gate fullSuite: full-suite-log-truncated-tap/,
+    targets: () => [`${QA}/logs/full-suite.log`],
     apply(d) {
       writeFileSync(join(d, QA, "logs/full-suite.log"), "# fail 0\n");
     },
@@ -173,6 +197,7 @@ const MUTATIONS = [
     group: "5-full-suite-log",
     name: "tap-summary-counts-inconsistent",
     expect: /gate fullSuite: full-suite-log-tap-summary-counts-inconsistent/,
+    targets: () => [`${QA}/logs/full-suite.log`],
     apply(d) {
       const p = join(d, QA, "logs/full-suite.log");
       const t = readFileSync(p, "utf8");
@@ -184,6 +209,7 @@ const MUTATIONS = [
     group: "6-production-seasons",
     name: "absent-production-season-output",
     expect: /gate productionSeasons: production-summary-missing/,
+    targets: () => [PROD],
     apply(d) {
       rmSync(join(d, PROD), { recursive: true, force: true });
     },
@@ -192,6 +218,7 @@ const MUTATIONS = [
     group: "6-production-seasons",
     name: "smoke-seasonN-below-100",
     expect: /gate productionSeasons:.*seasonN-below-100/,
+    targets: () => [`${PROD}/summary.json`],
     apply(d) {
       const p = join(d, PROD, "summary.json");
       const s = readJ(p);
@@ -203,6 +230,7 @@ const MUTATIONS = [
     group: "6-production-seasons",
     name: "unequal-paired-seeds-in-summary",
     expect: /gate productionSeasons:.*unequal-paired-seeds-in-summary/,
+    targets: () => [`${PROD}/summary.json`],
     apply(d) {
       const p = join(d, PROD, "summary.json");
       const { s, ctx, role } = firstProdRole(d);
@@ -225,6 +253,10 @@ const MUTATIONS = [
     group: "6-production-seasons",
     name: "unequal-paired-seeds-in-paired-file",
     expect: /gate productionSeasons:.*unequal-paired-seeds:/,
+    targets: (d) => {
+      const { pairedPath } = firstProdRole(d);
+      return [relative(d, pairedPath)];
+    },
     apply(d) {
       const { pairedPath } = firstProdRole(d);
       const pf = readJ(pairedPath);
@@ -239,6 +271,10 @@ const MUTATIONS = [
     group: "7-cohort",
     name: "missing-cohort-input",
     expect: /gate cohort:.*input-missing/,
+    targets: (d) => {
+      const { row } = firstCohortRow(d);
+      return [`${COHORT}/${row.inputPath}`];
+    },
     apply(d) {
       const { row } = firstCohortRow(d);
       rmSync(join(d, COHORT, row.inputPath), { force: true });
@@ -248,6 +284,10 @@ const MUTATIONS = [
     group: "7-cohort",
     name: "missing-cohort-initial-snapshot",
     expect: /gate cohort:.*initial-snapshot-missing/,
+    targets: (d) => {
+      const { row } = firstCohortRow(d);
+      return [`${COHORT}/${row.initialSnapshotPath}`];
+    },
     apply(d) {
       const { row } = firstCohortRow(d);
       rmSync(join(d, COHORT, row.initialSnapshotPath), { force: true });
@@ -257,6 +297,10 @@ const MUTATIONS = [
     group: "7-cohort",
     name: "missing-cohort-final-snapshot",
     expect: /gate cohort:.*final-snapshot-missing/,
+    targets: (d) => {
+      const { row } = firstCohortRow(d);
+      return [`${COHORT}/${row.finalSnapshotPath}`];
+    },
     apply(d) {
       const { row } = firstCohortRow(d);
       rmSync(join(d, COHORT, row.finalSnapshotPath), { force: true });
@@ -266,6 +310,7 @@ const MUTATIONS = [
     group: "7-cohort",
     name: "cohort-slim-recipe-input-only",
     expect: /gate cohort:.*initial-snapshot-ref-missing/,
+    targets: () => [`${COHORT}/summary.json`],
     apply(d) {
       const p = join(d, COHORT, "summary.json");
       const { s, row } = firstCohortRow(d);
@@ -278,6 +323,7 @@ const MUTATIONS = [
     group: "8-browser",
     name: "missing-B06-pause-snapshot",
     expect: /gate browser:.*B06-paused-snapshot-missing/,
+    targets: () => [`${SNAP}/B06-paused.full.json`],
     apply(d) {
       rmSync(join(d, SNAP, "B06-paused.full.json"), { force: true });
     },
@@ -286,6 +332,7 @@ const MUTATIONS = [
     group: "8-browser",
     name: "B06-pause-without-finance-ledgers",
     expect: /gate browser:.*B06-paused:clubFinance\.ledgers-empty/,
+    targets: () => [`${SNAP}/B06-paused.full.json`],
     apply(d) {
       mutateB06Paused(d, (snap) => {
         snap.clubFinance = { ...(snap.clubFinance || {}), ledgers: {} };
@@ -296,6 +343,7 @@ const MUTATIONS = [
     group: "8-browser",
     name: "B06-checkpoint-processedEventIds-empty",
     expect: /gate browser:.*B06-paused-checkpoint-processedEventIds-empty/,
+    targets: () => [`${SNAP}/B06-paused.full.json`],
     apply(d) {
       mutateB06Paused(d, (_snap, ck) => {
         ck.processedEventIds = [];
@@ -306,6 +354,7 @@ const MUTATIONS = [
     group: "8-browser",
     name: "B06-checkpoint-ordered-empty",
     expect: /gate browser:.*B06-paused-checkpoint-ordered-empty/,
+    targets: () => [`${SNAP}/B06-paused.full.json`],
     apply(d) {
       mutateB06Paused(d, (_snap, ck) => {
         ck.ordered = [];
@@ -316,6 +365,7 @@ const MUTATIONS = [
     group: "8-browser",
     name: "missing-B06-restored-desk-snapshot",
     expect: /gate browser:.*B06-restored-desk-snapshot-missing/,
+    targets: () => [`${SNAP}/B06-desk.full.json`],
     apply(d) {
       rmSync(join(d, SNAP, "B06-desk.full.json"), { force: true });
     },
@@ -324,6 +374,7 @@ const MUTATIONS = [
     group: "8-browser",
     name: "inserted-short30-row-in-B04-evidence",
     expect: /gate browser:.*B04-injected-short-fixture-id/,
+    targets: () => [`${SNAP}/B04-desk.full.json`],
     apply(d) {
       const p = join(d, SNAP, "B04-desk.full.json");
       const snap = readJ(p);
@@ -341,6 +392,8 @@ const MUTATIONS = [
     group: "8-browser",
     name: "B04-injected-short-case-file-present",
     expect: /gate browser:.*B04-injected-short-fixture-case-present/,
+    targets: () => [],
+    created: () => [`${QA}/browser/cases/B04-short-injected.json`],
     apply(d) {
       writeJ(join(d, QA, "browser/cases/B04-short-injected.json"), { minutes: 30, impactAttack: 2.016, full90: 6.048 });
     },
@@ -351,33 +404,66 @@ function runVerifier(dir) {
   return spawnSync("node", [VERIFIER, dir], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
 }
 
+/** Copy listed package-relative paths aside so an in-place mutation can be restored. */
+function stashPaths(root, rels, stashDir) {
+  const entries = [];
+  for (const rel of rels) {
+    const from = join(root, rel);
+    const to = join(stashDir, rel);
+    if (!existsSync(from)) {
+      entries.push({ rel, existed: false });
+      continue;
+    }
+    mkdirSync(dirname(to), { recursive: true });
+    cpSync(from, to, { recursive: true });
+    entries.push({ rel, existed: true });
+  }
+  return entries;
+}
+
+function restorePaths(root, entries, stashDir, createdRels = []) {
+  for (const e of entries) {
+    const dest = join(root, e.rel);
+    rmSync(dest, { recursive: true, force: true });
+    if (!e.existed) continue;
+    mkdirSync(dirname(dest), { recursive: true });
+    cpSync(join(stashDir, e.rel), dest, { recursive: true });
+  }
+  for (const rel of createdRels) rmSync(join(root, rel), { recursive: true, force: true });
+}
+
 const tmpRoot = mkdtempSync(join(tmpdir(), "fix10-negverify-"));
 const results = [];
 let exitCode = 0;
+const work = src;
 try {
-  // Positive control: unmutated copy (checksums recomputed) must pass, or negatives prove nothing.
-  const base = join(tmpRoot, "positive");
-  cpSync(src, base, { recursive: true });
-  recomputeChecksums(base);
-  const pos = runVerifier(base);
+  // Positive control: package bytes as shipped (checksums already match). No full-tree copy.
+  const pos = runVerifier(work);
   results.push({ control: "positive-baseline", expect: "pass", verifyExit: pos.status, ok: pos.status === 0 });
   if (pos.status !== 0) {
     console.error("Unmutated package does not verify; negative controls are meaningless.\n" + pos.stdout);
     exitCode = 1;
   } else {
     for (const m of MUTATIONS) {
-      const d = join(tmpRoot, m.name);
-      cpSync(src, d, { recursive: true });
+      const stashDir = join(tmpRoot, m.name);
+      mkdirSync(stashDir, { recursive: true });
       let applied = true;
+      let entries = [];
+      const createdRels = typeof m.created === "function" ? m.created(work) : [];
       try {
-        m.apply(d);
-        recomputeChecksums(d);
+        const targetRels = [...CHECKSUM_RELS, ...(typeof m.targets === "function" ? m.targets(work) : [])];
+        entries = stashPaths(work, targetRels, stashDir);
+        m.apply(work);
+        recomputeChecksums(work);
       } catch (err) {
         applied = false;
         results.push({ control: `${m.group}/${m.name}`, ok: false, error: `mutation failed to apply: ${err.message}` });
+        try {
+          restorePaths(work, entries, stashDir, createdRels);
+        } catch {}
       }
       if (!applied) continue;
-      const r = runVerifier(d);
+      const r = runVerifier(work);
       const rejected = r.status !== 0;
       // Must be rejected for the intended reason, not an incidental one.
       let issues = [];
@@ -392,9 +478,14 @@ try {
         intendedReasonSeen: reasonOk,
         ok: rejected && reasonOk,
       });
-      rmSync(d, { recursive: true, force: true });
+      restorePaths(work, entries, stashDir, createdRels);
+      rmSync(stashDir, { recursive: true, force: true });
     }
     if (results.some((r) => !r.ok)) exitCode = 1;
+    // Confirm restore left the package green.
+    const after = runVerifier(work);
+    results.push({ control: "positive-after-restore", expect: "pass", verifyExit: after.status, ok: after.status === 0 });
+    if (after.status !== 0) exitCode = 1;
   }
 } finally {
   rmSync(tmpRoot, { recursive: true, force: true });
