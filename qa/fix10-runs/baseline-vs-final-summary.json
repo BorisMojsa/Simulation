@@ -2,7 +2,7 @@
   "commonInputSha256": "6aeb6ee4997581218bda689e70020dee23a0759d7dcda4bec75c11366b210e4d",
   "baseShaExpected": "296a14f2e921e68a946a802605e472662cb0894e",
   "baseShaActual": "296a14f2e921e68a946a802605e472662cb0894e",
-  "finalSha": "58d742ae8ed6c73b3409b9fad52d38778187a0ff",
+  "finalSha": "e1dd83cceff10bfe14450ce0289653cbac00999f",
   "adapterSha256": "8ee92d7313a5533319ec82d2a80a9ef0e85135ee57b954a2617e7c46422eee15",
   "selfReplayExact": true,
   "fixtureCount": 36,
@@ -128,7 +128,7 @@
       "deltaXgHome": 0
     },
     {
-      "id": "Železničar Pančevo__Red Star Belgrade__ST__53",
+      "id": "\u017delezni\u010dar Pan\u010devo__Red Star Belgrade__ST__53",
       "baseXgHome": 0.6209,
       "finalXgHome": 0.6209,
       "baseImpactAtk": 0,
@@ -136,7 +136,7 @@
       "deltaXgHome": 0
     },
     {
-      "id": "Železničar Pančevo__Red Star Belgrade__ST__99",
+      "id": "\u017delezni\u010dar Pan\u010devo__Red Star Belgrade__ST__99",
       "baseXgHome": 0.6723,
       "finalXgHome": 0.8104,
       "baseImpactAtk": 2.425,
@@ -144,7 +144,7 @@
       "deltaXgHome": 0.1381
     },
     {
-      "id": "Železničar Pančevo__Red Star Belgrade__CM__99",
+      "id": "\u017delezni\u010dar Pan\u010devo__Red Star Belgrade__CM__99",
       "baseXgHome": 0.6464,
       "finalXgHome": 0.7408,
       "baseImpactAtk": 0.506,
@@ -152,7 +152,7 @@
       "deltaXgHome": 0.09440000000000004
     },
     {
-      "id": "Železničar Pančevo__Red Star Belgrade__CB__99",
+      "id": "\u017delezni\u010dar Pan\u010devo__Red Star Belgrade__CB__99",
       "baseXgHome": 0.6229,
       "finalXgHome": 0.6326,
       "baseImpactAtk": 0,
@@ -160,7 +160,7 @@
       "deltaXgHome": 0.009700000000000042
     },
     {
-      "id": "Železničar Pančevo__Red Star Belgrade__GK__99",
+      "id": "\u017delezni\u010dar Pan\u010devo__Red Star Belgrade__GK__99",
       "baseXgHome": 0.6209,
       "finalXgHome": 0.6209,
       "baseImpactAtk": 0,
