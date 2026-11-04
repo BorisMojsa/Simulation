@@ -10,6 +10,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { gunzipSync } from "node:zlib";
 
 export const EVIDENCE_SCHEMA = "fix10-rereview-evidence-v2";
 export const FOCUSED_IDS = Array.from({ length: 18 }, (_, i) => `F${String(i + 1).padStart(2, "0")}`);
@@ -350,74 +351,137 @@ function assessBrowser(qa) {
 
 /* ---------------------------------------------------- production seasons */
 
-/** Per-fixture exports (jsonl: every season/condition; or legacy season-0 JSON) at frozen 90'. */
-function prodFixtureProblems(dir, cid, role, ro, tag, N, deltas, deltaSeeds, jsonlCache) {
-  const out = [];
-  const jsonlPath = join(dir, "fixtures", `${cid}.jsonl`);
-  if (existsSync(jsonlPath)) {
-    if (!jsonlCache.has(cid)) {
-      const map = new Map();
-      let bad = 0;
-      for (const line of readFileSync(jsonlPath, "utf8").split("\n")) {
-        if (!line.trim()) continue;
-        try {
-          const o = JSON.parse(line);
-          map.set(`${o.role}|${o.condition}|${o.seasonIndex}`, o);
-        } catch {
-          bad += 1;
-        }
-      }
-      jsonlCache.set(cid, { map, bad });
-    }
-    const { map, bad } = jsonlCache.get(cid);
-    if (bad > 0) out.push(`${tag}:fixtures-jsonl-unparseable-lines:${bad}`);
-    let missing = 0;
-    let badRows = 0;
-    let seedMismatch = 0;
-    let hashMismatch = 0;
-    let scheduleMismatch = 0;
-    for (let i = 0; i < N; i++) {
-      const rep = map.get(`${role}|replacement|${i}`);
-      const star = map.get(`${role}|star99|${i}`);
-      if (!rep || !star) {
-        missing += 1;
+/**
+ * Load the producer's canonical compressed JSONL traces (`fixtures/<context>.jsonl.gz`).
+ * Uncompressed `.jsonl` or legacy `*-fixtures-s0.json` samples must never satisfy readiness.
+ */
+function loadProdFixturesGzip(dir, cid, cache) {
+  if (cache.has(cid)) return cache.get(cid);
+  const gzPath = join(dir, "fixtures", `${cid}.jsonl.gz`);
+  if (!existsSync(gzPath)) {
+    const r = { ok: false, error: "fixtures-jsonl-gz-missing", map: null, lineCount: 0, bad: 0, duplicates: 0 };
+    cache.set(cid, r);
+    return r;
+  }
+  let raw;
+  try {
+    raw = gunzipSync(readFileSync(gzPath));
+  } catch {
+    const r = { ok: false, error: "fixtures-jsonl-gz-corrupt-or-truncated", map: null, lineCount: 0, bad: 0, duplicates: 0 };
+    cache.set(cid, r);
+    return r;
+  }
+  const text = raw.toString("utf8");
+  if (!text.trim()) {
+    const r = { ok: false, error: "fixtures-jsonl-gz-empty", map: null, lineCount: 0, bad: 0, duplicates: 0 };
+    cache.set(cid, r);
+    return r;
+  }
+  const map = new Map();
+  let bad = 0;
+  let duplicates = 0;
+  let lineCount = 0;
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue;
+    lineCount += 1;
+    try {
+      const o = JSON.parse(line);
+      if (!o || typeof o !== "object") {
+        bad += 1;
         continue;
       }
-      for (const [o, cond] of [[rep, "replacement"], [star, "star99"]]) {
-        if (!Array.isArray(o.fixtures) || o.fixtures.length < 30 || !o.fixtures.every((x) => x.minutes === PROD_FROZEN_MINUTES)) badRows += 1;
-        if (o.seasonSeed !== deltaSeeds[i] || o.ovr !== ro[cond]?.ovr) seedMismatch += 1;
-        if (o.fixturesSha256 && Array.isArray(o.fixtures) && o.fixturesSha256 !== sha256Buf(Buffer.from(JSON.stringify(o.fixtures)))) hashMismatch += 1;
-      }
-      if (rep.fixtures?.length === star.fixtures?.length) {
-        for (let k = 0; k < rep.fixtures.length; k++) {
-          const x = rep.fixtures[k];
-          const y = star.fixtures[k];
-          if (x.index !== y.index || x.opponent !== y.opponent || x.venue !== y.venue || x.fixtureSeed !== y.fixtureSeed) {
-            scheduleMismatch += 1;
-            break;
-          }
-        }
-      } else scheduleMismatch += 1;
-      const d = deltas[i];
-      if (d?.repFixturesSha256 && d.repFixturesSha256 !== rep.fixturesSha256) hashMismatch += 1;
-      if (d?.starFixturesSha256 && d.starFixturesSha256 !== star.fixturesSha256) hashMismatch += 1;
+      const key = `${o.role}|${o.condition}|${o.seasonIndex}`;
+      if (map.has(key)) duplicates += 1;
+      map.set(key, o);
+    } catch {
+      bad += 1;
     }
-    if (missing) out.push(`${tag}:fixtures-jsonl-missing-seasons:${missing}`);
-    if (badRows) out.push(`${tag}:fixtures-jsonl-short-or-unfrozen:${badRows}`);
-    if (seedMismatch) out.push(`${tag}:fixtures-jsonl-seed-or-ovr-mismatch:${seedMismatch}`);
-    if (hashMismatch) out.push(`${tag}:fixtures-jsonl-hash-mismatch:${hashMismatch}`);
-    if (scheduleMismatch) out.push(`${tag}:fixtures-jsonl-paired-schedule-mismatch:${scheduleMismatch}`);
+  }
+  let error = null;
+  if (bad > 0) error = `fixtures-jsonl-gz-unparseable-lines:${bad}`;
+  else if (duplicates > 0) error = `fixtures-jsonl-gz-duplicate-keys:${duplicates}`;
+  const r = { ok: error == null, error, map, lineCount, bad, duplicates };
+  cache.set(cid, r);
+  return r;
+}
+
+/** Validate one role against the canonical gzip JSONL for its context. */
+function prodFixtureProblems(dir, cid, role, ro, tag, N, deltas, deltaSeeds, jsonlCache) {
+  const out = [];
+  const expectedPerContext = PROD_REQUIRED_ROLES.length * 2 * N;
+  const loaded = loadProdFixturesGzip(dir, cid, jsonlCache);
+  if (!loaded.ok || !loaded.map) {
+    out.push(`${tag}:${loaded.error || "fixtures-jsonl-gz-missing"}`);
     return out;
   }
-  for (const cond of ["replacement", "star99"]) {
-    const ff = readJson(join(dir, `${cid}-${role}-${cond}-fixtures-s0.json`));
-    const fx = ff.value?.fixtures;
-    if (!ff.ok || !Array.isArray(fx) || fx.length < 30) out.push(`${tag}:${cond}-fixtures-missing-or-short`);
-    else {
-      if (!fx.every((x) => x.minutes === PROD_FROZEN_MINUTES)) out.push(`${tag}:${cond}-fixtures-minutes-not-frozen`);
-      if (ff.value.ovr !== ro[cond]?.ovr) out.push(`${tag}:${cond}-fixtures-ovr`);
-    }
+  if (loaded.lineCount !== expectedPerContext) {
+    out.push(`${tag}:fixtures-jsonl-gz-record-count:${loaded.lineCount}-expected-${expectedPerContext}`);
   }
+  const { map } = loaded;
+  let missing = 0;
+  let badRows = 0;
+  let seedMismatch = 0;
+  let hashMismatch = 0;
+  let scheduleMismatch = 0;
+  let recordsChecked = 0;
+  for (let i = 0; i < N; i++) {
+    const rep = map.get(`${role}|replacement|${i}`);
+    const star = map.get(`${role}|star99|${i}`);
+    if (!rep || !star) {
+      missing += 1;
+      continue;
+    }
+    for (const [o, cond] of [
+      [rep, "replacement"],
+      [star, "star99"],
+    ]) {
+      recordsChecked += 1;
+      if (
+        !Array.isArray(o.fixtures) ||
+        o.fixtures.length < 30 ||
+        !o.fixtures.every((x) => x && x.minutes === PROD_FROZEN_MINUTES)
+      ) {
+        badRows += 1;
+      }
+      if (o.seasonSeed !== deltaSeeds[i] || o.ovr !== ro[cond]?.ovr) seedMismatch += 1;
+      if (
+        o.fixturesSha256 &&
+        Array.isArray(o.fixtures) &&
+        o.fixturesSha256 !== sha256Buf(Buffer.from(JSON.stringify(o.fixtures)))
+      ) {
+        hashMismatch += 1;
+      }
+      if (!o.fixturesSha256) hashMismatch += 1;
+    }
+    if (rep.fixtures?.length === star.fixtures?.length) {
+      for (let k = 0; k < rep.fixtures.length; k++) {
+        const x = rep.fixtures[k];
+        const y = star.fixtures[k];
+        if (
+          !x ||
+          !y ||
+          x.index !== y.index ||
+          x.opponent !== y.opponent ||
+          x.venue !== y.venue ||
+          x.fixtureSeed !== y.fixtureSeed ||
+          x.fixtureId !== y.fixtureId
+        ) {
+          scheduleMismatch += 1;
+          break;
+        }
+      }
+    } else scheduleMismatch += 1;
+    const d = deltas[i];
+    if (d?.repFixturesSha256 && d.repFixturesSha256 !== rep.fixturesSha256) hashMismatch += 1;
+    if (d?.starFixturesSha256 && d.starFixturesSha256 !== star.fixturesSha256) hashMismatch += 1;
+  }
+  if (missing) out.push(`${tag}:fixtures-jsonl-gz-missing-seasons:${missing}`);
+  if (badRows) out.push(`${tag}:fixtures-jsonl-gz-short-or-unfrozen:${badRows}`);
+  if (seedMismatch) out.push(`${tag}:fixtures-jsonl-gz-seed-or-ovr-mismatch:${seedMismatch}`);
+  if (hashMismatch) out.push(`${tag}:fixtures-jsonl-gz-hash-mismatch:${hashMismatch}`);
+  if (scheduleMismatch) out.push(`${tag}:fixtures-jsonl-gz-paired-schedule-mismatch:${scheduleMismatch}`);
+  // Stash per-role checked count on the cache entry for the assessor summary.
+  loaded.recordsChecked = (loaded.recordsChecked || 0) + recordsChecked;
   return out;
 }
 
@@ -541,11 +605,20 @@ function assessProductionSeasons(qa) {
   }
   if (!fullLabels.has("weak")) problems.push("no-weak-context-with-ST-CM-CB-GK");
   if (!fullLabels.has("mid")) problems.push("no-mid-context-with-ST-CM-CB-GK");
+  let gzipRecordsChecked = 0;
+  for (const v of jsonlCache.values()) {
+    if (v && Number.isFinite(v.recordsChecked)) gzipRecordsChecked += v.recordsChecked;
+  }
+  const expectedGzipRecords = contexts.length * PROD_REQUIRED_ROLES.length * 2 * (Number.isInteger(N) ? N : 0);
+  if (problems.length === 0 && expectedGzipRecords > 0 && gzipRecordsChecked !== expectedGzipRecords) {
+    problems.push(`fixtures-jsonl-gz-total-records:${gzipRecordsChecked}-expected-${expectedGzipRecords}`);
+  }
   return gate(problems.length === 0, "production-seasons-invalid", {
     seasonN: N ?? null,
     contexts: contexts.length,
     pairedFiles: pairedChecked,
     pairedSeedsChecked,
+    gzipRecordsChecked,
     problems: problems.slice(0, 20),
   });
 }
@@ -798,6 +871,7 @@ export function assessPackageEvidence(pkgRoot, { baseSha, finalSha = null } = {}
         contexts: gates.productionSeasons.contexts ?? null,
         pairedFiles: gates.productionSeasons.pairedFiles ?? null,
         pairedSeedsChecked: gates.productionSeasons.pairedSeedsChecked ?? null,
+        gzipRecordsChecked: gates.productionSeasons.gzipRecordsChecked ?? null,
       },
       cohort: {
         completed: gates.cohort.completed ?? null,

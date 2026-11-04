@@ -1,0 +1,26 @@
+{
+  "schema": "fix10-evidence-provenance-v1",
+  "packageRepair": {
+    "kind": "verifier-only",
+    "closes": "R5-compressed-production-traces",
+    "note": "Shared assessor now requires and validates fixtures/<context>.jsonl.gz. No gameplay/model changes."
+  },
+  "functionalEvidence": {
+    "status": "reused",
+    "testedSourceCommit": "1bf66abbd2f8a1e03795a5f992bf487a885e7e0a",
+    "note": "Focused/calibration/matched/production/cohort/browser/full-suite bytes are reused from the accepted 1bf66ab functional package. They are not re-stamped as freshly executed at the verifier-repair tip.",
+    "artifacts": [
+      "qa/fix10-runs/cases/",
+      "qa/fix10-runs/calibration-summary.json",
+      "qa/fix10-runs/matched/",
+      "qa/fix10-runs/production-seasons/",
+      "qa/fix10-runs/career-cohort/",
+      "qa/fix10-runs/browser/",
+      "qa/fix10-runs/logs/full-suite.log"
+    ]
+  },
+  "verifierQa": {
+    "status": "fresh-at-package-tip",
+    "note": "Positive package verification, negative controls (including gzip-trace mutations), and restored-positive verification are freshly executed against the repaired assessor/negative runner."
+  }
+}

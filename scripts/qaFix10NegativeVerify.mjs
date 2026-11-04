@@ -21,7 +21,8 @@
  *   4 full-suite         : extra failed playerAbility assertion marker
  *   5 full-suite-log     : full-suite.log missing (commands.json note kept); truncated `# fail 0` log;
  *                          TAP summary counts inconsistent
- *   6 production-seasons : output absent; smoke seasonN; unequal paired seeds (summary / per-season file)
+ *   6 production-seasons : output absent; smoke seasonN; unequal paired seeds (summary / per-season file);
+ *                          missing/corrupt gzip traces; gzip missing season; gzip altered fixture seed/hash
  *   7 cohort             : missing input / initial snapshot / final snapshot / snapshot reference
  *   8 browser            : missing B06 pause snapshot; empty finance ledgers; empty checkpoint
  *                          processedEventIds / ordered; injected `:short30` row in B04 evidence
@@ -40,6 +41,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { cmp, listFiles, sha256File } from "./lib/fix10ReviewEvidence.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -265,6 +267,78 @@ const MUTATIONS = [
       row.seasonSeedRep = seed;
       row.seasonSeedStar = seed + 3; // e.g. an ovr-derived offset
       writeJ(pairedPath, pf);
+    },
+  },
+  {
+    group: "6-production-seasons",
+    name: "missing-one-complete-gzip-trace",
+    expect: /gate productionSeasons:.*fixtures-jsonl-gz-missing/,
+    targets: () => [`${PROD}/fixtures/weak-hull.jsonl.gz`],
+    apply(d) {
+      rmSync(join(d, PROD, "fixtures", "weak-hull.jsonl.gz"), { force: true });
+    },
+  },
+  {
+    group: "6-production-seasons",
+    name: "missing-both-complete-gzip-traces",
+    expect: /gate productionSeasons:.*fixtures-jsonl-gz-missing/,
+    targets: () => [`${PROD}/fixtures/weak-hull.jsonl.gz`, `${PROD}/fixtures/mid-brentford.jsonl.gz`],
+    apply(d) {
+      rmSync(join(d, PROD, "fixtures", "weak-hull.jsonl.gz"), { force: true });
+      rmSync(join(d, PROD, "fixtures", "mid-brentford.jsonl.gz"), { force: true });
+    },
+  },
+  {
+    group: "6-production-seasons",
+    name: "corrupt-or-truncated-gzip-trace",
+    expect: /gate productionSeasons:.*fixtures-jsonl-gz-corrupt-or-truncated/,
+    targets: () => [`${PROD}/fixtures/weak-hull.jsonl.gz`],
+    apply(d) {
+      const p = join(d, PROD, "fixtures", "weak-hull.jsonl.gz");
+      const buf = readFileSync(p);
+      writeFileSync(p, buf.subarray(0, Math.max(16, Math.floor(buf.length / 4))));
+    },
+  },
+  {
+    group: "6-production-seasons",
+    name: "gzip-missing-season-record",
+    expect: /gate productionSeasons:.*fixtures-jsonl-gz-(missing-seasons|record-count)/,
+    targets: () => [`${PROD}/fixtures/weak-hull.jsonl.gz`],
+    apply(d) {
+      const p = join(d, PROD, "fixtures", "weak-hull.jsonl.gz");
+      const text = gunzipSync(readFileSync(p)).toString("utf8");
+      const kept = text
+        .split("\n")
+        .filter((line) => {
+          if (!line.trim()) return false;
+          const o = JSON.parse(line);
+          // Drop one canonical season so the gate sees a missing record.
+          return !(o.role === "ST" && o.condition === "replacement" && o.seasonIndex === 0);
+        })
+        .join("\n");
+      writeFileSync(p, gzipSync(Buffer.from(kept.endsWith("\n") ? kept : kept + "\n")));
+    },
+  },
+  {
+    group: "6-production-seasons",
+    name: "gzip-altered-fixture-seed-or-hash",
+    expect: /gate productionSeasons:.*fixtures-jsonl-gz-(hash-mismatch|paired-schedule-mismatch|seed-or-ovr-mismatch)/,
+    targets: () => [`${PROD}/fixtures/weak-hull.jsonl.gz`],
+    apply(d) {
+      const p = join(d, PROD, "fixtures", "weak-hull.jsonl.gz");
+      const lines = gunzipSync(readFileSync(p))
+        .toString("utf8")
+        .split("\n")
+        .filter((line) => line.trim());
+      const out = lines.map((line) => {
+        const o = JSON.parse(line);
+        if (o.role === "ST" && o.condition === "replacement" && o.seasonIndex === 0) {
+          // Keep fixturesSha256 stale so recomputed content hash diverges.
+          if (Array.isArray(o.fixtures) && o.fixtures[0]) o.fixtures[0].fixtureSeed = (o.fixtures[0].fixtureSeed || 0) + 1;
+        }
+        return JSON.stringify(o);
+      });
+      writeFileSync(p, gzipSync(Buffer.from(out.join("\n") + "\n")));
     },
   },
   {

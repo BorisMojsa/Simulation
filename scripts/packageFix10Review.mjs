@@ -178,10 +178,23 @@ writeFileSync(join(PKG, "source-content-manifest.json"), JSON.stringify({ commit
 const assessed = assessPackageEvidence(PKG, { baseSha: BASE, finalSha: FULL });
 const { ready, gates } = assessed;
 const gp = (k) => (gates[k].ok ? "PASS" : `FAIL (${gates[k].reason})`);
+const provenancePath = join(ROOT, "qa/fix10-runs/evidence-provenance.json");
+const provenance = existsSync(provenancePath) ? readJson(provenancePath) : null;
 writeFileSync(
   join(PKG, "evidence.json"),
-  JSON.stringify({ ...assessed.evidence, generatedAt: new Date().toISOString() }, null, 2)
+  JSON.stringify(
+    {
+      ...assessed.evidence,
+      generatedAt: new Date().toISOString(),
+      provenance: provenance || {
+        note: "Verifier-only repair; functional QA bytes reused from prior accepted tip when hashes match.",
+      },
+    },
+    null,
+    2
+  )
 );
+if (provenance) copyFile(provenancePath, join(PKG, "qa/fix10-runs/evidence-provenance.json"));
 writeFileSync(
   join(PKG, "reports/qa-matrix.md"),
   `# Fix 10 ReReview QA matrix
@@ -192,7 +205,7 @@ writeFileSync(
 | Calibration | ${gp("calibration")} | \`qa/fix10-runs/calibration-summary.json\` |
 | Matched baseline-vs-final | ${gp("matched")} | \`qa/fix10-runs/matched/\` |
 | Browser B01–B08 (requiredComplete; B04 natural short row, B06 pause/restore finance + checkpoint) | ${gp("browser")} | \`qa/fix10-runs/browser/browser-report.json\`, \`browser/snapshots/\` |
-| Production-season study (seasonN >= 100, paired seeds equal) | ${gp("productionSeasons")} | \`qa/fix10-runs/production-seasons/summary.json\` |
+| Production-season study (seasonN >= 100, paired seeds, complete \`fixtures/<ctx>.jsonl.gz\`) | ${gp("productionSeasons")} | \`qa/fix10-runs/production-seasons/\` |
 | Career cohort >= 24 (input + initial + final career snapshots) | ${gp("cohort")} | \`qa/fix10-runs/career-cohort/summary.json\` |
 | Full-suite evidence (log required, coherent TAP) | ${gp("fullSuite")} | \`qa/fix10-runs/logs/full-suite.log\` |
 | Tested-source manifest | ${gp("sourceManifest")} | \`source-content-manifest.json\` |
