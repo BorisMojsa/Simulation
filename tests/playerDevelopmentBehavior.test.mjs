@@ -107,13 +107,15 @@ test("low minutes grow much less than full minutes under matched performance", (
 });
 
 test("high current ability grows slower than mid ability under matched inputs", () => {
+  // Elite fixture must sit clearly inside abilityDifficulty.softStart (92+) so the
+  // matched-input comparison measures difficulty, not role/noise differences.
   const eliteAttrs = {
-    Speed: 94,
-    Passing: 90,
-    Shooting: 92,
-    Defending: 78,
-    Physicality: 88,
-    Dribbling: 95,
+    Speed: 97,
+    Passing: 96,
+    Shooting: 97,
+    Defending: 88,
+    Physicality: 94,
+    Dribbling: 97,
   };
   const mid = mkPlayer({ careerId: "diff-mid", age: 22, target: 72 });
   const elite = mkPlayer({

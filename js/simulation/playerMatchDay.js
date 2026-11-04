@@ -47,7 +47,9 @@ function expectedRatingForContext(player, teamEff, oppEff) {
   const base = Number(player.baseOverallRaw ?? player.rating) || 70;
   const teamQ = Number(teamEff?.overall) || 70;
   const oppQ = Number(oppEff?.overall) || 70;
-  return Math.max(5.2, Math.min(8.4, Number((6.45 + (base - 70) * 0.012 + (teamQ - oppQ) * 0.008).toFixed(2))));
+  // Baseline must match computeMatchRating's 6.0 floor so ordinary performances
+  // centre seasonP near 0; a higher expectation systematically freezes growth.
+  return Math.max(5.2, Math.min(8.4, Number((6.0 + (base - 70) * 0.012 + (teamQ - oppQ) * 0.008).toFixed(2))));
 }
 
 /**

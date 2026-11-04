@@ -1,0 +1,19 @@
+{
+  "id": "F19",
+  "title": "Frozen manifests, paired base/final, holdout separation",
+  "inputs": {
+    "planStatus": "frozen-before-tuning",
+    "holdoutRange": [
+      500000,
+      505000
+    ],
+    "pairedRngState": 12345
+  },
+  "expected": {
+    "manifestFrozen": true,
+    "baseUnchanged": true,
+    "pairedFinalsComparable": true,
+    "holdoutExcludedFromTuning": true
+  },
+  "notes": []
+}

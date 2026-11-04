@@ -1,0 +1,153 @@
+{
+  "runtime": "v22.19.0",
+  "head": "8d74769ec31b0e240f55414121d0a895d414304e",
+  "configHash": "1300cf48318e5070",
+  "sourceHashes": {
+    "playerDevelopmentModel": "a515bdbf691fb6bc",
+    "academyOpening": "9895af8315b52b5f",
+    "playerDevelopmentConfig": "1300cf48318e5070"
+  },
+  "caps": {
+    "annualLearningCap": 8,
+    "breakthrough": 9,
+    "challengeSoftStart": 92
+  },
+  "findings": {
+    "R1": {
+      "status": "reproduced",
+      "rawBefore": 62,
+      "rawAfter": 62.85000000000001,
+      "actualPositiveGain": 0.8500000000000085,
+      "openingReceipt": 0.8500000000000085,
+      "academyGrowthApplied": 0,
+      "baselineReported": {
+        "applied": 0.8500000000000085,
+        "realized": 0.8500000000000085,
+        "skipped": false,
+        "factor": 1
+      },
+      "importedPositiveUsed": 0.8500000000000085,
+      "doubleCharged": true
+    },
+    "R2": {
+      "status": "not-as-described",
+      "requestedContribution": 1,
+      "rows": {
+        "ST": {
+          "recognitionComponent": 1,
+          "expectedIfBug": 0.21999999999999997,
+          "sumWeights": 1,
+          "sumSqWeights": 0.21999999999999997,
+          "learning": 3.7509271917465288
+        },
+        "CM": {
+          "recognitionComponent": 1,
+          "expectedIfBug": 0.195,
+          "sumWeights": 1,
+          "sumSqWeights": 0.195,
+          "learning": 3.9614576083939395
+        },
+        "CB": {
+          "recognitionComponent": 0.9999999999999999,
+          "expectedIfBug": 0.2898,
+          "sumWeights": 1,
+          "sumSqWeights": 0.2898,
+          "learning": 4.563522530499594
+        },
+        "GK": {
+          "recognitionComponent": 0.9999999999999999,
+          "expectedIfBug": 0.18500000000000003,
+          "sumWeights": 1,
+          "sumSqWeights": 0.18500000000000003,
+          "learning": 3.840097564186573
+        }
+      }
+    },
+    "R3": {
+      "status": "not-as-described",
+      "rows": {
+        "1": {
+          "rawBefore": 97.99529145318878,
+          "effectiveEnvironment": 1,
+          "rawDelta": 0.11602998272356047
+        },
+        "0.8": {
+          "rawBefore": 97.99529145318878,
+          "effectiveEnvironment": 0.7640282512808674,
+          "rawDelta": 0.04787536507843981
+        },
+        "0.95": {
+          "rawBefore": 97.99529145318878,
+          "effectiveEnvironment": 0.9393208870990074,
+          "rawDelta": 0.09850431805708126
+        }
+      },
+      "inversion": false
+    },
+    "R4": {
+      "status": "reproduced",
+      "learning": 4.0195678626410976,
+      "recognition": 0,
+      "shockNet": -0.06430034311645014,
+      "reportedAllowanceUsed": 4.182101552814852,
+      "annualLearningUsed": 4.182101552814852,
+      "ledger": {
+        "positiveUsed": 4.182101552814852,
+        "scenePositive": 0,
+        "sceneNegative": 0,
+        "academyImported": 0,
+        "finalized": false,
+        "events": {},
+        "seasonPositive": 4.182101552814852,
+        "seasonLearning": 4.0195678626410976,
+        "seasonRecognition": 0,
+        "seasonPositiveShock": 0.1625336901737548
+      },
+      "components": {
+        "learning": 4.0195678626410976,
+        "recognition": 0,
+        "positiveShock": 0.1625336901737548,
+        "ageing": 0,
+        "regression": 0,
+        "deconditioning": 0,
+        "poorSeason": 0,
+        "shock": -0.06430034311645014,
+        "restoration": 0
+      },
+      "breakdown": {
+        "performance": 0.6,
+        "reliability": 0.9,
+        "opportunity": 1,
+        "environment": 1,
+        "abilityDifficulty": 1,
+        "healthyTrainingFraction": 1,
+        "recognitionPoints": 0,
+        "age": 19,
+        "position": "CM",
+        "roleGroup": "midfielder",
+        "breakthrough": false,
+        "annualAllowanceUsed": 4.182101552814852,
+        "annualAllowance": 8,
+        "rawOverallBefore": 59.99999999999999,
+        "rawOverallAfter": 63.955267519524654
+      },
+      "note": "Compare reported allowance vs learning+positiveShock+recognition"
+    },
+    "R5": {
+      "status": "documented",
+      "note": "Existing calibratePlayerDevelopment.mjs --light limitations verified in source; run separately for numbers.",
+      "commands": [
+        "node scripts/calibratePlayerDevelopment.mjs --light"
+      ]
+    },
+    "R6": {
+      "status": "reproduced",
+      "learningPlusRec": 8.695347691740297,
+      "currentOrdinaryCap": 8,
+      "currentBreakthroughCap": 9,
+      "academyFirst": 2.000000000000007,
+      "academyBig": 5.999999999999993,
+      "academyWouldFailOld7Assert": true
+    }
+  }
+}

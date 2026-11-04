@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "fix11-growth-v1",
+  "frozenAt": "2026-11-04T20:16:00.000Z",
+  "status": "frozen-before-tuning",
+  "note": "Game-design targets frozen before any Fix 11 growth-coefficient tuning.",
+  "definitions": {
+    "rawOverall": "baseOverallRaw",
+    "displayedOverall": "Math.round(baseOverallRaw)",
+    "displayed99": "Math.round(baseOverallRaw) === 99, equivalently baseOverallRaw >= 98.5",
+    "raw99": "baseOverallRaw >= 99",
+    "displayedAnnualGain": "Math.round(rawAfter) - Math.round(rawBefore)"
+  },
+  "controlledCohortTypicalRawAnnualBands": {
+    "poor": {
+      "min": 0,
+      "max": 1.5
+    },
+    "ordinary": {
+      "min": 1,
+      "max": 3
+    },
+    "good": {
+      "medianMin": 3,
+      "medianMax": 5
+    },
+    "exceptional": {
+      "requirement": "Some supported seasons produce displayed annual gains of +6 or +7."
+    }
+  },
+  "highOverallBands": [
+    {
+      "id": "high",
+      "rawMin": 80,
+      "rawMaxExclusive": 90,
+      "label": "80–89"
+    },
+    {
+      "id": "elite",
+      "rawMin": 90,
+      "rawMaxExclusive": 95,
+      "label": "90–94"
+    },
+    {
+      "id": "near-ceiling",
+      "rawMin": 95,
+      "rawMaxExclusive": 98.5,
+      "label": "95–98.5"
+    }
+  ],
+  "acceptanceClasses": {
+    "hardGates": [
+      "Gross-positive reconciliation is exact within numeric tolerance.",
+      "Ordinary annual positive learning never exceeds 8 raw OVR.",
+      "Breakthrough annual positive learning never exceeds 9 raw OVR.",
+      "No pending, null, or paused season result is counted as completed.",
+      "All recorded OVR values and deltas are finite."
+    ],
+    "calibrationBands": [
+      "Controlled poor, ordinary, good, and exceptional annual outcomes match their frozen bands.",
+      "Natural and constructed careers are reported separately across the 80–89, 90–94, and 95–98.5 bands.",
+      "Low-start supported paths remain possible without being represented as natural rarity evidence."
+    ],
+    "rarityGuardrails": [
+      "Displayed 99 before age 25 is well below 1% in natural-start mixed-policy careers.",
+      "Ever displayed 99 is approximately at or below 1% in natural-start mixed-policy careers."
+    ]
+  },
+  "rarity": {
+    "naturalStartPolicy": "mixed-default",
+    "displayed99Before25": {
+      "target": "well-below-1-percent"
+    },
+    "everDisplayed99": {
+      "targetMaxApproxRate": 0.01
+    }
+  },
+  "caps": {
+    "ordinaryAnnualLearning": 8,
+    "breakthroughAnnualLearning": 9,
+    "mayRaiseCaps": false
+  }
+}

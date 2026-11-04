@@ -1,0 +1,14 @@
+{
+  "id": "F15",
+  "title": "Snapshot migration idempotent",
+  "inputs": {
+    "sourceVersion": "legacy",
+    "migrations": 2
+  },
+  "expected": {
+    "firstMigrates": true,
+    "secondNoop": true,
+    "byteStableAfterFirst": true
+  },
+  "notes": []
+}

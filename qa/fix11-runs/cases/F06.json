@@ -1,0 +1,29 @@
+{
+  "id": "F06",
+  "title": "Challenge response monotone at ~98 OVR",
+  "inputs": {
+    "position": "CM",
+    "target": 98,
+    "age": 24,
+    "envs": [
+      0.8,
+      0.95,
+      1
+    ],
+    "seed": 42,
+    "rngSeed": 5678
+  },
+  "expected": {
+    "effective": {
+      "1": 1,
+      "0.8": 0.770028251,
+      "0.95": 0.941102137
+    },
+    "overallDelta": {
+      "1": 0.28309926,
+      "0.8": 0.186111748,
+      "0.95": 0.258259873
+    }
+  },
+  "notes": []
+}

@@ -1,0 +1,48 @@
+{
+  "id": "F07",
+  "title": "Paired poor/ordinary/good evidence ordering",
+  "inputs": {
+    "evidence": {
+      "poor": -0.7,
+      "ordinary": 0,
+      "good": 0.7
+    },
+    "reliability": 0.9,
+    "rngSeed": 2024,
+    "note": "clone player + fresh createRng(2024) per run"
+  },
+  "expected": {
+    "learningByPosition": [
+      {
+        "position": "CM",
+        "age": 19,
+        "poor": 0.080402084,
+        "ordinary": 2.30360314,
+        "good": 4.407944608
+      },
+      {
+        "position": "ST",
+        "age": 22,
+        "poor": 0.059012463,
+        "ordinary": 1.690768286,
+        "good": 3.235285115
+      },
+      {
+        "position": "CB",
+        "age": 17,
+        "poor": 0.070062016,
+        "ordinary": 2.007349459,
+        "good": 3.84106319
+      },
+      {
+        "position": "GK",
+        "age": 25,
+        "poor": 0.0484592,
+        "ordinary": 1.388406346,
+        "good": 2.656715543
+      }
+    ],
+    "ordering": "good > ordinary > poor"
+  },
+  "notes": []
+}

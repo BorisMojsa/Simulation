@@ -1,0 +1,21 @@
+{
+  "plus6": {
+    "careerId": "cid_2369bc62",
+    "age": 21,
+    "rawDelta": 5.54242551680538,
+    "displayedDelta": 6,
+    "breakthrough": true,
+    "seed": 2844156468,
+    "index": 21
+  },
+  "plus7": {
+    "careerId": "cid_2e1ba005",
+    "age": 17,
+    "rawDelta": 6.864131090792924,
+    "displayedDelta": 7,
+    "breakthrough": true,
+    "seed": 1939074132,
+    "index": 221
+  },
+  "discoveryRun": "discovery-plus7-250"
+}

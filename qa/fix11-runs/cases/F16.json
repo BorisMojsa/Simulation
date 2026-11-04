@@ -1,0 +1,17 @@
+{
+  "id": "F16",
+  "title": "Forecast calls do not advance career rng",
+  "inputs": {
+    "careerRngSeed": 123,
+    "calls": [
+      "forecastPotential",
+      "getOrUpdateForecast"
+    ]
+  },
+  "expected": {
+    "careerRngStateUnchanged": true,
+    "simRngStateUnchanged": true,
+    "developmentUnchanged": true
+  },
+  "notes": []
+}

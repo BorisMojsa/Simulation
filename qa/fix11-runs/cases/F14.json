@@ -1,0 +1,16 @@
+{
+  "id": "F14",
+  "title": "Role/family age behaviour; GK later",
+  "inputs": {
+    "roles": [
+      "GK",
+      "RW"
+    ],
+    "seeds": 12,
+    "ages": "18..39"
+  },
+  "expected": {
+    "goalkeeperPeakLater": true
+  },
+  "notes": []
+}

@@ -39,8 +39,8 @@ function expectedRatingForContext(player, teamEff, oppEff) {
   const base = Number(player.baseOverallRaw ?? player.rating) || 70;
   const teamQ = Number(teamEff?.overall) || 70;
   const oppQ = Number(oppEff?.overall) || 70;
-  // Offline-style fallback: role-agnostic band; not conditioned on goals/score.
-  return clampRating(6.45 + (base - 70) * 0.012 + (teamQ - oppQ) * 0.008);
+  // Align with computeMatchRating's 6.0 baseline so ordinary seasons centre near seasonP≈0.
+  return clampRating(6.0 + (base - 70) * 0.012 + (teamQ - oppQ) * 0.008);
 }
 
 function clampRating(v) {

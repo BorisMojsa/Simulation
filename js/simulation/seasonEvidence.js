@@ -1021,7 +1021,7 @@ export function buildSeasonEvidence(player, context = {}) {
     return s + (Number(se.minutes) || 0);
   }, 0);
 
-  const environmentProxy = clamp(0.85 + (num(player?.club?.overall ?? ctx.clubOverall, 70) - 70) / 80, 0.55, 1.35);
+  const environmentProxy = clamp(0.85 + (num(ctx.clubOverall ?? player?.club?.overall, 70) - 70) / 80, 0.55, 1.35);
 
   const evidence = {
     version: SEASON_EVIDENCE_VERSION,

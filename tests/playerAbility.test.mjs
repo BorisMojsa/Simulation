@@ -296,9 +296,19 @@ test("development: annual cap, deconditioning is recoverable", () => {
     P_long: 1,
     forceBreakthrough: true,
   });
+  // Caps: ordinary 8 / breakthrough 9. Gross positive (learning + recognition +
+  // positive shock) must respect the breakthrough allowance.
+  const grossPositive =
+    (r.components.learning || 0) +
+    (r.components.recognition || 0) +
+    (r.components.positiveShock || 0);
   assert.ok(
-    (r.components.learning + (r.components.recognition || 0)) <= 7 + 1e-9,
-    `learning ${r.components.learning}`,
+    grossPositive <= 9 + 1e-9,
+    `gross positive ${grossPositive} exceeds breakthrough cap 9`,
+  );
+  assert.ok(
+    Math.abs((r.breakdown.annualAllowanceUsed || 0) - grossPositive) < 1e-9,
+    "allowance receipt must equal gross positive components",
   );
   // Deconditioning then restoration.
   const q = makePlayer("CM", 70, 26, "decon");
@@ -340,8 +350,13 @@ test("academy growth mutates attributes and charges shared annual allowance", ()
   assert.equal(p.rating, Math.round(p.baseOverallRaw));
   assert.ok(p.development.academyBudgetUsed > 1.9);
   const big = applyAcademyGrowth(p, 50, { rng: createRng(2), alreadyAppliedLearningGain: r.realized });
-  assert.ok(big.realized <= 7 - r.realized + 1e-6);
+  // Ordinary annual learning cap is 8 overall points.
+  assert.ok(big.realized <= 8 - r.realized + 1e-6);
   assert.ok(big.limitedBy === "annual-cap" || big.realized > 0);
+  assert.ok(
+    Math.abs((p.development.academyGrowthApplied || 0) - (r.realized + Math.max(0, big.realized))) < 1e-6,
+    "academyGrowthApplied charges each realized gain once",
+  );
 });
 
 test("forecast: cached by signature, does not touch career rng", () => {

@@ -1,0 +1,27 @@
+{
+  "id": "F05",
+  "title": "Poor-season drag overall loss equals configured units",
+  "inputs": {
+    "position": "CM",
+    "target": 70,
+    "age": 24,
+    "reliability": 1,
+    "signals": [
+      -1,
+      -0.8,
+      -0.5
+    ],
+    "signalThreshold": -0.3,
+    "maxOverall": 1.1
+  },
+  "expected": {
+    "dragOverallBySignal": {
+      "-1": 1.1,
+      "-0.8": 0.785714286,
+      "-0.5": 0.314285714
+    }
+  },
+  "notes": [
+    "Curve fraction t = (thr - signal) / (thr + 1); t(-1)=1."
+  ]
+}

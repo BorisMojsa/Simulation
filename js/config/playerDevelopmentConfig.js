@@ -215,17 +215,20 @@ export const CEILING_CONFIG = Object.freeze({
 /**
  * Base annual learning (attr points/year). Positional maturation shifts the
  * effective age before these knots are read — see POSITION_MATURATION.
- * Tuned so healthy young good seasons land roughly +4–6 raw OVR before caps.
+ * Fix 11: healthy young good seasons target median roughly +3–5 raw OVR;
+ * exceptional paths with recognition/breakthrough still produce occasional +6/+7.
  */
 export const LEARNING_CURVE_KNOTS = deepFreeze([
-  { age: 16, physical: 3.5, technical: 3.15, mental: 2.4, goalkeeping: 2.7 },
-  { age: 19, physical: 2.95, technical: 3.15, mental: 2.5, goalkeeping: 2.9 },
-  { age: 22, physical: 1.85, technical: 2.35, mental: 2.15, goalkeeping: 2.4 },
-  { age: 25, physical: 0.85, technical: 1.45, mental: 1.5, goalkeeping: 1.8 },
-  { age: 28, physical: 0.35, technical: 0.95, mental: 1.15, goalkeeping: 1.45 },
-  { age: 31, physical: 0.1, technical: 0.5, mental: 0.8, goalkeeping: 1.0 },
-  { age: 34, physical: 0, technical: 0.22, mental: 0.4, goalkeeping: 0.55 },
-  { age: 37, physical: 0, technical: 0.08, mental: 0.16, goalkeeping: 0.22 },
+  // Youth rates support production-realistic good seasons (moderate seasonP) in the
+  // +3–5 band; exceptional recognition/breakthrough paths still reach occasional +6/+7.
+  { age: 16, physical: 3.2, technical: 2.9, mental: 2.2, goalkeeping: 2.5 },
+  { age: 19, physical: 2.75, technical: 2.9, mental: 2.3, goalkeeping: 2.65 },
+  { age: 22, physical: 1.85, technical: 2.25, mental: 2.05, goalkeeping: 2.25 },
+  { age: 25, physical: 0.95, technical: 1.45, mental: 1.45, goalkeeping: 1.7 },
+  { age: 28, physical: 0.4, technical: 0.95, mental: 1.1, goalkeeping: 1.35 },
+  { age: 31, physical: 0.12, technical: 0.5, mental: 0.75, goalkeeping: 0.95 },
+  { age: 34, physical: 0, technical: 0.2, mental: 0.36, goalkeeping: 0.5 },
+  { age: 37, physical: 0, technical: 0.08, mental: 0.15, goalkeeping: 0.22 },
 ]);
 
 /** Annual ageing losses by effective development age. */
@@ -432,11 +435,12 @@ export const DEVELOPMENT_CAPS = deepFreeze({
    * Never a hard individual wall; floor keeps elite progress finite but nonzero.
    */
   abilityDifficulty: {
-    softStart: 88,
+    softStart: 92,
     softEnd: 99,
-    floorAtSoftEnd: 0.28,
+    // Keep elite crawl finite but nonzero so earned 95→98.5 paths remain open.
+    floorAtSoftEnd: 0.48,
     /** Extra challenge demand above this OVR when environment is weak. */
-    challengeSoftStart: 92,
+    challengeSoftStart: 93,
   },
   /** @deprecated v2 inert fields retained for older readers. */
   headroomTaperPoints: 6,
@@ -451,9 +455,10 @@ export const DEVELOPMENT_CAPS = deepFreeze({
    * performance into [0,1] before applying. Floor of 0 so a clearly poor season
    * can wipe new learning (net ≈ 0 or negative after ageing).
    */
-  performanceLearningWeight: 1.65,
+  // Moderate production seasonP (~0.3–0.5) should still move a healthy youth season.
+  performanceLearningWeight: 1.45,
   performanceMultFloor: 0,
-  performanceMultCeil: 2.15,
+  performanceMultCeil: 2.0,
   /**
    * Extra overall-point drag when sustained poor performances are reliable.
    * Applied after learning so bad seasons can finish flat or slightly down.
@@ -513,19 +518,20 @@ export const OPPORTUNITY_CONFIG = Object.freeze({
 export const BREAKTHROUGH = deepFreeze({
   enabled: true,
   probabilityByAgeBand: [
-    { maxAge: 21, probability: 0.12 },
-    { maxAge: 25, probability: 0.05 },
-    { maxAge: 28, probability: 0.02 },
+    { maxAge: 21, probability: 0.18 },
+    { maxAge: 25, probability: 0.08 },
+    { maxAge: 28, probability: 0.03 },
   ],
-  minMinutesFraction: 0.55,
-  minHealthyTrainingFraction: 0.65,
-  minReliability: 0.55,
-  minPLong: 0.45,
+  minMinutesFraction: 0.5,
+  minHealthyTrainingFraction: 0.6,
+  minReliability: 0.5,
+  // Aligned to production seasonP scale after expectedRating/match-rating baseline sync.
+  minPLong: 0.22,
   /** At or below TRAIT_RANGES.trainability.min so floor-trainability players remain eligible. */
   minTrainability: 0.7,
   /** Extra probability from recognition/trophy evidence (additive, clamped). */
   recognitionBonus: 0.25,
-  learningMultiplier: 1.45,
+  learningMultiplier: 1.55,
 });
 
 /** Award evaluation defaults (competition-scoped). */
@@ -563,7 +569,7 @@ export const PERFORMANCE = deepFreeze({
   /** Match rating residual scale (rating points per 1 z). */
   residualScale: { default: 0.8, GK: 0.7, defender: 0.7, midfielder: 0.8, forward: 0.9 },
   residualScaleDefault: 0.6,
-  defaultExpectedRating: 6.6,
+  defaultExpectedRating: 6.0,
   zClamp: 3,
   tanhDivisor: 1.5,
   tanhScale: 1.5,

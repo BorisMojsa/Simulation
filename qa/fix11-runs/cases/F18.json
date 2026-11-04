@@ -1,0 +1,20 @@
+{
+  "id": "F18",
+  "title": "Driver rejects false completion paths",
+  "inputs": {
+    "injectedOutcomes": [
+      "decision",
+      "scenario",
+      "contract-review",
+      "null",
+      "no-history-advance"
+    ],
+    "guard": 100
+  },
+  "expected": {
+    "allRejected": true,
+    "guardExhaustionRejected": true,
+    "completedSeasonAccepted": true
+  },
+  "notes": []
+}

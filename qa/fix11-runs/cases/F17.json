@@ -1,0 +1,70 @@
+{
+  "id": "F17",
+  "title": "Weighted attrs / cached OVR / components / endpoints agree",
+  "inputs": {
+    "scenarios": [
+      {
+        "position": "ST",
+        "P_long": 0.6,
+        "recognition": {
+          "contribution": 0.8
+        },
+        "age": 23
+      },
+      {
+        "position": "CM",
+        "P_long": -0.9,
+        "reliability": 1,
+        "age": 23
+      },
+      {
+        "position": "CB",
+        "P_long": 0.2,
+        "healthyTrainingFraction": 0.4,
+        "age": 23
+      },
+      {
+        "position": "GK",
+        "P_long": 0.5,
+        "elapsedYears": 2,
+        "age": 23
+      },
+      {
+        "position": "CM",
+        "P_long": 0.4,
+        "age": 33
+      }
+    ]
+  },
+  "expected": {
+    "rows": [
+      {
+        "position": "ST",
+        "overallDelta": 3.669222027,
+        "componentSum": 3.669222027
+      },
+      {
+        "position": "CM",
+        "overallDelta": -1.008897081,
+        "componentSum": -1.008897081
+      },
+      {
+        "position": "CB",
+        "overallDelta": 1.464201569,
+        "componentSum": 1.464201569
+      },
+      {
+        "position": "GK",
+        "overallDelta": 5.950451819,
+        "componentSum": 5.950451819
+      },
+      {
+        "position": "CM",
+        "overallDelta": 0.073985375,
+        "componentSum": 0.073985375
+      }
+    ],
+    "tolerance": 1e-9
+  },
+  "notes": []
+}

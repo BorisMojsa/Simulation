@@ -1,0 +1,16 @@
+{
+  "id": "F03",
+  "title": "Finalized period rejects growth; duplicates idempotent",
+  "inputs": {
+    "position": "ST",
+    "target": 65,
+    "age": 21,
+    "periodId": "season-F03"
+  },
+  "expected": {
+    "duplicateScenario": "ignored",
+    "duplicateSeason": "season-already-applied",
+    "afterFinalize": "period-finalized"
+  },
+  "notes": []
+}

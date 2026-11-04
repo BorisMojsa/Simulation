@@ -1,0 +1,115 @@
+{
+  "hits": [
+    {
+      "seed": 2,
+      "pos": "CB",
+      "age": 20,
+      "target": 67,
+      "before": 66.99999999999999,
+      "after": 74.19198294490795,
+      "disp": 7,
+      "rawDelta": 7.191982944907963,
+      "bt": true,
+      "components": {
+        "learning": 7.347188033932627,
+        "recognition": 0,
+        "positiveShock": 0.0832932029785968,
+        "ageing": 0,
+        "regression": 0,
+        "deconditioning": 0,
+        "poorSeason": 0,
+        "shock": -0.15520508902468608,
+        "restoration": 0
+      }
+    },
+    {
+      "seed": 3,
+      "pos": "RW",
+      "age": 18,
+      "target": 68,
+      "before": 68,
+      "after": 73.73357029272185,
+      "disp": 6,
+      "rawDelta": 5.733570292721851,
+      "bt": false,
+      "components": {
+        "learning": 5.665320888380867,
+        "recognition": 0,
+        "positiveShock": 0.1531620927715583,
+        "ageing": 0,
+        "regression": 0,
+        "deconditioning": 0,
+        "poorSeason": 0,
+        "shock": 0.06824940434099214,
+        "restoration": 0
+      }
+    },
+    {
+      "seed": 9,
+      "pos": "ST",
+      "age": 18,
+      "target": 74,
+      "before": 74,
+      "after": 80.9461145565268,
+      "disp": 7,
+      "rawDelta": 6.946114556526794,
+      "bt": true,
+      "components": {
+        "learning": 7.111232739717452,
+        "recognition": 0,
+        "positiveShock": 0.26471176789029804,
+        "ageing": 0,
+        "regression": 0,
+        "deconditioning": 0,
+        "poorSeason": 0,
+        "shock": -0.1651181831906512,
+        "restoration": 0
+      }
+    },
+    {
+      "seed": 10,
+      "pos": "CB",
+      "age": 19,
+      "target": 75,
+      "before": 75,
+      "after": 80.95740762722143,
+      "disp": 6,
+      "rawDelta": 5.9574076272214285,
+      "bt": false,
+      "components": {
+        "learning": 5.52552449129459,
+        "recognition": 0,
+        "positiveShock": 0.4407445224962426,
+        "ageing": 0,
+        "regression": 0,
+        "deconditioning": 0,
+        "poorSeason": 0,
+        "shock": 0.43188313592684635,
+        "restoration": 0
+      }
+    },
+    {
+      "seed": 18,
+      "pos": "CB",
+      "age": 18,
+      "target": 71,
+      "before": 71.00000000000001,
+      "after": 77.39363540873278,
+      "disp": 6,
+      "rawDelta": 6.393635408732763,
+      "bt": false,
+      "components": {
+        "learning": 5.894810401069007,
+        "recognition": 0,
+        "positiveShock": 0.49882500766374993,
+        "ageing": 0,
+        "regression": 0,
+        "deconditioning": 0,
+        "poorSeason": 0,
+        "shock": 0.49882500766374993,
+        "restoration": 0
+      }
+    }
+  ],
+  "searched": 2000
+}

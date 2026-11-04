@@ -24,6 +24,7 @@ import {
   buildContinentalCampaignView,
   listContinentalFixtures,
   simulatePlayoffRound,
+  uniqueFieldCandidates,
 } from "../js/simulation/continentalTournament.js";
 import { resolveTwoLeggedTie, simulateMatch } from "../js/simulation/matchEngine.js";
 import { simulateChronologicalSeason } from "../js/simulation/chronologicalSeason.js";
@@ -127,6 +128,21 @@ describe("league-phase schedule constraints", () => {
       a.map((f) => [f.matchday, f.home.clubId || f.home.name, f.away.clubId || f.away.name]),
       b.map((f) => [f.matchday, f.home.clubId || f.home.name, f.away.clubId || f.away.name])
     );
+  });
+
+  it("deduplicates canonical field candidates and excludes the focus club before scheduling", () => {
+    const focus = { clubId: "club:japan:kashima-antlers", name: "Kashima Antlers" };
+    const pool = [
+      focus,
+      { ...focus, entryRoute: "earned" },
+      ...Array.from({ length: 20 }, (_, i) => ({ clubId: `club:afc:${i}`, name: `AFC ${i}` })),
+      { clubId: "club:afc:7", name: "AFC 7 duplicate" },
+    ];
+    const candidates = uniqueFieldCandidates(pool, focus);
+    const field = [focus, ...candidates.slice(0, 15)];
+    assert.equal(new Set(field.map((club) => club.clubId)).size, 16);
+    const fixtures = buildLeaguePhaseSchedule(field, 8, 4, createRng(3462232308));
+    assert.equal(validateLeaguePhaseSchedule(field, fixtures, { opponents: 8, homeCount: 4 }).ok, true);
   });
 });
 

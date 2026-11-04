@@ -1,0 +1,21 @@
+{
+  "id": "F12",
+  "title": "Dated playing context controls environment",
+  "inputs": {
+    "parentOverall": [
+      95,
+      99
+    ],
+    "borrowerOverall": [
+      60,
+      84
+    ],
+    "stintCount": 2
+  },
+  "expected": {
+    "parentPrestigeDoesNotLeak": true,
+    "strongerBorrowerRaisesEnvironment": true,
+    "datedStintsPreserved": true
+  },
+  "notes": []
+}

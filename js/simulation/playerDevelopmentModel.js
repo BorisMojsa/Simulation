@@ -480,6 +480,16 @@ export function developSeason(player, context = {}) {
   if (seasonKey && hasEventApplied(player, seasonKey)) {
     return { skipped: true, reason: "season-already-applied", seasonId: context.seasonId };
   }
+  const earlyPeriodId =
+    context.periodId != null
+      ? String(context.periodId)
+      : null;
+  if (earlyPeriodId) {
+    const earlyLedger = ensureLearningPeriodLedger(player, earlyPeriodId);
+    if (earlyLedger.finalized) {
+      return { skipped: true, reason: "period-finalized", seasonId: context.seasonId, periodId: earlyPeriodId };
+    }
+  }
   const years = clamp(Number.isFinite(context.elapsedYears) ? context.elapsedYears : 1, 0, caps.maxElapsedYears);
   if (years <= 0) return { skipped: true, reason: "no-elapsed-time", seasonId: context.seasonId };
 
@@ -521,9 +531,12 @@ export function developSeason(player, context = {}) {
 
   let env = clamp(context.environmentMultiplier ?? 1, caps.environmentRange.min, caps.environmentRange.max);
   // High-ability players need appropriate challenge; farming weak opposition softens env.
+  // Continuous, bounded, monotone in input env: never raise env above the input when env < 1.
   if (overallBefore >= caps.abilityDifficulty.challengeSoftStart && env < 1) {
     const soft = clamp((overallBefore - caps.abilityDifficulty.challengeSoftStart) / 12, 0, 1);
-    env = env * (1 - 0.35 * soft) + 0.65 * soft * Math.min(env, 0.85);
+    const farmGap = Math.max(0, 1 - env);
+    const attenuate = soft * 0.45 * farmGap;
+    env = clamp(env * (1 - attenuate), caps.environmentRange.min, Math.min(env, caps.environmentRange.max));
   }
 
   const alreadyApplied = Math.max(0, Number(context.alreadyAppliedLearningGain) || 0);
@@ -653,16 +666,24 @@ export function developSeason(player, context = {}) {
     positive[k] = Math.min(wanted, Math.max(0, attrRoom));
   }
 
-  // Distribute recognition as a small overall-weighted attribute bump (inside annual cap).
+  // Distribute recognition as overall points via water-filling (weights normalize by
+  // sum(w*s)); never multiply by role weights a second time without that normalization.
   const recognitionPerAttr = {};
   if (recognitionPoints > 0) {
-    const sumW = keys.reduce((s, k) => s + weights[k], 0) || 1;
+    const shares = {};
+    const headroom = {};
     for (const k of keys) {
-      recognitionPerAttr[k] = (recognitionPoints * years * weights[k]) / sumW;
-      positive[k] = Math.min(positive[k] + recognitionPerAttr[k], ATTRIBUTE_MAX - attrs[k]);
+      shares[k] = weights[k];
+      headroom[k] = Math.max(0, ATTRIBUTE_MAX - attrs[k] - (positive[k] || 0));
+    }
+    const recInc = allocateOverallGain(keys, weights, shares, headroom, recognitionPoints * years);
+    for (const k of keys) {
+      recognitionPerAttr[k] = recInc[k] || 0;
+      positive[k] = (positive[k] || 0) + recognitionPerAttr[k];
     }
   }
 
+  // Gross positive components (learning + positive shock + recognition) share the allowance.
   const rawGain = weightedDelta(weights, positive);
   const baseCap = Number(caps.annualLearningCap) || 0;
   const breakthroughCap = Number(caps.annualLearningCapBreakthrough ?? caps.breakthroughLearningCap) || baseCap;
@@ -702,11 +723,17 @@ export function developSeason(player, context = {}) {
   const dragMax = Math.max(0, Number(dragCfg.maxOverall) || 0);
   if (perfSignal < dragThreshold && dragMax > 0 && years > 0) {
     // t: 0 at threshold, 1 at signal = -1
-    const t = clamp((-perfSignal + dragThreshold) / (-dragThreshold + 1), 0, 1);
+    const t = clamp((dragThreshold - perfSignal) / (dragThreshold + 1), 0, 1);
     const dragOverall = dragMax * t * years;
-    const sumW = keys.reduce((s, k) => s + weights[k], 0) || 1;
+    const dragShares = {};
+    const dragHeadroom = {};
     for (const k of keys) {
-      const amount = (dragOverall * weights[k]) / sumW;
+      dragShares[k] = weights[k];
+      dragHeadroom[k] = Math.max(0, attrs[k] - ATTRIBUTE_MIN);
+    }
+    const dragInc = allocateOverallGain(keys, weights, dragShares, dragHeadroom, dragOverall);
+    for (const k of keys) {
+      const amount = dragInc[k] || 0;
       const cur = attrs[k];
       const next = Math.max(ATTRIBUTE_MIN, cur - amount);
       appliedPoorDrag[k] = cur - next;
@@ -718,8 +745,31 @@ export function developSeason(player, context = {}) {
   refreshAbilityCaches(player);
   const overallAfter = calculateOverall(attrs, player.position).raw;
   budgetRecord.used = Math.max(0, overallAfter - budgetRecord.startOverallRaw);
-  const learningApplied = weightedDelta(weights, appliedLearning) + weightedDelta(weights, appliedRecognition);
+  const sumApplied = (m) => weightedDelta(weights, m);
+  const learningComponent = sumApplied(appliedLearning);
+  const recognitionComponent = sumApplied(appliedRecognition);
+  const positiveShockComponent = sumApplied(appliedShockUp);
+  // All new positive permanent gains consume the shared allowance (restoration is separate).
+  const grossPositiveApplied = learningComponent + recognitionComponent + positiveShockComponent;
+  const learningApplied = grossPositiveApplied;
   dev.annualLearningUsed = alreadyApplied + learningApplied;
+  // Record season-end use into the shared period ledger when a period id is known.
+  const periodId =
+    context.periodId != null
+      ? String(context.periodId)
+      : context.seasonId != null
+        ? String(context.seasonId)
+        : null;
+  if (periodId && player.development) {
+    const ledger = ensureLearningPeriodLedger(player, periodId);
+    if (!ledger.finalized) {
+      ledger.positiveUsed = Math.max(0, Number(ledger.positiveUsed) || 0) + grossPositiveApplied;
+      ledger.seasonPositive = (Number(ledger.seasonPositive) || 0) + grossPositiveApplied;
+      ledger.seasonLearning = (Number(ledger.seasonLearning) || 0) + learningComponent;
+      ledger.seasonRecognition = (Number(ledger.seasonRecognition) || 0) + recognitionComponent;
+      ledger.seasonPositiveShock = (Number(ledger.seasonPositiveShock) || 0) + positiveShockComponent;
+    }
+  }
   dev.seasonsDeveloped = (dev.seasonsDeveloped || 0) + 1;
   dev.history.push({
     seasonId: context.seasonId ?? null,
@@ -731,15 +781,15 @@ export function developSeason(player, context = {}) {
   if (dev.history.length > caps.historyLength) dev.history.splice(0, dev.history.length - caps.historyLength);
   if (seasonKey) markEventApplied(player, seasonKey);
 
-  const sumApplied = (m) => weightedDelta(weights, m);
   const components = {
-    learning: sumApplied(appliedLearning),
-    recognition: sumApplied(appliedRecognition),
+    learning: learningComponent,
+    recognition: recognitionComponent,
+    positiveShock: positiveShockComponent,
     ageing: -sumApplied(appliedNegative.ageing),
     regression: -sumApplied(appliedNegative.regression),
     deconditioning: -sumApplied(appliedNegative.deconditioning),
     poorSeason: -sumApplied(appliedPoorDrag),
-    shock: sumApplied(appliedShockUp) - sumApplied(appliedNegative.shock),
+    shock: positiveShockComponent - sumApplied(appliedNegative.shock),
     restoration: weightedDelta(weights, restoration.perAttribute),
   };
   const breakdown = {
@@ -962,15 +1012,17 @@ export function ensureLearningPeriodLedger(player, periodId) {
 /**
  * Gross positive learning already charged this period (scenes + imported academy).
  * Does not refund for later negative scene results.
+ *
+ * Academy charges owned by applyAcademyGrowth are imported whenever the counter is
+ * positive and the period is open. Importing zeros the counter so a later period
+ * cannot re-import the same receipt; same-period later academy charges still import.
  */
 export function periodPositiveLearningUsed(player, periodId) {
   const ledger = ensureLearningPeriodLedger(player, periodId);
-  // Import legacy academy counter once into this period if present and unused.
   const academyCarry = Math.max(0, Number(player.development?.academyGrowthApplied) || 0);
-  if (academyCarry > 0 && !(ledger.academyImported > 0) && !ledger._academyImportedMarked) {
-    ledger.positiveUsed += academyCarry;
-    ledger.academyImported = academyCarry;
-    ledger._academyImportedMarked = true;
+  if (academyCarry > 0 && !ledger.finalized) {
+    ledger.positiveUsed = (Number(ledger.positiveUsed) || 0) + academyCarry;
+    ledger.academyImported = (Number(ledger.academyImported) || 0) + academyCarry;
     player.development.academyGrowthApplied = 0;
   }
   return Math.max(0, Number(ledger.positiveUsed) || 0);
@@ -1038,6 +1090,20 @@ export function applyScenarioAbilityChange(player, {
   }
   const pid = periodId || developmentPeriodId(player);
   const ledger = ensureLearningPeriodLedger(player, pid);
+  if (ledger.finalized) {
+    const raw = calculateOverall(player.attributes, player.position).raw;
+    return {
+      rawBefore: raw,
+      rawAfter: raw,
+      realizedRaw: 0,
+      requestedRaw: Number(requestedRaw) || 0,
+      perAttribute: {},
+      limitedBy: "period-finalized",
+      positiveBudgetCharged: 0,
+      rejected: true,
+      duplicate: false,
+    };
+  }
   if (eventId && ledger.events[eventId]) {
     const prev = ledger.events[eventId];
     return {

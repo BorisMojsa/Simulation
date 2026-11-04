@@ -710,12 +710,15 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     });
   }
   const competitionEditions = [...editionByKey.values()];
+  const playingClubId = player.playingClubId || player.club?.clubId || null;
+  const playingClub = playingLeague.clubs?.find((club) => club.clubId === playingClubId) || null;
 
   const evidence = buildSeasonEvidence(player, {
     aggregate: agg,
     ledger,
     ledgerMatches: ledger.matches,
     league: playingLeague,
+    clubOverall: playingClub?.overall,
     standing,
     table: chrono.table,
     trophies,
@@ -779,6 +782,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     ...devCtx,
     rng: devRng,
     seasonId,
+    periodId,
     alreadyAppliedLearningGain: already,
   });
 

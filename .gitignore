@@ -4,3 +4,15 @@ __pycache__/
 .venv/
 node_modules/
 research/reference-code/
+
+# Fix 11 bulk calibration / browser evidence (packaged externally)
+qa/fix11-runs/**
+!qa/fix11-runs/plan.json
+!qa/fix11-runs/cases/
+!qa/fix11-runs/cases/**
+!qa/fix11-runs/witnesses/
+!qa/fix11-runs/witnesses/**
+!qa/fix11-runs/baseline/
+!qa/fix11-runs/baseline/**
+qa/fix11-runs/witnesses/**/snapshot-*.json
+qa/fix06-runs/

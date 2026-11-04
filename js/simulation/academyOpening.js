@@ -177,9 +177,8 @@ export function applyAcademyBaselineTraining(player, { rng = null, forceFactor =
       alreadyAppliedLearningGain: state.positiveLearningApplied,
     });
     realized = Math.max(0, result.realized);
+    // applyAcademyGrowth owns academyGrowthApplied — charge once only.
     state.positiveLearningApplied += realized;
-    player.development.academyGrowthApplied =
-      (player.development.academyGrowthApplied || 0) + realized;
   }
   appliedMap[eventId] = true;
   state.baselineApplied = true;
@@ -338,9 +337,8 @@ export function applyOpeningMoment(player, { scenario, choice, outcome, momentIn
       limitedBy = growth.limitedBy || "none";
       realizedRaw = growth.realized;
       if (realizedRaw > 0) {
+        // applyAcademyGrowth owns academyGrowthApplied — charge once only.
         state.positiveLearningApplied += realizedRaw;
-        player.development.academyGrowthApplied =
-          (player.development.academyGrowthApplied || 0) + realizedRaw;
       } else if (realizedRaw < 0) {
         state.lossApplied += Math.abs(realizedRaw);
       }
@@ -355,9 +353,8 @@ export function applyOpeningMoment(player, { scenario, choice, outcome, momentIn
         alreadyAppliedLearningGain: state.positiveLearningApplied,
       });
       if (lift.realized > 0) {
+        // applyAcademyGrowth owns academyGrowthApplied — charge once only.
         state.positiveLearningApplied += lift.realized;
-        player.development.academyGrowthApplied =
-          (player.development.academyGrowthApplied || 0) + lift.realized;
         limitedBy = "clamp-floor";
       }
     }

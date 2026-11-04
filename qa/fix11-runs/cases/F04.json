@@ -1,0 +1,38 @@
+{
+  "id": "F04",
+  "title": "Recognition 1.0 → components.recognition ≈ 1.0 (ST/CM/CB/GK)",
+  "inputs": {
+    "positions": [
+      "ST",
+      "CM",
+      "CB",
+      "GK"
+    ],
+    "contribution": 1,
+    "target": 70,
+    "age": 20,
+    "P_long": 0.6,
+    "reliability": 0.9,
+    "rngSeed": 5678
+  },
+  "expected": {
+    "recognitionComponent": 1,
+    "weightedSumOfDeltas": 1,
+    "scale": 1,
+    "differentialOverallDelta": {
+      "ST:0.35": 0.35,
+      "ST:1": 1,
+      "ST:1.4": 1.4,
+      "CM:0.35": 0.35,
+      "CM:1": 1,
+      "CM:1.4": 1.4,
+      "CB:0.35": 0.35,
+      "CB:1": 1,
+      "CB:1.4": 1.4,
+      "GK:0.35": 0.35,
+      "GK:1": 1,
+      "GK:1.4": 1.4
+    }
+  },
+  "notes": []
+}

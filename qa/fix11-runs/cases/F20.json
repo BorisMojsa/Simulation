@@ -1,0 +1,15 @@
+{
+  "id": "F20",
+  "title": "Assessor rejects incomplete/corrupted packages",
+  "inputs": {
+    "packages": [
+      "missing-summary",
+      "incomplete-summary",
+      "corrupt-json"
+    ]
+  },
+  "expected": {
+    "allRejected": true
+  },
+  "notes": []
+}

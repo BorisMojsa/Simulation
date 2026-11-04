@@ -95,7 +95,8 @@ export function validateLeaguePhaseSchedule(field, fixtures, { opponents, homeCo
   const ids = field.map(clubKey);
   const idSet = new Set(ids);
   if (idSet.size !== n) {
-    return { ok: false, reason: "duplicate-club-ids" };
+    const duplicates = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+    return { ok: false, reason: `duplicate-club-ids:${duplicates.join(",")}` };
   }
   if (!Number.isInteger(opponents) || opponents < 1) {
     return { ok: false, reason: "invalid-opponents" };
@@ -188,19 +189,24 @@ export function buildLeaguePhaseSchedule(field, opponents, homeCount, rng, {
 
   const factorization = roundRobinFactorization(n);
   const roundIndices = Array.from({ length: factorization.length }, (_, i) => i);
+  let lastFailure = "unknown";
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const order = rng.shuffle([...roundIndices]);
     const chosen = order.slice(0, opponents).map((ri) => factorization[ri]);
     // Keep matchday order stable as chosen order (seeded)
     const fixtures = orientMatchings(field, chosen, homeCount, rng);
-    if (!fixtures) continue;
+    if (!fixtures) {
+      lastFailure = "orientation-failed";
+      continue;
+    }
     const check = validateLeaguePhaseSchedule(field, fixtures, { opponents, homeCount });
     if (check.ok) return fixtures;
+    lastFailure = check.reason;
   }
 
   throw new Error(
-    `Failed to build valid league-phase schedule for n=${n} opponents=${opponents} after ${maxAttempts} attempts`
+    `Failed to build valid league-phase schedule for n=${n} opponents=${opponents} after ${maxAttempts} attempts (${lastFailure})`
   );
 }
 

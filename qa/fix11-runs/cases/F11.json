@@ -1,0 +1,23 @@
+{
+  "id": "F11",
+  "title": "Nomination replaced by win; no duplicate stacking; diminishing returns",
+  "inputs": {
+    "config": {
+      "win": 0.55,
+      "selection": 0.35,
+      "nomination": 0.15,
+      "multiAwardDecay": 0.65,
+      "maxContribution": 1.4
+    }
+  },
+  "expected": {
+    "contributions": {
+      "nominationReplacedByWin": 0.55,
+      "twoWins": 0.9075,
+      "mixed": 0.840875,
+      "duplicateWins": 0.55
+    },
+    "developSeasonRecognitionForSingleWin": 0.55
+  },
+  "notes": []
+}

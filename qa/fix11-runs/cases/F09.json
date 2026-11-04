@@ -1,0 +1,17 @@
+{
+  "id": "F09",
+  "title": "Inert legacy ceilings/forecasts do not change development",
+  "inputs": {
+    "variantB": {
+      "latentBudget": 61,
+      "ceilings": 50,
+      "forecastPotential": 52
+    },
+    "seasons": 3
+  },
+  "expected": {
+    "identicalComponents": true,
+    "identicalAttributes": true
+  },
+  "notes": []
+}

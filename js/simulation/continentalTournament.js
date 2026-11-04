@@ -171,10 +171,22 @@ function playerClubEntry(player, league) {
   );
 }
 
+export function uniqueFieldCandidates(pool, playerClub = null) {
+  const focusKey = clubKey(playerClub);
+  const unique = new Map();
+  for (const club of pool) {
+    const key = clubKey(club);
+    if (key == null || key === focusKey || unique.has(key)) continue;
+    unique.set(key, club);
+  }
+  return [...unique.values()];
+}
+
 /** Strong core plus a random spread from the rest of the pool; the player's club is always kept. */
 function sampleField(pool, playerClub, size, rng) {
   // Keep the historical shuffle/call pattern stable so career RNG streams match prior fixes.
-  const ranked = [...pool].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
+  const ranked = uniqueFieldCandidates(pool, playerClub)
+    .sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
   const cut = Math.ceil(Math.max(size, size * 1.4));
   const top = ranked.slice(0, cut);
   const rest = ranked.slice(cut);

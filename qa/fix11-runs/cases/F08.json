@@ -1,0 +1,27 @@
+{
+  "id": "F08",
+  "title": "Matched evidence near 90/95/98",
+  "inputs": {
+    "position": "CM",
+    "ovrs": [
+      90,
+      95,
+      98
+    ],
+    "age": 24,
+    "P_long": 0.6,
+    "reliability": 0.9,
+    "seed": 42,
+    "rngSeed": 5678
+  },
+  "expected": {
+    "overallDelta": {
+      "90": 1.77638173,
+      "95": 0.774976495,
+      "98": 0.28309926
+    },
+    "ordering": "90 > 95 > 98 > 0",
+    "sixSeasonFrom96Gains": 2.88704491
+  },
+  "notes": []
+}

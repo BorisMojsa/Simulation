@@ -1,0 +1,22 @@
+{
+  "id": "F02",
+  "title": "Shared allowance across academy/scene/season/recognition/shock",
+  "inputs": {
+    "position": "CM",
+    "target": 60,
+    "age": 19,
+    "steps": [
+      "academy +2.5",
+      "scene +3",
+      "scene -1.2",
+      "season P=.8 rec=1.4"
+    ]
+  },
+  "expected": {
+    "cap": 8,
+    "academyPlusScenePlusSeasonGrossWithinCap": true,
+    "negativeRefunds": 0,
+    "limitedBy": "annual-cap"
+  },
+  "notes": []
+}

@@ -1,0 +1,23 @@
+{
+  "id": "F13",
+  "title": "Restoration bounded by recoverable pool",
+  "inputs": {
+    "damage": {
+      "Speed": 2.4,
+      "Physicality": 1.2
+    },
+    "pool": 3.6,
+    "fractionPerYear": 0.5,
+    "years": [
+      1,
+      2
+    ]
+  },
+  "expected": {
+    "oneYearRestored": 1.8,
+    "twoYearRestored": 3.6,
+    "overAskRestored": 3.6,
+    "noPoolRestored": 0
+  },
+  "notes": []
+}

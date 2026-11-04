@@ -1,0 +1,48 @@
+{
+  "id": "F01",
+  "title": "Academy charges once, import once, later charges kept",
+  "inputs": {
+    "baseline": {
+      "forceFactor": 1,
+      "rngSeed": 7
+    },
+    "moments": [
+      {
+        "delta": 2
+      },
+      {
+        "delta": 1
+      },
+      {
+        "duplicateOf": 1
+      }
+    ],
+    "skip": {
+      "forceFactor": 0.85
+    },
+    "floor": {
+      "startAttrs": 47,
+      "moment": -1
+    },
+    "sequence": [
+      "baseline",
+      "import",
+      "later +1.0",
+      "import",
+      "finalize",
+      "later +0.5",
+      "import season-2"
+    ]
+  },
+  "expected": {
+    "baselineChargedEqualsActualGain": true,
+    "secondBaselineSkipped": true,
+    "baselineGainPositive": true,
+    "duplicateIgnored": true,
+    "skipChargedOnce": true,
+    "limitedBy": "clamp-floor",
+    "liftApprox": 3,
+    "laterChargesKept": true
+  },
+  "notes": []
+}
