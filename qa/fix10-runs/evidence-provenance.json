@@ -24,6 +24,12 @@
   "verifierQa": {
     "status": "fresh-at-package-tip",
     "note": "Positive package verification, negative controls (including gzip-trace mutations), and restored-positive verification are freshly executed against the repaired assessor/negative runner.",
-    "packageTip": "f68258123fd39fb7a7db9b8e8221b3405b20d043"
+    "packageTip": "f68258123fd39fb7a7db9b8e8221b3405b20d043",
+    "positiveLog": "qa/fix10-runs/logs/verify-positive-gzip-rereview.log",
+    "negativeLog": "qa/fix10-runs/logs/negative-verify-gzip-rereview.log",
+    "restoredPositiveLog": "qa/fix10-runs/logs/verify-restored-positive-gzip-rereview.log",
+    "negativeControls": 32,
+    "negativeOk": true,
+    "gzipRecordsChecked": 1600
   }
 }
