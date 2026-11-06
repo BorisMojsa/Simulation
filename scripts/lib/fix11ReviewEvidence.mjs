@@ -590,7 +590,15 @@ function assessNaturalComponents(packageRoot) {
   if (!parsed.ok) return { ok: false, problems: ["natural-components-career-unreadable"] };
   let seasonsWithComponents = 0;
   for (const season of parsed.value.seasons || []) {
+    const minutes = Number(season.minutes) || 0;
+    const rawDelta = Number(season.rawDelta);
+    const expectsDevelopment =
+      minutes > 0 ||
+      (Number.isFinite(rawDelta) && Math.abs(rawDelta) > EPSILON) ||
+      Boolean(season.components) ||
+      Boolean(season.learning);
     const components = season.components || season.learning;
+    if (!expectsDevelopment) continue;
     if (!components || typeof components !== "object") {
       problems.push(`natural-components-missing:season-${season.seasonNumber}`);
       continue;
