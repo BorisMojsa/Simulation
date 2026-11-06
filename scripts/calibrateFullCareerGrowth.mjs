@@ -88,7 +88,7 @@ Usage:
 
 Options:
   --mode <mode>       pilot | controlled | trajectories | full-careers | full |
-                      holdout | paired | witness-replay | assess
+                      holdout | paired | paired-engine-side | witness-replay | assess
   --policy <id>       mixed-default | appropriate-minutes-loan | elite-bench | discovery
   --n <count>         Override the selected cohort size
   --label <name>      Stable output directory label (default: UTC timestamp)
@@ -115,6 +115,26 @@ function parseArgs(argv) {
   }
   if (!VALID_POLICIES.includes(args.policy)) throw new Error(`Unknown policy: ${args.policy}`);
   return args;
+}
+
+/** Fixed 24-pair schedule shared by identity controls and base/final engine sides. */
+function pairedCareerSchedule(seedRoot, n = 24) {
+  const policies = ["mixed-default", "appropriate-minutes-loan"];
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const policy = policies[i % policies.length];
+    const positionHint = POSITIONS[i % POSITIONS.length];
+    const seed = hashSeed(`${seedRoot}:career-pair:${policy}:${positionHint}:${i}`);
+    rows.push({
+      pairIndex: i,
+      index: 1000 + i,
+      policy,
+      positionHint,
+      seed,
+      cohort: `paired-${policy}`,
+    });
+  }
+  return rows;
 }
 
 function safeLabel(value) {
@@ -889,28 +909,23 @@ function runEnvironmentPaired(seedRoot, n) {
 }
 
 /**
- * Fixed 24 full-career pairs spanning roles and both ordinary / suitable-minutes
- * policies. Twins share the pre-season bootstrap (attributes, traits, RNG) and
- * diverge only by policy label. Records the source revision on the final side.
+ * Historical same-engine repeatability control. Useful, but does NOT satisfy
+ * the accepted-base / final engine comparison gate (see paired-base-final).
  */
-function runPairedNaturalCareers(seedRoot, n = 24) {
-  const policies = ["mixed-default", "appropriate-minutes-loan"];
+function runPairedNaturalCareerIdentity(seedRoot, n = 24) {
   const rows = [];
   const revision = gitRevision();
-  for (let i = 0; i < n; i++) {
-    const policy = policies[i % policies.length];
-    const positionHint = POSITIONS[i % POSITIONS.length];
-    const seed = hashSeed(`${seedRoot}:career-pair:${policy}:${positionHint}:${i}`);
-    const left = runNaturalCareer(1000 + i, seed, policy, `paired-${policy}`);
-    const right = runNaturalCareer(1000 + i, seed, policy, `paired-${policy}`);
+  for (const spec of pairedCareerSchedule(seedRoot, n)) {
+    const left = runNaturalCareer(spec.index, spec.seed, spec.policy, spec.cohort);
+    const right = runNaturalCareer(spec.index, spec.seed, spec.policy, spec.cohort);
     rows.push({
-      id: `career-pair-${i}`,
+      id: `career-pair-${spec.pairIndex}`,
       kind: "paired-natural-career-identity",
       scope: "full-career",
-      policy,
-      positionHint,
-      seed,
-      index: 1000 + i,
+      policy: spec.policy,
+      positionHint: spec.positionHint,
+      seed: spec.seed,
+      index: spec.index,
       sourceRevision: revision,
       left: {
         id: left.id,
@@ -935,14 +950,38 @@ function runPairedNaturalCareers(seedRoot, n = 24) {
   return rows;
 }
 
+/**
+ * One side of the accepted-base / final paired study. Writes full careers for
+ * the shared 24-pair schedule under the current engine root.
+ */
+function runPairedEngineSideCareers(seedRoot, n = 24) {
+  const engineIdentity = process.env.FIX11_ENGINE_IDENTITY || gitRevision();
+  const careers = [];
+  for (const spec of pairedCareerSchedule(seedRoot, n)) {
+    const career = runNaturalCareer(spec.index, spec.seed, spec.policy, spec.cohort);
+    career.manifest = {
+      ...(career.manifest || {}),
+      index: spec.index,
+      pairIndex: spec.pairIndex,
+      seed: spec.seed,
+      policy: spec.policy,
+      positionHint: spec.positionHint,
+      engineIdentity,
+      study: "paired-natural-career-base-final",
+    };
+    careers.push(career);
+  }
+  return careers;
+}
+
 function runPaired(seedRoot, n) {
   const envCount = Math.min(n, 24);
   const careerCount = Math.min(n, 24);
   return {
     environmentYear: runEnvironmentPaired(seedRoot, envCount),
-    naturalCareers: runPairedNaturalCareers(seedRoot, careerCount),
+    naturalCareers: runPairedNaturalCareerIdentity(seedRoot, careerCount),
     note:
-      "environmentYear is a one-year environmentMultiplier treatment. naturalCareers are 24 fixed full-career identity pairs (same seed/policy twice) spanning roles and both ordinary and suitable-minutes policies. Accepted-base packaging comparison uses recorded predecessor run directories when present.",
+      "environmentYear is a one-year environmentMultiplier treatment. naturalCareers here are same-engine identity controls only. The accepted-base/final comparison lives in qa/fix11-runs/paired-base-final (kind paired-natural-career-base-final).",
   };
 }
 
@@ -1444,6 +1483,21 @@ function main() {
     }
   }
 
+  if (args.mode === "paired-engine-side") {
+    const pairCount = args.n ?? Math.min(24, plan.cohorts.pairedCareers);
+    const sideCareers = runPairedEngineSideCareers(plan.seedDeclarations.paired.root, pairCount);
+    for (const row of sideCareers) {
+      careers.push(row);
+      writeJson(join(runDir, "careers", `${safeLabel(row.id)}.json`), row);
+    }
+    writeJson(join(runDir, "paired", "manifest.json"), {
+      kind: "paired-engine-side",
+      engineIdentity: process.env.FIX11_ENGINE_IDENTITY || gitRevision(),
+      naturalCareerCount: sideCareers.length,
+      sourceRevision: gitRevision(),
+    });
+  }
+
   if (["pilot", "paired", "full"].includes(args.mode)) {
     const pairCount = args.n ?? (args.mode === "pilot" ? plan.cohorts.pilot.paired : Math.min(24, plan.cohorts.pairedCareers));
     paired = runPaired(plan.seedDeclarations.paired.root, pairCount);
@@ -1452,6 +1506,7 @@ function main() {
       environmentYearCount: paired.environmentYear.length,
       naturalCareerCount: paired.naturalCareers.length,
       sourceRevision: gitRevision(),
+      historicalIdentityControl: true,
     });
     for (const row of paired.environmentYear) writeJson(join(runDir, "paired", `${row.id}.json`), row);
     for (const row of paired.naturalCareers) writeJson(join(runDir, "paired", `${row.id}.json`), row);

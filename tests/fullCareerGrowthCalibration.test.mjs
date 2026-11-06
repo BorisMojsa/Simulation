@@ -1285,3 +1285,86 @@ test("F07b ordinary uneventful match rating is near-neutral vs the shared expect
   const obs = computePerformanceObservation(rating, PERFORMANCE.defaultExpectedRating, PERFORMANCE.residualScale.default);
   assert.ok(obs.observation > -0.05, `ordinary draw observation ${obs.observation} must not look systematically poor`);
 });
+
+/* ================================================================== */
+/* Package assessor negatives (R5) — not part of F00 case files         */
+/* ================================================================== */
+
+test("package assessor rejects -0.3 after-attribute mutation, missing attr, and threshold discrepancy", async () => {
+  const {
+    __test: reviewTest,
+    assessPackageEvidence,
+  } = await import("../scripts/lib/fix11ReviewEvidence.mjs");
+  const snapPath = join(HERE, "..", "qa", "fix11-runs", "witnesses", "natural-99", "snapshot-natural-99.json");
+  assert.ok(existsSync(snapPath), "natural-99 snapshot fixture required");
+  const original = readFileSync(snapPath, "utf8");
+  try {
+    const snap = JSON.parse(original);
+    const attrs = snap.afterSnapshot.player.attributes;
+    for (const key of Object.keys(attrs)) attrs[key] = Number(attrs[key]) - 0.3;
+    // Keep cached OVR unchanged — substantive gate must still fail.
+    writeFileSync(snapPath, `${JSON.stringify(snap)}\n`);
+    const mutated = await reviewTest.assessNatural99(join(HERE, ".."));
+    assert.equal(mutated.ok, false);
+    assert.ok(
+      mutated.problems.some((p) =>
+        ["recomputed-after-below-threshold", "after-cache-mismatch"].includes(p)
+      ),
+      mutated.problems.join(",")
+    );
+
+    // Missing canonical attribute
+    const missingAttr = JSON.parse(original);
+    const keys = Object.keys(missingAttr.afterSnapshot.player.attributes);
+    delete missingAttr.afterSnapshot.player.attributes[keys[0]];
+    writeFileSync(snapPath, `${JSON.stringify(missingAttr)}\n`);
+    const missing = await reviewTest.assessNatural99(join(HERE, ".."));
+    assert.equal(missing.ok, false);
+    assert.ok(missing.problems.some((p) => p.startsWith("after-attr-missing:") || p === "recomputed-after-null"));
+
+    // Small threshold-crossing discrepancy: nudge cached after below 98.5 while attrs stay valid.
+    const threshold = JSON.parse(original);
+    threshold.afterSnapshot.player.baseOverallRaw = 98.4;
+    threshold.afterSnapshot.player.currentOverallRaw = 98.4;
+    writeFileSync(snapPath, `${JSON.stringify(threshold)}\n`);
+    const discrepancy = await reviewTest.assessNatural99(join(HERE, ".."));
+    assert.equal(discrepancy.ok, false);
+    assert.ok(
+      discrepancy.problems.some((p) =>
+        ["after-cache-mismatch", "snapshot-threshold-invalid"].includes(p)
+      )
+    );
+  } finally {
+    writeFileSync(snapPath, original);
+  }
+  // Restored fixture must still assess cleanly in isolation.
+  const restored = await reviewTest.assessNatural99(join(HERE, ".."));
+  assert.equal(restored.ok, true, restored.problems?.join(","));
+  void assessPackageEvidence;
+});
+
+test("package assessor rejects same-engine identity pairs and a missing holdout trajectory", async () => {
+  const { __test: reviewTest } = await import("../scripts/lib/fix11ReviewEvidence.mjs");
+  const identityOnly = reviewTest.assessBaseFinalPaired(join(HERE, "..", "qa", "fix11-runs", "paired-rereview"));
+  assert.equal(identityOnly.ok, false);
+  assert.ok(identityOnly.problems.some((p) => p.includes("paired-same-engine") || p.includes("paired-kind")));
+
+  const holdoutDir = join(HERE, "..", "qa", "fix11-runs", "holdout-final");
+  const traj = join(holdoutDir, "trajectories", "trajectory-500000.json");
+  const original = readFileSync(traj);
+  try {
+    rmSync(traj);
+    const plan = JSON.parse(readFileSync(join(HERE, "..", "qa", "fix11-runs", "plan.json"), "utf8"));
+    // Inline minimal assess via calibrationProvenance on a temp package-shaped root is heavy;
+    // call the holdout helper through assessHoldoutAndPaired after removing the file.
+    const assessed = reviewTest.assessHoldoutAndPaired(join(HERE, ".."));
+    assert.equal(assessed.ok, false);
+    assert.ok(
+      assessed.problems.some((p) => p.includes("holdout-missing:trajectory-500000") || p.includes("holdout-count")),
+      assessed.problems.join(",")
+    );
+    void plan;
+  } finally {
+    writeFileSync(traj, original);
+  }
+});

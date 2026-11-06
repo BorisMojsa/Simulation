@@ -97,6 +97,7 @@ const qaSelections = [
   "discovery-plus7-250",
   "holdout-final",
   "paired-rereview",
+  "paired-base-final",
   "r6-natural99-decomposition.json",
   "CLOSURE.md",
   "witnesses",
