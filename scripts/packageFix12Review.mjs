@@ -41,9 +41,9 @@ const git = (args) =>
 
 const full = git(["rev-parse", "HEAD"]).stdout.trim();
 const short = full.slice(0, 8);
-const dirty = git(["status", "--short"]).stdout.trim();
-if (dirty) {
-  console.error("Refusing to package with uncommitted changes:\n" + dirty);
+const dirtyTracked = git(["status", "--short", "--untracked-files=no"]).stdout.trim();
+if (dirtyTracked) {
+  console.error("Refusing to package with uncommitted tracked changes:\n" + dirtyTracked);
   process.exit(1);
 }
 
