@@ -53,7 +53,9 @@ export function assessPackageEvidence({
 }) {
   const problems = [];
   if (!manifest?.finalSha) problems.push("manifest missing finalSha");
-  if (!manifest?.baseSha) problems.push("manifest missing baseSha");
+  if (!manifest?.baseSha && !manifest?.acceptedBaseSha) {
+    problems.push("manifest missing baseSha/acceptedBaseSha");
+  }
   if (manifest?.remoteSha && manifest.remoteSha !== manifest.finalSha) {
     problems.push("remoteSha != finalSha");
   }
