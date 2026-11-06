@@ -415,7 +415,271 @@ function findRunDir(packageRoot, preferredNames = []) {
   return null;
 }
 
-function assessHoldoutRaw(holdoutDir, plan) {
+function requireFiniteNumber(value, label, problems) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    problems.push(label);
+    return null;
+  }
+  return value;
+}
+
+function requireInteger(value, label, problems) {
+  if (!Number.isInteger(value)) {
+    problems.push(label);
+    return null;
+  }
+  return value;
+}
+
+function requireBoolean(value, label, problems) {
+  if (typeof value !== "boolean") {
+    problems.push(label);
+    return null;
+  }
+  return value;
+}
+
+function summarizeRounded(values) {
+  const finite = values.filter(Number.isFinite).sort((a, b) => a - b);
+  const round = (value) => (value == null ? null : Number(value.toFixed(4)));
+  if (!finite.length) {
+    return { n: 0, min: null, mean: null, median: null, p10: null, p90: null, p95: null, p99: null, max: null };
+  }
+  const at = (q) => {
+    const index = (finite.length - 1) * q;
+    const low = Math.floor(index);
+    const high = Math.ceil(index);
+    if (low === high) return finite[low];
+    return finite[low] * (high - index) + finite[high] * (index - low);
+  };
+  return {
+    n: finite.length,
+    min: finite[0],
+    mean: round(finite.reduce((sum, value) => sum + value, 0) / finite.length),
+    median: round(at(0.5)),
+    p10: round(at(0.1)),
+    p90: round(at(0.9)),
+    p95: round(at(0.95)),
+    p99: round(at(0.99)),
+    max: finite[finite.length - 1],
+  };
+}
+
+/**
+ * Recompute trajectory accounting counters from history only.
+ * Missing/null reconciliation values fail rather than coerce to zero.
+ */
+export function recomputeHoldoutAccounting(history) {
+  const problems = [];
+  let reconciliationFailures = 0;
+  let ordinaryCapFailures = 0;
+  let breakthroughCapFailures = 0;
+  if (!Array.isArray(history) || history.length === 0) {
+    return {
+      ok: false,
+      problems: ["holdout-history-missing"],
+      reconciliationFailures: null,
+      ordinaryCapFailures: null,
+      breakthroughCapFailures: null,
+    };
+  }
+  for (let i = 0; i < history.length; i++) {
+    const row = history[i];
+    const rec = row?.reconciliation;
+    if (!rec || typeof rec !== "object") {
+      problems.push(`holdout-history-reconciliation-missing:${i}`);
+      continue;
+    }
+    if (typeof rec.ok !== "boolean") problems.push(`holdout-history-reconciliation-ok-invalid:${i}`);
+    const gross = requireFiniteNumber(rec.grossPositive, `holdout-history-grossPositive-invalid:${i}`, problems);
+    const receipt = requireFiniteNumber(rec.receipt, `holdout-history-receipt-invalid:${i}`, problems);
+    const difference = requireFiniteNumber(rec.difference, `holdout-history-difference-invalid:${i}`, problems);
+    if (gross == null || receipt == null || difference == null) continue;
+    if (!near(difference, receipt - gross)) problems.push(`holdout-history-difference-mismatch:${i}`);
+    const reconciled = Math.abs(difference) <= EPSILON;
+    if (rec.ok !== reconciled) problems.push(`holdout-history-reconciliation-flag-mismatch:${i}`);
+    if (!reconciled) reconciliationFailures++;
+    if (typeof row.breakthrough !== "boolean") {
+      problems.push(`holdout-history-breakthrough-invalid:${i}`);
+      continue;
+    }
+    const cap = row.breakthrough ? 9 : 8;
+    if (gross > cap + EPSILON) {
+      if (row.breakthrough) breakthroughCapFailures++;
+      else ordinaryCapFailures++;
+    }
+  }
+  return {
+    ok: problems.length === 0,
+    problems,
+    reconciliationFailures,
+    ordinaryCapFailures,
+    breakthroughCapFailures,
+  };
+}
+
+/**
+ * Validate one holdout trajectory against the runTrajectory() schema.
+ * Test-only callers may pass `{ enforceCanonicalSeedRange: false }`.
+ */
+export function validateHoldoutTrajectoryRecord(row, { filename = null, enforceCanonicalSeedRange = true } = {}) {
+  const problems = [];
+  if (!row || typeof row !== "object") return { ok: false, problems: ["holdout-row-not-object"] };
+
+  const id = typeof row.id === "string" ? row.id : null;
+  if (!id) problems.push("holdout-id-missing");
+  const seed = requireInteger(row.seed, "holdout-seed-invalid", problems);
+  if (id && seed != null && id !== `trajectory-${seed}`) problems.push("holdout-id-seed-mismatch");
+  if (filename) {
+    const expectedName = `trajectory-${seed}.json`;
+    if (seed != null && filename !== expectedName) problems.push("holdout-filename-seed-mismatch");
+    if (id && filename !== `${id}.json`) problems.push("holdout-filename-id-mismatch");
+  }
+  if (enforceCanonicalSeedRange && seed != null) {
+    if (seed < HOLDOUT_SEED_START || seed >= HOLDOUT_SEED_END_EXCLUSIVE) {
+      problems.push("holdout-seed-out-of-range");
+    }
+  }
+  if (row.kind !== "synthetic-trajectory") problems.push("holdout-kind-mismatch");
+  if (row.cohort !== "holdout") problems.push("holdout-cohort-mismatch");
+  if (typeof row.position !== "string" || !row.position) problems.push("holdout-position-invalid");
+
+  const startAge = requireInteger(row.startAge, "holdout-startAge-invalid", problems);
+  const startRaw = requireFiniteNumber(row.startRaw, "holdout-startRaw-invalid", problems);
+  const peakRaw = requireFiniteNumber(row.peakRaw, "holdout-peakRaw-invalid", problems);
+  requireBoolean(row.everDisplayed99, "holdout-everDisplayed99-invalid", problems);
+  requireBoolean(row.everRaw99, "holdout-everRaw99-invalid", problems);
+  requireBoolean(row.displayed99Before25, "holdout-displayed99Before25-invalid", problems);
+
+  if (!row.checks || typeof row.checks !== "object") {
+    problems.push("holdout-checks-missing");
+  } else {
+    for (const key of ["reconciliationFailures", "ordinaryCapFailures", "breakthroughCapFailures"]) {
+      if (!Number.isInteger(row.checks[key]) || row.checks[key] < 0) {
+        problems.push(`holdout-checks-${key}-invalid`);
+      }
+    }
+  }
+
+  if (!Array.isArray(row.history)) {
+    problems.push("holdout-history-missing");
+    return { ok: false, problems, accounting: null, derived: null };
+  }
+  if (row.history.length === 0) {
+    problems.push("holdout-history-empty");
+    return { ok: false, problems, accounting: null, derived: null };
+  }
+
+  const ageLimit = String(row.position || "").toUpperCase() === "GK" ? 42 : 40;
+  if (startAge != null) {
+    const expectedHorizon = Math.min(24, ageLimit - startAge);
+    if (expectedHorizon > 0 && row.history.length !== expectedHorizon) {
+      problems.push(`holdout-history-horizon:${row.history.length}!=${expectedHorizon}`);
+    }
+  }
+
+  for (let i = 0; i < row.history.length; i++) {
+    const step = row.history[i];
+    if (!step || typeof step !== "object") {
+      problems.push(`holdout-history-row-invalid:${i}`);
+      continue;
+    }
+    const age = requireInteger(step.age, `holdout-history-age-invalid:${i}`, problems);
+    const rawBefore = requireFiniteNumber(step.rawBefore, `holdout-history-rawBefore-invalid:${i}`, problems);
+    const rawAfter = requireFiniteNumber(step.rawAfter, `holdout-history-rawAfter-invalid:${i}`, problems);
+    const rawDelta = requireFiniteNumber(step.rawDelta, `holdout-history-rawDelta-invalid:${i}`, problems);
+    if (typeof step.displayedDelta !== "number" || !Number.isInteger(step.displayedDelta)) {
+      problems.push(`holdout-history-displayedDelta-invalid:${i}`);
+    }
+    if (typeof step.breakthrough !== "boolean") problems.push(`holdout-history-breakthrough-invalid:${i}`);
+    if (i === 0) {
+      if (startAge != null && age != null && age !== startAge + 1) {
+        problems.push("holdout-history-first-age-mismatch");
+      }
+      if (startRaw != null && rawBefore != null && !near(rawBefore, startRaw)) {
+        problems.push("holdout-history-startRaw-mismatch");
+      }
+    } else {
+      const prev = row.history[i - 1];
+      if (Number.isInteger(prev?.age) && age != null && age !== prev.age + 1) {
+        problems.push(`holdout-history-age-continuity:${i}`);
+      }
+      if (Number.isFinite(prev?.rawAfter) && rawBefore != null && !near(rawBefore, prev.rawAfter)) {
+        problems.push(`holdout-history-endpoint-continuity:${i}`);
+      }
+    }
+    if (rawBefore != null && rawAfter != null && rawDelta != null && !near(rawDelta, rawAfter - rawBefore)) {
+      problems.push(`holdout-history-rawDelta-mismatch:${i}`);
+    }
+    if (rawBefore != null && rawAfter != null && Number.isInteger(step.displayedDelta)) {
+      const derived = displayedGainFromRaw(rawBefore, rawAfter);
+      if (derived !== step.displayedDelta) problems.push(`holdout-history-displayedDelta-mismatch:${i}`);
+    }
+  }
+
+  const accounting = recomputeHoldoutAccounting(row.history);
+  problems.push(...accounting.problems);
+  if (row.checks && accounting.ok) {
+    if (row.checks.reconciliationFailures !== accounting.reconciliationFailures) {
+      problems.push("holdout-checks-reconciliation-mismatch");
+    }
+    if (row.checks.ordinaryCapFailures !== accounting.ordinaryCapFailures) {
+      problems.push("holdout-checks-ordinary-cap-mismatch");
+    }
+    if (row.checks.breakthroughCapFailures !== accounting.breakthroughCapFailures) {
+      problems.push("holdout-checks-breakthrough-cap-mismatch");
+    }
+  }
+
+  const raws = row.history.map((step) => Number(step.rawAfter)).filter(Number.isFinite);
+  const derivedPeak = raws.length ? Math.max(...raws) : null;
+  const derivedEverDisplayed99 = raws.some((raw) => Math.round(raw) === 99);
+  const derivedEverRaw99 = raws.some((raw) => raw >= 99);
+  const derivedDisplayed99Before25 = row.history.some(
+    (step) => Number.isInteger(step.age) && step.age < 25 && Math.round(Number(step.rawAfter)) === 99
+  );
+  if (peakRaw != null && derivedPeak != null && !near(peakRaw, derivedPeak)) {
+    problems.push("holdout-peakRaw-mismatch");
+  }
+  if (typeof row.everDisplayed99 === "boolean" && row.everDisplayed99 !== derivedEverDisplayed99) {
+    problems.push("holdout-everDisplayed99-mismatch");
+  }
+  if (typeof row.everRaw99 === "boolean" && row.everRaw99 !== derivedEverRaw99) {
+    problems.push("holdout-everRaw99-mismatch");
+  }
+  if (typeof row.displayed99Before25 === "boolean" && row.displayed99Before25 !== derivedDisplayed99Before25) {
+    problems.push("holdout-displayed99Before25-mismatch");
+  }
+
+  return {
+    ok: problems.length === 0,
+    problems,
+    accounting: accounting.ok
+      ? {
+          reconciliationFailures: accounting.reconciliationFailures,
+          ordinaryCapFailures: accounting.ordinaryCapFailures,
+          breakthroughCapFailures: accounting.breakthroughCapFailures,
+        }
+      : null,
+    derived: {
+      peakRaw: derivedPeak,
+      everDisplayed99: derivedEverDisplayed99,
+      everRaw99: derivedEverRaw99,
+      displayed99Before25: derivedDisplayed99Before25,
+    },
+  };
+}
+
+function sourceFileSha(packageRoot, rel) {
+  const candidates = [
+    join(packageRoot, "source", rel),
+    join(packageRoot, rel),
+  ];
+  const path = candidates.find((candidate) => existsSync(candidate));
+  return path ? sha256File(path) : null;
+}
+
+function assessHoldoutRaw(holdoutDir, plan, packageRoot = null) {
   const problems = [];
   const trajDir = join(holdoutDir, "trajectories");
   if (!existsSync(trajDir)) return { ok: false, problems: ["holdout-trajectories-dir-missing"], count: 0 };
@@ -429,52 +693,65 @@ function assessHoldoutRaw(holdoutDir, plan) {
   let reconciliationFailures = 0;
   let ordinaryCapFailures = 0;
   let breakthroughCapFailures = 0;
-  let malformed = 0;
+  const peaks = [];
+  let everDisplayed99 = 0;
+  let everRaw99 = 0;
+  let validated = 0;
+
   for (const name of files) {
     const parsed = readJson(join(trajDir, name));
     if (!parsed.ok) {
-      malformed++;
       problems.push(`holdout-malformed:${name}`);
       continue;
     }
     const row = parsed.value;
-    const id = row.id || name.replace(/\.json$/, "");
+    const validatedRow = validateHoldoutTrajectoryRecord(row, { filename: name });
+    if (!validatedRow.ok) {
+      for (const problem of validatedRow.problems.slice(0, 8)) {
+        problems.push(`${problem}:${name}`);
+      }
+      if (validatedRow.problems.length > 8) {
+        problems.push(`holdout-row-problems-truncated:${name}:${validatedRow.problems.length}`);
+      }
+      continue;
+    }
+    validated++;
+    const id = row.id;
     if (seen.has(id)) problems.push(`holdout-duplicate:${id}`);
     seen.add(id);
-    const seed = Number(row.seed);
-    if (!Number.isInteger(seed)) problems.push(`holdout-seed-missing:${id}`);
-    else {
-      if (seeds.has(seed)) problems.push(`holdout-seed-duplicate:${seed}`);
-      seeds.add(seed);
-      if (seed < HOLDOUT_SEED_START || seed >= HOLDOUT_SEED_END_EXCLUSIVE) {
-        problems.push(`holdout-seed-out-of-range:${seed}`);
-      }
-    }
-    if (row.cohort !== "holdout") problems.push(`holdout-cohort-mismatch:${id}`);
-    if (row.kind !== "synthetic-trajectory") problems.push(`holdout-kind-mismatch:${id}`);
-    reconciliationFailures += Number(row.checks?.reconciliationFailures || 0);
-    ordinaryCapFailures += Number(row.checks?.ordinaryCapFailures || 0);
-    breakthroughCapFailures += Number(row.checks?.breakthroughCapFailures || 0);
+    seeds.add(row.seed);
+    reconciliationFailures += validatedRow.accounting.reconciliationFailures;
+    ordinaryCapFailures += validatedRow.accounting.ordinaryCapFailures;
+    breakthroughCapFailures += validatedRow.accounting.breakthroughCapFailures;
+    peaks.push(validatedRow.derived.peakRaw);
+    if (validatedRow.derived.everDisplayed99) everDisplayed99++;
+    if (validatedRow.derived.everRaw99) everRaw99++;
   }
+
   for (const id of expectedIds) {
     if (!seen.has(id)) problems.push(`holdout-missing:${id}`);
   }
   if (files.length !== HOLDOUT_EXPECTED_COUNT) {
     problems.push(`holdout-count-mismatch:${files.length}`);
   }
+  if (validated !== HOLDOUT_EXPECTED_COUNT) {
+    problems.push(`holdout-validated-count-mismatch:${validated}`);
+  }
+
   const summary = readJson(join(holdoutDir, "summary.json"));
+  const peakSummary = summarizeRounded(peaks);
   if (!summary.ok) problems.push("holdout-summary-missing");
   else {
     const advertised = Number(summary.value?.counts?.trajectories);
     if (advertised !== HOLDOUT_EXPECTED_COUNT) problems.push(`holdout-summary-count:${advertised}`);
     if (summary.value?.mode !== "holdout") problems.push("holdout-summary-mode");
-    if (Number(summary.value?.checks?.reconciliationFailures) !== reconciliationFailures) {
+    if (summary.value?.checks?.reconciliationFailures !== reconciliationFailures) {
       problems.push("holdout-summary-reconciliation-mismatch");
     }
-    if (Number(summary.value?.checks?.ordinaryCapFailures) !== ordinaryCapFailures) {
+    if (summary.value?.checks?.ordinaryCapFailures !== ordinaryCapFailures) {
       problems.push("holdout-summary-ordinary-cap-mismatch");
     }
-    if (Number(summary.value?.checks?.breakthroughCapFailures) !== breakthroughCapFailures) {
+    if (summary.value?.checks?.breakthroughCapFailures !== breakthroughCapFailures) {
       problems.push("holdout-summary-breakthrough-cap-mismatch");
     }
     if (summary.value?.assessment?.ok === false) problems.push("holdout-assessment-failed");
@@ -486,18 +763,54 @@ function assessHoldoutRaw(holdoutDir, plan) {
     ) {
       problems.push("holdout-plan-range-mismatch");
     }
-    // Disjointness: holdout seeds must not appear in the calibration root declaration.
     if (plan?.seedDeclarations?.holdout?.mayUseDuringTuning === true) {
       problems.push("holdout-may-use-during-tuning");
     }
+    const advertisedPeak = summary.value?.syntheticTrajectories?.peakRaw || {};
+    if (advertisedPeak.n !== peakSummary.n) problems.push("holdout-summary-peak-n-mismatch");
+    if (advertisedPeak.mean !== peakSummary.mean) problems.push("holdout-summary-peak-mean-mismatch");
+    if (advertisedPeak.median !== peakSummary.median) problems.push("holdout-summary-peak-median-mismatch");
+    const displayedRate = validated ? everDisplayed99 / validated : null;
+    const rawRate = validated ? everRaw99 / validated : null;
+    if (summary.value?.syntheticTrajectories?.everDisplayed99Rate !== displayedRate) {
+      problems.push("holdout-summary-displayed99-rate-mismatch");
+    }
+    if (summary.value?.syntheticTrajectories?.everRaw99Rate !== rawRate) {
+      problems.push("holdout-summary-raw99-rate-mismatch");
+    }
+
+    const hashes = summary.value?.hashes || {};
+    if (packageRoot) {
+      for (const [key, rel] of [
+        ["developmentConfig", "js/config/playerDevelopmentConfig.js"],
+        ["developmentModel", "js/simulation/playerDevelopmentModel.js"],
+        ["seasonSimulator", "js/simulation/seasonSimulator.js"],
+      ]) {
+        const actual = sourceFileSha(packageRoot, rel);
+        if (!hashes[key] || !actual || hashes[key] !== actual) {
+          problems.push(`holdout-fingerprint-mismatch:${key}`);
+        }
+      }
+      // Driver may be an earlier calibration revision; require the recorded fingerprint to remain present.
+      if (typeof hashes.driver !== "string" || !/^[0-9a-f]{64}$/.test(hashes.driver)) {
+        problems.push("holdout-driver-fingerprint-missing");
+      }
+      if (typeof summary.value?.gitRevision !== "string" || summary.value.gitRevision.length < 7) {
+        problems.push("holdout-historical-git-revision-missing");
+      }
+    }
   }
+
   return {
     ok: problems.length === 0,
     problems,
     count: seen.size,
+    validated,
     reconciliationFailures,
     ordinaryCapFailures,
     breakthroughCapFailures,
+    peakSummary,
+    historicalDriverFingerprintRetained: true,
   };
 }
 
@@ -649,7 +962,7 @@ function assessHoldoutAndPaired(packageRoot) {
 
   const holdoutDir = findRunDir(packageRoot, ["holdout-final"]);
   const holdout = holdoutDir
-    ? assessHoldoutRaw(holdoutDir, plan)
+    ? assessHoldoutRaw(holdoutDir, plan, packageRoot)
     : { ok: false, problems: ["holdout-5000-missing"], count: 0 };
   problems.push(...holdout.problems);
 
@@ -739,7 +1052,11 @@ export const __test = {
   DISPLAYED_99_THRESHOLD,
   assessNatural99,
   assessHoldoutAndPaired,
+  assessHoldoutRaw,
   assessBaseFinalPaired,
+  validateHoldoutTrajectoryRecord,
+  recomputeHoldoutAccounting,
   summarizeCareerSide,
   displayedGainFromRaw,
+  summarizeRounded,
 };

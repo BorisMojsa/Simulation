@@ -1287,24 +1287,166 @@ test("F07b ordinary uneventful match rating is near-neutral vs the shared expect
 });
 
 /* ================================================================== */
-/* Package assessor negatives (R5) — not part of F00 case files         */
+/* Package assessor negatives (R5) — tracked-source self-contained      */
 /* ================================================================== */
 
+function uniformOutfieldAttrs(level) {
+  return {
+    Speed: level,
+    Passing: level,
+    Shooting: level,
+    Defending: level,
+    Physicality: level,
+    Dribbling: level,
+  };
+}
+
+function writeTestNatural99Package(root) {
+  const beforeRaw = 97.6;
+  const afterRaw = 98.7;
+  const seasons = [];
+  for (let i = 1; i <= 17; i++) {
+    seasons.push({
+      seasonNumber: i,
+      age: 15 + i,
+      rawBefore: i === 17 ? beforeRaw : 70 + i * 0.5,
+      rawAfter: i === 17 ? afterRaw : 70.4 + i * 0.5,
+      rawDelta: i === 17 ? afterRaw - beforeRaw : 0.4,
+      displayedDelta: i === 17 ? 1 : 0,
+      displayed99: i === 17,
+      components: {
+        learning: 0.1,
+        recognition: 0,
+        positiveShock: 0.05,
+        ageing: 0,
+        shock: 0.05,
+        restoration: 0,
+      },
+      minutes: 2000,
+    });
+  }
+  const career = {
+    id: "cid_85a7b61e",
+    everDisplayed99: true,
+    seasons,
+  };
+  const world = Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`k${i}`, true]));
+  const beforePlayer = {
+    position: "CM",
+    baseOverallRaw: beforeRaw,
+    currentOverallRaw: beforeRaw,
+    attributes: uniformOutfieldAttrs(beforeRaw),
+    seasons: [{ seasonNumber: 16 }],
+  };
+  const afterPlayer = {
+    position: "CM",
+    baseOverallRaw: afterRaw,
+    currentOverallRaw: afterRaw,
+    attributes: uniformOutfieldAttrs(afterRaw),
+    seasons: [{ seasonNumber: 16 }, { seasonNumber: 17 }],
+  };
+  const snapshot = {
+    beforeSnapshot: { player: beforePlayer, world },
+    afterSnapshot: { player: afterPlayer, world },
+  };
+  const index = {
+    schema: "fix11-witness-index-v1",
+    witnesses: [
+      {
+        id: "cid_85a7b61e",
+        file: "natural-99/career.json",
+        expected: {
+          careerId: "cid_85a7b61e",
+          seasonNumber: 17,
+          rawBefore: beforeRaw,
+          rawAfter: afterRaw,
+          displayed99: true,
+          everDisplayed99: true,
+        },
+      },
+      { id: "cid_2369bc62", file: "plus6-plus7/career-plus6.json", expected: { careerId: "cid_2369bc62" } },
+      { id: "cid_2e1ba005", file: "plus6-plus7/career-plus7.json", expected: { careerId: "cid_2e1ba005" } },
+    ],
+  };
+  const witnessRoot = join(root, "qa", "fix11-runs", "witnesses", "natural-99");
+  mkdirSync(witnessRoot, { recursive: true });
+  mkdirSync(join(root, "js", "config"), { recursive: true });
+  writeFileSync(join(witnessRoot, "career.json"), `${JSON.stringify(career)}\n`);
+  writeFileSync(join(witnessRoot, "snapshot-natural-99.json"), `${JSON.stringify(snapshot)}\n`);
+  writeFileSync(join(root, "qa", "fix11-runs", "witnesses", "index.json"), `${JSON.stringify(index)}\n`);
+  // Real weights from tracked source — not packaged as a natural-99 witness.
+  writeFileSync(
+    join(root, "js", "config", "playerDevelopmentConfig.js"),
+    readFileSync(join(HERE, "..", "js", "config", "playerDevelopmentConfig.js"))
+  );
+  return { careerPath: join(witnessRoot, "career.json"), snapshotPath: join(witnessRoot, "snapshot-natural-99.json") };
+}
+
+function makeValidHoldoutHistory({ startAge = 20, startRaw = 70, position = "CM" } = {}) {
+  const ageLimit = position === "GK" ? 42 : 40;
+  const horizon = Math.min(24, ageLimit - startAge);
+  const history = [];
+  let raw = startRaw;
+  for (let i = 0; i < horizon; i++) {
+    const rawBefore = raw;
+    const rawAfter = rawBefore + 0.5;
+    history.push({
+      age: startAge + 1 + i,
+      rawBefore,
+      rawAfter,
+      rawDelta: rawAfter - rawBefore,
+      displayedDelta: Math.round(rawAfter) - Math.round(rawBefore),
+      breakthrough: false,
+      reconciliation: {
+        ok: true,
+        grossPositive: 0.5,
+        receipt: 0.5,
+        difference: 0,
+      },
+    });
+    raw = rawAfter;
+  }
+  return history;
+}
+
+function makeValidHoldoutRow(seed = 500000) {
+  const position = "CM";
+  const startAge = 20;
+  const startRaw = 70;
+  const history = makeValidHoldoutHistory({ startAge, startRaw, position });
+  const raws = history.map((row) => row.rawAfter);
+  return {
+    id: `trajectory-${seed}`,
+    kind: "synthetic-trajectory",
+    cohort: "holdout",
+    seed,
+    position,
+    startAge,
+    startRaw,
+    peakRaw: Math.max(...raws),
+    everDisplayed99: false,
+    everRaw99: false,
+    displayed99Before25: false,
+    checks: { reconciliationFailures: 0, ordinaryCapFailures: 0, breakthroughCapFailures: 0 },
+    history,
+  };
+}
+
 test("package assessor rejects -0.3 after-attribute mutation, missing attr, and threshold discrepancy", async () => {
-  const {
-    __test: reviewTest,
-    assessPackageEvidence,
-  } = await import("../scripts/lib/fix11ReviewEvidence.mjs");
-  const snapPath = join(HERE, "..", "qa", "fix11-runs", "witnesses", "natural-99", "snapshot-natural-99.json");
-  assert.ok(existsSync(snapPath), "natural-99 snapshot fixture required");
-  const original = readFileSync(snapPath, "utf8");
+  const { __test: reviewTest } = await import("../scripts/lib/fix11ReviewEvidence.mjs");
+  const root = mkdtempSync(join(tmpdir(), "fix11-n99-"));
   try {
+    const { snapshotPath } = writeTestNatural99Package(root);
+    const intact = await reviewTest.assessNatural99(root);
+    assert.equal(intact.ok, true, intact.problems?.join(","));
+
+    const original = readFileSync(snapshotPath, "utf8");
     const snap = JSON.parse(original);
-    const attrs = snap.afterSnapshot.player.attributes;
-    for (const key of Object.keys(attrs)) attrs[key] = Number(attrs[key]) - 0.3;
-    // Keep cached OVR unchanged — substantive gate must still fail.
-    writeFileSync(snapPath, `${JSON.stringify(snap)}\n`);
-    const mutated = await reviewTest.assessNatural99(join(HERE, ".."));
+    for (const key of Object.keys(snap.afterSnapshot.player.attributes)) {
+      snap.afterSnapshot.player.attributes[key] = Number(snap.afterSnapshot.player.attributes[key]) - 0.3;
+    }
+    writeFileSync(snapshotPath, `${JSON.stringify(snap)}\n`);
+    const mutated = await reviewTest.assessNatural99(root);
     assert.equal(mutated.ok, false);
     assert.ok(
       mutated.problems.some((p) =>
@@ -1313,58 +1455,123 @@ test("package assessor rejects -0.3 after-attribute mutation, missing attr, and 
       mutated.problems.join(",")
     );
 
-    // Missing canonical attribute
     const missingAttr = JSON.parse(original);
-    const keys = Object.keys(missingAttr.afterSnapshot.player.attributes);
-    delete missingAttr.afterSnapshot.player.attributes[keys[0]];
-    writeFileSync(snapPath, `${JSON.stringify(missingAttr)}\n`);
-    const missing = await reviewTest.assessNatural99(join(HERE, ".."));
+    delete missingAttr.afterSnapshot.player.attributes.Passing;
+    writeFileSync(snapshotPath, `${JSON.stringify(missingAttr)}\n`);
+    const missing = await reviewTest.assessNatural99(root);
     assert.equal(missing.ok, false);
     assert.ok(missing.problems.some((p) => p.startsWith("after-attr-missing:") || p === "recomputed-after-null"));
 
-    // Small threshold-crossing discrepancy: nudge cached after below 98.5 while attrs stay valid.
     const threshold = JSON.parse(original);
     threshold.afterSnapshot.player.baseOverallRaw = 98.4;
     threshold.afterSnapshot.player.currentOverallRaw = 98.4;
-    writeFileSync(snapPath, `${JSON.stringify(threshold)}\n`);
-    const discrepancy = await reviewTest.assessNatural99(join(HERE, ".."));
+    writeFileSync(snapshotPath, `${JSON.stringify(threshold)}\n`);
+    const discrepancy = await reviewTest.assessNatural99(root);
     assert.equal(discrepancy.ok, false);
     assert.ok(
-      discrepancy.problems.some((p) =>
-        ["after-cache-mismatch", "snapshot-threshold-invalid"].includes(p)
-      )
+      discrepancy.problems.some((p) => ["after-cache-mismatch", "snapshot-threshold-invalid"].includes(p))
     );
+
+    writeFileSync(snapshotPath, original);
+    const restored = await reviewTest.assessNatural99(root);
+    assert.equal(restored.ok, true, restored.problems?.join(","));
   } finally {
-    writeFileSync(snapPath, original);
+    rmSync(root, { recursive: true, force: true });
   }
-  // Restored fixture must still assess cleanly in isolation.
-  const restored = await reviewTest.assessNatural99(join(HERE, ".."));
-  assert.equal(restored.ok, true, restored.problems?.join(","));
-  void assessPackageEvidence;
 });
 
-test("package assessor rejects same-engine identity pairs and a missing holdout trajectory", async () => {
+test("package assessor rejects same-engine identity pairs and incomplete holdout histories", async () => {
   const { __test: reviewTest } = await import("../scripts/lib/fix11ReviewEvidence.mjs");
-  const identityOnly = reviewTest.assessBaseFinalPaired(join(HERE, "..", "qa", "fix11-runs", "paired-rereview"));
-  assert.equal(identityOnly.ok, false);
-  assert.ok(identityOnly.problems.some((p) => p.includes("paired-same-engine") || p.includes("paired-kind")));
-
-  const holdoutDir = join(HERE, "..", "qa", "fix11-runs", "holdout-final");
-  const traj = join(holdoutDir, "trajectories", "trajectory-500000.json");
-  const original = readFileSync(traj);
+  const root = mkdtempSync(join(tmpdir(), "fix11-holdout-"));
   try {
-    rmSync(traj);
-    const plan = JSON.parse(readFileSync(join(HERE, "..", "qa", "fix11-runs", "plan.json"), "utf8"));
-    // Inline minimal assess via calibrationProvenance on a temp package-shaped root is heavy;
-    // call the holdout helper through assessHoldoutAndPaired after removing the file.
-    const assessed = reviewTest.assessHoldoutAndPaired(join(HERE, ".."));
+    const pairedDir = join(root, "paired-identity");
+    mkdirSync(join(pairedDir, "paired"), { recursive: true });
+    writeFileSync(
+      join(pairedDir, "paired", "career-pair-0.json"),
+      `${JSON.stringify({
+        id: "career-pair-0",
+        kind: "paired-natural-career-identity",
+        sourceRevision: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        left: { id: "a", peakRaw: 80, everDisplayed99: false, completed: true, seasons: 20 },
+        right: { id: "a", peakRaw: 80, everDisplayed99: false, completed: true, seasons: 20 },
+        identityMatch: true,
+      })}\n`
+    );
+    writeFileSync(join(pairedDir, "summary.json"), `${JSON.stringify({ counts: { pairedNaturalCareers: 1 } })}\n`);
+    const identityOnly = reviewTest.assessBaseFinalPaired(pairedDir);
+    assert.equal(identityOnly.ok, false);
+    assert.ok(identityOnly.problems.some((p) => p.includes("paired-same-engine") || p.includes("paired-kind")));
+
+    const valid = makeValidHoldoutRow(500000);
+    const ok = reviewTest.validateHoldoutTrajectoryRecord(valid, {
+      filename: "trajectory-500000.json",
+    });
+    assert.equal(ok.ok, true, ok.problems.join(","));
+
+    const missingHistory = { ...valid };
+    delete missingHistory.history;
+    const noHistory = reviewTest.validateHoldoutTrajectoryRecord(missingHistory, {
+      filename: "trajectory-500000.json",
+    });
+    assert.equal(noHistory.ok, false);
+    assert.ok(noHistory.problems.includes("holdout-history-missing"), noHistory.problems.join(","));
+
+    const missingChecks = { ...valid, history: valid.history.map((row) => ({ ...row })) };
+    delete missingChecks.checks;
+    const noChecks = reviewTest.validateHoldoutTrajectoryRecord(missingChecks, {
+      filename: "trajectory-500000.json",
+    });
+    assert.equal(noChecks.ok, false);
+    assert.ok(noChecks.problems.includes("holdout-checks-missing"), noChecks.problems.join(","));
+
+    const contradictory = {
+      ...valid,
+      history: valid.history.map((row, index) =>
+        index === 0 ? { ...row, rawDelta: 9.9, reconciliation: { ...row.reconciliation } } : { ...row }
+      ),
+    };
+    const badDelta = reviewTest.validateHoldoutTrajectoryRecord(contradictory, {
+      filename: "trajectory-500000.json",
+    });
+    assert.equal(badDelta.ok, false);
+    assert.ok(badDelta.problems.some((p) => p.startsWith("holdout-history-rawDelta-mismatch")));
+
+    const holdoutDir = join(root, "holdout-mini");
+    mkdirSync(join(holdoutDir, "trajectories"), { recursive: true });
+    const stripped = { ...valid };
+    delete stripped.history;
+    delete stripped.checks;
+    writeFileSync(join(holdoutDir, "trajectories", "trajectory-500000.json"), `${JSON.stringify(stripped)}\n`);
+    writeFileSync(
+      join(holdoutDir, "summary.json"),
+      `${JSON.stringify({
+        mode: "holdout",
+        counts: { trajectories: 5000 },
+        checks: { reconciliationFailures: 0, ordinaryCapFailures: 0, breakthroughCapFailures: 0 },
+        syntheticTrajectories: { peakRaw: { n: 5000, mean: 1, median: 1 }, everDisplayed99Rate: 0, everRaw99Rate: 0 },
+        hashes: {
+          developmentConfig: "0".repeat(64),
+          developmentModel: "0".repeat(64),
+          seasonSimulator: "0".repeat(64),
+          driver: "0".repeat(64),
+        },
+        gitRevision: "deadbeef",
+      })}\n`
+    );
+    const assessed = reviewTest.assessHoldoutRaw(holdoutDir, {
+      seedDeclarations: {
+        holdout: {
+          mayUseDuringTuning: false,
+          precommittedRange: { startInclusive: 500000, endExclusive: 505000 },
+        },
+      },
+    });
     assert.equal(assessed.ok, false);
     assert.ok(
-      assessed.problems.some((p) => p.includes("holdout-missing:trajectory-500000") || p.includes("holdout-count")),
+      assessed.problems.some((p) => p.includes("holdout-history-missing") || p.includes("holdout-checks-missing")),
       assessed.problems.join(",")
     );
-    void plan;
   } finally {
-    writeFileSync(traj, original);
+    rmSync(root, { recursive: true, force: true });
   }
 });
