@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { EPSILON, reconcileGrossPositive } from "./fix11GrowthEvidence.mjs";
+const EPSILON = 1e-6;
 
 const WEIGHTS_CACHE = new Map();
 
@@ -397,6 +397,5 @@ export async function assessPackageEvidence(packageRoot, { finalSha = null } = {
 /** Exported for unit tests / negative controls. */
 export const __test = {
   weightedOverall,
-  reconcileGrossPositive,
   EPSILON,
 };
