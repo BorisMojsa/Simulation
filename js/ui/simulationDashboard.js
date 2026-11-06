@@ -13,6 +13,10 @@ import {
 } from "../simulation/leagueTable.js";
 import { renderLeagueTable } from "./rendering.js";
 import { escapeHtml } from "../utils/helpers.js";
+import {
+  formatRecordLine,
+  projectTournamentRecords,
+} from "./tournamentPresentation.js";
 
 export const DEFAULT_MATCH_MS = 2500;
 const SPEED_PRESETS = [1, 2.5, 5];
@@ -41,9 +45,29 @@ function createCtl() {
     playerMatches: [],
     competitionContext: null,
     contextMode: "table", // table | bracket
+    contextModeManual: false,
+    lastAutoStageMode: "table",
     awaitingChoice: false,
     documentHiddenSkip: false,
   };
+}
+
+function syncContextModeFromRevealed() {
+  const ctx = ctl.competitionContext;
+  if (!ctx || typeof ctx.resolveStageMode !== "function") return;
+  const next = ctx.resolveStageMode(ctl.appliedTableIds);
+  ctx.stageMode = next;
+  if (ctx.participantType === "nation") {
+    ctx.activeStageId = next === "bracket" ? ctx.tournament?.stageId || "knockout" : "group";
+  }
+  if (next !== ctl.lastAutoStageMode) {
+    // Real stage transition: reset default; keep manual choice only within a stage.
+    ctl.contextMode = next;
+    ctl.contextModeManual = false;
+    ctl.lastAutoStageMode = next;
+  } else if (!ctl.contextModeManual) {
+    ctl.contextMode = next;
+  }
 }
 
 function clearTimers() {
@@ -368,6 +392,47 @@ function updateCardFinal(card, match) {
   }
 }
 
+function liveRecordBannerHtml(ctx, visibleIds) {
+  const campaign = ctx.tournament || ctx.campaign;
+  if (!campaign) return "";
+  const projection = projectTournamentRecords({
+    campaign,
+    scope: {
+      participantKind: ctx.participantType === "nation" ? "nation" : "club",
+      participantId: ctx.playerParticipantId,
+      participantLabel: ctx.playerParticipantId,
+      focusClubId: campaign.focusClubId,
+    },
+    visibleFixtureIds: visibleIds,
+    live: true,
+  });
+  const phase = projection.openingPhase?.record
+    ? formatRecordLine(projection.openingPhase.record, { shootouts: false })
+    : null;
+  const total =
+    projection.tournament?.record &&
+    (projection.tournament.completeness === "complete" ||
+      projection.tournament.completeness === "empty" ||
+      projection.tournament.completeness === "partial")
+      ? formatRecordLine(projection.tournament.record)
+      : projection.tournament?.label || null;
+  const bits = [];
+  if (phase) {
+    bits.push(
+      `${projection.openingPhase.kind === "league" ? "League phase" : "Group stage"} so far: ${phase}`
+    );
+  }
+  if (total) bits.push(`Tournament so far: ${total}`);
+  if (!bits.length) return "";
+  return `<div class="tournament-live-record" data-live-record="1">${bits
+    .map((b) => `<p>${escapeHtml(b)}</p>`)
+    .join("")}${
+    projection.openingPhase?.note
+      ? `<p class="tournament-phase-note">${escapeHtml(projection.openingPhase.note)}</p>`
+      : ""
+  }</div>`;
+}
+
 function refreshContextPanel() {
   const host = $("league-table-host");
   const heading = $("live-standings-title");
@@ -378,7 +443,7 @@ function refreshContextPanel() {
   if (ctx && ctl.contextMode === "bracket" && typeof ctx.getBracketView === "function") {
     const bracket = ctx.getBracketView(visibleIds);
     if (heading) heading.textContent = "Bracket";
-    host.innerHTML = renderBracketPanel(bracket, ctx.playerParticipantId);
+    host.innerHTML = liveRecordBannerHtml(ctx, visibleIds) + renderBracketPanel(bracket, ctx.playerParticipantId);
     return;
   }
 
@@ -393,13 +458,7 @@ function refreshContextPanel() {
             : "Table";
     }
     if (view.kind === "national-table" || view.kind === "continental-table") {
-      const seed = (view.table || []).map((r) => ({
-        name: r.name,
-        displayName: r.displayName || r.name,
-        badge: r.badge,
-        clubId: r.nationId || r.clubId || r.name,
-        overall: r.overall || 0,
-      }));
+      const banner = liveRecordBannerHtml(ctx, visibleIds);
       // Re-account from visible matches already done in getTableView — use returned rows.
       const result = renderLeagueTable(host, {
         table: (view.table || []).map((r) => ({
@@ -415,6 +474,7 @@ function refreshContextPanel() {
         showLegend: true,
         variant: "live",
       });
+      if (banner) host.insertAdjacentHTML("afterbegin", banner);
       ctl.prevPositions = result?.positions || ctl.prevPositions;
       renderContextControls(ctx, view);
       return;
@@ -474,6 +534,7 @@ function renderContextControls(ctx, view) {
       const action = btn.getAttribute("data-ctx");
       if (action === "toggle") {
         ctl.contextMode = ctl.contextMode === "bracket" ? "table" : "bracket";
+        ctl.contextModeManual = true;
         refreshContextPanel();
       } else if (action === "groups") {
         showOtherGroupsModal(ctx);
@@ -555,6 +616,7 @@ function applyMatchesToTable(matches) {
     const id = matchKey(m);
     if (id) ctl.appliedTableIds.add(id);
   }
+  syncContextModeFromRevealed();
   refreshLiveTable();
 }
 
@@ -686,7 +748,16 @@ export async function runSimulationDashboard(opts) {
   ctl.league = league;
   ctl.seasonLabel = seasonNumber ? `Season ${seasonNumber}` : "Season";
   ctl.competitionContext = competitionContext || null;
-  ctl.contextMode = competitionContext?.stageMode === "bracket" ? "bracket" : "table";
+  ctl.contextModeManual = false;
+  if (competitionContext && typeof competitionContext.resolveStageMode === "function") {
+    const mode = competitionContext.resolveStageMode(ctl.appliedTableIds);
+    competitionContext.stageMode = mode;
+    ctl.contextMode = mode;
+    ctl.lastAutoStageMode = mode;
+  } else {
+    ctl.contextMode = competitionContext?.stageMode === "bracket" ? "bracket" : "table";
+    ctl.lastAutoStageMode = ctl.contextMode;
+  }
   ctl.allMatches = allMatches || [];
   ctl.playerMatches = playerMatches?.length
     ? playerMatches

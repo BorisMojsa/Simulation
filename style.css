@@ -3860,6 +3860,31 @@ body.senior-scenario-open {
   margin: 0 0 0.5rem;
   opacity: 0.85;
 }
+.tournament-record-summary {
+  margin: 0 0 0.85rem;
+  line-height: 1.45;
+}
+.tournament-record-summary p {
+  margin: 0.2rem 0;
+}
+.tournament-phase-note,
+.tournament-round-meta,
+.tournament-shootout-note,
+.tournament-selection-note,
+.tournament-integrity-note {
+  font-size: 0.88rem;
+  opacity: 0.88;
+}
+.tournament-live-record {
+  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.tournament-live-record p {
+  margin: 0.15rem 0;
+}
 .comp-fixtures {
   display: grid;
   gap: 0.35rem;

@@ -20,6 +20,12 @@ import {
   assertUsableAcademyResult,
   ACADEMY_RESULT_KIND,
 } from "../simulation/academyLifecycle.js";
+import { escapeHtml } from "../utils/helpers.js";
+import {
+  formatStageLabel,
+  projectTournamentRecords,
+  renderTournamentSummaryHtml,
+} from "./tournamentPresentation.js";
 
 let animationCtl = {
   skipMatch: false,
@@ -1035,6 +1041,25 @@ function showEuropePath(europeanCampaign, player) {
   if (!rounds) return;
   rounds.innerHTML = "";
 
+  const europeProjection = projectTournamentRecords({
+    campaign: europeanCampaign,
+    scope: {
+      participantKind: "club",
+      participantId: europeanCampaign.focusClubId || player?.playingClubId || player?.club?.clubId,
+      participantLabel:
+        (europeanCampaign.field || []).find((c) => c.clubId === europeanCampaign.focusClubId)
+          ?.displayName ||
+        player?.club?.displayName ||
+        player?.club?.name,
+    },
+  });
+  {
+    const summary = document.createElement("div");
+    summary.className = "european-round animate-in";
+    summary.innerHTML = renderTournamentSummaryHtml(europeProjection, { escapeHtml });
+    rounds.appendChild(summary);
+  }
+
   const personalWin = playerEntitledToEuropeTrophy(europeanCampaign, player);
   if (personalWin) {
     const asset = resolveTrophyAsset({
@@ -1111,15 +1136,19 @@ function showEuropePath(europeanCampaign, player) {
     el.className = "european-round animate-in";
     const rows = lp.table
       .map(
-        (r) => `<tr class="${r.name === player.club?.name ? "is-player" : ""}"><td>${r.position}</td><td>${
+        (r) => `<tr class="${r.name === player.club?.name || r.clubId === europeProjection.participantId ? "is-player" : ""}"><td>${r.position}</td><td>${
           r.displayName || r.name
         }</td><td>${r.played}</td><td>${r.wins}</td><td>${r.draws}</td><td>${r.losses}</td><td>${
           r.goalDiff
         }</td><td>${r.points}</td><td>${r.band || ""}</td></tr>`
       )
       .join("");
+    const phaseNote = europeProjection.openingPhase?.note
+      ? `<p class="tournament-phase-note">${escapeHtml(europeProjection.openingPhase.note)}</p>`
+      : "";
     el.innerHTML = `
-      <div class="round-name">${lp.openingLabel || "League phase"}</div>
+      <div class="round-name">${formatStageLabel(lp.openingLabel || "league")}</div>
+      ${phaseNote}
       <div class="comp-table-wrap"><table class="comp-table"><thead><tr>
         <th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th><th>Band</th>
       </tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -1129,14 +1158,17 @@ function showEuropePath(europeanCampaign, player) {
   if (europeanCampaign.groups?.groups?.length) {
     const el = document.createElement("div");
     el.className = "european-round animate-in";
-    el.innerHTML = `<div class="round-name">${
-      europeanCampaign.groups.openingLabel || "Group stage"
-    }</div>${europeanCampaign.groups.groups
+    const phaseNote = europeProjection.openingPhase?.note
+      ? `<p class="tournament-phase-note">${escapeHtml(europeProjection.openingPhase.note)}</p>`
+      : "";
+    el.innerHTML = `<div class="round-name">${formatStageLabel(
+      europeanCampaign.groups.openingLabel || "groups"
+    )}</div>${phaseNote}${europeanCampaign.groups.groups
       .map((g) => {
         const rows = (g.table || [])
           .map(
             (r) =>
-              `<tr class="${r.name === player.club?.name ? "is-player" : ""}"><td>${r.position}</td><td>${
+              `<tr class="${r.name === player.club?.name || r.clubId === europeProjection.participantId ? "is-player" : ""}"><td>${r.position}</td><td>${
                 r.displayName || r.name
               }</td><td>${r.points}</td><td>${r.goalDiff}</td></tr>`
           )
@@ -1289,6 +1321,14 @@ function showInternationalCompetitions(intl, player) {
         </div>`
       : "";
 
+    const intlProjection = projectTournamentRecords({
+      campaign: t,
+      scope: {
+        participantKind: "nation",
+        participantId: t.playerNation || player.nationality,
+        participantLabel: t.playerNation || player.nationality,
+      },
+    });
     card.innerHTML = `
       ${trophyBlock}
       <div class="intl-tournament-header">
@@ -1304,6 +1344,7 @@ function showInternationalCompetitions(intl, player) {
         </div>
         <button type="button" class="secondary bracket-toggle" data-target="${detailId}">View groups &amp; bracket</button>
       </div>
+      ${renderTournamentSummaryHtml(intlProjection, { escapeHtml })}
       <div class="round-result europe-final-result" style="margin-top:0.75rem">
         <span class="europe-final-side">${badgeHtml(fm?.home, "opponent-badge")}${
       fm?.home?.displayName || "—"
@@ -1618,6 +1659,18 @@ function hydrateBracketInteractions(root) {
 
 function buildIntlDetailHtml(tournament, player) {
   const parts = [];
+  const projection = projectTournamentRecords({
+    campaign: tournament,
+    scope: {
+      participantKind: "nation",
+      participantId: tournament.playerNation || player.nationality,
+      participantLabel: tournament.playerNation || player.nationality,
+    },
+  });
+  parts.push(renderTournamentSummaryHtml(projection, { escapeHtml }));
+  if (projection.openingPhase?.note) {
+    parts.push(`<p class="tournament-phase-note">${escapeHtml(projection.openingPhase.note)}</p>`);
+  }
 
   (tournament.groups || []).forEach((g) => {
     const rows = (g.table || [])
@@ -1648,7 +1701,7 @@ function buildIntlDetailHtml(tournament, player) {
 
     parts.push(`
       <div class="bracket-round-block">
-        <div class="round-name">${g.name}</div>
+        <div class="round-name">${escapeHtml(g.name)}</div>
         <div class="intl-mini-table">
           <div class="intl-table-row intl-table-head"><span>#</span><span>Team</span><span>Pts</span><span>GD</span></div>
           ${rows}

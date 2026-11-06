@@ -26,6 +26,12 @@ import {
   findExecutableParentOffer,
   reconcileAcademyReviewTray,
 } from "../simulation/academyLifecycle.js";
+import {
+  formatStageLabel,
+  projectTournamentRecords,
+  renderTournamentSummaryHtml,
+  resolveOpeningPhaseLabel,
+} from "./tournamentPresentation.js";
 
 export function renderPlayerOverview(player, overviewEl, statsKeys) {
   if (!player) return;
@@ -565,24 +571,59 @@ export function renderCompetitions(player, boardEl) {
       String(comp.status)
     )}${d.winner ? ` · Champion: ${escapeHtml(d.winner)}` : ""}</p>`;
 
+    const recordScope =
+      comp.key === "continental"
+        ? {
+            participantKind: "club",
+            participantId: d.focusClubId || season.clubId || player.playingClubId || player.club?.clubId,
+            participantLabel:
+              (d.field || []).find((c) => c.clubId === (d.focusClubId || season.clubId))?.displayName ||
+              season.clubName ||
+              player.club?.displayName ||
+              player.club?.name,
+          }
+        : comp.key.startsWith("intl")
+          ? {
+              participantKind: "nation",
+              participantId: d.playerNation || player.nationality,
+              participantLabel: d.playerNation || player.nationality,
+            }
+          : {
+              participantKind: "club",
+              participantId: player.playingClubId || player.club?.clubId,
+              participantLabel: player.club?.displayName || player.club?.name,
+            };
+    const projection = projectTournamentRecords({ campaign: d, scope: recordScope });
+
     if (activeView === "overview") {
       viewEl.innerHTML = `
         ${statusNote}
-        <p><strong>${escapeHtml(comp.label)}</strong> — ${escapeHtml(d.result || "Completed")}</p>
-        <p>Opening phase: ${escapeHtml(
-          d.leaguePhase?.openingLabel || d.groups?.openingLabel || "Knockout"
-        )}</p>
-        <p>Player path rounds: ${(d.rounds || []).length}. Bracket rounds: ${(d.allRounds || []).length}.</p>
+        ${renderTournamentSummaryHtml(projection, { escapeHtml })}
       `;
       return;
     }
 
     if (activeView === "phase") {
+      const phaseCaption = projection.openingPhase?.note
+        ? `<p class="tournament-phase-note">${escapeHtml(projection.openingPhase.note)}</p>`
+        : `<p class="tournament-phase-note">${escapeHtml(
+            resolveOpeningPhaseLabel(d) === "Unavailable"
+              ? "No group / league phase for this competition."
+              : `${resolveOpeningPhaseLabel(d)} only. Knockout matches are shown in the tournament record.`
+          )}</p>`;
+      const phaseSummary =
+        projection.openingPhase?.record
+          ? `<p>${escapeHtml(
+              projection.openingPhase.kind === "league" ? "League-phase record" : "Group-stage record"
+            )}: ${escapeHtml(
+              `P${projection.openingPhase.record.played} · W${projection.openingPhase.record.wins} · D${projection.openingPhase.record.draws} · L${projection.openingPhase.record.losses}`
+            )}</p>`
+          : "";
       if (d.leaguePhase?.table?.length) {
         const rows = d.leaguePhase.table
           .map(
             (r) =>
-              `<tr class="${r.name === player.club?.name ? "is-player" : ""}"><td>${r.position}</td><td>${escapeHtml(
+              `<tr class="${r.name === player.club?.name || r.clubId === projection.participantId ? "is-player" : ""}"><td>${r.position}</td><td>${escapeHtml(
                 r.displayName || r.name
               )}</td><td>${r.played}</td><td>${r.wins}</td><td>${r.draws}</td><td>${r.losses}</td><td>${
                 r.goalsFor
@@ -591,7 +632,7 @@ export function renderCompetitions(player, boardEl) {
               )}</td></tr>`
           )
           .join("");
-        viewEl.innerHTML = `${statusNote}<div class="comp-table-wrap"><table class="comp-table"><thead><tr>
+        viewEl.innerHTML = `${statusNote}${phaseCaption}${phaseSummary}<div class="comp-table-wrap"><table class="comp-table"><thead><tr>
           <th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>F-A</th><th>GD</th><th>Pts</th><th>Band</th>
         </tr></thead><tbody>${rows}</tbody></table></div>`;
         return;
@@ -600,6 +641,8 @@ export function renderCompetitions(player, boardEl) {
         const groups = d.groups.groups || d.groups;
         viewEl.innerHTML =
           statusNote +
+          phaseCaption +
+          phaseSummary +
           groups
             .map((g) => {
               const rows = (g.table || [])
@@ -640,22 +683,23 @@ export function renderCompetitions(player, boardEl) {
                     (m.home?.isBye ? m.away : m.home)?.displayName || "—"
                   )} <span class="bracket-score">bye</span></div>`;
                 }
+                const role = m.isAggregate ? " · aggregate card" : m.legs ? " · tie" : "";
                 return `<div class="bracket-match-line"><span>${escapeHtml(
                   m.home?.displayName || m.home?.name || "—"
                 )}</span><span class="bracket-score">${escapeHtml(
                   m.scoreline || `${m.homeGoals ?? "—"}-${m.awayGoals ?? "—"}`
-                )}</span><span>${escapeHtml(m.away?.displayName || m.away?.name || "—")}</span></div>`;
+                )}${escapeHtml(role)}</span><span>${escapeHtml(m.away?.displayName || m.away?.name || "—")}</span></div>`;
               })
               .join("");
             return `<div class="bracket-round-block"><div class="round-name">${escapeHtml(
-              r.round
+              formatStageLabel(r.round || r.stageId)
             )}</div>${lines}</div>`;
           })
           .join("");
       return;
     }
 
-    // fixtures
+    // fixtures — prefer raw legs; label aggregate parents so they are not read as extra games
     const fixtures = [
       ...(d.leaguePhase?.matches || []),
       ...((d.groups?.groups || d.groups || []).flatMap((g) => g.matches || []) || []),
@@ -677,14 +721,18 @@ export function renderCompetitions(player, boardEl) {
     viewEl.innerHTML =
       statusNote +
       `<div class="comp-fixtures">${unique
-        .map(
-          (m) =>
-            `<div class="comp-fixture"><span>${escapeHtml(m.round || "")}</span><span>${escapeHtml(
-              m.home?.displayName || m.home?.name || "—"
-            )} ${escapeHtml(m.scoreline || `${m.homeGoals ?? ""}-${m.awayGoals ?? ""}`)} ${escapeHtml(
-              m.away?.displayName || m.away?.name || "—"
-            )}</span></div>`
-        )
+        .map((m) => {
+          const tag = m.isAggregate
+            ? "aggregate (not a separate match)"
+            : m.isBye
+              ? "bye"
+              : formatStageLabel(m.round || m.stageId || "");
+          return `<div class="comp-fixture"><span>${escapeHtml(tag)}</span><span>${escapeHtml(
+            m.home?.displayName || m.home?.name || "—"
+          )} ${escapeHtml(m.scoreline || `${m.homeGoals ?? ""}-${m.awayGoals ?? ""}`)} ${escapeHtml(
+            m.away?.displayName || m.away?.name || "—"
+          )}</span></div>`;
+        })
         .join("")}</div>`;
   }
 

@@ -1056,6 +1056,7 @@ export function buildNationalCampaignView(editionState, opts = {}) {
       : null,
     won,
     result: playerResultLabel(state),
+    playerNation: state.playerNation,
     playerNationInTournament: state.field.includes(state.playerNation),
     field: [...state.field],
     status: state.status,

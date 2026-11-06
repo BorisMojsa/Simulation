@@ -9,6 +9,7 @@ import {
   rankBestThirds,
 } from "./nationalTable.js";
 import { rebuildTableFromMatches } from "./leagueTable.js";
+import { resolvePlaybackStageMode } from "../ui/tournamentPresentation.js";
 
 function revealedSet(ids) {
   return ids instanceof Set ? ids : new Set(ids || []);
@@ -56,9 +57,12 @@ export function buildContinentalPlaybackContext({
   campaign,
   player,
   visibleStage = null,
+  visibleFixtureIds = null,
 } = {}) {
   const fixtures = [
     ...(campaign?.leaguePhase?.matches || []),
+    ...(campaign?.groups?.matches || []),
+    ...((campaign?.groups?.groups || []).flatMap((g) => g.matches || []) || []),
     ...(campaign?.playerMatches || []),
     ...(campaign?.allRounds || []).flatMap((r) => r.matches || []),
   ];
@@ -68,20 +72,39 @@ export function buildContinentalPlaybackContext({
     if (id) dedup.set(id, f);
   }
   const list = [...dedup.values()];
-  const openingDone = Boolean(campaign?.leaguePhase?.complete || campaign?.groups);
+  // Prefer frozen (actual projection field) over legacy complete; groups object alone is not enough.
+  const openingDone = Boolean(
+    campaign?.leaguePhase?.frozen ||
+      campaign?.leaguePhase?.complete ||
+      campaign?.groups?.frozen ||
+      (campaign?.groups?.groups || []).length
+  );
+  const stageMode = resolvePlaybackStageMode({
+    campaign,
+    visibleFixtureIds: visibleFixtureIds ?? [],
+    participantType: "club",
+  });
   return {
     competitionId: campaign?.competitionId || "continental",
     editionId: campaign?.editionId || null,
     participantType: "club",
     ruleVersion: campaign?.ruleVersion || "continental",
-    playerParticipantId: player?.playingClubId || player?.club?.clubId,
+    playerParticipantId:
+      campaign?.focusClubId || player?.playingClubId || player?.club?.clubId,
     openingParticipantIds: (campaign?.field || []).map((c) => c.clubId || c.name),
     fixtureIds: list.map((f) => f.matchId || f.fixtureId),
     activeStageId: visibleStage || campaign?.stageId || "opening",
     activeGroupId: null,
-    stageMode: openingDone && (campaign?.allRounds?.length || campaign?.feederGraph) ? "bracket" : "table",
+    stageMode: openingDone ? stageMode : "table",
     campaign,
     fixtures: list,
+    resolveStageMode(visibleIds) {
+      return resolvePlaybackStageMode({
+        campaign,
+        visibleFixtureIds: visibleIds,
+        participantType: "club",
+      });
+    },
     getTableView(_scope, visibleIds) {
       const vis = revealedSet(visibleIds);
       const matches = (campaign?.leaguePhase?.matches || []).filter((m) =>
@@ -116,6 +139,7 @@ export function buildNationalPlaybackContext({
   tournament,
   player,
   activeGroupId = null,
+  visibleFixtureIds = null,
 } = {}) {
   const groups = tournament?.groups || [];
   const playerNation = player?.nationality || tournament?.playerNation;
@@ -127,8 +151,13 @@ export function buildNationalPlaybackContext({
   const allGroupMatches = groups.flatMap((g) => g.matches || []);
   const koMatches = (tournament?.allRounds || []).flatMap((r) => r.matches || []);
   const fixtures = [...allGroupMatches, ...koMatches];
-  const openingComplete = groups.every((g) => (g.matches || []).length >= 6 || g.finalized);
-  const hasKo = Boolean(koMatches.length || tournament?.qualification?.finalized);
+  // Default stage from revealed boundary (empty → table), not completed campaign final state.
+  const stageMode = resolvePlaybackStageMode({
+    campaign: tournament,
+    visibleFixtureIds: visibleFixtureIds ?? [],
+    participantType: "nation",
+  });
+  const hasRevealedKo = stageMode === "bracket";
 
   return {
     competitionId: tournament?.competitionId || tournament?.id || "national",
@@ -138,13 +167,20 @@ export function buildNationalPlaybackContext({
     playerParticipantId: playerNation,
     openingParticipantIds: (tournament?.field || []).slice(),
     fixtureIds: fixtures.map((f) => f.matchId || f.fixtureId).filter(Boolean),
-    activeStageId: hasKo && openingComplete ? tournament?.stageId || "knockout" : "group",
+    activeStageId: hasRevealedKo ? tournament?.stageId || "knockout" : "group",
     activeGroupId: groupId,
-    stageMode: hasKo && openingComplete ? "bracket" : "table",
+    stageMode,
     tournament,
     groups,
     playerGroup,
     fixtures,
+    resolveStageMode(visibleIds) {
+      return resolvePlaybackStageMode({
+        campaign: tournament,
+        visibleFixtureIds: visibleIds,
+        participantType: "nation",
+      });
+    },
     getTableView(scope, visibleIds) {
       const vis = revealedSet(visibleIds);
       const gid = scope?.groupId || groupId;
