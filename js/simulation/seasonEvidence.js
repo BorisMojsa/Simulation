@@ -547,10 +547,27 @@ export function leagueOverallOf(league) {
   return leagueOverallFromTier(league?.tier);
 }
 
-function competitionStrengthBlock(player, ctx) {
+function weightedStintValue(stints, key) {
+  const usable = stints.filter((s) => s.environmentWeight > 0 && numOrNull(s[key]) != null);
+  const weight = usable.reduce((sum, s) => sum + s.environmentWeight, 0);
+  if (!(weight > 0)) return null;
+  return usable.reduce((sum, s) => sum + Number(s[key]) * s.environmentWeight, 0) / weight;
+}
+
+function competitionStrengthBlock(player, ctx, stints = []) {
   const league = ctx.league || null;
-  const leagueOverall = numOrNull(ctx.leagueOverall) ?? leagueOverallOf(league);
-  const clubOverall = numOrNull(ctx.clubOverall ?? player?.club?.overall);
+  // Multi-stint weighting only when two or more dated contextual stints contribute.
+  // A single finishing-club stint must keep the accepted single-context path bit-identical.
+  const weightedContextual = stints.filter(
+    (s) => s.environmentWeight > 0 && (numOrNull(s.clubOverall) != null || numOrNull(s.leagueOverall) != null)
+  );
+  const hasWeightedStints = weightedContextual.length >= 2;
+  const leagueOverall = hasWeightedStints
+    ? weightedStintValue(stints, "leagueOverall")
+    : numOrNull(ctx.leagueOverall) ?? leagueOverallOf(league);
+  const clubOverall = hasWeightedStints
+    ? weightedStintValue(stints, "clubOverall")
+    : numOrNull(ctx.clubOverall ?? player?.club?.overall);
   const playerOverall = numOrNull(
     ctx.playerOverall ?? player?.baseOverallRaw ?? player?.rating ?? player?.currentOverall
   );
@@ -578,6 +595,9 @@ function competitionStrengthBlock(player, ctx) {
     environmentLevel: level,
     competitionStrength,
     challengeRelativeToAbility,
+    aggregationBasis: hasWeightedStints
+      ? weightedContextual.find((s) => s.environmentWeightBasis)?.environmentWeightBasis ?? "multi-stint"
+      : "single-context",
   };
 }
 
@@ -796,7 +816,7 @@ function trophyBlock(trophies, editions, byScope, byEdition, matches = []) {
 /* Stints / loan                                                       */
 /* ------------------------------------------------------------------ */
 
-function stintBlock(player, ctx) {
+function stintBlock(player, ctx, matches = [], window = {}) {
   const raw = Array.isArray(ctx.stints) ? ctx.stints : Array.isArray(ctx.playingStints) ? ctx.playingStints : [];
   const stints = raw.map((s) => ({
     clubId: s.clubId ?? s.playingClubId ?? null,
@@ -807,7 +827,43 @@ function stintBlock(player, ctx) {
     onLoan: Boolean(s.onLoan ?? s.loan),
     from: s.from ?? s.startDate ?? null,
     to: s.to ?? s.endDate ?? null,
+    clubOverall: numOrNull(s.clubOverall),
+    leagueOverall: numOrNull(s.leagueOverall),
   }));
+  const windowStart = toDay(window.seasonStartDate ?? window.seasonStartDay);
+  const windowEnd = toDay(window.seasonEndDate ?? window.seasonEndDay);
+  for (const stint of stints) {
+    const from = toDay(stint.from);
+    const to = toDay(stint.to);
+    const clippedStart = from != null && windowStart != null ? Math.max(from, windowStart) : from ?? windowStart;
+    const clippedEnd = to != null && windowEnd != null ? Math.min(to, windowEnd) : to ?? windowEnd;
+    stint.durationDays =
+      clippedStart != null && clippedEnd != null && clippedEnd > clippedStart
+        ? clippedEnd - clippedStart
+        : 0;
+    if (stint.minutes == null) {
+      stint.minutes = matches.reduce((sum, match) => {
+        if (!(num(match.minutes) > 0) || (stint.clubId && match.teamId !== stint.clubId)) return sum;
+        const day = toDay(match.date);
+        if (day != null && clippedStart != null && day < clippedStart) return sum;
+        if (day != null && clippedEnd != null && day >= clippedEnd) return sum;
+        return sum + Math.min(num(match.minutes), 150);
+      }, 0);
+    }
+  }
+  const contextual = stints.filter(
+    (s) => numOrNull(s.clubOverall) != null || numOrNull(s.leagueOverall) != null
+  );
+  const durationTotal = contextual.reduce((sum, s) => sum + s.durationDays, 0);
+  const minuteTotal = contextual.reduce((sum, s) => sum + Math.max(0, num(s.minutes)), 0);
+  const weightBasis = durationTotal > 0 ? "dated-duration" : minuteTotal > 0 ? "minutes" : null;
+  const exposureTotal = weightBasis === "dated-duration" ? durationTotal : weightBasis === "minutes" ? minuteTotal : 0;
+  for (const stint of stints) {
+    const exposure =
+      weightBasis === "dated-duration" ? stint.durationDays : weightBasis === "minutes" ? Math.max(0, num(stint.minutes)) : 0;
+    stint.environmentWeight = exposureTotal > 0 && contextual.includes(stint) ? exposure / exposureTotal : 0;
+    stint.environmentWeightBasis = stint.environmentWeight > 0 ? weightBasis : null;
+  }
   const loanInfo = ctx.loan && typeof ctx.loan === "object" ? ctx.loan : player?.activeLoan ?? null;
   const onLoan =
     Boolean(ctx.onLoan) ||
@@ -1007,10 +1063,10 @@ export function buildSeasonEvidence(player, context = {}) {
       ? clamp(Number(ctx.healthyTrainingFraction), 0, 1)
       : clamp(rawHealthyTrainingFraction, HEALTHY_FRACTION_FLOOR, 1);
 
-  const strength = competitionStrengthBlock(player, ctx);
+  const { stints, onLoan, loanInfo } = stintBlock(player, ctx, matches, healthWindow);
+  const strength = competitionStrengthBlock(player, ctx, stints);
   const clubFinish = clubFinishBlock(player, ctx);
   const trophies = trophyBlock(ctx.trophies, editions, byScope, byEdition, matches);
-  const { stints, onLoan, loanInfo } = stintBlock(player, ctx);
   const positionInfo = normalizePosition(ctx.position ?? player?.position);
   const seasonStartAge = numOrNull(ctx.seasonStartAge ?? ctx.ageAtSeasonStart) ?? (Number.isFinite(player?.age) ? player.age - 1 : null);
 
@@ -1021,7 +1077,7 @@ export function buildSeasonEvidence(player, context = {}) {
     return s + (Number(se.minutes) || 0);
   }, 0);
 
-  const environmentProxy = clamp(0.85 + (num(ctx.clubOverall ?? player?.club?.overall, 70) - 70) / 80, 0.55, 1.35);
+  const environmentProxy = clamp(0.85 + (num(strength.clubOverall, 70) - 70) / 80, 0.55, 1.35);
 
   const evidence = {
     version: SEASON_EVIDENCE_VERSION,

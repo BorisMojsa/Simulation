@@ -28,6 +28,7 @@ import {
   attachRecognitionToEvidence,
   evidenceEditionKey,
   competitionScopeOf,
+  leagueOverallOf,
   resolveDevelopmentPeriod,
 } from "./seasonEvidence.js?v=86";
 import { clubNameForDisplay, clamp, pickRandom, randFloat } from "../utils/helpers.js";
@@ -712,6 +713,20 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   const competitionEditions = [...editionByKey.values()];
   const playingClubId = player.playingClubId || player.club?.clubId || null;
   const playingClub = playingLeague.clubs?.find((club) => club.clubId === playingClubId) || null;
+  const evidenceStints = playingStintsForEvidence(player).map((stint) => {
+    const clubLeague =
+      leagues.find((candidate) => candidate.clubs?.some((club) => club.clubId === stint.clubId)) || null;
+    const stintLeague = findLeagueById(stint.leagueId) || clubLeague;
+    const stintClub =
+      stintLeague?.clubs?.find((club) => club.clubId === stint.clubId) ||
+      clubLeague?.clubs?.find((club) => club.clubId === stint.clubId) ||
+      null;
+    return {
+      ...stint,
+      clubOverall: stintClub?.overall,
+      leagueOverall: leagueOverallOf(stintLeague),
+    };
+  });
 
   const evidence = buildSeasonEvidence(player, {
     aggregate: agg,
@@ -738,7 +753,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     seasonEndDay: developmentPeriod.periodEndDay,
     seasonDays: developmentPeriod.periodDays,
     requireDatedHealthWindow: true,
-    playingStints: playingStintsForEvidence(player),
+    playingStints: evidenceStints,
   });
 
   const awardRng = createStreamRng(stableCareerId(player), `awards:${seasonId}`);
@@ -866,7 +881,14 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     potentialForecastBefore: previousForecast,
     potentialForecastAfter: player.potentialForecast ? { ...player.potentialForecast } : null,
     developmentExplanations: developmentResult?.explanations || [],
-    developmentBreakdown: developmentResult?.breakdown || null,
+    developmentBreakdown: developmentResult
+      ? {
+          ...developmentResult.breakdown,
+          components: developmentResult.components || null,
+          overallDelta: developmentResult.overallDelta,
+          limitedBy: developmentResult.limitedBy ?? null,
+        }
+      : null,
     breakthrough: Boolean(developmentResult?.breakthrough?.occurred),
     sceneDevelopment: {
       periodId,
@@ -887,6 +909,10 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       healthyTrainingFraction: evidence.healthyTrainingFraction,
       rawHealthyTrainingFraction: evidence.rawHealthyTrainingFraction,
       competitionStrength: evidence.competitionStrength,
+      challengeRelativeToAbility: evidence.challengeRelativeToAbility,
+      environmentProxy: evidence.environmentProxy,
+      competition: evidence.competition,
+      stints: evidence.stints,
       // Bounded canonical slices for debug/QA reconciliation (not a public UI export).
       byScope: evidence.byScope,
       byEdition: evidence.byEdition,

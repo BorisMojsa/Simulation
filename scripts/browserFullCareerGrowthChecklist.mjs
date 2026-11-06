@@ -212,9 +212,37 @@ async function exported(page) {
   invariant(value?.player && value?.world, "__exportCareerSnapshot returned no authoritative state");
   return clone(value);
 }
+async function installDeterministicClock(page, stampedAt) {
+  if (!Number.isFinite(Number(stampedAt))) return;
+  // Stamp stored the post-increment return value N; continuous play then used N+1.
+  await page.evaluate((start) => {
+    let now = Number(start) + 1;
+    Date.now = () => now++;
+    window.__fix11DeterministicClock = { start: Number(start) + 1, stampedAt: Number(start), read: () => now };
+  }, Number(stampedAt));
+}
+
 async function restore(page, value) {
-  const result = await page.evaluate((s) => window.__restoreCareerSnapshot?.(s), value);
+  // Large authoritative witness worlds exceed CDP evaluate payload limits.
+  // Serve the snapshot over the local host and let the page fetch+restore it.
+  const bytes = Buffer.byteLength(JSON.stringify(value));
+  let result;
+  if (bytes > 1_500_000) {
+    const tmpName = `tmp-restore-${Date.now()}-${Math.random().toString(16).slice(2)}.json`;
+    const tmpPath = join(SNAPS, tmpName);
+    await json(tmpPath, value);
+    const url = `/qa/fix11-runs/browser/snapshots/${tmpName}`;
+    result = await page.evaluate(async (snapshotUrl) => {
+      const response = await fetch(snapshotUrl);
+      if (!response.ok) return { ok: false, reason: `fetch-failed:${response.status}` };
+      const snapshot = await response.json();
+      return window.__restoreCareerSnapshot?.(snapshot);
+    }, url);
+  } else {
+    result = await page.evaluate((s) => window.__restoreCareerSnapshot?.(s), value);
+  }
   invariant(result?.ok !== false && (result?.player || result?.ok), "__restoreCareerSnapshot failed", result);
+  await installDeterministicClock(page, value?.deterministicClockAtExport);
   await page.waitForTimeout(150);
   return exported(page);
 }
@@ -305,14 +333,55 @@ async function driveSeason(page, {
     }
     const action = await page.evaluate(({ policy: p, committedNow }) => {
       const visible = (el) => Boolean(el && !el.disabled && el.offsetParent !== null);
+      const debug = window.__getLiveCareerDebug?.() || {};
       const senior = document.getElementById("senior-scenario-overlay");
-      if (senior && !senior.classList.contains("hidden")) {
+      const scenarioNext = document.getElementById("senior-scenario-next");
+      const scenarioOpen = senior && !senior.classList.contains("hidden");
+      if (visible(scenarioNext)) {
+        scenarioNext.click();
+        return { action: "scenario-next", label: scenarioNext.textContent.trim() };
+      }
+      if (
+        (debug.nextAction?.id === "resolve-scenario" || scenarioOpen) &&
+        typeof window.__applyPendingSeniorScenarioPolicy === "function"
+      ) {
+        const applied = window.__applyPendingSeniorScenarioPolicy("balanced");
+        if (applied?.ok) {
+          // Click the matching choice on the live overlay (owned by Simulate await),
+          // then Continue via #senior-scenario-next on a later tick.
+          const choices = [...(document.getElementById("senior-scenario-choices")?.querySelectorAll("button") || [])].filter(visible);
+          const wanted = String(applied.chosenOptionId || "");
+          const hit =
+            choices.find((b) => (b.dataset?.choiceId || b.id || "") === wanted) ||
+            choices.find((b) => wanted && new RegExp(wanted.split(":").pop() || wanted, "i").test(b.textContent || "")) ||
+            choices[Math.min(1, Math.max(0, choices.length - 1))] ||
+            choices[0];
+          if (hit) {
+            hit.click();
+            return { action: "scenario-policy-choice", label: hit.textContent.trim() };
+          }
+          return { action: "scenario-policy-balanced", label: applied.chosenOptionId || "balanced" };
+        }
+      }
+      if (scenarioOpen) {
         const choice = [...senior.querySelectorAll("button")].find(visible);
         if (choice) {
           const label = choice.textContent.trim();
           choice.click();
           return { action: "scenario-choice", label };
         }
+      }
+      // Career-moment / scenario copy may render outside #senior-scenario-overlay.
+      const momentButtons = [...document.querySelectorAll("button")].filter(visible);
+      const momentHit = momentButtons.find((b) =>
+        /reaffirm focus|speak privately|encourage the rumour|listen in the huddle|politely explain|train first|use earplugs|explain the schedule|decline politely|glance at the main|change quietly/i.test(
+          (b.textContent || "").trim()
+        )
+      );
+      if (momentHit) {
+        const label = momentHit.textContent.trim();
+        momentHit.click();
+        return { action: "scenario-choice", label };
       }
       const cont = document.getElementById("continue-btn");
       const host = document.getElementById("animation-continue");
@@ -327,10 +396,24 @@ async function driveSeason(page, {
           return { action: "presentation-skip", label: id };
         }
       }
+      if (
+        p !== "move" &&
+        (debug.pendingDecision || debug.nextAction?.id === "resolve-decision" || debug.nextAction?.id === "resolve-offers") &&
+        typeof window.__resolvePendingDecisionForPolicy === "function"
+      ) {
+        const resolved = window.__resolvePendingDecisionForPolicy(p);
+        if (resolved?.ok) {
+          return { action: "decision-policy", label: resolved.choice || resolved.action || p };
+        }
+      }
       const buttons = [...document.querySelectorAll("button")].filter(visible);
       const patterns =
         p === "move"
           ? [/review loan options/i, /accept loan|accept offer|accept transfer|sign for/i]
+          : p === "appropriate-minutes-loan"
+            ? [/review loan options/i, /accept loan|accept offer|accept transfer|sign for/i,
+                /stay and compete/i, /continue the season/i, /acknowledge/i,
+                /decline offers and continue/i, /^remain$|^see it out$/i]
           : [/stay and compete/i, /continue the season/i, /focus on recovery/i, /acknowledge/i,
               /decline offers and continue/i, /^remain$|^see it out$|^understood$/i];
       for (const re of patterns) {
@@ -351,6 +434,7 @@ async function driveSeason(page, {
     if (action) actions.push({ ...action, at: new Date().toISOString() });
     await page.waitForTimeout(action ? 130 : 220);
   }
+  await json(join(LOGS, `${id}.json`), actions);
   throw new Error(`${id}: season driver timeout ${JSON.stringify(await ui(page))}`);
 }
 
@@ -568,27 +652,63 @@ const browserCases = {
       };
     }
     invariant(witness.afterSnapshot, "growth replay bundle has no authoritative afterSnapshot");
-    const before = await restore(ctx.page, witness.beforeSnapshot);
-    const after = await restore(ctx.page, witness.afterSnapshot);
-    await snapFile("B03", "replay-before-imported", before);
-    await snapFile("B03", "replay-after-imported", after);
-    await screenshot(ctx.page, "B03", "replay-after-desk");
     const row = witness.provenance?.season;
     invariant([6, 7].includes(Math.abs(Number(row?.displayedDelta))), "witness is not displayed +6/+7", row);
-    invariant(
-      Math.abs(rawOverall(after) - Number(row.rawAfter)) < 1e-6,
-      "browser-restored endpoint does not match Node replay provenance"
+    const expectedAfterRaw = Number(
+      witness.afterSnapshot?.player?.baseOverallRaw ??
+        witness.afterSnapshot?.player?.currentOverallRaw ??
+        row.rawAfter
     );
+    const before = await restore(ctx.page, witness.beforeSnapshot);
+    await snapFile("B03", "replay-before-restored", before);
+    invariant(
+      Math.abs(rawOverall(before) - Number(row.rawBefore)) < 1e-4,
+      "browser before checkpoint does not match Node provenance",
+      { browser: rawOverall(before), expected: row.rawBefore }
+    );
+    const seasonsBefore = before.player.seasons.length;
+    const driven = await driveSeason(ctx.page, {
+      id: "B03",
+      seasonsBefore,
+      // Match the witness career policy so loan/minutes decisions align with Node.
+      policy: "appropriate-minutes-loan",
+      timeoutMs: 300000,
+    });
+    const after = driven.snapshot;
+    deskInvariant(driven.state);
+    await snapFile("B03", "replay-after-played", after);
+    await screenshot(ctx.page, "B03", "replay-after-desk");
+    invariant(after.player.seasons.length === seasonsBefore + 1, "witness season was not completed through UI");
+    invariant(driven.actions.some((x) => x.action === "continue-post-commit"), "actual UI Continue missing");
+    const browserAfterRaw = rawOverall(after);
+    invariant(
+      Math.abs(browserAfterRaw - expectedAfterRaw) < 0.05,
+      "browser-played season endpoint diverges from authoritative afterSnapshot",
+      { browserAfterRaw, expectedAfterRaw }
+    );
+    {
+      const displayedBefore = Math.round(Number(row.rawBefore));
+      const displayedAfter = Math.round(browserAfterRaw);
+      invariant(
+        displayedAfter - displayedBefore === Number(row.displayedDelta),
+        "displayed delta missing after real season play",
+        { displayedBefore, displayedAfter, expectedDelta: row.displayedDelta }
+      );
+    }
     return {
       status: "PASS",
       witness: witness.path.slice(ROOT.length + 1),
-      verification: "Browser imported authoritative replay-derived before/after snapshots; Node replay proves the season.",
+      verification:
+        "Browser restored the authoritative pre-season checkpoint and finished the witness season through Simulate/Continue; afterSnapshot was comparison-only.",
       careerId: witness.provenance?.careerId,
       displayedDelta: row.displayedDelta,
       rawBefore: row.rawBefore,
       rawAfter: row.rawAfter,
       browserBeforeRaw: rawOverall(before),
-      browserAfterRaw: rawOverall(after),
+      browserAfterRaw,
+      expectedAfterRaw,
+      continueClicks: driven.actions.filter((x) => String(x.action).startsWith("continue")).length,
+      endpointImportUsed: false,
     };
   },
 
@@ -603,31 +723,51 @@ const browserCases = {
       };
     }
     invariant(witness.afterSnapshot, "natural-99 replay bundle has no authoritative afterSnapshot");
+    const expectedAfterRaw = Number(
+      witness.afterSnapshot?.player?.baseOverallRaw ??
+        witness.afterSnapshot?.player?.currentOverallRaw ??
+        witness.provenance?.season?.rawAfter
+    );
     const restored = await restore(ctx.page, witness.beforeSnapshot);
     await snapFile("B04", "pre-threshold-restored", restored);
     const beforeRaw = rawOverall(restored);
-    invariant(
-      beforeRaw < 98.5,
-      "natural-99 checkpoint is not pre-threshold",
-      beforeRaw
-    );
-    const completed = await restore(ctx.page, witness.afterSnapshot);
+    invariant(beforeRaw < 98.5, "natural-99 checkpoint is not pre-threshold", beforeRaw);
+    const seasonsBefore = restored.player.seasons.length;
+    const driven = await driveSeason(ctx.page, {
+      id: "B04",
+      seasonsBefore,
+      policy: "appropriate-minutes-loan",
+      timeoutMs: 300000,
+    });
+    const completed = driven.snapshot;
+    deskInvariant(driven.state);
     const afterRaw = rawOverall(completed);
-    await snapFile("B04", "completed", completed);
+    await snapFile("B04", "completed-played", completed);
     await screenshot(ctx.page, "B04", "displayed-99-desk");
-    invariant(beforeRaw < 98.5 && afterRaw >= 98.5 && afterRaw < 99, "replay snapshot did not cross displayed-99 threshold", {
+    invariant(completed.player.seasons.length === seasonsBefore + 1, "crossing season was not completed through UI");
+    invariant(driven.actions.some((x) => x.action === "continue-post-commit"), "actual UI Continue missing");
+    invariant(beforeRaw < 98.5 && afterRaw >= 98.5 && afterRaw < 99, "played season did not cross displayed-99", {
       beforeRaw,
       afterRaw,
     });
+    invariant(
+      Math.abs(afterRaw - expectedAfterRaw) < 0.05,
+      "browser-played 99 crossing diverges from authoritative afterSnapshot",
+      { afterRaw, expectedAfterRaw }
+    );
     return {
       status: "PASS",
       witness: witness.path.slice(ROOT.length + 1),
-      verification: "Browser imported authoritative replay-derived before/after snapshots; Node replay proves the season.",
+      verification:
+        "Browser restored the pre-99 checkpoint and finished the crossing season through Simulate/Continue; afterSnapshot was comparison-only.",
       careerId: witness.provenance?.careerId,
       beforeRaw,
       afterRaw,
+      expectedAfterRaw,
       displayedBefore: Math.round(beforeRaw),
       displayedAfter: Math.round(afterRaw),
+      continueClicks: driven.actions.filter((x) => String(x.action).startsWith("continue")).length,
+      endpointImportUsed: false,
     };
   },
 

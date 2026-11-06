@@ -10,12 +10,14 @@
       60,
       84
     ],
-    "stintCount": 2
+    "stintCount": 2,
+    "oracle": "duration-weighted-club"
   },
   "expected": {
-    "parentPrestigeDoesNotLeak": true,
+    "parentPrestigeDoesNotDominate": true,
     "strongerBorrowerRaisesEnvironment": true,
-    "datedStintsPreserved": true
+    "matchesIndependentOracle": true,
+    "aggregationBasis": "dated-duration"
   },
   "notes": []
 }

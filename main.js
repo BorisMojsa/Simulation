@@ -6,6 +6,7 @@ import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=81";
 import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=81";
 import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=81";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=81";
+import { createRng } from "./js/simulation/rng.js";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=81";
 import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=89";
 import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
@@ -51,6 +52,7 @@ import {
 } from "./js/ui/seasonAnimation.js?v=90";
 import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=81";
 import { showSeniorScenarioOverlay } from "./js/ui/seniorScenarioOverlay.js?v=88";
+import { applySeniorScenarioPolicy } from "./js/simulation/seniorCareerScenarios.js?v=88";
 import {
   applyCareerSetupErrors,
   clearCareerSetupErrors,
@@ -427,6 +429,79 @@ window.__acceptPipelineOffer = function acceptPipelineOfferForQa(offer) {
   };
 };
 window.__acceptTransferOffer = window.__acceptPipelineOffer;
+
+/**
+ * QA: resolve pending squad decision / offers using the same preference order
+ * as scripts/calibrateFullCareerGrowth.mjs chooseDecision / resolveOffers.
+ */
+window.__resolvePendingDecisionForPolicy = function resolvePendingDecisionForPolicy(policy = "mixed-default") {
+  if (!player) return { ok: false, reason: "no-player" };
+  if (player.pendingOffers?.length) {
+    const rng = createRng(Number(player.careerSeed || player.development?.careerSeed || 1));
+    const score = (offer) => {
+      const minutes = Number(offer.projectedMinutesShare) || Number(offer.projectedMinutesRange?.[0]) / 4000 || 0;
+      const role = { starter: 4, rotation: 3, prospect: 2, cover: 1 }[offer.expectedRole] || 0;
+      const challenge = Number(offer.scouting?.assessedReadiness) || 0;
+      const wages = Math.log1p(Math.max(0, Number(offer.wage) || 0)) / 20;
+      if (policy === "appropriate-minutes-loan") {
+        return minutes * 6 + role * 2 + challenge + wages + (offer.isLoan ? 1.5 : 0);
+      }
+      return minutes * 3 + role + challenge + wages;
+    };
+    const ranked = [...player.pendingOffers].sort((a, b) => score(b) - score(a));
+    for (const offer of ranked) {
+      const result = acceptPipelineOffer(player, offer);
+      if (result?.ok) {
+        refreshAll();
+        syncSimulateButton();
+        return { ok: true, action: "offer-accepted", offerId: offer.offerId, policy };
+      }
+    }
+    const declined = declineWindowAndContinue(player, { choiceId: "see-out" });
+    refreshAll();
+    syncSimulateButton();
+    return { ok: Boolean(declined?.ok), action: "offers-declined", policy };
+  }
+  const decision = player.pendingDecision;
+  if (!decision) return { ok: false, reason: "no-pending-decision" };
+  const choices = decision?.allowedChoices || (decision?.choices || []).map((choice) => choice.id);
+  const preferred =
+    policy === "appropriate-minutes-loan"
+      ? ["review-loans", "new-loan", "accept-renewal", "stay-compete", "remain", "see-out", "acknowledge"]
+      : policy === "elite-bench"
+        ? ["stay-compete", "remain", "accept-renewal", "see-out", "acknowledge"]
+        : ["accept-renewal", "review-loans", "stay-compete", "remain", "see-out", "acknowledge"];
+  const choice = preferred.find((id) => choices.includes(id)) || choices[0] || null;
+  if (!choice) return { ok: false, reason: "decision-without-valid-choice", choices };
+  const resolved = resolveSquadDecision(player, decision, choice);
+  refreshAll();
+  syncSimulateButton();
+  return { ok: Boolean(resolved?.ok), action: resolved?.action || choice, choice, policy, reason: resolved?.reason };
+};
+
+/**
+ * QA: resolve a pending senior scenario with the same production policy helper
+ * the headless calibrator uses (balanced by default). Does not bypass receipts;
+ * the overlay still requires Continue afterwards.
+ */
+window.__applyPendingSeniorScenarioPolicy = function applyPendingSeniorScenarioPolicy(policy = "balanced") {
+  if (!player) return { ok: false, reason: "no-player" };
+  const pending = player.pendingSeniorScenario || player.seasonCheckpoint?.pendingSeniorScenario;
+  if (!pending) return { ok: false, reason: "no-pending-scenario" };
+  // Do not re-open the overlay here: the in-flight Simulate await owns the
+  // showSeniorScenarioOverlay promise. Replacing it orphans chronology resume.
+  if (!pending.resolved) {
+    const result = applySeniorScenarioPolicy(player, pending, policy);
+    if (!result?.ok) return { ok: false, reason: result?.reason || "policy-failed" };
+  }
+  return {
+    ok: true,
+    chosenOptionId: pending.chosenOptionId,
+    policy,
+    hasReceipt: Boolean(pending.abilityReceipt),
+    resolved: Boolean(pending.resolved),
+  };
+};
 
 /** QA: restore a previously exported session snapshot onto the desk. */
 window.__restoreCareerSnapshot = function restoreCareerSnapshot(data) {

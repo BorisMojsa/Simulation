@@ -1,20 +1,42 @@
 {
   "id": "F10",
-  "title": "Supported trajectories and natural witness contracts",
+  "title": "Constructed sustained-elite paths and indexed witness contracts",
   "inputs": {
     "starts": [
       50,
       60,
       70
     ],
-    "witnessSearchSeeds": "1..400"
+    "maximumSeasons": 20,
+    "forceBreakthrough": false,
+    "evidence": "constructed",
+    "forcedBreakthroughControl": {
+      "evidence": "constructed-forced-breakthrough",
+      "forceBreakthrough": true
+    },
+    "witnessIds": [
+      "cid_2369bc62",
+      "cid_2e1ba005",
+      "cid_85a7b61e"
+    ]
   },
   "expected": {
     "supportedTrajectories": true,
-    "authenticDisplayedGains": [
-      6,
-      7
-    ]
+    "displayedEndpoint": 99,
+    "evidenceLabel": "constructed",
+    "constructedSeasons": {
+      "50": 7,
+      "60": 6,
+      "70": 4
+    },
+    "forcedBreakthroughControl": true,
+    "uniqueWitnessIds": 3,
+    "unknownWitnessRejected": true,
+    "savedClaimsMatch": true,
+    "natural99CareerId": "cid_85a7b61e"
   },
-  "notes": []
+  "notes": [
+    "50/60/70 paths are constructed sustained-elite inputs, not natural careers.",
+    "Separate constructed control. Not a natural career witness."
+  ]
 }

@@ -1,0 +1,54 @@
+{
+  "schema": "fix11-witness-index-v1",
+  "witnesses": [
+    {
+      "id": "cid_2369bc62",
+      "file": "plus6-plus7/career-plus6.json",
+      "expected": {
+        "careerId": "cid_2369bc62",
+        "seed": 2844156468,
+        "policy": "appropriate-minutes-loan",
+        "index": 21,
+        "seasonNumber": 6,
+        "rawBefore": 75.22852491653475,
+        "rawAfter": 80.76942922555527,
+        "displayedDelta": 6,
+        "displayed99": false,
+        "peakRaw": 91.44291241996385,
+        "everDisplayed99": false
+      }
+    },
+    {
+      "id": "cid_2e1ba005",
+      "file": "plus6-plus7/career-plus7.json",
+      "expected": {
+        "careerId": "cid_2e1ba005",
+        "seed": 1939074132,
+        "policy": "appropriate-minutes-loan",
+        "index": 221,
+        "seasonNumber": 2,
+        "rawBefore": 71.72250000000001,
+        "rawAfter": 78.58663109079293,
+        "displayedDelta": 7,
+        "displayed99": false
+      }
+    },
+    {
+      "id": "cid_85a7b61e",
+      "file": "natural-99/career.json",
+      "expected": {
+        "careerId": "cid_85a7b61e",
+        "seed": 2842332087,
+        "policy": "appropriate-minutes-loan",
+        "index": 91,
+        "seasonNumber": 17,
+        "rawBefore": 97.63834817445115,
+        "rawAfter": 98.66407918789605,
+        "displayedDelta": 1,
+        "displayed99": true,
+        "peakRaw": 98.66407918789605,
+        "everDisplayed99": true
+      }
+    }
+  ]
+}

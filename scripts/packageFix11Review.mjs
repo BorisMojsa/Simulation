@@ -29,7 +29,7 @@ const short = full.slice(0, 8) || "uncommitted";
 const dirtyFiles = git(["status", "--short"]).stdout.trim().split("\n").filter(Boolean);
 const outputRoot = process.env.FIX11_REVIEW_OUT || join(homedir(), "Downloads");
 const packageName =
-  process.env.FIX11_REVIEW_NAME || `11-Full-Career-Growth-Calibration-Review-${short}`;
+  process.env.FIX11_REVIEW_NAME || `11-Full-Career-Growth-Calibration-ReReview-${short}`;
 const packageRoot = join(outputRoot, packageName);
 const zipPath = `${packageRoot}.zip`;
 
@@ -48,13 +48,39 @@ ensureDir(join(packageRoot, "source"));
 
 // Package the bytes actually tested, including uncommitted tracked edits. Git
 // supplies the allow-list so build output, node_modules, and .git stay excluded.
+// Required QA fixtures stay under source/ at their repo-relative paths so
+// maintained commands resolve from the packaged working directory.
 const tracked = git(["ls-files", "-z", "--cached", "--others", "--exclude-standard"]);
 if (tracked.status !== 0) {
   rmSync(packageRoot, { recursive: true, force: true });
   throw new Error(`git ls-files failed: ${tracked.stderr || tracked.stdout}`);
 }
+const includeQaUnderSource = new Set([
+  "qa/fix11-runs/plan.json",
+  "qa/fix11-runs/cases",
+  "qa/fix11-runs/witnesses",
+  "qa/fix11-runs/browser",
+  "qa/fix10-runs/calibration-targets.json",
+  "qa/fix09-runs/final/full-suite.log",
+]);
+const shouldIncludeQa = (rel) => {
+  if (!rel.startsWith("qa/")) return true;
+  for (const prefix of includeQaUnderSource) {
+    if (rel === prefix || rel.startsWith(`${prefix}/`)) return true;
+  }
+  return false;
+};
 for (const rel of tracked.stdout.split("\0").filter(Boolean)) {
-  if (rel.startsWith("qa/")) continue;
+  if (!shouldIncludeQa(rel)) continue;
+  const src = join(ROOT, rel);
+  if (existsSync(src) && statSync(src).isFile()) copyFile(src, join(packageRoot, "source", rel));
+}
+// Untracked but required runtime fixtures / witness index.
+for (const rel of [
+  "qa/fix11-runs/witnesses/index.json",
+  "qa/fix10-runs/calibration-targets.json",
+  "qa/fix09-runs/final/full-suite.log",
+]) {
   const src = join(ROOT, rel);
   if (existsSync(src) && statSync(src).isFile()) copyFile(src, join(packageRoot, "source", rel));
 }
@@ -64,17 +90,17 @@ const qaSelections = [
   "baseline",
   "browser",
   "cases",
-  "controlled-final/summary.json",
-  "trajectories-final/summary.json",
-  "paired-final/summary.json",
-  "mixed-final-200/summary.json",
-  "discovery-plus7-250/summary.json",
+  "controlled-final",
+  "trajectories-final",
+  "paired-final",
+  "mixed-final-200",
+  "discovery-plus7-250",
+  "holdout-final",
+  "paired-rereview",
+  "r6-natural99-decomposition.json",
+  "CLOSURE.md",
   "witnesses",
-  "logs/accounting-tests.log",
-  "logs/full-career-growth-tests.log",
-  "logs/witness-replay-plus6.log",
-  "logs/witness-replay-plus7.log",
-  "logs/witness-replay-natural99.log",
+  "logs",
 ];
 for (const rel of qaSelections) {
   const src = join(ROOT, "qa/fix11-runs", rel);
@@ -83,6 +109,15 @@ for (const rel of qaSelections) {
   ensureDir(dirname(dst));
   if (statSync(src).isDirectory()) cpSync(src, dst, { recursive: true });
   else copyFile(src, dst);
+}
+// Mirror required fixtures beside the external evidence tree for verify from package root.
+for (const rel of [
+  "qa/fix10-runs/calibration-targets.json",
+  "qa/fix09-runs/final/full-suite.log",
+]) {
+  const src = join(ROOT, rel);
+  if (!existsSync(src)) continue;
+  copyFile(src, join(packageRoot, rel));
 }
 
 const sourceManifest = computeSourceManifest(join(packageRoot, "source"));
