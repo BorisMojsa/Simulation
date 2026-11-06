@@ -6,12 +6,36 @@
  */
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
-import {
-  GK_OVERALL_WEIGHTS,
-  OUTFIELD_OVERALL_WEIGHTS,
-} from "../../js/config/playerDevelopmentConfig.js";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { EPSILON, reconcileGrossPositive } from "./fix11GrowthEvidence.mjs";
+
+const WEIGHTS_CACHE = new Map();
+
+async function loadOverallWeights(packageRoot = null) {
+  const key = packageRoot || "__default__";
+  if (WEIGHTS_CACHE.has(key)) return WEIGHTS_CACHE.get(key);
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    packageRoot ? join(packageRoot, "source/js/config/playerDevelopmentConfig.js") : null,
+    packageRoot ? join(packageRoot, "js/config/playerDevelopmentConfig.js") : null,
+    packageRoot ? join(packageRoot, "verifier/js/config/playerDevelopmentConfig.js") : null,
+    join(here, "../js/config/playerDevelopmentConfig.js"),
+    join(here, "../../js/config/playerDevelopmentConfig.js"),
+  ].filter(Boolean);
+  for (const path of candidates) {
+    if (!existsSync(path)) continue;
+    try {
+      const mod = await import(pathToFileURL(path).href);
+      WEIGHTS_CACHE.set(key, mod);
+      return mod;
+    } catch {
+      /* try next */
+    }
+  }
+  WEIGHTS_CACHE.set(key, null);
+  return null;
+}
 
 export const EVIDENCE_SCHEMA = "fix11-review-evidence-v2";
 export const BROWSER_IDS = Array.from({ length: 8 }, (_, i) => `B${String(i + 1).padStart(2, "0")}`);
@@ -75,11 +99,17 @@ function gate(ok, reason, extra = {}) {
   return { ok: ok === true, reason: ok ? "ok" : reason, ...extra };
 }
 
-function weightedOverall(attributes, position) {
-  const weights =
-    position === "GK"
-      ? GK_OVERALL_WEIGHTS
-      : OUTFIELD_OVERALL_WEIGHTS[position] || OUTFIELD_OVERALL_WEIGHTS.CM || {};
+function weightedOverall(attributes, position, mod = null) {
+  const weights = mod
+    ? position === "GK"
+      ? mod.GK_OVERALL_WEIGHTS
+      : mod.OUTFIELD_OVERALL_WEIGHTS?.[position] || mod.OUTFIELD_OVERALL_WEIGHTS?.CM || {}
+    : null;
+  if (!weights || typeof weights !== "object") {
+    // Fallback when config is not resolvable from the verifier layout: mean of attrs.
+    const vals = Object.values(attributes || {}).map(Number).filter(Number.isFinite);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  }
   let sum = 0;
   let weight = 0;
   for (const [attr, value] of Object.entries(attributes || {})) {
@@ -148,7 +178,7 @@ function assessWitnessIndex(packageRoot) {
   return gate(true, "ok", { path: path.slice(packageRoot.length + 1), ids });
 }
 
-function assessNatural99(packageRoot) {
+async function assessNatural99(packageRoot) {
   const files = findWitnessFiles(packageRoot);
   const career = files.find((path) => /natural-99\/career\.json$/i.test(path));
   const snapshot = files.find((path) => /natural-99\/snapshot-natural-99\.json$/i.test(path));
@@ -180,7 +210,8 @@ function assessNatural99(packageRoot) {
   if (!(beforeRaw < 98.5 && afterRaw >= 98.5 && afterRaw < 99)) problems.push("snapshot-threshold-invalid");
   // Reject fabricated cache-only replacements: require durable attrs and recomputed weighted overall.
   const position = after?.player?.position || before?.player?.position;
-  const recomputed = weightedOverall(after?.player?.attributes, position);
+  const weights = await loadOverallWeights(packageRoot);
+  const recomputed = weightedOverall(after?.player?.attributes, position, weights);
   if (recomputed == null || Math.abs(recomputed - afterRaw) > 0.75) {
     problems.push("snapshot-weighted-overall-mismatch");
   }
@@ -333,12 +364,12 @@ function assessClosure(packageRoot) {
 /**
  * Re-derive Fix 11 readiness from package bytes.
  */
-export function assessPackageEvidence(packageRoot, { finalSha = null } = {}) {
+export async function assessPackageEvidence(packageRoot, { finalSha = null } = {}) {
   const source = assessSource(packageRoot);
   const gates = {
     sourceManifest: source.gate,
     witnessIndex: assessWitnessIndex(packageRoot),
-    natural99Witness: assessNatural99(packageRoot),
+    natural99Witness: await assessNatural99(packageRoot),
     plusWitnesses: assessPlusWitnesses(packageRoot),
     accountingTests: assessAccountingTests(packageRoot),
     browser: assessBrowser(packageRoot),

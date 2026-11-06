@@ -102,7 +102,7 @@ for (const rel of listFiles(root)) {
 const manifestRead = readJson(join(root, "manifest.json"));
 const manifest = manifestRead.value || {};
 if (!manifestRead.ok) fail(`manifest.json ${manifestRead.error}`);
-const assessed = assessPackageEvidence(root, { finalSha: manifest.finalSha || null });
+const assessed = await assessPackageEvidence(root, { finalSha: manifest.finalSha || null });
 for (const [name, gate] of Object.entries(assessed.gates)) {
   if (!gate.ok) fail(`gate ${name}: ${gate.reason}`);
 }

@@ -125,7 +125,7 @@ writeFileSync(
   join(packageRoot, "source-content-manifest.json"),
   JSON.stringify({ commit: full, ...sourceManifest }, null, 2)
 );
-const assessed = assessPackageEvidence(packageRoot, { finalSha: full });
+const assessed = await assessPackageEvidence(packageRoot, { finalSha: full });
 writeFileSync(
   join(packageRoot, "evidence.json"),
   JSON.stringify({ ...assessed.evidence, generatedAt: new Date().toISOString() }, null, 2)
@@ -160,6 +160,17 @@ copyFile(
   join(ROOT, "scripts/lib/fix11ReviewEvidence.mjs"),
   join(packageRoot, "verifier/lib/fix11ReviewEvidence.mjs")
 );
+ensureDir(join(packageRoot, "verifier/js/config"));
+copyFile(
+  join(ROOT, "js/config/playerDevelopmentConfig.js"),
+  join(packageRoot, "verifier/js/config/playerDevelopmentConfig.js")
+);
+ensureDir(join(packageRoot, "js/config"));
+copyFile(
+  join(ROOT, "js/config/playerDevelopmentConfig.js"),
+  join(packageRoot, "js/config/playerDevelopmentConfig.js")
+);
+
 writeFileSync(
   join(packageRoot, "verify-package.mjs"),
   `#!/usr/bin/env node
