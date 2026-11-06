@@ -29,7 +29,6 @@ import {
 } from "./lib/fix12ReviewEvidence.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const require = createRequire(import.meta.url);
 
 function argValue(flag) {
   const i = process.argv.indexOf(flag);
