@@ -21,6 +21,7 @@ import {
   ACADEMY_RESULT_KIND,
 } from "../simulation/academyLifecycle.js";
 import { escapeHtml } from "../utils/helpers.js";
+import { getDisplayAttributeKeys } from "../simulation/playerAbility.js?v=62";
 import {
   formatStageLabel,
   projectTournamentRecords,
@@ -701,8 +702,8 @@ async function animateSeasonSequence(seasonData, player, statsKeys, onContinue) 
   hideSection("awards-animation");
   showPhaseContinue(false);
 
-  // 7) Summary
-  showSummaryAnimation(season, attributeChanges, statsKeys);
+  // 7) Summary — position-canonical keys; ignore stale/absent caller lists.
+  showSummaryAnimation(season, attributeChanges, player);
   await waitForContinue();
   hideSection("summary-animation");
   showPhaseContinue(false);
@@ -1943,7 +1944,7 @@ function showContinueButton(onContinue) {
   btn.onclick = onContinue;
 }
 
-function showSummaryAnimation(season, attributeChanges, statsKeys) {
+function showSummaryAnimation(season, attributeChanges, playerOrKeys) {
   const summarySection = document.getElementById("summary-animation");
   const summaryInfo = document.getElementById("summary-info");
   const statsGrid = document.getElementById("player-stats-grid");
@@ -1974,14 +1975,21 @@ function showSummaryAnimation(season, attributeChanges, statsKeys) {
     setTimeout(() => statEl.classList.add("animate-in"), index * 120 + 200);
   });
 
-  const keys =
-    Array.isArray(statsKeys) && statsKeys.length
-      ? statsKeys
-      : Object.keys(attributeChanges || {});
+  // Canonical role keys from the player position. A legacy/stale key list or a
+  // mixed attributeChanges payload must never inject outfield rows onto a GK.
+  const position =
+    playerOrKeys && typeof playerOrKeys === "object" && !Array.isArray(playerOrKeys)
+      ? playerOrKeys.position
+      : null;
+  const keys = position != null ? getDisplayAttributeKeys(position) : [];
+  const changes = attributeChanges && typeof attributeChanges === "object" ? attributeChanges : {};
+  // Empty/absent change map: still reach Continue with no fabricated rows.
   keys.forEach((key, index) => {
-    const change = attributeChanges?.[key];
-    if (!change || typeof change !== "object") return;
+    const change = changes[key];
+    if (!change || typeof change !== "object") return; // thin payload: omit missing rows
     const { rawBefore, rawAfter } = rawAbilityEndpoints(change);
+    // Never invent zeros from unavailable endpoints.
+    if (rawBefore == null && rawAfter == null) return;
     const displayChange = abilityDisplayChange(rawBefore, rawAfter);
     const changeClass = abilityDisplayChangeTone(rawBefore, rawAfter);
     const changeText = formatAbilityDisplayChange(rawBefore, rawAfter, "0");

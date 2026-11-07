@@ -50,14 +50,30 @@ const POSITIONS = ["ST", "LW", "RW", "CAM", "LM", "CM", "RM", "CDM", "LB", "CB",
 const AGES = [15, 16, 17, 18, 19];
 
 function parseArgs(argv) {
-  const out = { n: 100, maxSeasons: 18, seed: 20261027 };
+  const out = { n: 100, maxSeasons: 18, seed: 20261027, outDir: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--n") out.n = Number(argv[++i]);
     else if (a === "--maxSeasons") out.maxSeasons = Number(argv[++i]);
     else if (a === "--seed") out.seed = Number(argv[++i]);
+    else if (a === "--out") out.outDir = path.resolve(argv[++i]);
   }
   return out;
+}
+
+function gkAttrsFullyValid(player) {
+  const keys = getDisplayAttributeKeys("GK");
+  const attrs = player?.attributes || {};
+  if (keys.length !== 6) return { ok: false, reason: "key-count", keys };
+  const orderOk = keys.every((k, i) => k === GK_ATTRIBUTE_KEYS[i]);
+  if (!orderOk) return { ok: false, reason: "key-order", keys };
+  for (const k of keys) {
+    const v = attrs[k];
+    if (typeof v !== "number" || !Number.isFinite(v) || v < 1 || v > 99) {
+      return { ok: false, reason: "invalid-value", key: k, value: v, keys };
+    }
+  }
+  return { ok: true, keys };
 }
 
 function mulberry32(a) {
@@ -129,42 +145,62 @@ function runOneCareer(careerIndex, rng, opts) {
     return { ok: false, careerIndex, name, nationality, position, age, findings, summary: null };
   }
 
-  const attrShape = attributeKeysPresent(player);
+  // Pre-academy identity is intentionally unrated — do not treat that as a GK bug.
+  const preAcademyAttrShape = attributeKeysPresent(player);
+  let gkLifecycle = null;
   if (position === "GK") {
-    if (!attrShape.hasGk) {
-      note(findings, "high", "gk-missing-gk-attrs", "GK player missing Reflexes/Handling/etc attributes", {
-        keys: attrShape.keys,
-        displayKeys: attrShape.displayKeys,
-      });
-    }
-    if (attrShape.hasOutfield && !attrShape.hasGk) {
-      note(findings, "high", "gk-outfield-only-attrs", "GK only has outfield attribute keys", {
-        keys: attrShape.keys,
-      });
-    }
-    // Future polish: UI still may present outfield language via legacy STATS_KEYS.
-    if (STATS_KEYS.includes("Shooting") && attrShape.displayKeys.includes("Reflexes")) {
-      // Informational — model is correct; flag if overview ever uses STATS_KEYS for GK.
-      note(findings, "info", "gk-dual-attr-systems", "GK display keys are correct; legacy STATS_KEYS still outfield-shaped", {
-        displayKeys: attrShape.displayKeys,
-        legacyStatsKeys: STATS_KEYS,
-      });
-    }
+    gkLifecycle = {
+      stage: "pre-academy-identity",
+      keys: preAcademyAttrShape.keys,
+      hasGk: preAcademyAttrShape.hasGk,
+      expectedUnrated: !preAcademyAttrShape.hasGk && preAcademyAttrShape.keys.length === 0,
+    };
   }
 
   const academies = pickThreeAcademies(ACADEMY_POOL, nationality, name);
   if (!academies?.length) {
     note(findings, "high", "no-academy-options", "pickThreeAcademies returned empty", { nationality });
-    return { ok: false, careerIndex, name, nationality, position, age, findings, summary: null };
+    return { ok: false, careerIndex, name, nationality, position, age, findings, summary: null, gkLifecycle };
   }
   const academy = academies[Math.floor(rng() * academies.length)].academy;
   try {
     finalizeAcademyPlayer(player, academy);
   } catch (err) {
     note(findings, "critical", "academy-finalize-failed", String(err?.message || err));
-    return { ok: false, careerIndex, name, nationality, position, age, findings, summary: null };
+    if (position === "GK") {
+      gkLifecycle = { ...(gkLifecycle || {}), stage: "finalize-failed", error: String(err?.message || err) };
+    }
+    return { ok: false, careerIndex, name, nationality, position, age, findings, summary: null, gkLifecycle };
   }
 
+  const attrShape = attributeKeysPresent(player);
+  if (position === "GK") {
+    const validity = gkAttrsFullyValid(player);
+    gkLifecycle = {
+      ...(gkLifecycle || {}),
+      stage: "post-finalize",
+      keys: attrShape.keys,
+      displayKeys: attrShape.displayKeys,
+      hasGk: attrShape.hasGk,
+      valid: validity.ok,
+      validity,
+      legacyStatsKeysContext: STATS_KEYS,
+    };
+    if (!validity.ok) {
+      note(findings, "high", "gk-missing-gk-attrs", "Finalized GK missing valid Reflexes/Handling/etc attributes", {
+        stage: "post-finalize",
+        keys: attrShape.keys,
+        displayKeys: attrShape.displayKeys,
+        validity,
+      });
+    }
+    if (attrShape.hasOutfield && !attrShape.hasGk) {
+      note(findings, "high", "gk-outfield-only-attrs", "Finalized GK only has outfield attribute keys", {
+        stage: "post-finalize",
+        keys: attrShape.keys,
+      });
+    }
+  }
   // Attempt first pro contract via parent club when possible.
   let signedPro = false;
   try {
@@ -467,13 +503,15 @@ function runOneCareer(careerIndex, rng, opts) {
       finalAge: player.age,
       clubs,
       attrShape,
+      gkLifecycle,
     },
   };
 }
 
 function main() {
   const opts = parseArgs(process.argv.slice(2));
-  fs.mkdirSync(OUT_DIR, { recursive: true });
+  const outDir = opts.outDir || OUT_DIR;
+  fs.mkdirSync(outDir, { recursive: true });
   const rng = mulberry32(opts.seed);
 
   const results = [];
@@ -489,6 +527,11 @@ function main() {
     info: 0,
     byCode: {},
     positionCounts: {},
+    gkIdentitiesSelected: 0,
+    gkFinalized: 0,
+    gkFinalizedValid: 0,
+    gkFinalizedInvalid: 0,
+    gkFinalizeFailed: 0,
     scenarioOvrMoveRate: { moves: 0, flat: 0, resolves: 0 },
     gkAttrOk: 0,
     gkAttrBad: 0,
@@ -508,8 +551,23 @@ function main() {
       aggregate.scenarioOvrMoveRate.resolves += row.summary.scenarioResolves;
     }
     if (row.position === "GK") {
-      if (row.summary?.attrShape?.hasGk) aggregate.gkAttrOk += 1;
-      else aggregate.gkAttrBad += 1;
+      aggregate.gkIdentitiesSelected += 1;
+      const life = row.summary?.gkLifecycle || row.gkLifecycle;
+      if (life?.stage === "finalize-failed") aggregate.gkFinalizeFailed += 1;
+      else if (life?.stage === "post-finalize") {
+        aggregate.gkFinalized += 1;
+        if (life.valid) {
+          aggregate.gkFinalizedValid += 1;
+          aggregate.gkAttrOk += 1;
+        } else {
+          aggregate.gkFinalizedInvalid += 1;
+          aggregate.gkAttrBad += 1;
+        }
+      } else if (row.summary?.attrShape?.hasGk) {
+        aggregate.gkAttrOk += 1;
+      } else {
+        aggregate.gkAttrBad += 1;
+      }
     }
     for (const f of row.findings) {
       aggregate[f.severity] = (aggregate[f.severity] || 0) + 1;
@@ -521,10 +579,10 @@ function main() {
   }
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const jsonPath = path.join(OUT_DIR, `bulk-careers-${stamp}.json`);
-  const mdPath = path.join(OUT_DIR, `bulk-careers-${stamp}.md`);
-  const latestJson = path.join(OUT_DIR, "bulk-careers-latest.json");
-  const latestMd = path.join(OUT_DIR, "bulk-careers-latest.md");
+  const jsonPath = path.join(outDir, `bulk-careers-${stamp}.json`);
+  const mdPath = path.join(outDir, `bulk-careers-${stamp}.md`);
+  const latestJson = path.join(outDir, "bulk-careers-latest.json");
+  const latestMd = path.join(outDir, "bulk-careers-latest.md");
 
   const payload = { aggregate, results };
   fs.writeFileSync(jsonPath, JSON.stringify(payload, null, 2));
@@ -568,12 +626,16 @@ Root cause (confirmed in code): \`simulateSeason\` free-agent path returns \`{ s
 - Current-OVR moved: ${aggregate.scenarioOvrMoveRate.moves}
 - Current-OVR flat: ${aggregate.scenarioOvrMoveRate.flat}
 
-## Goalkeeper attribute shape
+## Goalkeeper attribute shape (post-finalize)
 
-- GK careers with GK keys present: ${aggregate.gkAttrOk}
-- GK careers missing GK keys: ${aggregate.gkAttrBad}
+- GK identities selected: ${aggregate.gkIdentitiesSelected}
+- GK finalized: ${aggregate.gkFinalized}
+- GK finalized valid (six numeric keys in order): ${aggregate.gkFinalizedValid}
+- GK finalized invalid: ${aggregate.gkFinalizedInvalid}
+- GK finalize failures: ${aggregate.gkFinalizeFailed}
+- Legacy counter ok/bad: ${aggregate.gkAttrOk} / ${aggregate.gkAttrBad}
 
-Model already defines Reflexes / Handling / Positioning / Diving / Kicking / Physicality. Legacy \`STATS_KEYS\` in \`playerConfig.js\` remains outfield-shaped.
+Completeness is measured **after** \`finalizeAcademyPlayer\`. Pre-academy identities remain unrated by design. Legacy \`STATS_KEYS\` is retained as audit context only (not a bug signal).
 
 ## Top finding codes
 

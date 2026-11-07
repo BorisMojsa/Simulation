@@ -1,4 +1,4 @@
-import { POSITION_PROFILES, STATS_KEYS } from "../config/playerConfig.js";
+import { POSITION_PROFILES } from "../config/playerConfig.js";
 import { getDisplayAttributeKeys } from "./playerAbility.js";
 import { ensurePlayerModel } from "./playerModelMigration.js";
 import {
@@ -1077,6 +1077,8 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
 
   applySeasonDevelopment(getWorldState());
 
+  // Presentation payload: canonical role keys only. Extra outfield leftovers on a
+  // GK attribute map stay on the durable player object and are not listed here.
   const attributeChanges = {};
   const keys = getDisplayAttributeKeys(player.position);
   keys.forEach((key) => {
@@ -1087,17 +1089,6 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       new: newV,
       change: Number.isFinite(newV) && Number.isFinite(oldV) ? newV - oldV : 0,
     };
-  });
-  // Also expose outfield keys for UI continuity when GK
-  STATS_KEYS.forEach((key) => {
-    if (attributeChanges[key]) return;
-    if (player.attributes?.[key] != null) {
-      attributeChanges[key] = {
-        old: previousAttributes[key],
-        new: player.attributes[key],
-        change: (player.attributes[key] || 0) - (previousAttributes[key] || 0),
-      };
-    }
   });
 
   return {

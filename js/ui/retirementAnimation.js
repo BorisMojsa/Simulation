@@ -1,5 +1,6 @@
 import { enrichTrophyWin, trophyImageHtml } from "../data/trophyAssets.js";
 import { formatAbilityForDisplay } from "./abilityFormatting.js";
+import { isGoalkeeperPosition } from "../simulation/playerAbility.js?v=62";
 
 export function showRetirementAnimation(player, onContinue) {
   const overlay = document.getElementById("retirement-animation-overlay");
@@ -300,10 +301,14 @@ function showCareerTimeline(player) {
     const timelineEl = document.createElement("div");
     timelineEl.className = "timeline-item";
 
-    const statsText =
-      player.position === "GK"
-        ? `${season.goals}G ${season.assists}A ${season.cleanSheets}CS`
-        : `${season.goals}G ${season.assists}A`;
+    const isGk = isGoalkeeperPosition(player.position);
+    const cs = season.cleanSheets;
+    const goals = Number.isFinite(season.goals) ? season.goals : 0;
+    const assists = Number.isFinite(season.assists) ? season.assists : 0;
+    const parts = [`${goals}G`, `${assists}A`];
+    if (isGk && Number.isFinite(cs)) parts.push(`${cs}CS`);
+    const statsText = parts.join(" ");
+    const matchesBit = Number.isFinite(season.matches) ? ` • ${season.matches} matches` : "";
 
     const badgeSrc = season.badge || "";
     const badgeHtml = badgeSrc
@@ -317,7 +322,7 @@ function showCareerTimeline(player) {
       <div class="timeline-content">
         <div class="timeline-season">Season ${season.seasonNumber} (Age ${season.age})</div>
         <div class="timeline-club">${season.clubDisplay || season.club || "—"}</div>
-        <div class="timeline-stats">${statsText} • ${season.matches} matches</div>
+        <div class="timeline-stats">${statsText}${matchesBit}</div>
       </div>
     `;
 

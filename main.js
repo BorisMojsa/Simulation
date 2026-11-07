@@ -1,14 +1,13 @@
-import { STATS_KEYS } from "./js/config/playerConfig.js";
 import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js?v=61";
 import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=77";
-import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=61";
+import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=62";
 import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=81";
 import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=81";
 import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=81";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=81";
 import { createRng } from "./js/simulation/rng.js";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=81";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=89";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=90";
 import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
 import {
   serializeCareerSnapshot,
@@ -43,15 +42,15 @@ import {
   renderCompetitions,
   renderTransferOffers,
   renderCareerMoments,
-} from "./js/ui/rendering.js?v=90";
+} from "./js/ui/rendering.js?v=91";
 import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=81";
 import {
   showSeasonAnimation,
   openSimulationDashboardSegment,
   hideSimulationDashboard,
   getDashboardRevealState,
-} from "./js/ui/seasonAnimation.js?v=90";
-import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=81";
+} from "./js/ui/seasonAnimation.js?v=91";
+import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=82";
 import { showSeniorScenarioOverlay } from "./js/ui/seniorScenarioOverlay.js?v=88";
 import { applySeniorScenarioPolicy } from "./js/simulation/seniorCareerScenarios.js?v=88";
 import {
@@ -720,8 +719,8 @@ retireBtn?.addEventListener("click", () => {
 
 
 function refreshOverview() {
-  const keys = player ? getDisplayAttributeKeys(player.position) : STATS_KEYS;
-  renderPlayerOverview(player, overviewEl, keys);
+  // Position-derived keys only; do not fall back to outfield STATS_KEYS for keepers.
+  renderPlayerOverview(player, overviewEl, player ? getDisplayAttributeKeys(player.position) : null);
   renderCareerMoments(player, careerMomentsEl);
 }
 

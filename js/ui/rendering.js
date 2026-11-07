@@ -8,7 +8,7 @@ import {
 import { enrichTrophyWin, trophyImageHtml } from "../data/trophyAssets.js";
 import { describeTeamStrength } from "../simulation/teamStrength.js";
 import { getWorldState } from "../simulation/worldState.js";
-import { getDisplayAttributeKeys } from "../simulation/playerAbility.js?v=61";
+import { getDisplayAttributeKeys, isGoalkeeperPosition } from "../simulation/playerAbility.js?v=62";
 import {
   formatAbilityDisplayChange,
   formatAbilityForDisplay,
@@ -36,8 +36,13 @@ import {
 export function renderPlayerOverview(player, overviewEl, statsKeys) {
   if (!player) return;
   ensureContractAuthority(player);
-  const displayKeys =
-    player.position === "GK" ? getDisplayAttributeKeys("GK") : statsKeys || getDisplayAttributeKeys(player.position);
+  // Position is authoritative. GK aliases must never fall through to a caller
+  // outfield key list even when the attribute map still carries legacy fields.
+  const displayKeys = isGoalkeeperPosition(player.position)
+    ? getDisplayAttributeKeys(player.position)
+    : Array.isArray(statsKeys) && statsKeys.length
+      ? statsKeys
+      : getDisplayAttributeKeys(player.position);
   const totals = player.careerTotals;
   const cleanSheetLine = totals.cleanSheets ? ` - ${totals.cleanSheets} clean sheets` : "";
   const reg = describeRegistration(player);
