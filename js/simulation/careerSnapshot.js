@@ -8,6 +8,7 @@ import { exportClubFinanceState, importClubFinanceState } from "./clubFinance.js
 import { ensureTransferSave, TRANSFER_SAVE_VERSION } from "./transferMigration.js";
 import { getSimRng } from "./rng.js";
 import { ensurePlayerModel } from "./playerModelMigration.js";
+import { isGoalkeeperPosition } from "./playerAbility.js";
 
 export const CAREER_SNAPSHOT_VERSION = 1;
 
@@ -37,9 +38,11 @@ export function deserializeCareerSnapshot(data) {
   const player = data.player ? structuredClone(data.player) : null;
   if (player) {
     ensureTransferSave(player);
-    // Shared model assurance (incl. Fix 13 GK attribute repair) before desk render.
-    // Operates on the clone only — caller's input snapshot stays unchanged.
-    ensurePlayerModel(player);
+    // Fix 13: repair incomplete keepers at restore. Outfield records keep the
+    // pre-Fix-13 restore path (transfer save only) so ratings/provenance stay put.
+    if (isGoalkeeperPosition(player.position)) {
+      ensurePlayerModel(player);
+    }
     if (data.seasonCheckpoint) player.seasonCheckpoint = data.seasonCheckpoint;
   }
   return { player, world, seasonCheckpoint: data.seasonCheckpoint || null };

@@ -38,6 +38,7 @@ import { reseedCareerRng, getSimRng } from "../js/simulation/rng.js";
 import {
   abilityDisplayChange,
   formatAbilityDisplayChange,
+  rawAbilityEndpoints,
 } from "../js/ui/abilityFormatting.js";
 
 const GK_ORDER = [...GK_ATTRIBUTE_KEYS];
@@ -160,6 +161,34 @@ describe("F02 restore complete modern and valid legacy GK", () => {
     };
     const ofRestored = deserializeCareerSnapshot({ schemaVersion: 1, player: structuredClone(outfield) });
     assert.equal(ofRestored.player.attributes.Shooting, 72);
+    assert.equal(ofRestored.player.rating, 68, "outfield restore must not rewrite rating");
+    assert.deepEqual(ofRestored.player.attributes, outfield.attributes);
+
+    const proxied = {
+      name: "ProxyGK",
+      position: "GK",
+      age: 28,
+      careerId: "f02-proxy",
+      rating: 71,
+      baseOverallRaw: 71,
+      attributes: { ...validGkAttrs(71) },
+      playerModelVersion: PLAYER_MODEL_VERSION,
+      development: {
+        modelVersion: DEVELOPMENT_MODEL_VERSION,
+        migration: { version: 3, gkProxy: true },
+        traits: {
+          trainability: 1,
+          professionalism: 0.5,
+          naturalFitness: 0.5,
+          resilience: 0.5,
+          maturityOffsets: {},
+          declineProtection: 0,
+        },
+      },
+    };
+    const proxiedRestored = deserializeCareerSnapshot({ schemaVersion: 1, player: structuredClone(proxied) });
+    assert.equal(proxiedRestored.player.development.migration.gkProxy, true, "preserve existing gkProxy");
+    assert.deepEqual(proxiedRestored.player.attributes, proxied.attributes);
   });
 });
 
@@ -277,6 +306,61 @@ describe("F03 repair incomplete and stamped keepers", () => {
     assert.equal(validateAttributes(v3bad.attributes, "GK").ok, true);
     const again = ensurePlayerModel(v3bad);
     assert.equal(again.attributes.Handling, v3bad.attributes.Handling);
+
+    // Single missing attribute and scale endpoints must land within ±0.05 OVR.
+    const onlyPhys = {
+      name: "OnlyPhys",
+      position: "GK",
+      age: 24,
+      careerId: "f03-phys",
+      rating: 54.9,
+      baseOverallRaw: 54.9,
+      attributes: {
+        Reflexes: 58,
+        Handling: 56,
+        Positioning: 55,
+        Diving: 54,
+        Kicking: 50,
+      },
+    };
+    const physRepair = repairGoalkeeperAttributes(structuredClone(onlyPhys));
+    assert.equal(physRepair.reachableTarget, 54.9);
+    assert.ok(
+      Math.abs(calculateOverall(physRepair.player.attributes, "GK").raw - 54.9) <= 0.05,
+      `single-missing Physicality ovr=${calculateOverall(physRepair.player.attributes, "GK").raw}`
+    );
+
+    const allMissing99 = {
+      name: "All99",
+      position: "GK",
+      age: 24,
+      careerId: "f03-99",
+      rating: 99,
+      baseOverallRaw: 99,
+      attributes: { Speed: 70, Shooting: 60 },
+    };
+    const top = repairGoalkeeperAttributes(structuredClone(allMissing99));
+    assert.equal(top.reachableTarget, 99);
+    assert.ok(
+      Math.abs(calculateOverall(top.player.attributes, "GK").raw - 99) <= 0.05,
+      `all-missing target 99 ovr=${calculateOverall(top.player.attributes, "GK").raw}`
+    );
+
+    const allMissing1 = {
+      name: "All1",
+      position: "GK",
+      age: 24,
+      careerId: "f03-1",
+      rating: 1,
+      baseOverallRaw: 1,
+      attributes: {},
+    };
+    const bottom = repairGoalkeeperAttributes(structuredClone(allMissing1));
+    assert.equal(bottom.reachableTarget, 1);
+    assert.ok(
+      Math.abs(calculateOverall(bottom.player.attributes, "GK").raw - 1) <= 0.05,
+      `all-missing target 1 ovr=${calculateOverall(bottom.player.attributes, "GK").raw}`
+    );
   });
 });
 
@@ -338,11 +422,11 @@ describe("F05 club summary attributeChanges and rounding", () => {
     for (const key of keys) {
       const oldV = previousAttributes[key];
       const newV = player.attributes[key];
-      attributeChanges[key] = {
-        old: oldV,
-        new: newV,
-        change: Number.isFinite(newV) && Number.isFinite(oldV) ? newV - oldV : 0,
-      };
+      const entry = {};
+      if (Number.isFinite(oldV)) entry.old = oldV;
+      if (Number.isFinite(newV)) entry.new = newV;
+      if (Number.isFinite(oldV) && Number.isFinite(newV)) entry.change = newV - oldV;
+      attributeChanges[key] = entry;
     }
     assert.deepEqual(Object.keys(attributeChanges), GK_ORDER);
     assert.equal("Shooting" in attributeChanges, false);
@@ -352,6 +436,18 @@ describe("F05 club summary attributeChanges and rounding", () => {
     assert.equal(formatAbilityDisplayChange(71.49, 71.51), "+1");
     assert.equal(abilityDisplayChange(71.51, 72.49), 0);
     assert.equal(formatAbilityDisplayChange(71.51, 72.49), "0");
+
+    // Resumed season with Diving absent from the baseline must not invent change: 0.
+    const missingDiving = { Diving: { new: 72.4 } };
+    assert.equal("change" in missingDiving.Diving, false);
+    const divingEnds = rawAbilityEndpoints(missingDiving.Diving);
+    assert.equal(divingEnds.rawBefore, null);
+    assert.equal(divingEnds.rawAfter, 72.4);
+    assert.equal(formatAbilityDisplayChange(divingEnds.rawBefore, divingEnds.rawAfter, "0"), "—");
+
+    const falseZero = rawAbilityEndpoints({ old: undefined, new: 72.4, change: 0 });
+    assert.equal(falseZero.rawBefore, null, "explicit missing old stays unavailable");
+    assert.equal(formatAbilityDisplayChange(falseZero.rawBefore, falseZero.rawAfter, "0"), "—");
 
     // Empty / sparse maps: only keys with real change objects render; no invented zeros.
     const sparse = { Reflexes: { old: 70, new: 71, change: 1 } };

@@ -53,7 +53,12 @@ export function rawAbilityEndpoints(record) {
     : Number.isFinite(record.before)
       ? record.before
       : null;
-  if (rawBefore == null && rawAfter != null && Number.isFinite(record.change)) {
+  // Reconstruct only when the record never carried an old/before field. An
+  // explicit missing old (key present, non-finite) must stay unavailable —
+  // never treat change: 0 as "old equals new".
+  const hadOldField = Object.prototype.hasOwnProperty.call(record, "old")
+    || Object.prototype.hasOwnProperty.call(record, "before");
+  if (rawBefore == null && rawAfter != null && Number.isFinite(record.change) && !hadOldField) {
     rawBefore = rawAfter - record.change;
   }
   return { rawBefore, rawAfter };

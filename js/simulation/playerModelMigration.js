@@ -97,32 +97,44 @@ export function repairGoalkeeperAttributes(player, opts = {}) {
     retainedContribution += weights[k] * retained[k];
     retainedWeight += weights[k];
   }
-  const missingWeight = 1 - retainedWeight;
+  const missingWeight = missingKeys.reduce((sum, k) => sum + weights[k], 0);
   const reachableMin = retainedContribution + missingWeight * ATTRIBUTE_MIN;
   const reachableMax = retainedContribution + missingWeight * ATTRIBUTE_MAX;
   const reachableTarget = clamp(desiredTarget, reachableMin, reachableMax);
 
   const synthesized = {};
-  if (missingKeys.length === GK_ATTRIBUTE_KEYS.length) {
-    // Fully missing/invalid — generate a full proxy shape toward the reachable target.
-    Object.assign(synthesized, generateGkAttributes(reachableTarget, ATTRIBUTE_MAX, stream("gk-proxy")));
-  } else if (missingKeys.length > 0) {
-    // Seed missing keys near the reachable target with light role-shaped noise, then
-    // solve a shared offset so only synthesized values move.
-    const noiseRng = stream("noise");
-    for (const k of missingKeys) {
-      const shape = 4 * (weights[k] - 1 / GK_ATTRIBUTE_KEYS.length);
-      const noise = (noiseRng.random() - 0.5) * 2;
-      synthesized[k] = clamp(reachableTarget + shape + noise, ATTRIBUTE_MIN, ATTRIBUTE_MAX);
+  if (missingKeys.length > 0) {
+    // Seed: full proxy shape when every GK key is missing; otherwise residual-mean
+    // plus light role-shaped noise. Then project onto the reachable target by
+    // distributing the OVR residual only across unsaturated synthesized keys
+    // (Δattr = Δovr / Σw_adj). A uniform attr step equal to the OVR residual is
+    // wrong when only a subset of keys is free.
+    if (missingKeys.length === GK_ATTRIBUTE_KEYS.length) {
+      Object.assign(synthesized, generateGkAttributes(reachableTarget, ATTRIBUTE_MAX, stream("gk-proxy")));
+    } else {
+      const residualMean = missingWeight > 0 ? (reachableTarget - retainedContribution) / missingWeight : reachableTarget;
+      const noiseRng = stream("noise");
+      for (const k of missingKeys) {
+        const shape = 4 * (weights[k] - 1 / GK_ATTRIBUTE_KEYS.length);
+        const noise = (noiseRng.random() - 0.5) * 2;
+        synthesized[k] = clamp(residualMean + shape + noise, ATTRIBUTE_MIN, ATTRIBUTE_MAX);
+      }
     }
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < 64; i++) {
       let synthContribution = 0;
       for (const k of missingKeys) synthContribution += weights[k] * synthesized[k];
       const current = retainedContribution + synthContribution;
-      const diff = reachableTarget - current;
-      if (Math.abs(diff) <= GK_OVR_TOLERANCE) break;
-      for (const k of missingKeys) {
-        synthesized[k] = clamp(synthesized[k] + diff, ATTRIBUTE_MIN, ATTRIBUTE_MAX);
+      const err = reachableTarget - current;
+      if (Math.abs(err) <= GK_OVR_TOLERANCE) break;
+      const adjustable = missingKeys.filter((k) =>
+        err > 0 ? synthesized[k] < ATTRIBUTE_MAX - 1e-12 : synthesized[k] > ATTRIBUTE_MIN + 1e-12
+      );
+      if (!adjustable.length) break;
+      const adjWeight = adjustable.reduce((sum, k) => sum + weights[k], 0);
+      if (!(adjWeight > 0)) break;
+      const step = err / adjWeight;
+      for (const k of adjustable) {
+        synthesized[k] = clamp(synthesized[k] + step, ATTRIBUTE_MIN, ATTRIBUTE_MAX);
       }
     }
   }
@@ -131,18 +143,10 @@ export function repairGoalkeeperAttributes(player, opts = {}) {
   // Preserve extras (outfield leftovers) for compatibility; never feed them into OVR.
   player.attributes = next;
 
-  const ovr = calculateOverall(player.attributes, "GK");
-  if (Math.abs(ovr.raw - reachableTarget) > GK_OVR_TOLERANCE) {
-    // Final nudge on synthesized keys only.
-    const diff = reachableTarget - ovr.raw;
-    for (const k of missingKeys) {
-      player.attributes[k] = clamp(player.attributes[k] + diff, ATTRIBUTE_MIN, ATTRIBUTE_MAX);
-    }
-  }
-
   player.development = player.development || {};
   player.development.migration = {
     ...(player.development.migration || {}),
+    // Synthesized keys always mark proxy; never clear an existing true marker.
     gkProxy: true,
     gkRepair: {
       at: PLAYER_MODEL_VERSION,
@@ -232,12 +236,13 @@ export function migratePlayerToV3(player, opts = {}) {
   if (!hadDev || !player.development?.traits) {
     const legacyRating =
       Number.isFinite(player.rating) && player.rating > 0 ? player.rating : MIGRATION_CONFIG.defaultRating;
-    let gkProxy = false;
-    let gkRepairMeta = null;
+    const priorGkProxy = Boolean(player.development?.migration?.gkProxy);
+    let gkProxy = priorGkProxy;
+    let gkRepairMeta = player.development?.migration?.gkRepair || null;
     if (isGoalkeeperPosition(player.position)) {
       const repair = repairGoalkeeperAttributes(player, { ...opts, rng: stream("gk-repair") });
-      gkProxy = Boolean(repair.repaired);
-      gkRepairMeta = player.development?.migration?.gkRepair || null;
+      gkProxy = priorGkProxy || Boolean(repair.repaired) || Boolean(player.development?.migration?.gkProxy);
+      gkRepairMeta = player.development?.migration?.gkRepair || gkRepairMeta;
       if (!validateAttributes(player.attributes, player.position).ok) {
         // Absolute fallback if repair could not produce a valid map.
         player.attributes = generateGkAttributes(legacyRating, ATTRIBUTE_MAX, stream("gk-proxy"));

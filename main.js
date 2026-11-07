@@ -7,7 +7,7 @@ import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=81";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=81";
 import { createRng } from "./js/simulation/rng.js";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=81";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=90";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=91";
 import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
 import {
   serializeCareerSnapshot,
@@ -49,7 +49,7 @@ import {
   openSimulationDashboardSegment,
   hideSimulationDashboard,
   getDashboardRevealState,
-} from "./js/ui/seasonAnimation.js?v=91";
+} from "./js/ui/seasonAnimation.js?v=92";
 import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=82";
 import { showSeniorScenarioOverlay } from "./js/ui/seniorScenarioOverlay.js?v=88";
 import { applySeniorScenarioPolicy } from "./js/simulation/seniorCareerScenarios.js?v=88";

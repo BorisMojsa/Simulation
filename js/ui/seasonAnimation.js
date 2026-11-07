@@ -1944,7 +1944,8 @@ function showContinueButton(onContinue) {
   btn.onclick = onContinue;
 }
 
-function showSummaryAnimation(season, attributeChanges, playerOrKeys) {
+/** Production club-recap attribute grid. Exported so QA can seed thin/empty maps. */
+export function showSummaryAnimation(season, attributeChanges, playerOrKeys) {
   const summarySection = document.getElementById("summary-animation");
   const summaryInfo = document.getElementById("summary-info");
   const statsGrid = document.getElementById("player-stats-grid");

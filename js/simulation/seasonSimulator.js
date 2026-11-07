@@ -1084,11 +1084,13 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   keys.forEach((key) => {
     const oldV = previousAttributes[key];
     const newV = player.attributes[key];
-    attributeChanges[key] = {
-      old: oldV,
-      new: newV,
-      change: Number.isFinite(newV) && Number.isFinite(oldV) ? newV - oldV : 0,
-    };
+    const entry = {};
+    // Keep a missing season-start endpoint unavailable — never invent change: 0
+    // (that made the recap formatter treat the new rating as the old one).
+    if (Number.isFinite(oldV)) entry.old = oldV;
+    if (Number.isFinite(newV)) entry.new = newV;
+    if (Number.isFinite(oldV) && Number.isFinite(newV)) entry.change = newV - oldV;
+    attributeChanges[key] = entry;
   });
 
   return {
