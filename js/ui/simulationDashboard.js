@@ -433,6 +433,28 @@ function liveRecordBannerHtml(ctx, visibleIds) {
   }</div>`;
 }
 
+/** Keep exactly one live-record banner ahead of the reused table wrapper. */
+function upsertLiveRecordBanner(host, bannerHtml) {
+  if (!host) return;
+  const existing = [...host.querySelectorAll(".tournament-live-record")];
+  if (!bannerHtml) {
+    for (const el of existing) el.remove();
+    return;
+  }
+  const tmp = document.createElement("div");
+  tmp.innerHTML = bannerHtml;
+  const next = tmp.firstElementChild;
+  if (!next) return;
+  if (existing[0]) {
+    existing[0].replaceWith(next);
+    for (const el of existing.slice(1)) el.remove();
+  } else {
+    const wrap = host.querySelector(".league-table-wrap");
+    if (wrap) host.insertBefore(next, wrap);
+    else host.insertAdjacentElement("afterbegin", next);
+  }
+}
+
 function refreshContextPanel() {
   const host = $("league-table-host");
   const heading = $("live-standings-title");
@@ -460,7 +482,6 @@ function refreshContextPanel() {
             : "Table";
     }
     if (view.kind === "national-table" || view.kind === "continental-table") {
-      const banner = liveRecordBannerHtml(ctx, visibleIds);
       // Re-account from visible matches already done in getTableView — use returned rows.
       const result = renderLeagueTable(host, {
         table: (view.table || []).map((r) => ({
@@ -476,7 +497,7 @@ function refreshContextPanel() {
         showLegend: true,
         variant: "live",
       });
-      if (banner) host.insertAdjacentHTML("afterbegin", banner);
+      upsertLiveRecordBanner(host, liveRecordBannerHtml(ctx, visibleIds));
       ctl.prevPositions = result?.positions || ctl.prevPositions;
       renderContextControls(ctx, view);
       return;

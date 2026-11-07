@@ -30,7 +30,41 @@ export const TESTED_SOURCE_PATHS = [
   "tests/tournamentPresentation.test.mjs",
   "scripts/browserTournamentPresentationChecklist.mjs",
   "scripts/qaTournamentPresentation.mjs",
+  "style.css",
 ];
+
+export const REQUIRED_PARITY_PAIR_FILES = [
+  "world-cup-12001-base.json",
+  "world-cup-12001-final.json",
+  "ucl-seed7-w4d2l2-base.json",
+  "ucl-seed7-w4d2l2-final.json",
+  "libertadores-seed7-base.json",
+  "libertadores-seed7-final.json",
+];
+
+/** Minimum observation keys each browser PASS row must retain. */
+export const BROWSER_REQUIRED_DETAIL_KEYS = {
+  B01: ["observations", "probe", "finalLive", "bannerCounts"],
+  B02: ["overview", "continueClosed", "nextCareerAction"],
+  B03: ["overview", "phase", "twoLegTotal"],
+  B04: ["observed", "knockoutView"],
+  B05: ["observed", "highlightOk"],
+  B06: ["observed", "switched"],
+  B07: ["finalLive", "continueClosed", "nextCareerAction"],
+  B08: ["layouts", "tabActive", "activatedDifferentTab", "phaseTableScroll"],
+};
+
+export function browserDetailHollow(detail) {
+  if (!detail || typeof detail !== "object") return true;
+  if (Object.keys(detail).length === 0) return true;
+  return false;
+}
+
+export function browserDetailMissingKeys(id, detail) {
+  const required = BROWSER_REQUIRED_DETAIL_KEYS[id] || [];
+  if (browserDetailHollow(detail)) return required.length ? required : ["detail"];
+  return required.filter((k) => detail[k] == null || detail[k] === "");
+}
 
 export function sha256File(path) {
   const hash = createHash("sha256");
@@ -167,9 +201,9 @@ export function assessPackageEvidence({
     const row = (browserReport?.results || []).find((r) => r.id === id);
     if (!row) problems.push(`missing browser case ${id}`);
     else if (row.status !== "PASS") problems.push(`browser ${id} status ${row.status}`);
-    else if (!row.detail && !row.observations && !row.detail?.observed && !row.detail?.overview) {
-      // Require substantive payload beyond PASS string
-      if (!row.detail) problems.push(`browser ${id} missing observation detail`);
+    else {
+      const missing = browserDetailMissingKeys(id, row.detail);
+      if (missing.length) problems.push(`browser ${id} missing observations: ${missing.join(",")}`);
     }
   }
 
@@ -180,16 +214,47 @@ export function assessPackageEvidence({
       else {
         const payload = readJson(casePath);
         if (payload.status !== "PASS") problems.push(`browser case file ${id} not PASS`);
-        if (!payload.detail && !payload.observed && !payload.overview) {
-          // accept detail nested
-          if (!payload.detail) problems.push(`browser case file ${id} hollow`);
-        }
+        const missing = browserDetailMissingKeys(id, payload.detail);
+        if (missing.length) problems.push(`browser case file ${id} missing observations: ${missing.join(",")}`);
       }
     }
     for (const rel of REQUIRED_SUITE_INPUTS) {
       if (!existsSync(join(root, "source", rel))) {
         problems.push(`packaged source missing suite input ${rel}`);
       }
+    }
+    // Every packaged source file must match the committed source-content manifest.
+    if (sourceManifest?.files?.length) {
+      for (const row of sourceManifest.files) {
+        const abs = join(root, "source", row.path);
+        if (!existsSync(abs)) {
+          problems.push(`packaged source missing ${row.path}`);
+          continue;
+        }
+        if (row.sha256 && sha256File(abs) !== row.sha256) {
+          problems.push(`source identity mismatch ${row.path}`);
+        }
+      }
+    }
+    // Matched parity pairs + suite log must be present and hashed.
+    for (const name of REQUIRED_PARITY_PAIR_FILES) {
+      const abs = join(root, "qa/fix12/final/gameplay-parity", name);
+      if (!existsSync(abs)) problems.push(`missing parity pair file ${name}`);
+    }
+    if (!existsSync(join(root, "qa/fix12/packaged-suite.log"))) {
+      problems.push("missing packaged-suite.log");
+    } else if (packagedSuiteProof) {
+      const log = readFileSync(join(root, "qa/fix12/packaged-suite.log"), "utf8");
+      if (!new RegExp(`# pass ${packagedSuiteProof.pass}`).test(log)) {
+        problems.push("packaged-suite.log inconsistent with proof");
+      }
+    }
+    // Tie parity summary SHAs to the package manifest.
+    if (gameplayParity?.baseSha && manifest?.acceptedBaseSha && gameplayParity.baseSha !== manifest.acceptedBaseSha) {
+      problems.push("parity baseSha != manifest acceptedBaseSha");
+    }
+    if (gameplayParity?.finalSha && manifest?.finalSha && gameplayParity.finalSha !== manifest.finalSha) {
+      problems.push("parity finalSha != manifest finalSha");
     }
   }
 
@@ -260,6 +325,24 @@ export function assessPackageEvidence({
     for (const c of controls) {
       if (!c.matched) problems.push(`parity control ${c.id || "?"} not matched`);
       if (c.finalRng == null || c.baseRng == null) problems.push(`parity control ${c.id} missing RNG`);
+      if (!c.baseHash || !c.finalHash || c.baseHash !== c.finalHash) {
+        problems.push(`parity control ${c.id} fingerprint mismatch`);
+      }
+    }
+    if (!gameplayParity.pairDigests || typeof gameplayParity.pairDigests !== "object") {
+      problems.push("parity result missing pairDigests map");
+    } else {
+      for (const name of REQUIRED_PARITY_PAIR_FILES) {
+        if (!gameplayParity.pairDigests[name]) {
+          problems.push(`parity pairDigests missing ${name}`);
+        } else if (root) {
+          const abs = join(root, "qa/fix12/final/gameplay-parity", name);
+          if (!existsSync(abs)) problems.push(`missing parity pair file ${name}`);
+          else if (sha256File(abs) !== gameplayParity.pairDigests[name]) {
+            problems.push(`parity pair digest mismatch ${name}`);
+          }
+        }
+      }
     }
   }
 

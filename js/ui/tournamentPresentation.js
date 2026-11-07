@@ -586,20 +586,27 @@ function inventoryCompleteness(campaign, scope, collectedPhase, collectedTotal, 
     return "unavailable";
   }
 
-  // Partial: aggregate cards whose declared legs are not fully recovered.
+  // Partial: reconcile declared legIds against unique recovered played legs.
   const rounds = campaign.allRounds || [];
   for (const round of rounds) {
     for (const m of round.matches || []) {
       if (!m?.isAggregate) continue;
-      const declared = Array.isArray(m.legIds) && m.legIds.length ? m.legIds.length : null;
-      const legs = m.legs || [];
-      const playedLegs = legs.filter((leg) => isPlayedRawMatch(leg));
       const side = fixtureParticipantSide(m, scope.keys, { canonicalId: scope.participantId });
       if (!side) continue;
       if (m.status !== "played") continue;
-      // Declared leg IDs missing raw recoveries, or played aggregate with no recoverable legs.
-      if (declared != null && playedLegs.length < declared) return "partial";
-      if (playedLegs.length === 0) return "partial";
+      const declaredIds = Array.isArray(m.legIds) ? m.legIds.map(String).filter(Boolean) : [];
+      const recoveredIds = new Set();
+      for (const leg of m.legs || []) {
+        if (!isPlayedRawMatch(leg)) continue;
+        const lid = leg.matchId || leg.fixtureId;
+        if (lid) recoveredIds.add(String(lid));
+      }
+      if (declaredIds.length) {
+        const missingDeclared = declaredIds.some((id) => !recoveredIds.has(id));
+        if (missingDeclared) return "partial";
+      } else if (recoveredIds.size === 0) {
+        return "partial";
+      }
     }
   }
 
@@ -607,16 +614,36 @@ function inventoryCompleteness(campaign, scope, collectedPhase, collectedTotal, 
     return "contradiction";
   }
 
+  const saved = savedPhaseRow(campaign, scope);
+  const savedPlayed = saved ? Number(saved.played) || 0 : 0;
+  const uniqueOpening = new Set(
+    (collectedPhase.fixtures || [])
+      .map((m) => m.matchId || m.fixtureId)
+      .filter(Boolean)
+      .map(String)
+  ).size;
+
   if (collectedTotal.fixtures.length === 0) {
     // Live reveal boundary with nothing visible is a truthful zero so far — not table-only.
     if (live) return "empty";
-    const saved = savedPhaseRow(campaign, scope);
     // Known saved phase row without recoverable raw inventory → preserve phase, withhold total.
-    if (saved && (saved.played > 0 || saved.wins > 0 || saved.draws > 0 || saved.losses > 0)) {
+    if (saved && (savedPlayed > 0 || saved.wins > 0 || saved.draws > 0 || saved.losses > 0)) {
       return "table-only";
     }
     return "empty";
   }
+
+  // Completed history with a saved phase row but only a partial raw opening recovery.
+  if (
+    !live &&
+    saved &&
+    savedPlayed > 0 &&
+    uniqueOpening > 0 &&
+    uniqueOpening < savedPlayed
+  ) {
+    return "partial";
+  }
+
   return "complete";
 }
 
@@ -789,10 +816,18 @@ export function projectTournamentRecords({
       phaseFromSavedTable: true,
     };
   } else if (completeness === "partial") {
+    // Prefer the saved opening row when raw inventory under-covers it.
+    const savedPlayed = savedRow ? Number(savedRow.played) || 0 : 0;
+    if (savedRow && savedPlayed > (phaseTally.record?.played || 0)) {
+      phaseRecord = recordFromSavedRow(savedRow) || phaseRecord;
+    }
+    // Withhold an exact tournament total when inventory is incomplete.
     tournamentBlock = {
-      record: totalTally.record,
+      record: null,
       completeness,
       label: "Partial known record",
+      knownMatches: totalTally.record,
+      phaseFromSavedTable: Boolean(savedRow && savedPlayed > (phaseTally.record?.played || 0)),
     };
   } else if (completeness === "empty") {
     tournamentBlock = {
@@ -884,10 +919,9 @@ export function renderTournamentSummaryHtml(projection, { escapeHtml = (s) => St
     }
   } else if (projection.tournament?.label) {
     lines.push(`<p>${escapeHtml(projection.tournament.label)}</p>`);
-    if (projection.tournament.completeness === "partial" && projection.tournament.record) {
-      lines.push(
-        `<p>Known matches: ${escapeHtml(formatRecordLine(projection.tournament.record))}</p>`
-      );
+    const known = projection.tournament.record || projection.tournament.knownMatches;
+    if (projection.tournament.completeness === "partial" && known) {
+      lines.push(`<p>Known matches: ${escapeHtml(formatRecordLine(known))}</p>`);
     }
   }
   if (projection.shootouts && (projection.shootouts.won || projection.shootouts.lost)) {
@@ -1006,11 +1040,18 @@ function playbackStageRank(match) {
   return 40;
 }
 
+function playbackStageBucket(match) {
+  const rank = playbackStageRank(match);
+  return rank === 0 ? "opening" : `ko:${rank}`;
+}
+
 function playbackBatchKey(match) {
-  if (match?.date) return `date:${match.date}`;
+  const bucket = playbackStageBucket(match);
+  // Stage is always part of the key so same-date opening/KO never share a batch.
+  if (match?.date) return `date:${match.date}:${bucket}`;
   const rank = playbackStageRank(match);
   if (rank === 0 && match?.matchday != null && Number(match.matchday) > 0) {
-    return `md:${match.matchday}`;
+    return `md:${match.matchday}:${bucket}`;
   }
   // Documented legacy fallback: stage + identity when date is absent.
   return `stage:${match?.stageId || match?.stageType || "x"}:${match?.matchId || match?.fixtureId || "anon"}`;
@@ -1018,18 +1059,19 @@ function playbackBatchKey(match) {
 
 /**
  * Chronological, stage-aware batches for competition playback.
- * Opening-phase fixtures precede knockout. Same-date (or legacy matchday) batches
- * never mix group cards with knockout cards. Sorted ascending by date then stage.
+ * Opening-phase fixtures precede knockout even when dates are missing or mixed.
+ * Same-date (or legacy matchday) batches never mix group cards with knockout cards.
  */
 export function groupCompetitionFixturesForPlayback(allMatches) {
   const sorted = [...(allMatches || [])].sort((a, b) => {
+    // Stage separation always wins over date so undated opening stays before dated KO.
+    const ra = playbackStageRank(a) - playbackStageRank(b);
+    if (ra) return ra;
     const da = a?.date || "";
     const db = b?.date || "";
     if (da && db && da !== db) return da.localeCompare(db);
     if (da && !db) return -1;
     if (!da && db) return 1;
-    const ra = playbackStageRank(a) - playbackStageRank(b);
-    if (ra) return ra;
     const ma = Number(a?.matchday) || 0;
     const mb = Number(b?.matchday) || 0;
     if (ma !== mb) return ma - mb;

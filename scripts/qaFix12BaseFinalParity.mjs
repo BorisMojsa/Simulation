@@ -4,7 +4,15 @@
  *
  *   node scripts/qaFix12BaseFinalParity.mjs --out qa/fix12-runs/final/gameplay-parity
  */
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, cpSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  existsSync,
+  cpSync,
+  readFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -346,6 +354,17 @@ try {
     };
   });
 
+  const pairDigests = {};
+  for (const c of controls) {
+    for (const side of ["base", "final"]) {
+      const name = `${c.id}-${side}.json`;
+      const abs = join(OUT, name);
+      if (existsSync(abs)) {
+        pairDigests[name] = createHash("sha256").update(readFileSync(abs)).digest("hex");
+      }
+    }
+  }
+
   const result = {
     schema: 1,
     baseSha: BASE_SHA,
@@ -354,6 +373,7 @@ try {
     nationalParity: controls.find((c) => c.id.startsWith("world-cup"))?.matched ?? false,
     continentalParity: controls.find((c) => c.id.startsWith("ucl"))?.matched ?? false,
     controls,
+    pairDigests,
     ok: controls.every((c) => c.matched),
   };
   writeFileSync(join(OUT, "parity-result.json"), JSON.stringify(result, null, 2));

@@ -786,6 +786,104 @@ describe("F12 empty versus unavailable", () => {
       scope: { participantKind: "club", participantId: "c1" },
     });
     assert.equal(partial.tournament.completeness, "partial");
+    assert.equal(partial.tournament.record, null);
+
+    // Duplicate recovered leg a cannot satisfy declared legIds [a,b].
+    const dupLegs = projectTournamentRecords({
+      campaign: {
+        competition: "UCL",
+        competitionId: "ucl",
+        editionId: "ucl:1",
+        focusClubId: "A",
+        leaguePhase: { matches: [], openingLabel: "League phase", frozen: true },
+        allRounds: [
+          {
+            round: "R16",
+            matches: [
+              {
+                matchId: "agg-dup",
+                isAggregate: true,
+                status: "played",
+                home: { clubId: "A", name: "Alpha" },
+                away: { clubId: "B", name: "Beta" },
+                homeGoals: 2,
+                awayGoals: 1,
+                legIds: ["a", "b"],
+                legs: [
+                  rawMatch({
+                    matchId: "a",
+                    competitionId: "ucl",
+                    editionId: "ucl:1",
+                    home: { clubId: "A", name: "Alpha" },
+                    away: { clubId: "B", name: "Beta" },
+                    homeGoals: 1,
+                    awayGoals: 0,
+                  }),
+                  rawMatch({
+                    matchId: "a",
+                    competitionId: "ucl",
+                    editionId: "ucl:1",
+                    home: { clubId: "A", name: "Alpha" },
+                    away: { clubId: "B", name: "Beta" },
+                    homeGoals: 1,
+                    awayGoals: 0,
+                  }),
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      scope: { participantKind: "club", participantId: "A" },
+    });
+    assert.equal(dupLegs.tournament.completeness, "partial");
+    assert.equal(dupLegs.tournament.record, null);
+
+    // Saved phase P8 with only one recovered raw opening fixture → keep saved opening, withhold total.
+    const sparseOpening = projectTournamentRecords({
+      campaign: {
+        competition: "UCL",
+        competitionId: "ucl",
+        editionId: "ucl:sparse",
+        focusClubId: "A",
+        leaguePhase: {
+          openingLabel: "League phase",
+          frozen: true,
+          matches: [
+            rawMatch({
+              matchId: "lp-1",
+              competitionId: "ucl",
+              editionId: "ucl:sparse",
+              home: { clubId: "A", name: "Alpha" },
+              away: { clubId: "B", name: "Beta" },
+              homeGoals: 2,
+              awayGoals: 0,
+              stageType: "league",
+            }),
+          ],
+          table: [
+            {
+              clubId: "A",
+              name: "Alpha",
+              played: 8,
+              wins: 4,
+              draws: 2,
+              losses: 2,
+              points: 14,
+              goalsFor: 10,
+              goalsAgainst: 6,
+            },
+          ],
+        },
+        allRounds: [],
+      },
+      scope: { participantKind: "club", participantId: "A" },
+    });
+    assert.equal(sparseOpening.openingPhase.record.played, 8);
+    assert.equal(sparseOpening.openingPhase.record.wins, 4);
+    assert.equal(sparseOpening.tournament.record, null);
+    assert.equal(sparseOpening.tournament.completeness, "partial");
+    assert.match(renderTournamentSummaryHtml(sparseOpening), /Partial known record|Record unavailable/i);
 
     const tableOnly = projectTournamentRecords({
       campaign: {
@@ -1103,5 +1201,47 @@ describe("R1 chronological national batches", () => {
     const final = bracket.rounds.find((r) => /Final/i.test(r.round))?.matches?.[0];
     assert.equal(final.spoilerHidden, true);
     assert.equal(final.homeGoals, null);
+
+    // Undated opening + dated KO: opening still precedes; same date never mixes stages.
+    const mixed = groupCompetitionFixturesForPlayback([
+      {
+        matchId: "g1",
+        matchday: 1,
+        stageType: "group",
+        playerSide: "home",
+        home: { name: "Serbia" },
+        away: { name: "X" },
+      },
+      {
+        matchId: "ko1",
+        date: "2026-07-01",
+        stageType: "knockout",
+        stageId: "R32",
+        playerSide: "home",
+        home: { name: "Serbia" },
+        away: { name: "Y" },
+      },
+      {
+        matchId: "g2",
+        date: "2026-07-01",
+        stageType: "group",
+        matchday: 2,
+        playerSide: null,
+        home: { name: "A" },
+        away: { name: "B" },
+      },
+    ]);
+    const idx = (id) => mixed.findIndex((b) => b.matches.some((m) => m.matchId === id));
+    assert.ok(idx("g1") >= 0 && idx("g1") < idx("ko1"), "undated opening before dated KO");
+    assert.ok(idx("g2") < idx("ko1"), "dated opening before KO");
+    const sameDateKeys = mixed.filter((b) => b.date === "2026-07-01");
+    assert.equal(sameDateKeys.length, 2, "same date splits opening vs KO");
+    assert.ok(
+      !sameDateKeys.some(
+        (b) =>
+          b.matches.some((m) => m.stageType === "group") &&
+          b.matches.some((m) => m.stageType === "knockout")
+      )
+    );
   });
 });
