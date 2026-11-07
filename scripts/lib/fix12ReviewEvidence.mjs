@@ -27,6 +27,8 @@ export const TESTED_SOURCE_PATHS = [
   "js/ui/seasonAnimation.js",
   "js/simulation/competitionPlayback.js",
   "js/simulation/nationalTournament.js",
+  "js/simulation/fix12TournamentPresentationBrowserFixture.js",
+  "main.js",
   "tests/tournamentPresentation.test.mjs",
   "scripts/browserTournamentPresentationChecklist.mjs",
   "scripts/qaTournamentPresentation.mjs",
@@ -45,12 +47,12 @@ export const REQUIRED_PARITY_PAIR_FILES = [
 /** Minimum observation keys each browser PASS row must retain. */
 export const BROWSER_REQUIRED_DETAIL_KEYS = {
   B01: ["observations", "probe", "finalLive", "bannerCounts"],
-  B02: ["overview", "continueClosed", "nextCareerAction"],
-  B03: ["overview", "phase", "twoLegTotal"],
-  B04: ["observed", "knockoutView"],
+  B02: ["overview", "continueClosed", "nextCareerAction", "seasonActionInFlight", "nationalRecap"],
+  B03: ["overview", "phase", "twoLegTotal", "phasePlayed", "tournamentPlayed", "conferenceOrGroup"],
+  B04: ["observed", "knockoutView", "serbiaSpainEt", "serbiaItalyPens"],
   B05: ["observed", "highlightOk"],
   B06: ["observed", "switched"],
-  B07: ["finalLive", "continueClosed", "nextCareerAction"],
+  B07: ["finalLive", "continueClosed", "nextCareerAction", "seasonActionInFlight", "pauseResumeSkip"],
   B08: ["layouts", "tabActive", "activatedDifferentTab", "phaseTableScroll"],
 };
 
@@ -64,6 +66,94 @@ export function browserDetailMissingKeys(id, detail) {
   const required = BROWSER_REQUIRED_DETAIL_KEYS[id] || [];
   if (browserDetailHollow(detail)) return required.length ? required : ["detail"];
   return required.filter((k) => detail[k] == null || detail[k] === "");
+}
+
+/** Value-level browser observation validation (R5). */
+export function browserDetailValueProblems(id, detail) {
+  const problems = [];
+  if (browserDetailHollow(detail)) {
+    problems.push(`${id} hollow detail`);
+    return problems;
+  }
+  const missing = browserDetailMissingKeys(id, detail);
+  for (const k of missing) problems.push(`${id} missing ${k}`);
+
+  if (id === "B01") {
+    if (!Array.isArray(detail.bannerCounts) || detail.bannerCounts.some((n) => n !== 1)) {
+      problems.push("B01 bannerCounts must be all 1");
+    }
+    if (!/P8/i.test(detail.finalLive || "") || !/W7/i.test(detail.finalLive || "")) {
+      problems.push("B01 finalLive must show P8 W7");
+    }
+  }
+  if (id === "B02" || id === "B07") {
+    if (detail.continueClosed !== true) problems.push(`${id} continueClosed must be true`);
+    if (detail.seasonActionInFlight !== false) problems.push(`${id} seasonActionInFlight must be false`);
+    const next = detail.nextCareerAction || {};
+    if (next.canSimulate !== true) problems.push(`${id} nextCareerAction.canSimulate must be true`);
+    if (!next.id && !next.label) problems.push(`${id} nextCareerAction incomplete`);
+    if (Array.isArray(detail.errors) && detail.errors.length) problems.push(`${id} runtime errors present`);
+  }
+  if (id === "B02") {
+    if (!/P8 · W7 · D1 · L0/.test(detail.overview || "") && !/P8/.test(detail.nationalRecap || "")) {
+      problems.push("B02 overview/recap missing champion totals");
+    }
+  }
+  if (id === "B03") {
+    if (Number(detail.phasePlayed) !== 8) problems.push("B03 phasePlayed must be 8");
+    if (Number(detail.tournamentPlayed) !== 10) problems.push("B03 tournamentPlayed must be 10");
+    if (detail.conferenceOrGroup !== true) problems.push("B03 conferenceOrGroup not exercised");
+  }
+  if (id === "B04") {
+    if (detail.serbiaSpainEt !== true) problems.push("B04 serbiaSpainEt missing");
+    if (detail.serbiaItalyPens !== true) problems.push("B04 serbiaItalyPens missing");
+  }
+  if (id === "B05" && detail.highlightOk !== true) problems.push("B05 highlightOk must be true");
+  if (id === "B07" && detail.pauseResumeSkip !== true) problems.push("B07 pauseResumeSkip must be true");
+  if (id === "B08") {
+    const scroll = detail.phaseTableScroll || {};
+    if (!(Number(scroll.wrapScrollWidth) > 0 && Number(scroll.wrapClientWidth) > 0)) {
+      problems.push("B08 phaseTableScroll missing positive wrapper widths");
+    }
+    if (scroll.docOverflow === true) problems.push("B08 document overflow");
+    if (scroll.scrolledInsidePanel !== true) problems.push("B08 scrolledInsidePanel must be true");
+  }
+  return problems;
+}
+
+export function fingerprintObject(value) {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+/** Recompute parity control hashes from packaged pair files. */
+export function recomputeParityFromPairFiles(parityDir, gameplayParity) {
+  const problems = [];
+  if (!gameplayParity?.controls?.length) {
+    problems.push("parity controls missing for recomputation");
+    return { ok: false, problems };
+  }
+  for (const c of gameplayParity.controls) {
+    const basePath = join(parityDir, `${c.id}-base.json`);
+    const finalPath = join(parityDir, `${c.id}-final.json`);
+    if (!existsSync(basePath) || !existsSync(finalPath)) {
+      problems.push(`parity pair missing for ${c.id}`);
+      continue;
+    }
+    const base = readJson(basePath);
+    const final = readJson(finalPath);
+    const baseHash = fingerprintObject(base);
+    const finalHash = fingerprintObject(final);
+    if (baseHash !== c.baseHash) problems.push(`recomputed baseHash mismatch ${c.id}`);
+    if (finalHash !== c.finalHash) problems.push(`recomputed finalHash mismatch ${c.id}`);
+    if (baseHash !== finalHash) problems.push(`pair content mismatch ${c.id}`);
+    if ((base.matchCount ?? base.fixtures?.length) !== (final.matchCount ?? final.fixtures?.length)) {
+      problems.push(`pair matchCount mismatch ${c.id}`);
+    }
+    if (base.rng !== final.rng) problems.push(`pair rng mismatch ${c.id}`);
+    if (c.baseRng != null && base.rng !== c.baseRng) problems.push(`reported baseRng mismatch ${c.id}`);
+    if (c.finalRng != null && final.rng !== c.finalRng) problems.push(`reported finalRng mismatch ${c.id}`);
+  }
+  return { ok: problems.length === 0, problems };
 }
 
 export function sha256File(path) {
@@ -202,8 +292,7 @@ export function assessPackageEvidence({
     if (!row) problems.push(`missing browser case ${id}`);
     else if (row.status !== "PASS") problems.push(`browser ${id} status ${row.status}`);
     else {
-      const missing = browserDetailMissingKeys(id, row.detail);
-      if (missing.length) problems.push(`browser ${id} missing observations: ${missing.join(",")}`);
+      for (const p of browserDetailValueProblems(id, row.detail)) problems.push(p);
     }
   }
 
@@ -214,8 +303,13 @@ export function assessPackageEvidence({
       else {
         const payload = readJson(casePath);
         if (payload.status !== "PASS") problems.push(`browser case file ${id} not PASS`);
-        const missing = browserDetailMissingKeys(id, payload.detail);
-        if (missing.length) problems.push(`browser case file ${id} missing observations: ${missing.join(",")}`);
+        for (const p of browserDetailValueProblems(id, payload.detail)) {
+          problems.push(`case-file ${p}`);
+        }
+        const reportRow = (browserReport?.results || []).find((r) => r.id === id);
+        if (reportRow && JSON.stringify(reportRow.detail) !== JSON.stringify(payload.detail)) {
+          problems.push(`browser ${id} report/case detail disagree`);
+        }
       }
     }
     for (const rel of REQUIRED_SUITE_INPUTS) {
@@ -343,6 +437,30 @@ export function assessPackageEvidence({
           }
         }
       }
+    }
+    if (root) {
+      const recomputed = recomputeParityFromPairFiles(
+        join(root, "qa/fix12/final/gameplay-parity"),
+        gameplayParity
+      );
+      for (const p of recomputed.problems) problems.push(p);
+    }
+  }
+
+  // Browser report must bind the same tested-source identity (+ fixture digest when present).
+  if (browserReport?.testedSourceFingerprint && manifest?.testedSourceFingerprint) {
+    for (const p of TESTED_SOURCE_PATHS) {
+      const a = browserReport.testedSourceFingerprint[p];
+      const b = manifest.testedSourceFingerprint[p];
+      if (a && b && a !== b) problems.push(`browser tested fingerprint drift ${p}`);
+    }
+  } else if (root) {
+    problems.push("browser report missing testedSourceFingerprint map");
+  }
+  if (root && browserReport?.fixtureDigest) {
+    const fixtureAbs = join(root, "qa/fix12/final/fixtures/f01-career-snapshot.json");
+    if (existsSync(fixtureAbs) && sha256File(fixtureAbs) !== browserReport.fixtureDigest) {
+      problems.push("browser fixtureDigest mismatch");
     }
   }
 

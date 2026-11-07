@@ -183,52 +183,167 @@ async function readFinalBracketRow(page) {
   });
 }
 
-/** Production Continue control: show recap, wire #continue-btn, close overlay. */
-async function finishViaContinue(page) {
-  await page.evaluate(() => {
-    const menu = document.getElementById("sim-comp-menu");
-    menu?.classList.remove("hidden");
-    menu?.removeAttribute("hidden");
-    document.querySelector('.sim-comp-tab[data-view="recap"]')?.click();
-    const cont = document.getElementById("animation-continue");
+async function clickProductionContinue(page) {
+  return page.evaluate(() => {
+    const section = document.getElementById("animation-continue");
     const btn = document.getElementById("continue-btn");
-    cont?.classList.remove("hidden");
-    cont?.classList.add("active");
-    if (btn) {
-      btn.onclick = () => {
-        document.getElementById("season-animation-overlay")?.classList.add("hidden");
-        document.getElementById("simulation-dashboard")?.classList.add("hidden");
-        cont?.classList.add("hidden");
-        cont?.classList.remove("active");
-      };
-    }
+    if (!section || section.classList.contains("hidden")) return { clicked: false, reason: "section-hidden" };
+    if (!btn || btn.disabled || btn.offsetParent === null) return { clicked: false, reason: "btn-not-visible" };
+    btn.click();
+    return { clicked: true, text: (btn.textContent || "").trim() };
   });
-  await page.waitForTimeout(60);
-  const recapVisible = await page.evaluate(() => {
-    const grid = document.getElementById("sim-recap-grid");
-    return Boolean(grid && !grid.classList.contains("hidden"));
-  });
-  await page.click("#continue-btn");
-  await page.waitForTimeout(80);
-  const closed = await page.evaluate(() => {
+}
+
+async function readUiDebug(page) {
+  return page.evaluate(() => {
+    const d = window.__getLiveCareerDebug?.() || null;
     const overlay = document.getElementById("season-animation-overlay");
     const dash = document.getElementById("simulation-dashboard");
+    const sim = document.getElementById("simulate-btn");
+    const intl = document.getElementById("international-animation");
     return {
+      debug: d,
       overlayHidden: !overlay || overlay.classList.contains("hidden"),
-      dashHidden: !dash || dash.classList.contains("hidden"),
+      dashboardHidden: !dash || dash.classList.contains("hidden") || !dash.classList.contains("active"),
+      seasonActionInFlight: Boolean(d?.seasonActionInFlight),
+      simulateDisabled: Boolean(sim?.disabled),
+      simulateText: (sim?.textContent || "").trim(),
+      nextAction: d?.nextAction || null,
+      qaFix12: d?.qaFix12 || null,
+      internationalVisible: Boolean(intl && !intl.classList.contains("hidden")),
+      internationalText: intl?.innerText?.slice(0, 800) || "",
     };
   });
-  const nextCareerAction = await page.evaluate(() => {
-    const start = document.getElementById("start-career-btn");
-    const advance = document.getElementById("advance-season-btn");
-    const comps = document.getElementById("comp-name-select");
-    return {
-      startVisible: Boolean(start && !start.classList.contains("hidden")),
-      advanceVisible: Boolean(advance && !advance.disabled),
-      competitionsReady: Boolean(comps),
-    };
+}
+
+function looksLikeNationalRecap(text) {
+  return /Total tournament record:\s*P\d|Group-stage record:\s*P\d|Tournament so far:\s*P\d|Winners/i.test(
+    text || ""
+  );
+}
+
+async function readNationalRecapText(page) {
+  return page.evaluate(() => {
+    const intl = document.getElementById("international-animation");
+    const intlText = intl?.innerText || "";
+    const live = document.querySelector(".tournament-live-record")?.innerText || "";
+    const host = document.getElementById("league-table-host")?.innerText || "";
+    return { intlText, live, host, intlVisible: Boolean(intl && !intl.classList.contains("hidden")) };
   });
-  return { recapVisible, continueClosed: closed.overlayHidden && closed.dashHidden, nextCareerAction };
+}
+
+/**
+ * Drive production showSeasonAnimation using only real #continue-btn / skip controls.
+ * Never installs onclick handlers or toggles overlay visibility directly.
+ */
+async function driveProductionSeasonToDesk(page, { timeoutMs = 180000, onNationalDashboard = null } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  let continueClicks = 0;
+  let nationalRecap = null;
+  let pauseResumeSkip = false;
+  let sawNationalDashboard = false;
+  let waitedForNationalRecap = false;
+
+  while (Date.now() < deadline) {
+    const ui = await readUiDebug(page);
+    if (ui.overlayHidden && ui.dashboardHidden && ui.seasonActionInFlight === false && continueClicks > 0) {
+      return {
+        continueClosed: true,
+        continueClicks,
+        nationalRecap,
+        pauseResumeSkip,
+        seasonActionInFlight: false,
+        nextCareerAction: ui.nextAction,
+        simulateText: ui.simulateText,
+        simulateDisabled: ui.simulateDisabled,
+        qaFix12: ui.qaFix12,
+      };
+    }
+
+    const dashState = await page.evaluate(() => {
+      const dash = document.getElementById("simulation-dashboard");
+      const active = Boolean(dash && !dash.classList.contains("hidden") && dash.classList.contains("active"));
+      const live = document.querySelector(".tournament-live-record")?.innerText || "";
+      const stage = document.querySelector("#match-card-rail .match-card-stage")?.textContent || "";
+      const title = document.getElementById("sim-dash-title")?.textContent || "";
+      const national = /World Cup|Group stage|FIFA|international/i.test(`${live}\n${stage}\n${title}`);
+      return { active, national, live, stage, title };
+    });
+    if (dashState.active && dashState.national && !sawNationalDashboard) {
+      sawNationalDashboard = true;
+      if (typeof onNationalDashboard === "function") {
+        pauseResumeSkip = Boolean(await onNationalDashboard(page));
+      } else {
+        await page.evaluate(() => document.getElementById("sim-skip-phase-btn")?.click());
+        await page.waitForTimeout(80);
+      }
+    } else if (dashState.active && !dashState.national) {
+      // Empty/domestic league slate before internationals — skip through quickly.
+      await page.evaluate(() => document.getElementById("sim-skip-phase-btn")?.click());
+      await page.waitForTimeout(40);
+    }
+
+    const recap = await readNationalRecapText(page);
+    if (looksLikeNationalRecap(recap.intlText)) nationalRecap = recap.intlText;
+    else if (looksLikeNationalRecap(recap.live)) nationalRecap = nationalRecap || recap.live;
+
+    // After national playback, wait briefly for the production international recap
+    // screen so Continue does not race past it before we observe totals.
+    if (sawNationalDashboard && !nationalRecap && !waitedForNationalRecap && !dashState.active) {
+      waitedForNationalRecap = true;
+      try {
+        await page.waitForFunction(
+          () => {
+            const intl = document.getElementById("international-animation");
+            const text = intl?.innerText || "";
+            return (
+              intl &&
+              !intl.classList.contains("hidden") &&
+              /Winners|Group-stage record:\s*P\d|Total tournament record:\s*P\d/i.test(text)
+            );
+          },
+          null,
+          { timeout: 8000 }
+        );
+        const after = await readNationalRecapText(page);
+        if (looksLikeNationalRecap(after.intlText)) nationalRecap = after.intlText;
+      } catch {
+        /* continue driving; assertion later will fail if still missing */
+      }
+    }
+
+    const cont = await clickProductionContinue(page);
+    if (cont.clicked) {
+      continueClicks += 1;
+      await page.waitForTimeout(180);
+      continue;
+    }
+
+    await page.evaluate(() => {
+      for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "sim-skip-match-btn", "match-skip-btn"]) {
+        const el = document.getElementById(id);
+        if (el && !el.disabled && el.offsetParent !== null) el.click();
+      }
+    });
+    await page.waitForTimeout(160);
+  }
+  const snap = await readUiDebug(page);
+  throw Object.assign(new Error("Timed out driving production season to desk"), { snap, continueClicks, nationalRecap });
+}
+
+async function startFix12CompleteFixture(page) {
+  await page.evaluate(() => {
+    window.__fix12FixturePromise = window.__loadFix12TournamentPresentationBrowserFixture?.();
+  });
+  await page.waitForFunction(
+    () => {
+      const d = window.__getLiveCareerDebug?.();
+      const overlay = document.getElementById("season-animation-overlay");
+      return Boolean(d?.qaFix12?.expectedTotal && overlay && !overlay.classList.contains("hidden"));
+    },
+    null,
+    { timeout: 60000 }
+  );
 }
 
 const handlers = {
@@ -393,15 +508,26 @@ const handlers = {
   },
 
   async B02(page, runtime) {
-    // National recap + production Continue, then reopen career history.
-    const cont = await finishViaContinue(page);
-    assert(cont.recapVisible, "national recap visible before Continue", cont);
-    assert(cont.continueClosed, "overlay closed via #continue-btn", cont);
+    // Production completed-season path (showSeasonAnimation → #continue-btn → desk).
+    await startFix12CompleteFixture(page);
+    const before = await readUiDebug(page);
+    assert(before.seasonActionInFlight === true, "season in flight during presentation", before);
+    const driven = await driveProductionSeasonToDesk(page);
+    assert(driven.continueClosed === true, "overlay/dashboard closed by production Continue", driven);
+    assert(driven.continueClicks >= 1, "clicked production #continue-btn", driven);
+    assert(driven.seasonActionInFlight === false, "seasonActionInFlight cleared", driven);
+    assert(driven.nextCareerAction?.canSimulate === true, "simulate next season available", driven.nextCareerAction);
     assert(
-      cont.nextCareerAction.competitionsReady || cont.nextCareerAction.advanceVisible,
-      "next career action",
-      cont.nextCareerAction
+      /Total tournament record:\s*P8\s*·\s*W7|Group-stage record:\s*P3|Winners/i.test(driven.nationalRecap || ""),
+      "national recap totals",
+      driven.nationalRecap
     );
+    const simEnabled = await page.evaluate(() => {
+      const btn = document.getElementById("simulate-btn");
+      return Boolean(btn && !btn.disabled);
+    });
+    assert(simEnabled, "#simulate-btn enabled after return", driven);
+
     await selectCompetition(page, /World Cup/);
     await clickCompTab(page, "overview");
     const overview = await competitionsText(page);
@@ -419,14 +545,19 @@ const handlers = {
       label: "controlled",
       overview: overview.text,
       phase: phase.text,
-      continueClosed: cont.continueClosed,
-      nextCareerAction: cont.nextCareerAction,
+      nationalRecap: driven.nationalRecap,
+      continueClosed: driven.continueClosed,
+      seasonActionInFlight: driven.seasonActionInFlight,
+      nextCareerAction: driven.nextCareerAction,
+      continueClicks: driven.continueClicks,
       shotPath,
       errors: [...runtime],
     };
   },
 
   async B03(page, runtime) {
+    await restoreSnapshot(page, loadFixtureSnapshot());
+    await page.waitForTimeout(100);
     // Attach a completed two-leg path so tournament total > opening P8.
     await page.evaluate(() => {
       const snap = window.__exportCareerSnapshot?.();
@@ -494,34 +625,82 @@ const handlers = {
     const overview = await competitionsText(page);
     assert(/League phase/i.test(overview.text) || /League-phase record/i.test(overview.text), "league phase label", overview.text);
     assert(/P8\s*·\s*W4\s*·\s*D2\s*·\s*L2|W4\s*·\s*D2\s*·\s*L2/.test(overview.text), "UCL opening W4 D2 L2", overview.text.slice(0, 600));
+    const phaseMatch = overview.text.match(/League-phase record:\s*P(\d+)/i);
     const totalMatch = overview.text.match(/Total tournament record:\s*P(\d+)/i);
-    const totalPlayed = Number(totalMatch?.[1] || 0);
-    assert(totalPlayed > 8, "two-leg path grows tournament total", { totalPlayed, text: overview.text.slice(0, 500) });
+    const phasePlayed = Number(phaseMatch?.[1] || 0);
+    const tournamentPlayed = Number(totalMatch?.[1] || 0);
+    assert(phasePlayed === 8, "exact league-phase P8", { phasePlayed, text: overview.text.slice(0, 500) });
+    assert(tournamentPlayed === 10, "exact tournament P10 after two legs", { tournamentPlayed, text: overview.text.slice(0, 500) });
     await clickCompTab(page, "phase");
     const phase = await competitionsText(page);
     assert(/League phase only/i.test(phase.text) || /P8/.test(phase.text), "phase scope", phase.text);
+
+    // Conference / group-format view via constructed campaign projection in the competitions board.
+    const conferenceOrGroup = await page.evaluate(async () => {
+      const { projectTournamentRecords, renderTournamentSummaryHtml } = await import(
+        "./js/ui/tournamentPresentation.js"
+      );
+      const campaign = {
+        name: "UEFA Conference League",
+        competitionId: "uecl",
+        editionId: "uecl:2026",
+        focusClubId: "club-a",
+        result: "Group stage",
+        groups: {
+          openingLabel: "League phase",
+          groups: [
+            {
+              name: "Group A",
+              participants: ["Alpha", "Beta"],
+              matches: [],
+              table: [
+                { clubId: "club-a", name: "Alpha", played: 6, wins: 3, draws: 1, losses: 2, points: 10 },
+              ],
+            },
+          ],
+        },
+        allRounds: [],
+      };
+      const proj = projectTournamentRecords({
+        campaign,
+        scope: { participantKind: "club", participantId: "club-a" },
+      });
+      const host = document.createElement("div");
+      host.id = "b03-conference-host";
+      document.body.appendChild(host);
+      host.innerHTML = renderTournamentSummaryHtml(proj);
+      const text = host.innerText;
+      host.remove();
+      return /Conference|Group|League/i.test(text) && /P6|P0|Partial|record/i.test(text);
+    });
+    assert(conferenceOrGroup === true, "conference/group-format view exercised", conferenceOrGroup);
     const shotPath = await shot(page, "B03-continental");
     return {
       label: "controlled",
       overview: overview.text,
       phase: phase.text,
-      twoLegTotal: totalPlayed,
+      twoLegTotal: tournamentPlayed,
+      phasePlayed,
+      tournamentPlayed,
+      conferenceOrGroup: true,
       shotPath,
       errors: [...runtime],
     };
   },
 
   async B04(page, runtime) {
-    // Inject ET + pens into the restored World Cup campaign and open the knockout view.
+    await restoreSnapshot(page, loadFixtureSnapshot());
+    await page.waitForTimeout(100);
+    // Inject controlled Serbia–Spain ET semi and Serbia–Italy pens final into career history.
     const observed = await page.evaluate(async () => {
       const { tallyParticipantRecord } = await import("./js/ui/tournamentPresentation.js");
       const snap = window.__exportCareerSnapshot?.();
-      const t = snap?.player?.seasons?.[0]?.international?.primary;
+      const intl = snap?.player?.seasons?.[0]?.international;
       const pensMatch = {
         matchId: "b04-pens",
         status: "played",
-        home: { name: "Serbia" },
-        away: { name: "Italy" },
+        home: { name: "Serbia", displayName: "Serbia" },
+        away: { name: "Italy", displayName: "Italy" },
         homeGoals: 1,
         awayGoals: 1,
         matchHomeGoals: 1,
@@ -536,8 +715,8 @@ const handlers = {
       const etMatch = {
         matchId: "b04-et",
         status: "played",
-        home: { name: "Serbia" },
-        away: { name: "Spain" },
+        home: { name: "Serbia", displayName: "Serbia" },
+        away: { name: "Spain", displayName: "Spain" },
         homeGoals: 2,
         awayGoals: 1,
         matchHomeGoals: 2,
@@ -549,12 +728,16 @@ const handlers = {
         stageType: "knockout",
         scoreline: "2–1 a.e.t.",
       };
-      t.allRounds = [
-        ...(t.allRounds || []).filter((r) => !/Semi|Final/i.test(r.round)),
-        { round: "Semi-finals", matches: [etMatch] },
-        { round: "Final", matches: [pensMatch] },
+      const controlledRounds = [
+        { round: "Semi-finals", stageId: "SF", matches: [etMatch] },
+        { round: "Final", stageId: "Final", matches: [pensMatch] },
       ];
-      t.result = "Winners";
+      for (const target of [intl?.primary, ...(intl?.tournaments || [])].filter(Boolean)) {
+        target.allRounds = controlledRounds;
+        target.rounds = controlledRounds;
+        target.result = "Winners";
+        target.winner = "Serbia";
+      }
       window.__restoreCareerSnapshot?.(snap);
       return {
         pens: tallyParticipantRecord([pensMatch], ["Serbia"]).record,
@@ -565,14 +748,31 @@ const handlers = {
     assert(observed.et.wins === 1 && observed.et.gf === 2 && observed.et.ga === 1, "et", observed);
     await selectCompetition(page, /World Cup/);
     await clickCompTab(page, "knockout");
+    await page.waitForTimeout(80);
     const knockoutView = (await competitionsText(page)).text;
-    assert(/2–1|2-1|a\.e\.t|extra/i.test(knockoutView), "ET score in knockout view", knockoutView.slice(0, 600));
-    assert(/5–4|5-4|pens|penalt/i.test(knockoutView), "penalty score in knockout view", knockoutView.slice(0, 600));
+    const semiChunk = (knockoutView.match(/Semi-finals[\s\S]{0,260}/i) || [""])[0];
+    const finalChunk = (knockoutView.match(/(?:^|\n)Final(?:\n|$)[\s\S]{0,260}/i) || [""])[0];
+    const serbiaSpainEt =
+      /Serbia/i.test(semiChunk) && /Spain/i.test(semiChunk) && (/2–1|2-1/.test(semiChunk) || /a\.e\.t/i.test(semiChunk));
+    const serbiaItalyPens =
+      /Serbia/i.test(finalChunk) && /Italy/i.test(finalChunk) && (/5–4|5-4/.test(finalChunk) || /pens|penalt/i.test(finalChunk));
+    assert(serbiaSpainEt, "Serbia–Spain ET semi in knockout view", semiChunk || knockoutView.slice(0, 400));
+    assert(serbiaItalyPens, "Serbia–Italy pens final in knockout view", finalChunk || knockoutView.slice(0, 400));
     const shotPath = await shot(page, "B04-et-pens");
-    return { label: "controlled", observed, knockoutView: knockoutView.slice(0, 800), shotPath, errors: [...runtime] };
+    return {
+      label: "controlled",
+      observed,
+      knockoutView: knockoutView.slice(0, 800),
+      serbiaSpainEt: true,
+      serbiaItalyPens: true,
+      shotPath,
+      errors: [...runtime],
+    };
   },
 
   async B05(page, runtime) {
+    await restoreSnapshot(page, loadFixtureSnapshot());
+    await page.waitForTimeout(100);
     const observed = await page.evaluate(async () => {
       const snap = window.__exportCareerSnapshot?.();
       const euro = snap?.player?.seasons?.[0]?.europeanCampaign;
@@ -630,6 +830,8 @@ const handlers = {
   },
 
   async B06(page, runtime) {
+    await restoreSnapshot(page, loadFixtureSnapshot());
+    await page.waitForTimeout(100);
     // Seed a second season with non-selected nation + incomplete history, then switch via UI.
     const switched = await page.evaluate(() => {
       const snap = window.__exportCareerSnapshot?.();
@@ -722,65 +924,30 @@ const handlers = {
   },
 
   async B07(page, runtime) {
-    // Reload clean snapshot then drive skip-phase through national dashboard.
-    const snapshot = loadFixtureSnapshot();
-    await restoreSnapshot(page, snapshot);
-    await page.waitForTimeout(150);
-    await page.evaluate(async () => {
-      const dash = await import("./js/ui/simulationDashboard.js");
-      const { buildNationalPlaybackContext } = await import("./js/simulation/competitionPlayback.js");
-      const snap = window.__exportCareerSnapshot?.();
-      const t = snap?.player?.seasons?.[0]?.international?.primary;
-      const player = snap.player;
-      const fixtures = [
-        ...(t.groups || []).flatMap((g) => g.matches || []),
-        ...(t.allRounds || []).flatMap((r) => r.matches || []),
-      ].map((m) => {
-        const h = m.home?.name || m.homeParticipantId;
-        const a = m.away?.name || m.awayParticipantId;
-        return {
-          ...m,
-          playerSide: h === "Serbia" ? "home" : a === "Serbia" ? "away" : null,
-          competitionType: "international",
-          teamType: "nation",
-        };
-      });
-      dash.configureDashboardTiming({ matchMs: 20, speed: 40 });
-      const ctx = buildNationalPlaybackContext({ tournament: t, player, visibleFixtureIds: [] });
-      window.__qaPlaybackDone = false;
-      window.__qaPlaybackError = null;
-      dash
-        .runSimulationDashboard({
-          player,
-          league: player.club,
-          seasonNumber: 1,
-          allMatches: fixtures,
-          playerMatches: fixtures.filter((m) => m.playerSide),
-          competitionContext: ctx,
-          reset: true,
-        })
-        .then(() => {
-          window.__qaPlaybackDone = true;
-        })
-        .catch((e) => {
-          window.__qaPlaybackError = String(e?.message || e);
-          window.__qaPlaybackDone = true;
-        });
+    // Same production completed-season path, with pause/resume/skip during national dashboard.
+    await startFix12CompleteFixture(page);
+    const driven = await driveProductionSeasonToDesk(page, {
+      onNationalDashboard: async (p) => {
+        await p.evaluate(() => document.getElementById("sim-pause-btn")?.click());
+        await p.waitForTimeout(40);
+        await p.evaluate(() => document.getElementById("sim-pause-btn")?.click());
+        await p.evaluate(() => document.getElementById("sim-skip-match-btn")?.click());
+        await p.waitForTimeout(60);
+        const liveMid = await p.evaluate(() => document.querySelector(".tournament-live-record")?.innerText || "");
+        await p.evaluate(() => document.getElementById("sim-skip-phase-btn")?.click());
+        await p.waitForTimeout(200);
+        const liveEnd = await p.evaluate(() => document.querySelector(".tournament-live-record")?.innerText || "");
+        await p.evaluate((probe) => {
+          window.__qaB07Live = probe;
+        }, { liveMid, liveEnd });
+        return /P8/i.test(liveEnd) && /W7/i.test(liveEnd);
+      },
     });
-    await page.waitForTimeout(80);
-    await page.evaluate(() => document.getElementById("sim-pause-btn")?.click());
-    await page.waitForTimeout(40);
-    await page.evaluate(() => document.getElementById("sim-pause-btn")?.click());
-    await page.evaluate(() => document.getElementById("sim-skip-match-btn")?.click());
-    await page.waitForTimeout(80);
-    await page.evaluate(() => document.getElementById("sim-skip-phase-btn")?.click());
-    await page.waitForFunction(() => window.__qaPlaybackDone === true, null, { timeout: 60000 });
-    const err = await page.evaluate(() => window.__qaPlaybackError);
-    assert(!err, "B07 playback error", err);
-    const finalLive = await page.evaluate(() => document.querySelector(".tournament-live-record")?.innerText || "");
-    assert(/P8/i.test(finalLive) && /W7/i.test(finalLive), "skip path ends P8 W7", finalLive);
-    const cont = await finishViaContinue(page);
-    assert(cont.continueClosed, "B07 continue closed overlay", cont);
+    const liveProbe = await page.evaluate(() => window.__qaB07Live || null);
+    assert(driven.pauseResumeSkip === true, "pause/resume/skip path reached P8 W7", { driven, liveProbe });
+    assert(driven.continueClosed === true, "production Continue closed overlay", driven);
+    assert(driven.seasonActionInFlight === false, "seasonActionInFlight cleared", driven);
+    assert(driven.nextCareerAction?.canSimulate === true, "next simulate action", driven.nextCareerAction);
     await selectCompetition(page, /World Cup/);
     await clickCompTab(page, "overview");
     const text = (await competitionsText(page)).text;
@@ -788,9 +955,11 @@ const handlers = {
     const shotPath = await shot(page, "B07-skip-continue");
     return {
       label: "controlled",
-      finalLive,
-      continueClosed: cont.continueClosed,
-      nextCareerAction: cont.nextCareerAction,
+      finalLive: liveProbe?.liveEnd || "",
+      pauseResumeSkip: true,
+      continueClosed: driven.continueClosed,
+      seasonActionInFlight: driven.seasonActionInFlight,
+      nextCareerAction: driven.nextCareerAction,
       competitionsText: text.slice(0, 500),
       shotPath,
       errors: [...runtime],
@@ -798,6 +967,8 @@ const handlers = {
   },
 
   async B08(page, runtime) {
+    await restoreSnapshot(page, loadFixtureSnapshot());
+    await page.waitForTimeout(100);
     await selectCompetition(page, /World Cup/);
     await clickCompTab(page, "overview");
     const before = await page.evaluate(() => document.querySelector(".comp-tab.is-active")?.dataset?.view || null);
@@ -816,23 +987,55 @@ const handlers = {
     assert(activatedDifferentTab.ok, "found non-active tab", activatedDifferentTab);
     assert(tabActive && tabActive !== before, "keyboard/click activated a different tab", { before, tabActive });
 
-    // Wide phase table should scroll inside its panel, not the document.
-    await clickCompTab(page, "phase");
+    // Inject a genuinely wide phase table at 390px, scroll it inside the panel.
     await page.setViewportSize({ width: 390, height: 800 });
+    await page.waitForTimeout(40);
+    await page.evaluate(() => {
+      const board = document.getElementById("competitions-board");
+      const view = board?.querySelector(".competitions-view") || board;
+      if (!view) return;
+      // Wide table must scroll inside .comp-table-wrap; wrap width follows the
+      // competitions board / panel chain (not the table content).
+      view.innerHTML = `<div class="comp-table-wrap" id="b08-wide-wrap"><table class="comp-table" id="b08-wide-table" style="width:max-content;min-width:960px"><thead><tr>${Array.from(
+        { length: 16 },
+        (_, i) => `<th style="min-width:70px">Col${i}</th>`
+      ).join("")}</tr></thead><tbody><tr>${Array.from(
+        { length: 16 },
+        (_, i) => `<td style="min-width:70px">Cell${i}</td>`
+      ).join("")}</tr></tbody></table></div>`;
+    });
     await page.waitForTimeout(80);
     const phaseTableScroll = await page.evaluate(() => {
       const board = document.getElementById("competitions-board");
-      const wrap = board?.querySelector(".comp-table-wrap");
+      const wrap = document.getElementById("b08-wide-wrap");
+      if (!wrap || !board) return { ok: false };
+      const before = wrap.scrollLeft;
+      wrap.scrollLeft = 160;
+      const after = wrap.scrollLeft;
+      // Prefer documentElement; also check body in case clip containers differ.
+      const docOverflow =
+        document.documentElement.scrollWidth > window.innerWidth + 1 ||
+        document.body.scrollWidth > window.innerWidth + 1;
       return {
-        docOverflow: document.documentElement.scrollWidth > window.innerWidth + 1,
-        wrapScrollWidth: wrap?.scrollWidth || 0,
-        wrapClientWidth: wrap?.clientWidth || 0,
-        panelScrolls:
-          Boolean(wrap) && wrap.scrollWidth > wrap.clientWidth + 1
-            ? true
-            : Boolean(wrap) || true,
+        ok: true,
+        docOverflow,
+        boardClientWidth: board.clientWidth,
+        wrapScrollWidth: wrap.scrollWidth,
+        wrapClientWidth: wrap.clientWidth,
+        scrolledInsidePanel: after > before,
+        scrollLeft: after,
+        overflowX: getComputedStyle(wrap).overflowX,
       };
     });
+    assert(phaseTableScroll.ok, "wide phase wrap present", phaseTableScroll);
+    assert(phaseTableScroll.wrapScrollWidth > 0 && phaseTableScroll.wrapClientWidth > 0, "positive wrap widths", phaseTableScroll);
+    assert(
+      phaseTableScroll.wrapClientWidth <= phaseTableScroll.boardClientWidth + 1,
+      "wrap constrained to board",
+      phaseTableScroll
+    );
+    assert(phaseTableScroll.wrapScrollWidth > phaseTableScroll.wrapClientWidth, "table wider than panel", phaseTableScroll);
+    assert(phaseTableScroll.scrolledInsidePanel === true, "scrolled inside panel", phaseTableScroll);
     assert(!phaseTableScroll.docOverflow, "phase view no document overflow", phaseTableScroll);
 
     const widths = [1440, 768, 390];
@@ -879,8 +1082,24 @@ async function main() {
   await mkdir(CASES, { recursive: true });
   await ensureFixtureExport();
   const snapshot = loadFixtureSnapshot();
-  const sourceFp = createHash("sha256")
-    .update(readFileSync(join(ROOT, "js/ui/tournamentPresentation.js")))
+  const testedSourceFingerprint = Object.fromEntries(
+    [
+      "js/ui/tournamentPresentation.js",
+      "js/ui/simulationDashboard.js",
+      "js/ui/rendering.js",
+      "js/ui/seasonAnimation.js",
+      "js/simulation/competitionPlayback.js",
+      "js/simulation/nationalTournament.js",
+      "js/simulation/fix12TournamentPresentationBrowserFixture.js",
+      "main.js",
+      "tests/tournamentPresentation.test.mjs",
+      "scripts/browserTournamentPresentationChecklist.mjs",
+      "scripts/qaTournamentPresentation.mjs",
+      "style.css",
+    ].map((rel) => [rel, createHash("sha256").update(readFileSync(join(ROOT, rel))).digest("hex")])
+  );
+  const fixtureDigest = createHash("sha256")
+    .update(readFileSync(join(ROOT, "qa/fix12-runs/final/fixtures/f01-career-snapshot.json")))
     .digest("hex");
 
   const server = await hostFixed();
@@ -936,7 +1155,10 @@ async function main() {
 
   const report = {
     generatedAt: new Date().toISOString(),
-    sourceFingerprint: sourceFp,
+    testedSourceFingerprint,
+    fixtureDigest,
+    // Legacy single-module field retained for older readers.
+    sourceFingerprint: testedSourceFingerprint["js/ui/tournamentPresentation.js"],
     selected: SELECTED,
     results,
     pass: results.filter((r) => r.status === "PASS").length,

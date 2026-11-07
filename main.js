@@ -34,6 +34,7 @@ import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipT
 import { buildAcademyBrowserFixture } from "./js/simulation/academyBrowserFixture.js";
 import { buildMatchParticipationKoBrowserFixture } from "./js/simulation/matchParticipationKoBrowserFixture.js";
 import { buildMatchParticipationGkBrowserFixture } from "./js/simulation/matchParticipationGkBrowserFixture.js";
+import { buildFix12TournamentPresentationBrowserFixture } from "./js/simulation/fix12TournamentPresentationBrowserFixture.js";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -349,6 +350,55 @@ window.__loadMatchParticipationKoCompleteBrowserFixture = async function loadMat
   };
 };
 
+/**
+ * Completed-season presentation for Fix 12 tournament records: production
+ * showSeasonAnimation through national dashboard/recap and final #continue-btn
+ * → finishSeasonAnimation desk return. Browser QA must only click controls.
+ */
+window.__loadFix12TournamentPresentationBrowserFixture = async function loadFix12TournamentPresentationBrowserFixture(
+  opts = {}
+) {
+  const result = buildFix12TournamentPresentationBrowserFixture(opts);
+  if (!result.ok) {
+    console.error("Fix12 presentation fixture failed:", result.reason, result);
+    return result;
+  }
+  player = result.player;
+  dealBookingGuard = null;
+  seasonActionInFlight = true;
+  lastFinishedSeasonKey = null;
+  ensureContractAuthority(player);
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  try {
+    await showSeasonAnimation(
+      result.seasonData,
+      player,
+      getDisplayAttributeKeys(player.position),
+      () => {
+        finishSeasonAnimation();
+        seasonActionInFlight = false;
+      }
+    );
+  } catch (err) {
+    seasonActionInFlight = false;
+    recoverSeasonPresentationFailure(err, { alert: false, committed: true });
+    throw err;
+  }
+  seasonActionInFlight = false;
+  syncSimulateButton();
+  return {
+    ok: true,
+    mode: "complete",
+    ...player.__qaFix12Fixture,
+    playingClubId: player.playingClubId,
+    seasonsCount: player.seasons?.length ?? 0,
+    nextAction: selectNextCareerAction(player),
+  };
+};
+
 window.__loadMatchParticipationGkBrowserFixture = function loadMatchParticipationGkBrowserFixture(opts = {}) {
   const result = buildMatchParticipationGkBrowserFixture(opts);
   if (!result.ok) {
@@ -632,6 +682,7 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
       : null,
     position: player.position || null,
     qaKo: player.__qaKoFixture || null,
+    qaFix12: player.__qaFix12Fixture || null,
     qaGk: player.__qaGkFixture || null,
     awardFieldKeys: Object.keys(player.awardFields || {}),
     nextAction: selectNextCareerAction(player),
