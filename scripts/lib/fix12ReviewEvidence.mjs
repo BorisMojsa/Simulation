@@ -64,6 +64,39 @@ export function computeSourceManifest(entries) {
   };
 }
 
+function oracleNormId(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/^nation:/, "")
+    .replace(/^club:/, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
+}
+
+function oracleSideIds(side, participantIdField) {
+  if (side == null) return [];
+  if (typeof side === "string") return [side];
+  return [
+    side.clubId,
+    side.nationId,
+    side.participantId,
+    participantIdField,
+    side.name,
+    side.displayName,
+  ].filter((x) => x != null && x !== "");
+}
+
+function oracleSideMatches(side, participantIdField, participantId) {
+  const want = String(participantId);
+  const wantNorm = oracleNormId(want);
+  for (const id of oracleSideIds(side, participantIdField)) {
+    const raw = String(id);
+    if (raw === want) return true;
+    if (oracleNormId(raw) === wantNorm) return true;
+  }
+  return false;
+}
+
 /** Tiny independent oracle — duplicates presentation math without importing production helper. */
 export function independentOracleFromFixtures(fixtures, participantId) {
   const byId = new Map();
@@ -84,11 +117,9 @@ export function independentOracleFromFixtures(fixtures, participantId) {
   let gf = 0;
   let ga = 0;
   for (const m of byId.values()) {
-    const homeId = m.home?.clubId || m.home?.nationId || m.homeParticipantId || m.home?.name;
-    const awayId = m.away?.clubId || m.away?.nationId || m.awayParticipantId || m.away?.name;
     let side = null;
-    if (String(homeId) === String(participantId)) side = "home";
-    else if (String(awayId) === String(participantId)) side = "away";
+    if (oracleSideMatches(m.home, m.homeParticipantId, participantId)) side = "home";
+    else if (oracleSideMatches(m.away, m.awayParticipantId, participantId)) side = "away";
     else continue;
     const hg = Number(m.matchHomeGoals ?? m.homeGoals);
     const ag = Number(m.matchAwayGoals ?? m.awayGoals);
