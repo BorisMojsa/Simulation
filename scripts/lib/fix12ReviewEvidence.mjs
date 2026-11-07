@@ -53,7 +53,7 @@ export const BROWSER_REQUIRED_DETAIL_KEYS = {
   B05: ["observed", "highlightOk"],
   B06: ["observed", "switched"],
   B07: ["finalLive", "continueClosed", "nextCareerAction", "seasonActionInFlight", "pauseResumeSkip"],
-  B08: ["layouts", "tabActive", "activatedDifferentTab", "phaseTableScroll"],
+  B08: ["layouts", "tabActive", "tabBefore", "tabAfter", "activatedDifferentTab", "phaseTableScroll"],
 };
 
 export function browserDetailHollow(detail) {
@@ -112,11 +112,25 @@ export function browserDetailValueProblems(id, detail) {
   if (id === "B07" && detail.pauseResumeSkip !== true) problems.push("B07 pauseResumeSkip must be true");
   if (id === "B08") {
     const scroll = detail.phaseTableScroll || {};
-    if (!(Number(scroll.wrapScrollWidth) > 0 && Number(scroll.wrapClientWidth) > 0)) {
+    const wrapSw = Number(scroll.wrapScrollWidth);
+    const wrapCw = Number(scroll.wrapClientWidth);
+    if (!(wrapSw > 0 && wrapCw > 0)) {
       problems.push("B08 phaseTableScroll missing positive wrapper widths");
+    }
+    if (!(wrapSw > wrapCw && wrapCw > 0)) {
+      problems.push("B08 wrapScrollWidth must exceed wrapClientWidth");
     }
     if (scroll.docOverflow === true) problems.push("B08 document overflow");
     if (scroll.scrolledInsidePanel !== true) problems.push("B08 scrolledInsidePanel must be true");
+    if (!(Number(scroll.scrollLeft) > 0)) problems.push("B08 scrollLeft must be positive");
+    if (scroll.production !== true) problems.push("B08 must measure production phase table");
+    if (detail.activatedDifferentTab !== true) problems.push("B08 activatedDifferentTab must be true");
+    if (detail.tabBefore !== "overview" || detail.tabAfter !== "phase") {
+      problems.push("B08 tabBefore/tabAfter must be overview→phase");
+    }
+    if (detail.activatedDifferentTab === true && detail.tabBefore === detail.tabAfter) {
+      problems.push("B08 activatedDifferentTab contradicts tabBefore/tabAfter");
+    }
   }
   return problems;
 }
@@ -447,19 +461,28 @@ export function assessPackageEvidence({
     }
   }
 
-  // Browser report must bind the same tested-source identity (+ fixture digest when present).
-  if (browserReport?.testedSourceFingerprint && manifest?.testedSourceFingerprint) {
+  // Browser report must bind the full tested-source identity and fixture digest.
+  const browserFp = browserReport?.testedSourceFingerprint;
+  const manifestFp = manifest?.testedSourceFingerprint;
+  if (!browserFp || typeof browserFp !== "object" || Array.isArray(browserFp)) {
+    problems.push("browser report missing testedSourceFingerprint map");
+  } else if (!manifestFp || typeof manifestFp !== "object") {
+    problems.push("manifest missing testedSourceFingerprint map");
+  } else {
     for (const p of TESTED_SOURCE_PATHS) {
-      const a = browserReport.testedSourceFingerprint[p];
-      const b = manifest.testedSourceFingerprint[p];
+      const a = browserFp[p];
+      const b = manifestFp[p];
+      if (!a) problems.push(`browser testedSourceFingerprint missing ${p}`);
+      if (!b) problems.push(`manifest testedSourceFingerprint missing ${p}`);
       if (a && b && a !== b) problems.push(`browser tested fingerprint drift ${p}`);
     }
-  } else if (root) {
-    problems.push("browser report missing testedSourceFingerprint map");
   }
-  if (root && browserReport?.fixtureDigest) {
+  if (!browserReport?.fixtureDigest) {
+    problems.push("browser report missing fixtureDigest");
+  } else if (root) {
     const fixtureAbs = join(root, "qa/fix12/final/fixtures/f01-career-snapshot.json");
-    if (existsSync(fixtureAbs) && sha256File(fixtureAbs) !== browserReport.fixtureDigest) {
+    if (!existsSync(fixtureAbs)) problems.push("missing packaged fixture for fixtureDigest check");
+    else if (sha256File(fixtureAbs) !== browserReport.fixtureDigest) {
       problems.push("browser fixtureDigest mismatch");
     }
   }

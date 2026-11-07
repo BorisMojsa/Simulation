@@ -967,75 +967,78 @@ const handlers = {
   },
 
   async B08(page, runtime) {
+    // Packaged F01 career: Champions League league-phase standings from production renderer.
     await restoreSnapshot(page, loadFixtureSnapshot());
     await page.waitForTimeout(100);
-    await selectCompetition(page, /World Cup/);
+    await selectCompetition(page, /Champions League|UCL/);
     await clickCompTab(page, "overview");
-    const before = await page.evaluate(() => document.querySelector(".comp-tab.is-active")?.dataset?.view || null);
-    // Keyboard: move focus onto a non-active tab and activate it.
-    const activatedDifferentTab = await page.evaluate(async () => {
-      const tabs = [...document.querySelectorAll(".comp-tab")];
-      const target = tabs.find((t) => t.dataset.view === "phase") || tabs.find((t) => !t.classList.contains("is-active"));
-      if (!target) return { ok: false };
-      target.focus();
-      target.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-      target.click();
-      return { ok: true, view: target.dataset.view };
-    });
-    await page.waitForTimeout(80);
-    const tabActive = await page.evaluate(() => document.querySelector(".comp-tab.is-active")?.dataset?.view || null);
-    assert(activatedDifferentTab.ok, "found non-active tab", activatedDifferentTab);
-    assert(tabActive && tabActive !== before, "keyboard/click activated a different tab", { before, tabActive });
+    const tabBefore = await page.evaluate(() => document.querySelector(".comp-tab.is-active")?.dataset?.view || null);
+    assert(tabBefore === "overview", "start on overview", tabBefore);
 
-    // Inject a genuinely wide phase table at 390px, scroll it inside the panel.
+    // Keyboard-only activation: focus Phase tab, press Enter (no click()).
+    const phaseTab = page.locator('.comp-tab[data-view="phase"]');
+    await phaseTab.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(100);
+    const tabAfter = await page.evaluate(() => document.querySelector(".comp-tab.is-active")?.dataset?.view || null);
+    const activatedDifferentTab = tabAfter === "phase" && tabAfter !== tabBefore;
+    assert(activatedDifferentTab, "keyboard Enter activated Phase tab", { tabBefore, tabAfter });
+
+    // Production league-phase table at 390px — scroll inside .comp-table-wrap.
     await page.setViewportSize({ width: 390, height: 800 });
-    await page.waitForTimeout(40);
-    await page.evaluate(() => {
-      const board = document.getElementById("competitions-board");
-      const view = board?.querySelector(".competitions-view") || board;
-      if (!view) return;
-      // Wide table must scroll inside .comp-table-wrap; wrap width follows the
-      // competitions board / panel chain (not the table content).
-      view.innerHTML = `<div class="comp-table-wrap" id="b08-wide-wrap"><table class="comp-table" id="b08-wide-table" style="width:max-content;min-width:960px"><thead><tr>${Array.from(
-        { length: 16 },
-        (_, i) => `<th style="min-width:70px">Col${i}</th>`
-      ).join("")}</tr></thead><tbody><tr>${Array.from(
-        { length: 16 },
-        (_, i) => `<td style="min-width:70px">Cell${i}</td>`
-      ).join("")}</tr></tbody></table></div>`;
-    });
     await page.waitForTimeout(80);
+    const phaseReady = await page.evaluate(() => {
+      const wrap = document.querySelector("#competitions-board .comp-table-wrap");
+      const table = wrap?.querySelector("table.comp-table");
+      const rows = table?.querySelectorAll("tbody tr")?.length || 0;
+      return {
+        ok: Boolean(wrap && table && rows >= 8),
+        rows,
+        hasWrap: Boolean(wrap),
+        text: document.getElementById("competitions-board")?.innerText?.slice(0, 240) || "",
+      };
+    });
+    assert(phaseReady.ok, "production league-phase table rendered", phaseReady);
+
     const phaseTableScroll = await page.evaluate(() => {
       const board = document.getElementById("competitions-board");
-      const wrap = document.getElementById("b08-wide-wrap");
+      const wrap = board?.querySelector(".comp-table-wrap");
       if (!wrap || !board) return { ok: false };
-      const before = wrap.scrollLeft;
-      wrap.scrollLeft = 160;
-      const after = wrap.scrollLeft;
-      // Prefer documentElement; also check body in case clip containers differ.
+      const scrollBefore = wrap.scrollLeft;
+      wrap.scrollLeft = Math.min(160, Math.max(0, wrap.scrollWidth - wrap.clientWidth));
+      const scrollAfter = wrap.scrollLeft;
       const docOverflow =
         document.documentElement.scrollWidth > window.innerWidth + 1 ||
         document.body.scrollWidth > window.innerWidth + 1;
       return {
         ok: true,
+        production: true,
         docOverflow,
         boardClientWidth: board.clientWidth,
         wrapScrollWidth: wrap.scrollWidth,
         wrapClientWidth: wrap.clientWidth,
-        scrolledInsidePanel: after > before,
-        scrollLeft: after,
+        scrollBefore,
+        scrollLeft: scrollAfter,
+        scrolledInsidePanel: scrollAfter > scrollBefore,
         overflowX: getComputedStyle(wrap).overflowX,
+        rowCount: wrap.querySelectorAll("tbody tr").length,
       };
     });
-    assert(phaseTableScroll.ok, "wide phase wrap present", phaseTableScroll);
-    assert(phaseTableScroll.wrapScrollWidth > 0 && phaseTableScroll.wrapClientWidth > 0, "positive wrap widths", phaseTableScroll);
+    assert(phaseTableScroll.ok, "production phase wrap present", phaseTableScroll);
+    assert(phaseTableScroll.production === true, "measured production wrap", phaseTableScroll);
+    assert(
+      Number(phaseTableScroll.wrapScrollWidth) > Number(phaseTableScroll.wrapClientWidth) &&
+        Number(phaseTableScroll.wrapClientWidth) > 0,
+      "scrollWidth > clientWidth > 0",
+      phaseTableScroll
+    );
     assert(
       phaseTableScroll.wrapClientWidth <= phaseTableScroll.boardClientWidth + 1,
       "wrap constrained to board",
       phaseTableScroll
     );
-    assert(phaseTableScroll.wrapScrollWidth > phaseTableScroll.wrapClientWidth, "table wider than panel", phaseTableScroll);
     assert(phaseTableScroll.scrolledInsidePanel === true, "scrolled inside panel", phaseTableScroll);
+    assert(Number(phaseTableScroll.scrollLeft) > 0, "positive scrollLeft", phaseTableScroll);
     assert(!phaseTableScroll.docOverflow, "phase view no document overflow", phaseTableScroll);
 
     const widths = [1440, 768, 390];
@@ -1061,7 +1064,7 @@ const handlers = {
         };
       });
       assert(!metrics.docOverflow, `no page-wide overflow at ${w}`, metrics);
-      assert(/P3|P8|Group/i.test(metrics.summaryText), `readable at ${w}`, metrics.summaryText);
+      assert(/P3|P8|League|Group|Champions/i.test(metrics.summaryText), `readable at ${w}`, metrics.summaryText);
       const path = await shot(page, `B08-${w}`);
       layouts.push({ width: w, ...metrics, shot: path });
     }
@@ -1069,8 +1072,10 @@ const handlers = {
     return {
       label: "controlled",
       layouts,
-      tabActive,
-      activatedDifferentTab: true,
+      tabBefore,
+      tabAfter,
+      tabActive: tabAfter,
+      activatedDifferentTab,
       phaseTableScroll,
       errors: [...runtime],
     };

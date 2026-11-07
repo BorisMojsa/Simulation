@@ -751,12 +751,20 @@ export function renderCompetitions(player, boardEl) {
     renderView();
   });
   nameSelect.addEventListener("change", renderView);
+  const activateCompTab = (btn) => {
+    if (!btn) return;
+    shell.querySelectorAll(".comp-tab").forEach((b) => b.classList.remove("is-active"));
+    btn.classList.add("is-active");
+    activeView = btn.dataset.view;
+    renderView();
+  };
   shell.querySelectorAll(".comp-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      shell.querySelectorAll(".comp-tab").forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      activeView = btn.dataset.view;
-      renderView();
+    btn.addEventListener("click", () => activateCompTab(btn));
+    // Keyboard activation for focused tabs (Enter / Space).
+    btn.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      activateCompTab(btn);
     });
   });
   renderView();

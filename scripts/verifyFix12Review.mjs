@@ -265,6 +265,44 @@ function runNegativeControls(zipPath) {
     return [pairRel, parityRel];
   });
 
+  run("contradictory-b08-scroll", (root) => {
+    const touched = [];
+    const reportRel = "qa/fix12/browser/browser-report.json";
+    const report = readJson(join(root, reportRel));
+    const row = report.results.find((r) => r.id === "B08");
+    if (row?.detail) {
+      row.detail.activatedDifferentTab = false;
+      row.detail.phaseTableScroll = {
+        ...(row.detail.phaseTableScroll || {}),
+        wrapScrollWidth: 400,
+        wrapClientWidth: 400,
+        scrollLeft: 0,
+        scrolledInsidePanel: true,
+        production: true,
+        docOverflow: false,
+      };
+      const caseRel = "qa/fix12/browser/cases/B08.json";
+      const payload = readJson(join(root, caseRel));
+      payload.detail = { ...row.detail };
+      payload.status = "PASS";
+      row.status = "PASS";
+      writeFileSync(join(root, caseRel), JSON.stringify(payload, null, 2));
+      touched.push(caseRel);
+    }
+    writeFileSync(join(root, reportRel), JSON.stringify(report, null, 2));
+    touched.push(reportRel);
+    return touched;
+  });
+
+  run("browser-identity-cleared", (root) => {
+    const reportRel = "qa/fix12/browser/browser-report.json";
+    const report = readJson(join(root, reportRel));
+    report.testedSourceFingerprint = {};
+    delete report.fixtureDigest;
+    writeFileSync(join(root, reportRel), JSON.stringify(report, null, 2));
+    return [reportRel];
+  });
+
   return results;
 }
 
