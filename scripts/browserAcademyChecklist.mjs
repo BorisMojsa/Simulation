@@ -489,6 +489,24 @@ async function clickIfVisible(page, selector, timeoutMs = 8000) {
 
 async function flowOrdinaryCareerGraduate(page) {
   note("FLOW: ordinary setup → opening → sign → senior season");
+  const pinnedSeed = process.env.ACADEMY_OFFER_SEED
+    ? Number(process.env.ACADEMY_OFFER_SEED) >>> 0
+    : null;
+  if (pinnedSeed) {
+    await page.addInitScript((seed) => {
+      const orig = crypto.getRandomValues.bind(crypto);
+      window.__fix14Entropy = { seed, consumed: 0 };
+      crypto.getRandomValues = function getRandomValues(arr) {
+        if (arr instanceof Uint32Array && arr.length === 1 && window.__fix14Entropy.consumed === 0) {
+          arr[0] = seed >>> 0;
+          window.__fix14Entropy.consumed = 1;
+          return arr;
+        }
+        return orig(arr);
+      };
+    }, pinnedSeed);
+    note("ordinary career pinned academy seed", { seed: pinnedSeed });
+  }
   await page.goto(`${BASE}/`, { waitUntil: "networkidle" });
   await page.waitForTimeout(250);
 

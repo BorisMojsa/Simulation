@@ -118,7 +118,7 @@ const PITCHES = [
     `They are blunt about competition for your spot. Then they promise the tools to win it. ${ctx.club} respect ambition that works.`,
 ];
 
-const INTROS = [
+const INTROS_THREE = [
   (ctx) =>
     `After the first calls, three academies stay on the line. Each path into the game looks different for ${ctx.name}.`,
   (ctx) =>
@@ -131,8 +131,34 @@ const INTROS = [
     `People talk about "big clubs" and "right clubs." For ${ctx.name}, three options arrive with their own reasons.`,
 ];
 
-function fill(templates, ctx) {
-  const fn = pickRandom(templates);
+const INTROS_TWO = [
+  (ctx) =>
+    `After the first calls, two academies stay on the line. Each path into the game looks different for ${ctx.name}.`,
+  (ctx) =>
+    `This week the noise becomes concrete. Two clubs want ${ctx.name} in their building — for reasons that are not identical.`,
+  (ctx) =>
+    `Somewhere between hope and logistics, two trial doors open for ${ctx.name}. Hear each story before you choose.`,
+  (ctx) =>
+    `${ctx.name}'s phone fills with names, trains, and promises. Two offers matter. The rest can wait.`,
+  (ctx) =>
+    `People talk about "big clubs" and "right clubs." For ${ctx.name}, two options arrive with their own reasons.`,
+];
+
+const INTROS_ONE = [
+  (ctx) =>
+    `After the first calls, one academy stays on the line. The path into the game is clear for ${ctx.name}.`,
+  (ctx) =>
+    `This week the noise becomes concrete. One club wants ${ctx.name} in their building.`,
+  (ctx) =>
+    `Somewhere between hope and logistics, one trial door opens for ${ctx.name}. Hear the story before you choose.`,
+  (ctx) =>
+    `${ctx.name}'s phone fills with names, trains, and promises. One offer matters. The rest can wait.`,
+  (ctx) =>
+    `People talk about "big clubs" and "right clubs." For ${ctx.name}, one option arrives with its own reasons.`,
+];
+
+function fill(templates, ctx, rng = null) {
+  const fn = rng?.pick ? rng.pick(templates) : pickRandom(templates);
   return typeof fn === "function" ? fn(ctx) : fn;
 }
 
@@ -145,11 +171,23 @@ export function academyNationOf(entry) {
   return null;
 }
 
-export function buildAcademyIntro({ name, nationality }) {
-  return fill(INTROS, { name, home: nationality });
+function introTemplatesForCount(offerCount) {
+  const n = Number(offerCount);
+  if (n === 1) return INTROS_ONE;
+  if (n === 2) return INTROS_TWO;
+  return INTROS_THREE;
 }
 
-export function buildAcademyOfferStories(academy, { name, nationality, isHome }) {
+export function buildAcademyIntro({ name, nationality, offerCount = 3, rng = null }) {
+  return fill(introTemplatesForCount(offerCount), { name, home: nationality }, rng);
+}
+
+/**
+ * @param {object} academy
+ * @param {{ name: string, nationality: string, isHome: boolean }} ctxIn
+ * @param {{ pick?: Function, random?: Function } | null} [rng] private offer RNG; defaults to Math.random via pickRandom
+ */
+export function buildAcademyOfferStories(academy, { name, nationality, isHome }, rng = null) {
   const club = academy.parentClub?.displayName ?? academy.parentClub?.name ?? academy.displayName ?? academy.name;
   const nation = academyNationOf(academy) || "abroad";
   const league = academy.leagueDisplay ?? academy.league ?? "the league";
@@ -161,7 +199,7 @@ export function buildAcademyOfferStories(academy, { name, nationality, isHome })
     league,
   };
   return {
-    arrivalStory: fill(isHome ? HOME_ARRIVALS : ABROAD_ARRIVALS, ctx),
-    pitch: fill(PITCHES, ctx),
+    arrivalStory: fill(isHome ? HOME_ARRIVALS : ABROAD_ARRIVALS, ctx, rng),
+    pitch: fill(PITCHES, ctx, rng),
   };
 }

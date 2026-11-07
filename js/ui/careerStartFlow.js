@@ -1,10 +1,10 @@
 import { pickRandomBackstory } from "../data/careerBackstories.js";
-import { buildAcademyIntro } from "../data/academyOfferStories.js";
+import { buildAcademyIntro } from "../data/academyOfferStories.js?v=82";
 import { pickScenariosForPosition } from "../data/careerOpeningScenarios.js?v=76";
 import {
   pickThreeAcademies,
   buildNarrativeAcademySeason,
-} from "../simulation/narrativeAcademySeason.js?v=76";
+} from "../simulation/narrativeAcademySeason.js?v=82";
 import {
   finalizeAcademyPlayer,
   applySkipOpeningDevelopment,
@@ -221,13 +221,34 @@ function kindLabel(kind) {
   return "Counter offer";
 }
 
+function academyOfferOpts(player, extra = {}) {
+  return { age: player?.age, ...extra };
+}
+
+function compareOffersLabel(count) {
+  if (count <= 1) return "Choose this offer";
+  if (count === 2) return "Compare both offers";
+  return "Compare all three";
+}
+
+function offerChoiceLead(count) {
+  if (count <= 1) return "One door is open. Pick where the first chapter is written.";
+  if (count === 2) return "Two doors are open. Pick where the first chapter is written.";
+  return "Three doors are open. Pick where the first chapter is written.";
+}
+
 /**
  * If the intro overlay cannot run, still produce a playable first year.
  */
-export function skipCareerIntroBootstrap(player, academyPool) {
-  const picks = pickThreeAcademies(academyPool, player.nationality, player.name);
+export function skipCareerIntroBootstrap(player, academyPool, offerOpts = null) {
+  const picks = pickThreeAcademies(
+    academyPool,
+    player.nationality,
+    player.name,
+    offerOpts || academyOfferOpts(player)
+  );
   if (!picks.length) {
-    throw new Error("Academy pool is empty. check league data.");
+    throw new Error("Academy pool is empty. Check league data and try again from setup.");
   }
   finalizeAcademyPlayer(player, picks[0].academy);
   const ratingStart = player.rating;
@@ -280,7 +301,7 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
   if (!overlay || !careerIntroDomReady()) {
     console.warn("[Career] Intro overlay or required nodes missing. using bootstrap path.");
     try {
-      skipCareerIntroBootstrap(player, academyPool);
+      skipCareerIntroBootstrap(player, academyPool, academyOfferOpts(player));
       setupSectionEl?.classList.add("hidden");
       onComplete();
     } catch (e) {
@@ -294,12 +315,14 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     name: player.name,
     nationality: player.nationality,
   });
-  const offers = pickThreeAcademies(academyPool, player.nationality, player.name);
+  const offers = pickThreeAcademies(
+    academyPool,
+    player.nationality,
+    player.name,
+    academyOfferOpts(player)
+  );
   if (!offers.length) {
-    skipCareerIntroBootstrap(player, academyPool);
-    setupSectionEl?.classList.add("hidden");
-    onComplete();
-    return;
+    throw new Error("Academy pool is empty. Check league data and try again from setup.");
   }
 
   let ratingAfterAcademyPick = 0;
@@ -335,7 +358,7 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     reveal?.classList.add("hidden");
     choice?.classList.remove("hidden");
     if (lead) {
-      lead.textContent = "Three doors are open. Pick where the first chapter is written.";
+      lead.textContent = offerChoiceLead(offers.length);
     }
     if (!grid) return;
     grid.innerHTML = "";
@@ -381,7 +404,8 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
     if (nextBtn) {
       nextBtn.classList.add("hidden");
       nextBtn.disabled = true;
-      nextBtn.textContent = index < offers.length - 1 ? "Next offer" : "Compare all three";
+      nextBtn.textContent =
+        index < offers.length - 1 ? "Next offer" : compareOffersLabel(offers.length);
       nextBtn.onclick = () => {
         offerIndex = index + 1;
         if (offerIndex < offers.length) showOfferReveal(offerIndex);
@@ -420,6 +444,7 @@ export function runCareerStartFlow({ player, academyPool, setupSectionEl, onComp
       introText.textContent = buildAcademyIntro({
         name: player.name,
         nationality: player.nationality,
+        offerCount: offers.length,
       });
       introText.classList.remove("is-shown");
       requestAnimationFrame(() => introText.classList.add("career-reveal-piece", "is-shown"));

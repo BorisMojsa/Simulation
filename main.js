@@ -44,7 +44,7 @@ import {
   renderTransferOffers,
   renderCareerMoments,
 } from "./js/ui/rendering.js?v=91";
-import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=81";
+import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=82";
 import {
   showSeasonAnimation,
   openSimulationDashboardSegment,
@@ -141,13 +141,20 @@ function startCareerFromSetup() {
     console.error(err);
     setCareerStartBusy(false);
     setupSection.classList.remove("hidden");
+    const academyEmpty =
+      err &&
+      typeof err.message === "string" &&
+      /academy pool is empty/i.test(err.message);
     if (bootErr) {
-      bootErr.textContent =
-        "Could not start career. Serve this folder over HTTP (e.g. run: python3 -m http.server) and open http://localhost:8000. opening index.html as a file often breaks the game.";
+      bootErr.textContent = academyEmpty
+        ? err.message
+        : "Could not start career. Serve this folder over HTTP (e.g. run: python3 -m http.server) and open http://localhost:8000. opening index.html as a file often breaks the game.";
       bootErr.classList.remove("hidden");
     } else {
       window.alert(
-        "Could not start career. Run from a local web server (python3 -m http.server), not file://. see console for details."
+        academyEmpty
+          ? err.message
+          : "Could not start career. Run from a local web server (python3 -m http.server), not file://. see console for details."
       );
     }
   }

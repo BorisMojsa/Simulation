@@ -26,6 +26,9 @@ import {
   findSisterLeagues,
   qualificationForPosition,
 } from "../js/simulation/leaguePhase.js";
+import { hashSeed } from "../js/simulation/rng.js";
+import { academyNationOf } from "../js/data/academyOfferStories.js";
+import { regionDistance } from "../js/data/academyGeography.js";
 
 function test(name, fn) {
   try {
@@ -52,35 +55,63 @@ test("pickThreeAcademies returns up to 3 enriched offers", () => {
   }
 });
 
-test("England academies are home-heavy across many rolls", () => {
+test("England age-16 trays keep a home-heavy slot floor with fixed seeds", () => {
   let homeSlots = 0;
   let totalSlots = 0;
+  let allHome = 0;
+  let mixed = 0;
   const rolls = 300;
   for (let i = 0; i < rolls; i++) {
-    const offers = pickThreeAcademies(ACADEMY_POOL, "England", "Alex");
+    const offers = pickThreeAcademies(ACADEMY_POOL, "England", "Alex", {
+      age: 16,
+      seed: hashSeed(`smoke-eng-16|${i}`),
+    });
+    assert.ok(offers.filter((o) => o.isHome).length >= 2);
+    if (offers.every((o) => o.isHome)) allHome += 1;
+    else mixed += 1;
     for (const o of offers) {
       totalSlots += 1;
       if (o.isHome) homeSlots += 1;
     }
   }
   assert.ok(homeSlots / totalSlots >= 0.8, `home slot rate ${homeSlots}/${totalSlots}`);
+  assert.ok(mixed / rolls >= 0.2 && mixed / rolls <= 0.34, `mixed tray share ${mixed}/${rolls}`);
+  assert.ok(allHome / rolls >= 0.66, `all-home share ${allHome}/${rolls}`);
 });
 
 test("Nations without a league still get abroad stories", () => {
-  const offers = pickThreeAcademies(ACADEMY_POOL, "Ghana", "Kojo");
+  const offers = pickThreeAcademies(ACADEMY_POOL, "Ghana", "Kojo", {
+    age: 16,
+    seed: hashSeed("smoke-ghana"),
+  });
   assert.equal(offers.length, 3);
   assert.ok(offers.every((o) => !o.isHome));
   assert.ok(offers.every((o) => o.arrivalStory.length > 20));
+  const nations = new Set(offers.map((o) => o.academy.nation));
+  assert.equal(nations.size, 3);
 });
 
-test("Serbia offers are mostly Serbian; distant continents are rare", () => {
+test("Serbia age-16 trays are home-heavy; nearby abroad beats distant", () => {
   let homeSlots = 0;
   let southAmerica = 0;
   let balkansAbroad = 0;
   let totalAbroad = 0;
+  let firstAbroadNear = 0;
+  let traysWithAbroad = 0;
   const rolls = 400;
   for (let i = 0; i < rolls; i++) {
-    const offers = pickThreeAcademies(ACADEMY_POOL, "Serbia", "Marko");
+    const offers = pickThreeAcademies(ACADEMY_POOL, "Serbia", "Marko", {
+      age: 16,
+      seed: hashSeed(`smoke-srb-16|${i}`),
+    });
+    assert.ok(offers.filter((o) => o.isHome).length >= 2);
+    const abroadOffers = offers.filter((o) => !o.isHome);
+    if (abroadOffers.length) {
+      traysWithAbroad += 1;
+      const first = abroadOffers[0];
+      const d = regionDistance("Serbia", academyNationOf(first.academy));
+      if (d <= 1) firstAbroadNear += 1;
+    }
     for (const o of offers) {
       const nation = o.academy.nation;
       if (o.isHome) homeSlots += 1;
@@ -103,14 +134,23 @@ test("Serbia offers are mostly Serbian; distant continents are rare", () => {
       `nearby abroad ${balkansAbroad} should beat SA ${southAmerica}`
     );
   }
+  if (traysWithAbroad > 20) {
+    assert.ok(
+      firstAbroadNear / traysWithAbroad >= 0.7,
+      `first abroad near ${firstAbroadNear}/${traysWithAbroad}`
+    );
+  }
 });
 
-test("United States rarely pulls Balkan academies", () => {
+test("United States age-16 abroad trays prefer nearer regions over Balkans", () => {
   let balkans = 0;
   let northOrNearby = 0;
   let abroad = 0;
   for (let i = 0; i < 400; i++) {
-    for (const o of pickThreeAcademies(ACADEMY_POOL, "United States", "Sam")) {
+    for (const o of pickThreeAcademies(ACADEMY_POOL, "United States", "Sam", {
+      age: 16,
+      seed: hashSeed(`smoke-us-16|${i}`),
+    })) {
       if (o.isHome) continue;
       abroad += 1;
       const n = o.academy.nation;
