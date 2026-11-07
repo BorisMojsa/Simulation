@@ -331,21 +331,13 @@ write("gameplay-parity/continental-fingerprint.json", continentalFp);
 write("gameplay-parity/national-fingerprint.sha256", sha256(JSON.stringify(nationalFp)) + "\n");
 write("gameplay-parity/continental-fingerprint.sha256", sha256(JSON.stringify(continentalFp)) + "\n");
 
-// Re-run identical recipes for parity self-check (same revision)
-const f01b = buildF01();
-const uclb = buildUclControl();
-const nationalParity =
-  sha256(JSON.stringify(gameplayFingerprint(f01b.view, "national"))) ===
-  sha256(JSON.stringify(nationalFp));
-const continentalParity =
-  sha256(JSON.stringify(gameplayFingerprint(uclb.view, "continental"))) ===
-  sha256(JSON.stringify(continentalFp));
-if (!nationalParity || !continentalParity) failures.push("gameplay parity self-check failed");
-write("gameplay-parity/parity-result.json", {
-  nationalParity,
-  continentalParity,
-  note: "Matched identical seeds/injection on this revision; protected scores/IDs must match.",
-});
+const parityRun = spawnSync(
+  "node",
+  ["scripts/qaFix12BaseFinalParity.mjs", "--out", join(OUT, "gameplay-parity")],
+  { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
+);
+write("logs/base-final-parity.log", parityRun.stdout + parityRun.stderr);
+if (parityRun.status !== 0) failures.push("base/final gameplay parity failed");
 
 // Browser-ready snapshot with controlled season history
 f01.player.seasons = [
@@ -384,6 +376,7 @@ write("fixtures/f01-campaign.json", {
     stageType: m.stageType,
     score: m.scoreline || `${m.homeGoals}-${m.awayGoals}`,
   })),
+  rawNationFixtures: f01.nationFx,
 });
 write("fixtures/ucl-phase-control.json", {
   recipe: { seed: 7, script: "W4 D2 L2 Pts14" },
@@ -405,10 +398,31 @@ const testRun = spawnSync("node", ["--test", "tests/tournamentPresentation.test.
 write("logs/tournamentPresentation.test.log", testRun.stdout + testRun.stderr);
 if (testRun.status !== 0) failures.push("tournamentPresentation tests failed");
 
+// Expand to required F01–F18 gate rows from the presentation suite (R5).
+const focusedCases = [];
+for (let i = 1; i <= 18; i++) {
+  const id = `F${String(i).padStart(2, "0")}`;
+  const pass =
+    testRun.status === 0 &&
+    (new RegExp(`ok \\d+ - ${id}\\b`).test(testRun.stdout) ||
+      new RegExp(`# Subtest: ${id}\\b`).test(testRun.stdout));
+  const detail = cases.find((c) => c.id === id || c.id.startsWith(id));
+  focusedCases.push({
+    id,
+    status: pass ? "PASS" : "FAIL",
+    ok: pass,
+    source: "tests/tournamentPresentation.test.mjs",
+    detail: detail || null,
+  });
+}
+if (testRun.status !== 0) failures.push("focused F01–F18 suite failed");
+if (focusedCases.some((c) => c.status !== "PASS")) failures.push("missing F-case PASS rows");
+
 write("case-index.json", {
   generatedAt: new Date().toISOString(),
   out: OUT,
-  cases,
+  cases: focusedCases,
+  exporterCases: cases,
   failures,
   ok: failures.length === 0,
 });

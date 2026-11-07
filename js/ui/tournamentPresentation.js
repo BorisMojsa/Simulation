@@ -164,7 +164,7 @@ export function participantIdentityKeys(participant, { kind = "auto" } = {}) {
   return Object.freeze(keys);
 }
 
-function sideKeys(side, participantIdField) {
+function sideCanonicalIds(side, participantIdField) {
   const keys = [];
   const push = (v) => {
     if (v == null || v === "") return;
@@ -175,20 +175,65 @@ function sideKeys(side, participantIdField) {
   else if (side && typeof side === "object") {
     push(side.clubId);
     push(side.nationId);
-    push(side.name);
-    push(side.displayName);
   }
+  // homeParticipantId / awayParticipantId are canonical for national fixtures (nation name)
+  // and continental club IDs when present.
   push(participantIdField);
   return keys;
 }
 
-export function fixtureParticipantSide(fixture, participantKeys) {
+function sideDisplayNames(side) {
+  const keys = [];
+  const push = (v) => {
+    if (v == null || v === "") return;
+    const s = String(v);
+    if (!keys.includes(s)) keys.push(s);
+  };
+  if (side && typeof side === "object") {
+    push(side.name);
+    push(side.displayName);
+  }
+  return keys;
+}
+
+function sideKeys(side, participantIdField) {
+  return [...sideCanonicalIds(side, participantIdField), ...sideDisplayNames(side)];
+}
+
+/**
+ * Resolve which side a fixture belongs to for a scoped participant.
+ * Prefer canonical clubId / nationId / participantId fields when the fixture carries them.
+ * Display names are a documented legacy fallback only when the side lacks a canonical ID.
+ */
+export function fixtureParticipantSide(fixture, participantKeys, { canonicalId = null } = {}) {
   if (!fixture || !participantKeys?.length) return null;
-  const set = new Set(participantKeys.map(String));
-  const home = sideKeys(fixture.home, fixture.homeParticipantId);
-  const away = sideKeys(fixture.away, fixture.awayParticipantId);
-  const homeHit = home.some((k) => set.has(k));
-  const awayHit = away.some((k) => set.has(k));
+  const keySet = new Set(participantKeys.map(String));
+  const canon = canonicalId != null && canonicalId !== "" ? String(canonicalId) : null;
+
+  const homeCanon = sideCanonicalIds(fixture.home, fixture.homeParticipantId);
+  const awayCanon = sideCanonicalIds(fixture.away, fixture.awayParticipantId);
+  const homeHasCanon = homeCanon.length > 0;
+  const awayHasCanon = awayCanon.length > 0;
+
+  if (canon) {
+    const homeCanonHit = homeCanon.includes(canon);
+    const awayCanonHit = awayCanon.includes(canon);
+    if (homeCanonHit && awayCanonHit) return "both";
+    if (homeCanonHit) return "home";
+    if (awayCanonHit) return "away";
+    // Fixture sides carry canonical IDs that do not match the scoped club/nation —
+    // do not fall through to shared display names (e.g. two "United" clubs).
+    if (homeHasCanon && awayHasCanon) return null;
+  }
+
+  const homeNames = sideDisplayNames(fixture.home);
+  const awayNames = sideDisplayNames(fixture.away);
+  const homeHit =
+    homeCanon.some((k) => keySet.has(k)) ||
+    (!homeHasCanon && homeNames.some((k) => keySet.has(k)));
+  const awayHit =
+    awayCanon.some((k) => keySet.has(k)) ||
+    (!awayHasCanon && awayNames.some((k) => keySet.has(k)));
   if (homeHit && awayHit) return "both";
   if (homeHit) return "home";
   if (awayHit) return "away";
@@ -275,8 +320,10 @@ export function collectRawPlayedFixtures(sources, { visibleFixtureIds = null, co
       if (eid != null && String(eid) !== String(editionId)) continue;
     }
     const id = matchIdOf(match);
-    if (vis && id && !vis.has(id)) continue;
-    if (!id) {
+    // Live reveal boundary: anonymous fixtures cannot match a reveal ID — exclude them.
+    if (vis) {
+      if (!id || !vis.has(id)) continue;
+    } else if (!id) {
       anonymous.push(match);
       continue;
     }
@@ -291,44 +338,56 @@ export function collectRawPlayedFixtures(sources, { visibleFixtureIds = null, co
     const h1 = sideKeys(match.home, match.homeParticipantId).join("|");
     const a0 = sideKeys(prev.away, prev.awayParticipantId).join("|");
     const a1 = sideKeys(match.away, match.awayParticipantId).join("|");
+    const p0 = penaltyPair(prev);
+    const p1 = penaltyPair(match);
+    const pensDiffer =
+      (p0 || p1) &&
+      (!p0 || !p1 || p0.ph !== p1.ph || p0.pa !== p1.pa);
     if (
       !g0 ||
       !g1 ||
       g0.hg !== g1.hg ||
       g0.ag !== g1.ag ||
       h0 !== h1 ||
-      a0 !== a1
+      a0 !== a1 ||
+      pensDiffer
     ) {
       diagnostics.push({
         code: "contradictory_duplicate",
         matchId: id,
         message: `Contradictory duplicate fixture ${id}`,
-        a: { goals: g0, home: h0, away: a0 },
-        b: { goals: g1, home: h1, away: a1 },
+        a: { goals: g0, home: h0, away: a0, pens: p0 },
+        b: { goals: g1, home: h1, away: a1, pens: p1 },
       });
     }
   }
 
   return Object.freeze({
-    fixtures: Object.freeze([...byId.values(), ...anonymous]),
+    fixtures: Object.freeze(vis ? [...byId.values()] : [...byId.values(), ...anonymous]),
     byId,
     diagnostics: Object.freeze(diagnostics),
     anonymousCount: anonymous.length,
   });
 }
 
-export function tallyParticipantRecord(fixtures, participantKeys) {
+export function tallyParticipantRecord(fixtures, participantKeys, { canonicalId = null } = {}) {
   const keys = participantIdentityKeys(
     Array.isArray(participantKeys) ? { name: participantKeys[0], clubId: participantKeys[0] } : participantKeys
   );
   const keyList = Array.isArray(participantKeys)
     ? participantKeys.map(String)
     : keys;
+  const canon =
+    canonicalId != null
+      ? String(canonicalId)
+      : Array.isArray(participantKeys) && participantKeys.length === 1
+        ? String(participantKeys[0])
+        : participantKeys?.clubId || participantKeys?.focusClubId || participantKeys?.nationId || null;
   const rec = emptyRecord();
   const counted = [];
   for (const match of fixtures || []) {
     if (!isPlayedRawMatch(match)) continue;
-    const side = fixtureParticipantSide(match, keyList);
+    const side = fixtureParticipantSide(match, keyList, { canonicalId: canon });
     if (!side || side === "both") continue;
     const goals = goalsOf(match);
     if (!goals) continue;
@@ -465,10 +524,53 @@ function resolveScope(campaign, scope = {}) {
   };
 }
 
-function inventoryCompleteness(campaign, scope, collectedPhase, collectedTotal) {
+function savedPhaseRow(campaign, scope) {
+  const id = scope.participantId;
+  if (!id) return null;
+  const lpRows = campaign?.leaguePhase?.table || [];
+  const fromLp = lpRows.find((r) => r.clubId === id || r.name === id || r.displayName === id);
+  if (fromLp) return fromLp;
+  for (const g of nationalGroupList(campaign)) {
+    const row = (g.table || []).find((r) => r.clubId === id || r.name === id || r.nationId === id);
+    if (row) return row;
+  }
+  return null;
+}
+
+function recordFromSavedRow(row) {
+  if (!row) return null;
+  return freezeRecord({
+    played: Number(row.played) || 0,
+    wins: Number(row.wins) || 0,
+    draws: Number(row.draws) || 0,
+    losses: Number(row.losses) || 0,
+    gf: Number(row.goalsFor ?? row.gf) || 0,
+    ga: Number(row.goalsAgainst ?? row.ga) || 0,
+    gd: 0,
+    shootoutsWon: 0,
+    shootoutsLost: 0,
+  });
+}
+
+function inventoryCompleteness(campaign, scope, collectedPhase, collectedTotal, { live = false } = {}) {
   if (!campaign) return "unavailable";
   if (campaign.qualified === false || campaign.showcase) return "none";
   if (campaign.status === "showcase") return "none";
+  void collectedPhase;
+
+  // Nation not in the tournament field → no entry (not a zero campaign).
+  if (scope.participantKind === "nation") {
+    const field = campaign.field || [];
+    const inField =
+      campaign.playerNationInTournament === true ||
+      (Array.isArray(field) &&
+        field.some((n) => (typeof n === "string" ? n : n?.name) === scope.participantId));
+    if (campaign.playerNationInTournament === false || (field.length && !inField && scope.participantId)) {
+      // Explicit not-in-field, or field present without the nation.
+      if (campaign.playerNationInTournament === false) return "none";
+      if (field.length && !inField) return "none";
+    }
+  }
 
   // Structure present (entered edition) vs raw inventory recovered.
   const hasPhaseStructure =
@@ -484,20 +586,20 @@ function inventoryCompleteness(campaign, scope, collectedPhase, collectedTotal) 
     return "unavailable";
   }
 
-  // Partial: aggregate cards whose legs are missing while the parent claims played.
+  // Partial: aggregate cards whose declared legs are not fully recovered.
   const rounds = campaign.allRounds || [];
   for (const round of rounds) {
     for (const m of round.matches || []) {
       if (!m?.isAggregate) continue;
+      const declared = Array.isArray(m.legIds) && m.legIds.length ? m.legIds.length : null;
       const legs = m.legs || [];
       const playedLegs = legs.filter((leg) => isPlayedRawMatch(leg));
-      if (m.status === "played" && (legs.length === 0 || playedLegs.length < legs.length)) {
-        return "partial";
-      }
-      if (scope.participantKind === "club") {
-        const side = fixtureParticipantSide(m, scope.keys);
-        if (side && m.status === "played" && playedLegs.length === 0) return "partial";
-      }
+      const side = fixtureParticipantSide(m, scope.keys, { canonicalId: scope.participantId });
+      if (!side) continue;
+      if (m.status !== "played") continue;
+      // Declared leg IDs missing raw recoveries, or played aggregate with no recoverable legs.
+      if (declared != null && playedLegs.length < declared) return "partial";
+      if (playedLegs.length === 0) return "partial";
     }
   }
 
@@ -505,7 +607,16 @@ function inventoryCompleteness(campaign, scope, collectedPhase, collectedTotal) 
     return "contradiction";
   }
 
-  if (collectedTotal.fixtures.length === 0) return "empty";
+  if (collectedTotal.fixtures.length === 0) {
+    // Live reveal boundary with nothing visible is a truthful zero so far — not table-only.
+    if (live) return "empty";
+    const saved = savedPhaseRow(campaign, scope);
+    // Known saved phase row without recoverable raw inventory → preserve phase, withhold total.
+    if (saved && (saved.played > 0 || saved.wins > 0 || saved.draws > 0 || saved.losses > 0)) {
+      return "table-only";
+    }
+    return "empty";
+  }
   return "complete";
 }
 
@@ -569,6 +680,39 @@ export function projectTournamentRecords({
     });
   }
 
+  // Nation outside the field (even without showcase flag).
+  if (resolved.participantKind === "nation") {
+    const field = campaign.field || [];
+    const named = (n) => (typeof n === "string" ? n : n?.name);
+    const inField =
+      campaign.playerNationInTournament === true ||
+      (Array.isArray(field) && field.some((n) => named(n) === resolved.participantId));
+    if (
+      campaign.playerNationInTournament === false ||
+      (field.length > 0 && resolved.participantId && !inField)
+    ) {
+      return Object.freeze({
+        competitionLabel,
+        editionLabel,
+        participantLabel: resolved.participantLabel,
+        participantKind: resolved.participantKind,
+        participantId: resolved.participantId,
+        competitionId: resolved.competitionId,
+        editionId: resolved.editionId,
+        resultLabel: campaign.result || "No entry",
+        openingPhase: Object.freeze({ kind: null, label: "Unavailable", record: null, note: null }),
+        tournament: Object.freeze({ record: null, completeness: "none", label: "No entry" }),
+        shootouts: Object.freeze({ won: 0, lost: 0 }),
+        diagnostics: Object.freeze([]),
+        phaseFixtureIds: Object.freeze([]),
+        tournamentFixtureIds: Object.freeze([]),
+        calledUp: campaign.calledUp,
+        selectionLabel: null,
+        live,
+      });
+    }
+  }
+
   if (campaign.qualified === false || campaign.showcase) {
     return Object.freeze({
       competitionLabel,
@@ -612,12 +756,22 @@ export function projectTournamentRecords({
     editionId: resolved.editionId,
   });
 
-  const phaseTally = tallyParticipantRecord(collectedPhase.fixtures, resolved.keys);
-  const totalTally = tallyParticipantRecord(collectedTotal.fixtures, resolved.keys);
-  const completeness = inventoryCompleteness(campaign, resolved, collectedPhase, collectedTotal);
+  const phaseTally = tallyParticipantRecord(collectedPhase.fixtures, resolved.keys, {
+    canonicalId: resolved.participantId,
+  });
+  const totalTally = tallyParticipantRecord(collectedTotal.fixtures, resolved.keys, {
+    canonicalId: resolved.participantId,
+  });
+  const completeness = inventoryCompleteness(campaign, resolved, collectedPhase, collectedTotal, {
+    live,
+  });
   const diagnostics = [...collectedPhase.diagnostics, ...collectedTotal.diagnostics];
+  const savedRow = savedPhaseRow(campaign, resolved);
 
   let tournamentBlock;
+  let phaseRecord =
+    openingKind === "league" || openingKind === "group" ? phaseTally.record : null;
+
   if (completeness === "contradiction") {
     tournamentBlock = {
       record: null,
@@ -626,6 +780,14 @@ export function projectTournamentRecords({
     };
   } else if (completeness === "unavailable") {
     tournamentBlock = { record: null, completeness, label: "Record unavailable" };
+  } else if (completeness === "table-only") {
+    phaseRecord = recordFromSavedRow(savedRow) || phaseRecord;
+    tournamentBlock = {
+      record: null,
+      completeness: "partial",
+      label: "Record unavailable",
+      phaseFromSavedTable: true,
+    };
   } else if (completeness === "partial") {
     tournamentBlock = {
       record: totalTally.record,
@@ -645,9 +807,6 @@ export function projectTournamentRecords({
       label: "Total tournament record",
     };
   }
-
-  const phaseRecord =
-    openingKind === "league" || openingKind === "group" ? phaseTally.record : null;
 
   return Object.freeze({
     competitionLabel,
@@ -816,9 +975,86 @@ export function resolvePlaybackStageMode({
 }
 
 /** Independent oracle for tests/QA: tally from an explicit fixture list only. */
-export function oracleTallyFromFixtures(fixtures, participantKeys) {
+export function oracleTallyFromFixtures(fixtures, participantKeys, opts = {}) {
   const collected = collectRawPlayedFixtures(fixtures);
-  return tallyParticipantRecord(collected.fixtures, participantKeys);
+  return tallyParticipantRecord(collected.fixtures, participantKeys, opts);
+}
+
+const KO_STAGE_ORDER = Object.freeze({
+  playoff: 10,
+  R1: 15,
+  R32: 20,
+  R16: 30,
+  QF: 40,
+  SF: 50,
+  placement: 55,
+  "third-place": 55,
+  Final: 60,
+});
+
+function playbackStageRank(match) {
+  const type = match?.stageType;
+  const id = match?.stageId;
+  if (type === "group" || type === "league" || id === "group" || id === "league" || id === "groups") {
+    return 0;
+  }
+  if (type === "placement" || id === "placement" || id === "third-place") return 55;
+  if (id && KO_STAGE_ORDER[id] != null) return KO_STAGE_ORDER[id];
+  if (type === "knockout") return 25;
+  // Legacy fixtures: positive matchday without KO stage → opening phase.
+  if (match?.matchday != null && Number(match.matchday) > 0 && !type) return 0;
+  return 40;
+}
+
+function playbackBatchKey(match) {
+  if (match?.date) return `date:${match.date}`;
+  const rank = playbackStageRank(match);
+  if (rank === 0 && match?.matchday != null && Number(match.matchday) > 0) {
+    return `md:${match.matchday}`;
+  }
+  // Documented legacy fallback: stage + identity when date is absent.
+  return `stage:${match?.stageId || match?.stageType || "x"}:${match?.matchId || match?.fixtureId || "anon"}`;
+}
+
+/**
+ * Chronological, stage-aware batches for competition playback.
+ * Opening-phase fixtures precede knockout. Same-date (or legacy matchday) batches
+ * never mix group cards with knockout cards. Sorted ascending by date then stage.
+ */
+export function groupCompetitionFixturesForPlayback(allMatches) {
+  const sorted = [...(allMatches || [])].sort((a, b) => {
+    const da = a?.date || "";
+    const db = b?.date || "";
+    if (da && db && da !== db) return da.localeCompare(db);
+    if (da && !db) return -1;
+    if (!da && db) return 1;
+    const ra = playbackStageRank(a) - playbackStageRank(b);
+    if (ra) return ra;
+    const ma = Number(a?.matchday) || 0;
+    const mb = Number(b?.matchday) || 0;
+    if (ma !== mb) return ma - mb;
+    return String(matchIdOf(a) || "").localeCompare(String(matchIdOf(b) || ""));
+  });
+  const groups = new Map();
+  const order = [];
+  for (const m of sorted) {
+    const key = playbackBatchKey(m);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        matchday: m.matchday ?? null,
+        date: m.date || null,
+        stageRank: playbackStageRank(m),
+        matches: [],
+        playerMatches: [],
+      });
+      order.push(key);
+    }
+    const g = groups.get(key);
+    g.matches.push(m);
+    if (m.playerSide) g.playerMatches.push(m);
+  }
+  return order.map((k) => groups.get(k));
 }
 
 export function snapshotForImmutabilityCheck(value) {

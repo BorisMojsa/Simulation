@@ -26,6 +26,7 @@ import { COMPETITION_FORMATS } from "../js/data/competitions/formats.js";
 import {
   collectRawPlayedFixtures,
   formatStageLabel,
+  groupCompetitionFixturesForPlayback,
   oracleTallyFromFixtures,
   projectTournamentRecords,
   renderTournamentSummaryHtml,
@@ -668,25 +669,50 @@ describe("F11 edition isolation and identity", () => {
     });
     const a = collectRawPlayedFixtures([m2026, m2030], { editionId: "world-cup:2026" });
     assert.equal(a.fixtures.length, 1);
-    const sameName = [
-      rawMatch({
-        matchId: "c1",
-        home: { clubId: "club-1", name: "United" },
-        away: { clubId: "x", name: "X" },
-        homeGoals: 1,
-        awayGoals: 0,
-      }),
-      rawMatch({
-        matchId: "c2",
-        home: { clubId: "club-2", name: "United" },
-        away: { clubId: "y", name: "Y" },
-        homeGoals: 3,
-        awayGoals: 0,
-      }),
-    ];
-    const t1 = tallyParticipantRecord(sameName, ["club-1"]);
-    assert.equal(t1.record.played, 1);
-    assert.equal(t1.record.gf, 1);
+    const sameName = {
+      competition: "UCL",
+      competitionId: "ucl",
+      editionId: "ucl:1",
+      focusClubId: "club-1",
+      leaguePhase: {
+        openingLabel: "League phase",
+        frozen: true,
+        matches: [
+          rawMatch({
+            matchId: "c1",
+            competitionId: "ucl",
+            editionId: "ucl:1",
+            home: { clubId: "club-1", name: "United" },
+            away: { clubId: "x", name: "X" },
+            homeGoals: 1,
+            awayGoals: 0,
+          }),
+          rawMatch({
+            matchId: "c2",
+            competitionId: "ucl",
+            editionId: "ucl:1",
+            home: { clubId: "club-2", name: "United" },
+            away: { clubId: "y", name: "Y" },
+            homeGoals: 3,
+            awayGoals: 0,
+          }),
+        ],
+      },
+      allRounds: [],
+      field: [
+        { clubId: "club-1", name: "United", displayName: "United" },
+        { clubId: "club-2", name: "United", displayName: "United" },
+      ],
+    };
+    const proj = projectTournamentRecords({
+      campaign: sameName,
+      scope: { participantKind: "club", participantId: "club-1", participantLabel: "United" },
+    });
+    assert.equal(proj.tournament.record.played, 1);
+    assert.equal(proj.tournament.record.wins, 1);
+    assert.equal(proj.tournament.record.gf, 1);
+    const html = renderTournamentSummaryHtml(proj);
+    assert.match(html, /P1 · W1/);
   });
 });
 
@@ -740,7 +766,18 @@ describe("F12 empty versus unavailable", () => {
                 away: { clubId: "c2", name: "C2" },
                 homeGoals: 3,
                 awayGoals: 2,
-                legs: [],
+                legIds: ["leg-a", "leg-b"],
+                legs: [
+                  rawMatch({
+                    matchId: "leg-a",
+                    competitionId: "ucl",
+                    editionId: "ucl:1",
+                    home: { clubId: "c1", name: "C1" },
+                    away: { clubId: "c2", name: "C2" },
+                    homeGoals: 2,
+                    awayGoals: 0,
+                  }),
+                ],
               },
             ],
           },
@@ -749,6 +786,87 @@ describe("F12 empty versus unavailable", () => {
       scope: { participantKind: "club", participantId: "c1" },
     });
     assert.equal(partial.tournament.completeness, "partial");
+
+    const tableOnly = projectTournamentRecords({
+      campaign: {
+        competition: "UCL",
+        competitionId: "ucl",
+        editionId: "ucl:legacy",
+        focusClubId: "c1",
+        leaguePhase: {
+          openingLabel: "League phase",
+          frozen: true,
+          matches: [],
+          table: [
+            {
+              clubId: "c1",
+              name: "C1",
+              played: 8,
+              wins: 4,
+              draws: 2,
+              losses: 2,
+              points: 14,
+              goalsFor: 9,
+              goalsAgainst: 9,
+            },
+          ],
+        },
+        allRounds: [],
+      },
+      scope: { participantKind: "club", participantId: "c1" },
+    });
+    assert.equal(tableOnly.openingPhase.record.played, 8);
+    assert.equal(tableOnly.openingPhase.record.wins, 4);
+    assert.equal(tableOnly.tournament.record, null);
+    assert.equal(tableOnly.tournament.completeness, "partial");
+
+    const anonLive = projectTournamentRecords({
+      campaign: {
+        name: "EURO",
+        competitionId: "euro",
+        editionId: "euro:1",
+        playerNation: "Serbia",
+        calledUp: true,
+        groups: [
+          {
+            name: "G",
+            participants: ["Serbia"],
+            matches: [
+              rawMatch({
+                // no matchId — anonymous
+                home: { name: "Serbia" },
+                away: { name: "Italy" },
+                homeGoals: 1,
+                awayGoals: 0,
+                stageType: "group",
+              }),
+            ],
+            table: [],
+          },
+        ],
+        allRounds: [],
+      },
+      scope: { participantKind: "nation", participantId: "Serbia" },
+      visibleFixtureIds: [],
+      live: true,
+    });
+    assert.equal(anonLive.tournament.record.played, 0);
+
+    const outside = projectTournamentRecords({
+      campaign: {
+        name: "FIFA World Cup",
+        competitionId: "world-cup",
+        editionId: "world-cup:2026",
+        playerNation: "Canada",
+        playerNationInTournament: false,
+        field: ["Serbia", "Brazil"],
+        calledUp: false,
+        groups: [],
+        allRounds: [],
+      },
+      scope: { participantKind: "nation", participantId: "Canada" },
+    });
+    assert.equal(outside.tournament.completeness, "none");
   });
 });
 
@@ -943,5 +1061,47 @@ describe("F18 independent oracle / negative control", () => {
     };
     const poisoned = oracleTallyFromFixtures([...nationFx, agg], ["Serbia"]);
     assert.equal(poisoned.record.played, oracle.record.played);
+  });
+});
+
+describe("R1 chronological national batches", () => {
+  it("group fixtures precede KO; first player batch is group; final stays hidden until revealed", () => {
+    const { view } = buildF01Campaign();
+    const fixtures = [
+      ...(view.groups || []).flatMap((g) => g.matches || []),
+      ...(view.allRounds || []).flatMap((r) => r.matches || []),
+    ].map((m) => {
+      const h = m.home?.name || m.homeParticipantId;
+      const a = m.away?.name || m.awayParticipantId;
+      return {
+        ...m,
+        playerSide: h === "Serbia" ? "home" : a === "Serbia" ? "away" : null,
+      };
+    });
+    const batches = groupCompetitionFixturesForPlayback(fixtures);
+    assert.ok(batches[0].stageRank === 0, "opening batch first");
+    const firstPlayer = batches.find((b) => b.playerMatches.length);
+    assert.equal(firstPlayer.playerMatches[0].stageType, "group");
+    assert.ok(!firstPlayer.playerMatches.some((m) => m.stageType === "knockout"));
+
+    const visible = new Set(firstPlayer.matches.map((m) => m.matchId));
+    const ctx = buildNationalPlaybackContext({
+      tournament: view,
+      player: { nationality: "Serbia" },
+      visibleFixtureIds: [...visible],
+    });
+    assert.equal(ctx.stageMode, "table");
+    const p = projectTournamentRecords({
+      campaign: view,
+      scope: { participantKind: "nation", participantId: "Serbia" },
+      visibleFixtureIds: visible,
+      live: true,
+    });
+    assert.equal(p.openingPhase.record.played, 1);
+    assert.equal(p.tournament.record.wins, 1);
+    const bracket = ctx.getBracketView(visible);
+    const final = bracket.rounds.find((r) => /Final/i.test(r.round))?.matches?.[0];
+    assert.equal(final.spoilerHidden, true);
+    assert.equal(final.homeGoals, null);
   });
 });

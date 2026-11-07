@@ -26,6 +26,7 @@ import {
   readJson,
   sha256Buffer,
   sha256File,
+  TESTED_SOURCE_PATHS,
 } from "./lib/fix12ReviewEvidence.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -49,7 +50,7 @@ if (dirtyTracked) {
 const defaultZip = join(
   homedir(),
   "Downloads",
-  `12-Tournament-Presentation-Win-Totals-Review-${short}.zip`
+  `12-Tournament-Presentation-Win-Totals-ReReview-${short}.zip`
 );
 const zipPath = resolve(argValue("--zip") || process.env.FIX12_REVIEW_ZIP || defaultZip);
 if (existsSync(zipPath) && process.env.FIX12_REVIEW_REPLACE !== "1") {
@@ -100,10 +101,22 @@ if (ls.status !== 0) {
 }
 const tracked = ls.stdout.split("\n").filter(Boolean);
 const omitPrefixes = ["qa/fix09-runs/", "qa/fix10-runs/", "qa/fix11-runs/", "qa/screenshots/", "baseline/"];
+/** Bounded maintained-suite inputs required under source/ (R3). Keep bulk calibration trees excluded. */
+const suiteInputAllowlist = new Set([
+  "qa/fix09-runs/final/full-suite.log",
+  "qa/fix10-runs/calibration-targets.json",
+  "qa/fix11-runs/plan.json",
+  "qa/fix11-runs/witnesses/index.json",
+  "qa/fix11-runs/witnesses/natural-99/career.json",
+  "qa/fix11-runs/witnesses/plus6-plus7/career-plus6.json",
+  "qa/fix11-runs/witnesses/plus6-plus7/career-plus7.json",
+  ...Array.from({ length: 20 }, (_, i) => `qa/fix11-runs/cases/F${String(i + 1).padStart(2, "0")}.json`),
+]);
 const sourceEntries = [];
 for (const rel of tracked) {
-  if (omitPrefixes.some((p) => rel.startsWith(p))) continue;
-  if (rel.startsWith("qa/") && !rel.startsWith("qa/findings/")) continue;
+  const allowedQa = suiteInputAllowlist.has(rel) || rel.startsWith("qa/findings/");
+  if (rel.startsWith("qa/") && !allowedQa) continue;
+  if (!allowedQa && omitPrefixes.some((p) => rel.startsWith(p))) continue;
   const blob = spawnSync("git", ["cat-file", "blob", `HEAD:${rel}`], {
     cwd: ROOT,
     maxBuffer: 64 * 1024 * 1024,
@@ -118,13 +131,20 @@ for (const rel of tracked) {
     gitBlobId: gitBlob,
   });
 }
+for (const rel of suiteInputAllowlist) {
+  if (sourceEntries.some((e) => e.path === rel)) continue;
+  console.error(`Missing required suite input in commit: ${rel}`);
+  process.exit(1);
+}
 
 const sourceManifest = computeSourceManifest(sourceEntries);
 putJson("source-content-manifest.json", {
   ...sourceManifest,
   finalSha: full,
   omittedPrefixes: omitPrefixes,
-  omittedReason: "Historical bulk QA/calibration trees are not required to run maintained Fix 12 tests.",
+  suiteInputAllowlist: [...suiteInputAllowlist],
+  omittedReason:
+    "Historical bulk QA/calibration trees excluded; bounded Fix 09/10/11 suite inputs allowlisted under source/.",
 });
 
 // Evidence under qa/fix12/
@@ -182,14 +202,65 @@ const presentationLog = readFileSync(join(qaRoot, "final/logs/tournamentPresenta
 const fullSuiteLog = readFileSync(join(qaRoot, "full-suite.txt"), "utf8");
 const gameplayParity = readJson(join(qaRoot, "final/gameplay-parity/parity-result.json"));
 
+// Prove maintained suite from a fresh copy of packaged source bytes (R3).
+const suiteTmp = mkdtempSync(join(tmpdir(), "fix12-suite-"));
+let packagedSuiteProof;
+try {
+  for (const [path, buf] of files) {
+    if (!path.startsWith("source/")) continue;
+    const abs = join(suiteTmp, path.slice("source/".length));
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, buf);
+  }
+  const suite = spawnSync("node", ["--test", "tests/*.test.mjs"], {
+    cwd: suiteTmp,
+    encoding: "utf8",
+    shell: true,
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  writeFileSync(join(qaRoot, "packaged-suite.log"), suite.stdout + suite.stderr);
+  const pass = Number((suite.stdout.match(/# pass (\d+)/) || [])[1] || 0);
+  const fail = Number((suite.stdout.match(/# fail (\d+)/) || [])[1] || 0);
+  packagedSuiteProof = {
+    exitStatus: suite.status,
+    pass,
+    fail,
+    skipped: Number((suite.stdout.match(/# skipped (\d+)/) || [])[1] || 0),
+    ranFrom: "fresh-temp-extraction-of-packaged-source",
+  };
+  putJson("qa/fix12/packaged-suite-proof.json", packagedSuiteProof);
+  put("qa/fix12/packaged-suite.log", Buffer.from(suite.stdout + suite.stderr));
+  if (suite.status !== 0 || pass !== 246 || fail !== 0) {
+    console.error("Packaged source suite failed:", packagedSuiteProof);
+    process.exit(1);
+  }
+} finally {
+  rmSync(suiteTmp, { recursive: true, force: true });
+}
+
+const testedSourceFingerprint = Object.fromEntries(
+  TESTED_SOURCE_PATHS.map((p) => {
+    const row = sourceManifest.files.find((f) => f.path === p);
+    return [p, row?.sha256 || null];
+  })
+);
+
 const assessment = assessPackageEvidence({
-  manifest: { finalSha: full, baseSha, remoteSha },
+  manifest: {
+    finalSha: full,
+    baseSha,
+    acceptedBaseSha: baseSha,
+    remoteSha,
+    testedSourceFingerprint,
+  },
   caseIndex,
   browserReport,
   f01Fixture,
   presentationTestLog: presentationLog,
   fullSuiteLog,
   gameplayParity,
+  sourceManifest,
+  packagedSuiteProof,
 });
 if (!assessment.ok) {
   console.error("Pre-package assessment failed:", assessment.problems);
@@ -204,7 +275,7 @@ const manifest = {
   acceptedBaseSha: baseSha,
   finalSha: full,
   remoteSha,
-  testedSourceFingerprint: sourceManifest.files.find((f) => f.path === "js/ui/tournamentPresentation.js")?.sha256 || null,
+  testedSourceFingerprint,
   environment: { node: nodeV, packagedAt: new Date().toISOString() },
   requiredCaseIds: [
     ...Array.from({ length: 18 }, (_, i) => `F${String(i + 1).padStart(2, "0")}`),
@@ -226,7 +297,7 @@ putText(
 | Base | \`${baseSha}\` |
 | Final | \`${full}\` |
 | Remote | \`${remoteSha || "(push before packaging)"}\` |
-| Focused presentation tests | 18 pass |
+| Focused presentation tests | 19 pass |
 | Full suite | see \`qa/fix12/full-suite.txt\` |
 | Browser B01–B08 | ${browserReport.pass} pass / ${browserReport.fail} fail |
 | Gameplay parity | national=${gameplayParity.nationalParity} continental=${gameplayParity.continentalParity} |
@@ -245,6 +316,15 @@ Standalone verifier inside the archive:
 
 \`\`\`bash
 node verify-package.mjs
+\`\`\`
+
+## Working directory
+
+Packaged application source lives under \`source/\`. From an extraction:
+
+\`\`\`bash
+cd source
+node --test tests/*.test.mjs
 \`\`\`
 
 Upload this ZIP to ChatGPT for independent review. No separate extracted folder is required for the handoff.

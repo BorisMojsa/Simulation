@@ -1136,7 +1136,7 @@ function showEuropePath(europeanCampaign, player) {
     el.className = "european-round animate-in";
     const rows = lp.table
       .map(
-        (r) => `<tr class="${r.name === player.club?.name || r.clubId === europeProjection.participantId ? "is-player" : ""}"><td>${r.position}</td><td>${
+        (r) => `<tr class="${r.clubId === europeProjection.participantId ? "is-player" : ""}"><td>${r.position}</td><td>${
           r.displayName || r.name
         }</td><td>${r.played}</td><td>${r.wins}</td><td>${r.draws}</td><td>${r.losses}</td><td>${
           r.goalDiff
@@ -1168,7 +1168,7 @@ function showEuropePath(europeanCampaign, player) {
         const rows = (g.table || [])
           .map(
             (r) =>
-              `<tr class="${r.name === player.club?.name || r.clubId === europeProjection.participantId ? "is-player" : ""}"><td>${r.position}</td><td>${
+              `<tr class="${r.clubId === europeProjection.participantId ? "is-player" : ""}"><td>${r.position}</td><td>${
                 r.displayName || r.name
               }</td><td>${r.points}</td><td>${r.goalDiff}</td></tr>`
           )

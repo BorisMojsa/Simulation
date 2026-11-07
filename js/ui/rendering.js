@@ -623,7 +623,12 @@ export function renderCompetitions(player, boardEl) {
         const rows = d.leaguePhase.table
           .map(
             (r) =>
-              `<tr class="${r.name === player.club?.name || r.clubId === projection.participantId ? "is-player" : ""}"><td>${r.position}</td><td>${escapeHtml(
+              `<tr class="${
+                r.clubId === projection.participantId ||
+                (projection.participantKind === "nation" && r.name === projection.participantId)
+                  ? "is-player"
+                  : ""
+              }"><td>${r.position}</td><td>${escapeHtml(
                 r.displayName || r.name
               )}</td><td>${r.played}</td><td>${r.wins}</td><td>${r.draws}</td><td>${r.losses}</td><td>${
                 r.goalsFor
@@ -649,7 +654,11 @@ export function renderCompetitions(player, boardEl) {
                 .map(
                   (r, idx) =>
                     `<tr class="${
-                      r.name === player.club?.name || r.name === player.nationality ? "is-player" : ""
+                      r.clubId === projection.participantId ||
+                      r.name === projection.participantId ||
+                      (projection.participantKind === "nation" && r.name === projection.participantId)
+                        ? "is-player"
+                        : ""
                     }"><td>${r.position || idx + 1}</td><td>${escapeHtml(
                       r.displayName || r.name
                     )}</td><td>${r.points}</td><td>${r.gd ?? r.goalDiff ?? ""}</td></tr>`

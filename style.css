@@ -35,11 +35,15 @@
 
 html {
   scroll-behavior: auto;
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: clip;
   color: var(--text);
   font-family: var(--font-ui);
   font-size: 1.02rem;
@@ -60,8 +64,11 @@ body.legal-page {
 
 .app {
   width: min(1120px, 100%);
+  max-width: 100%;
+  min-width: 0;
   margin: 0 auto;
   padding: 1.75rem 1.25rem 2.5rem;
+  overflow-x: clip;
 }
 
 .legal-app {
@@ -3807,6 +3814,8 @@ body.senior-scenario-open {
 .competitions-board {
   display: grid;
   gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
 }
 .competitions-controls {
   display: flex;
@@ -3838,9 +3847,13 @@ body.senior-scenario-open {
 }
 .comp-table-wrap {
   overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
 }
 .comp-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
 }
@@ -3908,12 +3921,27 @@ body.senior-scenario-open {
     padding: 1.25rem 0.9rem 2rem;
   }
 
+  .panel,
+  .career-panel,
+  .panel-intro,
+  .career-layout,
+  .column {
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .panel {
     padding: 1.25rem;
   }
 
   .career-layout {
     grid-template-columns: 1fr;
+  }
+
+  .vb-scroll,
+  .league-table-wrap,
+  .comp-table-wrap {
+    max-width: 100%;
   }
 
   .seasons,

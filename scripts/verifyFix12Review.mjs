@@ -3,7 +3,7 @@
  * Verify a Fix 12 review ZIP (or an extracted temp copy).
  *
  *   node scripts/verifyFix12Review.mjs --zip /abs/path/file.zip
- *   node verify-package.mjs --zip ./this.zip   # when run from extracted archive
+ *   node verify-package.mjs --zip ./this.zip
  */
 import { spawnSync } from "node:child_process";
 import {
@@ -30,7 +30,6 @@ function argValue(flag) {
 
 const here = dirname(fileURLToPath(import.meta.url));
 const zipArg = argValue("--zip") || process.argv.find((a) => a.endsWith(".zip"));
-const negative = process.argv.includes("--negative-control");
 
 function unzipTo(zipPath, dest) {
   const r = spawnSync("unzip", ["-q", zipPath, "-d", dest], { encoding: "utf8" });
@@ -47,11 +46,18 @@ function verifyRoot(root) {
     "qa/fix12/browser/browser-report.json",
     "qa/fix12/final/fixtures/f01-campaign.json",
     "qa/fix12/final/case-index.json",
+    "qa/fix12/final/gameplay-parity/parity-result.json",
+    "qa/fix12/full-suite.txt",
+    "qa/fix12/packaged-suite-proof.json",
     "source/js/ui/tournamentPresentation.js",
     "source/tests/tournamentPresentation.test.mjs",
+    "source/qa/fix11-runs/plan.json",
+    "source/qa/fix09-runs/final/full-suite.log",
   ];
   const missing = required.filter((p) => !existsSync(join(root, p)));
-  if (missing.length) return { ok: false, problems: missing.map((m) => `missing ${m}`) };
+  if (missing.length) {
+    return { ok: false, problems: missing.map((m) => `missing ${m}`) };
+  }
 
   const sums = readJson(join(root, "SHA256SUMS.json"));
   const hashProblems = [];
@@ -62,6 +68,7 @@ function verifyRoot(root) {
       hashProblems.push(`sum entry missing file ${rel}`);
       continue;
     }
+    if (statSync(abs).isDirectory()) continue;
     const actual = sha256File(abs);
     if (actual !== expected) hashProblems.push(`hash mismatch ${rel}`);
   }
@@ -73,14 +80,13 @@ function verifyRoot(root) {
   const presentationLog = existsSync(join(root, "qa/fix12/final/logs/tournamentPresentation.test.log"))
     ? readFileSync(join(root, "qa/fix12/final/logs/tournamentPresentation.test.log"), "utf8")
     : "";
-  const fullSuiteLog = existsSync(join(root, "qa/fix12/full-suite.txt"))
-    ? readFileSync(join(root, "qa/fix12/full-suite.txt"), "utf8")
-    : "";
-  const gameplayParity = existsSync(join(root, "qa/fix12/final/gameplay-parity/parity-result.json"))
-    ? readJson(join(root, "qa/fix12/final/gameplay-parity/parity-result.json"))
-    : null;
+  const fullSuiteLog = readFileSync(join(root, "qa/fix12/full-suite.txt"), "utf8");
+  const gameplayParity = readJson(join(root, "qa/fix12/final/gameplay-parity/parity-result.json"));
+  const sourceManifest = readJson(join(root, "source-content-manifest.json"));
+  const packagedSuiteProof = readJson(join(root, "qa/fix12/packaged-suite-proof.json"));
 
   const assessment = assessPackageEvidence({
+    root,
     manifest,
     caseIndex,
     browserReport,
@@ -88,17 +94,10 @@ function verifyRoot(root) {
     presentationTestLog: presentationLog,
     fullSuiteLog,
     gameplayParity,
+    sourceManifest,
+    packagedSuiteProof,
   });
 
-  // Source identity: presentation module hash matches manifest tested fingerprint when present
-  const sourceManifest = readJson(join(root, "source-content-manifest.json"));
-  const presentation = sourceManifest.files?.find((f) => f.path === "js/ui/tournamentPresentation.js");
-  if (presentation && manifest.testedSourceFingerprint && presentation.sha256 !== manifest.testedSourceFingerprint) {
-    assessment.problems.push("testedSourceFingerprint mismatch vs source-content-manifest");
-    assessment.ok = false;
-  }
-
-  // Run packaged presentation tests
   const test = spawnSync("node", ["--test", "tests/tournamentPresentation.test.mjs"], {
     cwd: join(root, "source"),
     encoding: "utf8",
@@ -111,50 +110,35 @@ function verifyRoot(root) {
 
   const problems = [...missing.map((m) => `missing ${m}`), ...hashProblems, ...assessment.problems];
   return {
-    ok: problems.length === 0 && assessment.ok,
+    ok: problems.length === 0,
     problems,
     manifest,
     testStatus: test.status,
   };
 }
 
+function rewriteSums(root, rels) {
+  const sums = readJson(join(root, "SHA256SUMS.json"));
+  for (const rel of rels) {
+    const abs = join(root, rel);
+    if (existsSync(abs) && statSync(abs).isFile()) sums[rel] = sha256File(abs);
+    else delete sums[rel];
+  }
+  writeFileSync(join(root, "SHA256SUMS.json"), JSON.stringify(sums, null, 2));
+}
+
 function runNegativeControls(zipPath) {
   const results = [];
-  // Control 1: corrupt F01 total wins in extracted copy
-  {
+
+  const run = (name, mutate) => {
     const temp = mkdtempSync(join(tmpdir(), "fix12-neg-"));
     try {
       unzipTo(zipPath, temp);
-      const root = temp;
-      // zip may extract to temp/ or temp/<single-dir> — files are at root of archive
-      const fixturePath = join(root, "qa/fix12/final/fixtures/f01-campaign.json");
-      const fixture = readJson(fixturePath);
-      fixture.projection.tournament.record.wins = 8;
-      writeFileSync(fixturePath, JSON.stringify(fixture, null, 2));
-      // regenerate checksum for that file so only substance fails
-      const sums = readJson(join(root, "SHA256SUMS.json"));
-      sums["qa/fix12/final/fixtures/f01-campaign.json"] = sha256File(fixturePath);
-      writeFileSync(join(root, "SHA256SUMS.json"), JSON.stringify(sums, null, 2));
-      const verdict = verifyRoot(root);
-      results.push({
-        name: "F01-W8-corruption",
-        expectedFail: true,
-        ok: !verdict.ok,
-        problems: verdict.problems,
-      });
-    } finally {
-      rmSync(temp, { recursive: true, force: true });
-    }
-  }
-  // Control 2: remove browser report
-  {
-    const temp = mkdtempSync(join(tmpdir(), "fix12-neg-"));
-    try {
-      unzipTo(zipPath, temp);
-      rmSync(join(temp, "qa/fix12/browser/browser-report.json"), { force: true });
+      const touched = mutate(temp) || [];
+      rewriteSums(temp, touched);
       const verdict = verifyRoot(temp);
       results.push({
-        name: "missing-browser-report",
+        name,
         expectedFail: true,
         ok: !verdict.ok,
         problems: verdict.problems,
@@ -162,12 +146,93 @@ function runNegativeControls(zipPath) {
     } finally {
       rmSync(temp, { recursive: true, force: true });
     }
-  }
+  };
+
+  run("F01-W8-corruption", (root) => {
+    const rel = "qa/fix12/final/fixtures/f01-campaign.json";
+    const fixture = readJson(join(root, rel));
+    fixture.projection.tournament.record.wins = 8;
+    writeFileSync(join(root, rel), JSON.stringify(fixture, null, 2));
+    return [rel];
+  });
+
+  run("missing-browser-report", (root) => {
+    rmSync(join(root, "qa/fix12/browser/browser-report.json"), { force: true });
+    return ["qa/fix12/browser/browser-report.json"];
+  });
+
+  run("hollow-browser-pass-strings", (root) => {
+    const reportRel = "qa/fix12/browser/browser-report.json";
+    const report = readJson(join(root, reportRel));
+    report.results = report.results.map((r) => ({ id: r.id, status: "PASS" }));
+    writeFileSync(join(root, reportRel), JSON.stringify(report, null, 2));
+    for (const id of ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08"]) {
+      writeFileSync(
+        join(root, "qa/fix12/browser/cases", `${id}.json`),
+        JSON.stringify({ id, status: "PASS" }, null, 2)
+      );
+    }
+    const idxRel = "qa/fix12/final/case-index.json";
+    writeFileSync(
+      join(root, idxRel),
+      JSON.stringify({ ok: true, cases: report.results.map((r) => ({ id: r.id, status: "PASS" })) }, null, 2)
+    );
+    const f01Rel = "qa/fix12/final/fixtures/f01-campaign.json";
+    const f01 = readJson(join(root, f01Rel));
+    writeFileSync(
+      join(root, f01Rel),
+      JSON.stringify(
+        {
+          projection: f01.projection,
+          oracle: f01.oracle,
+        },
+        null,
+        2
+      )
+    );
+    rmSync(join(root, "qa/fix12/full-suite.txt"), { force: true });
+    rmSync(join(root, "qa/fix12/final/gameplay-parity/parity-result.json"), { force: true });
+    rmSync(join(root, "qa/fix12/packaged-suite-proof.json"), { force: true });
+    return [
+      reportRel,
+      idxRel,
+      f01Rel,
+      ...["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08"].map(
+        (id) => `qa/fix12/browser/cases/${id}.json`
+      ),
+      "qa/fix12/full-suite.txt",
+      "qa/fix12/final/gameplay-parity/parity-result.json",
+      "qa/fix12/packaged-suite-proof.json",
+    ];
+  });
+
+  run("raw-f01-score-contradicts-totals", (root) => {
+    const rel = "qa/fix12/final/fixtures/f01-campaign.json";
+    const fixture = readJson(join(root, rel));
+    // Leave projected totals intact; flip a raw fixture score so oracle fails.
+    if (fixture.rawNationFixtures?.[0]) {
+      fixture.rawNationFixtures[0].homeGoals = 9;
+      fixture.rawNationFixtures[0].awayGoals = 9;
+      fixture.rawNationFixtures[0].matchHomeGoals = 9;
+      fixture.rawNationFixtures[0].matchAwayGoals = 9;
+    }
+    writeFileSync(join(root, rel), JSON.stringify(fixture, null, 2));
+    return [rel];
+  });
+
+  run("same-revision-parity", (root) => {
+    const rel = "qa/fix12/final/gameplay-parity/parity-result.json";
+    const parity = readJson(join(root, rel));
+    parity.sameRevisionOnly = true;
+    parity.baseSha = parity.finalSha;
+    writeFileSync(join(root, rel), JSON.stringify(parity, null, 2));
+    return [rel];
+  });
+
   return results;
 }
 
 if (!zipArg) {
-  // Allow running against already-extracted cwd (archive root)
   if (existsSync(join(here, "manifest.json")) && existsSync(join(here, "source"))) {
     const verdict = verifyRoot(here);
     console.log(JSON.stringify(verdict, null, 2));
@@ -187,12 +252,7 @@ const extract = mkdtempSync(join(tmpdir(), "fix12-verify-"));
 try {
   unzipTo(zipPath, extract);
   const verdict = verifyRoot(extract);
-  let negatives = [];
-  if (negative || process.env.FIX12_RUN_NEGATIVES === "1") {
-    negatives = runNegativeControls(zipPath);
-  } else {
-    negatives = runNegativeControls(zipPath);
-  }
+  const negatives = runNegativeControls(zipPath);
   const negOk = negatives.every((n) => n.ok);
   const out = {
     zip: zipPath,

@@ -15,6 +15,7 @@ import { renderLeagueTable } from "./rendering.js";
 import { escapeHtml } from "../utils/helpers.js";
 import {
   formatRecordLine,
+  groupCompetitionFixturesForPlayback,
   projectTournamentRecords,
 } from "./tournamentPresentation.js";
 
@@ -267,8 +268,7 @@ function updateHeader({ date, competition, matchday, club } = {}) {
       ? "Standings through the checkpoint date"
       : "Live · updates as fixtures finish";
   }
-  const title = $("live-standings-title");
-  if (title) title.textContent = ctl.league?.displayName || ctl.league?.name || "League table";
+  // live-standings-title is owned by refreshContextPanel (Group / Bracket / League phase).
 }
 
 function clubName(player) {
@@ -444,6 +444,8 @@ function refreshContextPanel() {
     const bracket = ctx.getBracketView(visibleIds);
     if (heading) heading.textContent = "Bracket";
     host.innerHTML = liveRecordBannerHtml(ctx, visibleIds) + renderBracketPanel(bracket, ctx.playerParticipantId);
+    // Always offer Show table / other-group controls in bracket mode (including KO-only resume).
+    renderContextControls(ctx, { kind: "bracket" });
     return;
   }
 
@@ -800,7 +802,16 @@ export async function runSimulationDashboard(opts) {
     refreshLiveTable();
   }
 
-  const batches = groupMatchesByMatchday(ctl.allMatches);
+  // National/continental contexts use chronological stage-aware batches so KO
+  // fixtures (often matchday-less) never precede group fixtures or share a batch.
+  const useCompetitionBatches = Boolean(
+    ctl.competitionContext &&
+      (ctl.competitionContext.participantType === "nation" ||
+        ctl.competitionContext.participantType === "club")
+  );
+  const batches = useCompetitionBatches
+    ? groupCompetitionFixturesForPlayback(ctl.allMatches)
+    : groupMatchesByMatchday(ctl.allMatches);
   for (const batch of batches) {
     if (ctl.skipRemaining) {
       // Commit remaining finals without animation; still stack player cards newest-first
@@ -833,9 +844,9 @@ export async function runSimulationDashboard(opts) {
     }
 
     for (const pm of playerInBatch) {
-      const others = batch.matches.filter((m) => matchKey(m) !== matchKey(pm));
-      // Apply other finished matches in batch with this card lock (same-day consistency)
-      await revealPlayerCard(pm, others.filter((m) => !ctl.revealedIds.has(matchKey(m)) || !m.playerSide));
+      // Same kickoff-batch background only — never apply another player fixture early.
+      const batchBackground = background.filter((m) => !ctl.revealedIds.has(matchKey(m)));
+      await revealPlayerCard(pm, batchBackground);
     }
   }
 
@@ -866,7 +877,16 @@ export function getDashboardRevealState() {
   return {
     revealedIds: [...ctl.revealedIds],
     appliedTableIds: [...ctl.appliedTableIds],
+    contextMode: ctl.contextMode,
+    stageMode: ctl.competitionContext?.stageMode || null,
   };
+}
+
+/** QA/browser timing — does not affect match results or RNG. */
+export function configureDashboardTiming({ matchMs = null, speed = null } = {}) {
+  if (matchMs != null) ctl.matchMs = Number(matchMs) || ctl.matchMs;
+  if (speed != null) ctl.speed = Number(speed) || ctl.speed;
+  return { matchMs: ctl.matchMs, speed: ctl.speed };
 }
 
 export function hideSimulationDashboard() {
