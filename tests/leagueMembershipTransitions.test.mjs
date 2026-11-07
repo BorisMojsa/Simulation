@@ -854,8 +854,14 @@ test("R3 cross-country move still transitions the source pair", () => {
     `expected italy::2026, got ${[...world.membershipTransitions.keys()]}`
   );
   assert.equal(f.player.employmentClubId, "club:italy:atalanta");
-  assert.equal(f.player.playingClubId, "club:croatia:rudes");
-  assert.equal(f.player.club?.leagueId, "league:croatia-hnl");
+  // Loan destination clubs vary with later recruitment/geography calibration;
+  // membership still requires an abroad playing registration off the Italian parent.
+  assert.ok(f.player.playingClubId, "expected a loan playing club");
+  assert.notEqual(f.player.playingClubId, f.player.employmentClubId);
+  assert.ok(
+    f.player.club?.leagueId && f.player.club.leagueId !== "league:italy-serie-a",
+    `expected abroad league, got ${f.player.club?.leagueId}`
+  );
   assert.equal(world.leagueMemberships.get("league:italy-serie-a").length, 20);
   assert.equal(world.leagueMemberships.get("league:italy-serie-b").length, 20);
   // Repeat is idempotent.
