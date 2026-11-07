@@ -3,9 +3,14 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { tmpdir } from "node:os";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 import { ACADEMY_POOL } from "../js/data/leagues.js";
 import { academyNationOf, buildAcademyIntro, buildAcademyOfferStories } from "../js/data/academyOfferStories.js";
-import { academyOfferWeight, regionDistance } from "../js/data/academyGeography.js";
+import { academyOfferWeight, regionDistance, resolveGeographicNation } from "../js/data/academyGeography.js";
 import {
   pickThreeAcademies,
   dedupeEligibleAcademies,
@@ -31,6 +36,9 @@ import {
   buildAndPersistAcademyReview,
   ensureAcademyLifecycle,
 } from "../js/simulation/academyLifecycle.js";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const ACCEPTED_BASE = "f2e32b84475bccd3094e6c1490af45816848f9b0";
 
 function academy({
   name,
@@ -186,6 +194,56 @@ describe("F01 catalog and synthetic pool shapes", () => {
     assert.equal(pool[3].parentClub.clubId, "eng-rich");
     assert.equal(pool[4].parentClub.clubId, undefined);
   });
+
+  it("rejects academy-name-only and empty parentClub; keeps real legacy parent names", () => {
+    const ghost = {
+      name: "Ghost Academy",
+      nation: "England",
+      isAcademy: true,
+      league: "England - Premier League",
+    };
+    const emptyParent = {
+      name: "Empty Parent Academy",
+      nation: "England",
+      isAcademy: true,
+      league: "England - Premier League",
+      parentClub: {},
+    };
+    const legacy = {
+      name: "Legacy Academy",
+      nation: "England",
+      isAcademy: true,
+      league: "England - Premier League",
+      parentClub: { name: "Legacy Senior", nation: "England", divisionLevel: 1 },
+    };
+    const valid = academy({ name: "Valid", nation: "England", clubId: "eng-valid", divisionLevel: 1 });
+
+    assert.deepEqual(pickThreeAcademies([ghost], "England", "Review Ghost", { age: 16, seed: 1 }), []);
+    assert.deepEqual(pickThreeAcademies([emptyParent], "England", "Review Empty", { age: 16, seed: 1 }), []);
+    assert.deepEqual(pickThreeAcademies([ghost, emptyParent], "England", "AllInvalid", { age: 16, seed: 1 }), []);
+
+    const legacyOnly = pickThreeAcademies([legacy], "England", "Legacy", { age: 16, seed: 2 });
+    assert.equal(legacyOnly.length, 1);
+    assert.equal(legacyOnly[0].academy.parentClub.name, "Legacy Senior");
+    assert.equal(legacyOnly[0].isHome, true);
+
+    const mixed = pickThreeAcademies([ghost, emptyParent, legacy, valid], "England", "Mixed", {
+      age: 16,
+      seed: 3,
+    });
+    assert.equal(mixed.length, 2);
+    assert.ok(mixed.every((o) => o.academy.parentClub?.name || o.academy.parentClub?.clubId));
+    assert.ok(!mixed.some((o) => o.academy.name === "Ghost Academy"));
+
+    assert.throws(
+      () => skipCareerIntroBootstrap(
+        createPlayerIdentity({ name: "X", nationality: "England", position: "ST", age: 16 }),
+        [ghost, emptyParent],
+        { age: 16, seed: 1 }
+      ),
+      /academy pool is empty/i
+    );
+  });
 });
 
 describe("F02 age odds, domestic order, division preference", () => {
@@ -256,6 +314,36 @@ describe("F02 age odds, domestic order, division preference", () => {
 });
 
 describe("F03 aliases, nation weighting, destination diversity", () => {
+  it("case/whitespace origin and destination variants keep draw and weights", () => {
+    assert.equal(canonicalizeNation("  serbia  "), "Serbia");
+    assert.equal(resolveGeographicNation("  SERBIA  "), "Serbia");
+    assert.equal(regionDistance("Serbia", "Croatia"), regionDistance("  serbia  ", " croatia "));
+    assert.equal(
+      academyOfferWeight("Serbia", "Croatia", { isHome: false }),
+      academyOfferWeight("  serbia  ", " CROATIA ", { isHome: false })
+    );
+    assert.equal(resolveGeographicNation("constructor"), null);
+
+    const seed = 528215054;
+    const a = pickThreeAcademies(ACADEMY_POOL, "Serbia", "Marko", { age: 18, seed });
+    const b = pickThreeAcademies(ACADEMY_POOL, "  serbia  ", "Marko", { age: 18, seed });
+    assert.deepEqual(parentIds(a), parentIds(b));
+    assert.deepEqual(
+      a.map((o) => o.isHome),
+      b.map((o) => o.isHome)
+    );
+    // Destination alias casing
+    const pool = [
+      academy({ name: "KR1", nation: "korea republic", clubId: "k1" }),
+      academy({ name: "KR2", nation: "South Korea", clubId: "k2" }),
+      academy({ name: "JP", nation: "Japan", clubId: "j1" }),
+    ];
+    const tray = pickThreeAcademies(pool, "Ghana", "Kojo", { seed: 44 });
+    const nations = tray.map((o) => canonicalizeNation(academyNationOf(o.academy)));
+    assert.ok(nations.every((n) => n === "South Korea" || n === "Japan"));
+    assert.equal(new Set(nations.filter((n) => n === "South Korea" || n === "Japan")).size >= 1, true);
+  });
+
   it("aliases match both sides without rewriting player nationality", () => {
     const pool = [
       academy({ name: "US Club", nation: "United States", clubId: "us1" }),
@@ -423,6 +511,200 @@ describe("F04 seed replay, age wiring, RNG isolation, identity parity", () => {
     assert.equal(a.rating, b.rating);
     assert.equal(a.potential, b.potential);
     assert.deepEqual(a.attributes, b.attributes);
+  });
+
+  it("base-versus-final post-selection parity for domestic and abroad academies", () => {
+    const domestic = ACADEMY_POOL.find((a) => a.parentClub?.clubId === "club:england:swansea-city");
+    const abroad = ACADEMY_POOL.find((a) => a.parentClub?.clubId === "club:turkey:kayserispor");
+    assert.ok(domestic && abroad);
+
+    function finalProbe(academyRow, { name, nationality, position, age, seed }) {
+      reseedCareerRng(seed);
+      const pl = createPlayerIdentity({ name, nationality, position, age });
+      finalizeAcademyPlayer(pl, academyRow);
+      const decision = buildFirstProContractDecision(pl);
+      const first = decision.offers?.[0];
+      return {
+        rating: pl.rating,
+        potential: pl.potential,
+        attributes: structuredClone(pl.attributes),
+        ovr: pl.rating,
+        offerCount: decision.offers?.length ?? 0,
+        firstOfferClubId:
+          first?.clubId ||
+          first?.club?.clubId ||
+          (typeof first?.club === "string" ? first.club : null),
+        rng: getSimRng().seed(),
+      };
+    }
+
+    const tmp = mkdtempSync(join(tmpdir(), "fix14-f04-"));
+    try {
+      const tar = join(tmp, "base.tar");
+      const arch = spawnSync("git", ["archive", ACCEPTED_BASE, "-o", tar], { cwd: ROOT });
+      assert.equal(arch.status, 0, arch.stderr?.toString());
+      spawnSync("tar", ["-xf", tar, "-C", tmp], { cwd: ROOT });
+      const worker = `#!/usr/bin/env node
+import { pathToFileURL } from "node:url";
+import { writeFileSync } from "node:fs";
+const rootDir = process.argv[2];
+const outPath = process.argv[3];
+const recipe = JSON.parse(process.argv[4]);
+const mod = (rel) => import(pathToFileURL(rootDir.replace(/\\\\$/,"") + "/" + rel).href);
+const { ACADEMY_POOL } = await mod("js/data/leagues.js");
+const { createPlayerIdentity, finalizeAcademyPlayer } = await mod("js/simulation/playerDevelopment.js");
+const { buildFirstProContractDecision } = await mod("js/simulation/proContractOffers.js");
+const { reseedCareerRng, getSimRng } = await mod("js/simulation/rng.js");
+const academy = ACADEMY_POOL.find((a) => a.parentClub?.clubId === recipe.clubId);
+if (!academy) throw new Error("academy missing " + recipe.clubId);
+reseedCareerRng(recipe.seed);
+const pl = createPlayerIdentity({
+  name: recipe.name,
+  nationality: recipe.nationality,
+  position: recipe.position,
+  age: recipe.age,
+});
+finalizeAcademyPlayer(pl, academy);
+const decision = buildFirstProContractDecision(pl);
+const first = decision.offers?.[0];
+writeFileSync(outPath, JSON.stringify({
+  rating: pl.rating,
+  potential: pl.potential,
+  attributes: pl.attributes,
+  ovr: pl.rating,
+  offerCount: decision.offers?.length ?? 0,
+  firstOfferClubId: first?.clubId || first?.club?.clubId || (typeof first?.club === "string" ? first.club : null),
+  rng: getSimRng().seed(),
+}));
+`;
+      const workerPath = join(tmp, "worker.mjs");
+      writeFileSync(workerPath, worker);
+
+      function baseProbe(recipe) {
+        const out = join(tmp, `out-${recipe.clubId}.json`);
+        const r = spawnSync(process.execPath, [workerPath, tmp, out, JSON.stringify(recipe)], {
+          encoding: "utf8",
+          maxBuffer: 8 * 1024 * 1024,
+        });
+        assert.equal(r.status, 0, r.stderr || r.stdout);
+        return JSON.parse(readFileSync(out, "utf8"));
+      }
+
+      const domesticRecipe = {
+        clubId: "club:england:swansea-city",
+        name: "Parity Domestic",
+        nationality: "England",
+        position: "ST",
+        age: 16,
+        seed: 9090,
+      };
+      const abroadRecipe = {
+        clubId: "club:turkey:kayserispor",
+        name: "Parity Abroad",
+        nationality: "Serbia",
+        position: "GK",
+        age: 18,
+        seed: 4242,
+      };
+
+      for (const [row, recipe] of [
+        [domestic, domesticRecipe],
+        [abroad, abroadRecipe],
+      ]) {
+        const base = baseProbe(recipe);
+        const fin = finalProbe(row, recipe);
+        assert.equal(fin.rating, base.rating, recipe.clubId);
+        assert.equal(fin.ovr, base.ovr, recipe.clubId);
+        assert.equal(fin.potential, base.potential, recipe.clubId);
+        assert.deepEqual(fin.attributes, base.attributes, recipe.clubId);
+        assert.equal(fin.offerCount, base.offerCount, recipe.clubId);
+        assert.equal(fin.firstOfferClubId, base.firstOfferClubId, recipe.clubId);
+        assert.equal(fin.rng, base.rng, recipe.clubId);
+      }
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("R3 versioned story import replay", () => {
+  it("fixed offer seed keeps stories when ambient Math.random changes; ignores stale unversioned module", async () => {
+    const seed = 528215054;
+    const before = Math.random;
+    try {
+      let flip = 0.02;
+      Math.random = () => {
+        flip = flip === 0.02 ? 0.82 : 0.02;
+        return flip;
+      };
+      const a = pickThreeAcademies(ACADEMY_POOL, "Serbia", "Marko", { age: 18, seed });
+      Math.random = () => 0.82;
+      const b = pickThreeAcademies(ACADEMY_POOL, "Serbia", "Marko", { age: 18, seed });
+      assert.deepEqual(parentIds(a), parentIds(b));
+      assert.deepEqual(
+        a.map((o) => o.arrivalStory),
+        b.map((o) => o.arrivalStory)
+      );
+      assert.deepEqual(
+        a.map((o) => o.pitch),
+        b.map((o) => o.pitch)
+      );
+
+      // Load the accepted-base unversioned story module (ignores private RNG) beside the live one.
+      const staleDir = mkdtempSync(join(tmpdir(), "fix14-stale-story-"));
+      const stalePath = join(staleDir, "academyOfferStories.js");
+      const shown = spawnSync("git", ["show", `${ACCEPTED_BASE}:js/data/academyOfferStories.js`], {
+        cwd: ROOT,
+        encoding: "utf8",
+        maxBuffer: 2 * 1024 * 1024,
+      });
+      assert.equal(shown.status, 0, shown.stderr);
+      writeFileSync(stalePath, shown.stdout);
+      // Base helpers import path must resolve.
+      writeFileSync(
+        join(staleDir, "helpers-shim.js"),
+        `export { pickRandom } from ${JSON.stringify(pathToFileURL(join(ROOT, "js/utils/helpers.js")).href)};\n`
+      );
+      // Rewrite relative helpers import in the extracted base file.
+      writeFileSync(
+        stalePath,
+        shown.stdout.replace(
+          'from "../utils/helpers.js"',
+          `from ${JSON.stringify(pathToFileURL(join(ROOT, "js/utils/helpers.js")).href)}`
+        )
+      );
+      const stale = await import(pathToFileURL(stalePath).href + `?t=${Date.now()}`);
+      const live = await import(pathToFileURL(join(ROOT, "js/data/academyOfferStories.js")).href + "?v=83");
+      const academy = a.find((o) => !o.isHome)?.academy || a[0].academy;
+      const rngA = createRng(99);
+      const rngB = createRng(99);
+      Math.random = () => 0.02;
+      const s1 = live.buildAcademyOfferStories(academy, { name: "Marko", nationality: "Serbia", isHome: false }, rngA);
+      Math.random = () => 0.82;
+      const s2 = live.buildAcademyOfferStories(academy, { name: "Marko", nationality: "Serbia", isHome: false }, rngB);
+      assert.equal(s1.arrivalStory, s2.arrivalStory);
+      assert.equal(s1.pitch, s2.pitch);
+      Math.random = () => 0.02;
+      const staleLow = stale.buildAcademyOfferStories(academy, {
+        name: "Marko",
+        nationality: "Serbia",
+        isHome: false,
+      });
+      Math.random = () => 0.82;
+      const staleHigh = stale.buildAcademyOfferStories(
+        academy,
+        { name: "Marko", nationality: "Serbia", isHome: false },
+        createRng(99) // ignored by base signature
+      );
+      assert.notEqual(
+        staleLow.arrivalStory,
+        staleHigh.arrivalStory,
+        "stale unversioned module changes with ambient Math.random"
+      );
+      rmSync(staleDir, { recursive: true, force: true });
+    } finally {
+      Math.random = before;
+    }
   });
 });
 

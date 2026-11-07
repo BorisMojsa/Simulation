@@ -1,10 +1,10 @@
 import { pickRandomBackstory } from "../data/careerBackstories.js";
-import { buildAcademyIntro } from "../data/academyOfferStories.js?v=82";
+import { buildAcademyIntro } from "../data/academyOfferStories.js?v=83";
 import { pickScenariosForPosition } from "../data/careerOpeningScenarios.js?v=76";
 import {
   pickThreeAcademies,
   buildNarrativeAcademySeason,
-} from "../simulation/narrativeAcademySeason.js?v=82";
+} from "../simulation/narrativeAcademySeason.js?v=83";
 import {
   finalizeAcademyPlayer,
   applySkipOpeningDevelopment,

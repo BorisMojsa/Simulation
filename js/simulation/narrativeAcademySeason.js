@@ -1,28 +1,13 @@
 import { POSITION_PROFILES } from "../config/playerConfig.js";
 import { clubNameForDisplay, clamp, randFloat, randInt } from "../utils/helpers.js";
-import { academyNationOf, buildAcademyOfferStories } from "../data/academyOfferStories.js";
-import { academyOfferWeight } from "../data/academyGeography.js";
+import { academyNationOf, buildAcademyOfferStories } from "../data/academyOfferStories.js?v=83";
+import { academyOfferWeight, resolveGeographicNation } from "../data/academyGeography.js";
 import { agePerformanceModifier } from "./playerDevelopment.js?v=60";
 import { createRng } from "./rng.js";
 
 /** Slot-3 abroad chance when ≥3 domestic parents and an abroad pool exist. */
 export const ABROAD_SLOT_CHANCE_MINOR = 0.271;
 export const ABROAD_SLOT_CHANCE_ADULT = 0.65;
-
-/** Map player/destination labels onto canonical nation values used for matching and geography. */
-const NATION_CANONICAL = {
-  usa: "United States",
-  "united states of america": "United States",
-  "united states": "United States",
-  türkiye: "Turkey",
-  turkey: "Turkey",
-  czechia: "Czech Republic",
-  "czech republic": "Czech Republic",
-  holland: "Netherlands",
-  netherlands: "Netherlands",
-  "korea republic": "South Korea",
-  "south korea": "South Korea",
-};
 
 function normalizeNationKey(raw) {
   return String(raw ?? "")
@@ -31,15 +16,17 @@ function normalizeNationKey(raw) {
     .replace(/\s+/g, " ");
 }
 
-/** Canonical nation label for matching and geography. Does not rewrite player identity. */
+/**
+ * Canonical nation label for matching and geography.
+ * Known geographic labels resolve case/whitespace-insensitively via own-key Maps.
+ * Unknown labels keep their trimmed spelling for matching; geography falls back by distance.
+ * Does not rewrite player identity.
+ */
 export function canonicalizeNation(raw) {
   if (raw == null) return null;
   const trimmed = String(raw).trim();
   if (!trimmed) return null;
-  const mapped = NATION_CANONICAL[normalizeNationKey(trimmed)];
-  if (mapped) return mapped;
-  // Preserve original casing for already-canonical labels; match case-insensitively via key only.
-  return trimmed;
+  return resolveGeographicNation(trimmed) || trimmed;
 }
 
 function nationsMatch(a, b) {
@@ -57,7 +44,8 @@ function normalizeParentName(name) {
 }
 
 function legacyParentKey(entry) {
-  const name = entry?.parentClub?.name ?? entry?.name;
+  // Senior parent name only — academy display name alone is not a parent identity.
+  const name = entry?.parentClub?.name;
   const nation = canonicalizeNation(academyNationOf(entry));
   if (!normalizeParentName(name) || !nation) return null;
   return `${normalizeParentName(name)}|${normalizeNationKey(nation)}`;
@@ -66,7 +54,8 @@ function legacyParentKey(entry) {
 function hasUsableParentIdentity(entry) {
   const id = entry?.parentClub?.clubId;
   if (id != null && String(id).trim() !== "") return true;
-  const name = entry?.parentClub?.name ?? entry?.name;
+  // Require a real legacy parentClub.name — not the academy row's own name.
+  const name = entry?.parentClub?.name;
   return Boolean(String(name ?? "").trim());
 }
 

@@ -44,7 +44,7 @@ import {
   renderTransferOffers,
   renderCareerMoments,
 } from "./js/ui/rendering.js?v=91";
-import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=82";
+import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=83";
 import {
   showSeasonAnimation,
   openSimulationDashboardSegment,

@@ -187,30 +187,111 @@ async function waitFor(page, fn, timeoutMs = 20000) {
   throw new Error(`Timeout. Last=${JSON.stringify(last)}`);
 }
 
+/**
+ * Documented local badge paths that may 404 in this harness:
+ * - Ghana B03 tray clubs RS Berkane and El Gouna (missing badge assets)
+ * - FAR Rabat collateral first-pro offer badge while enrolled at Berkane
+ */
+const DOCUMENTED_MISSING_BADGES = [
+  "badges/Morocco - Botola Pro/RS Berkane.png",
+  "badges/Egypt - Egyptian Premier League/El Gouna.png",
+  "badges/Morocco - Botola Pro/FAR Rabat.png",
+];
+
+function isDocumentedImageFailure(urlOrText) {
+  let s = String(urlOrText || "");
+  try {
+    s = decodeURIComponent(s);
+  } catch {
+    /* keep raw */
+  }
+  if (/flagcdn\.com|flags\//i.test(s)) return true;
+  return DOCUMENTED_MISSING_BADGES.some(
+    (p) => s.includes(p) || s.includes(encodeURI(p)) || s.includes(p.replace(/ /g, "%20"))
+  );
+}
+
+function isAssertedFix04Dialog(text) {
+  return /exceeds-wage-headroom|Deal could not be completed/i.test(String(text || ""));
+}
+
 function attachErrorListeners(page) {
   page.on("console", (msg) => {
     if (msg.type() === "error") {
       const text = msg.text();
-      // Remote flag CDN / missing optional badge assets are isolated noise.
-      if (/flagcdn|flags\/|\/badges\/|Failed to load resource.*(?:flag|badge|\.png|\.svg)/i.test(text)) {
-        log.push({ t: new Date().toISOString(), assetNoise: text });
+      const location = msg.location?.() || null;
+      const locUrl = location?.url || "";
+      if (/academy pool is empty/i.test(text)) {
+        log.push({ t: new Date().toISOString(), assertedEmptyPool: text });
         return;
       }
-      if (/404 \(Not Found\)/i.test(text)) {
-        log.push({ t: new Date().toISOString(), notFoundNoise: text });
+      if (isDocumentedImageFailure(text) || isDocumentedImageFailure(locUrl)) {
+        log.push({ t: new Date().toISOString(), documentedImageFailure: text, url: locUrl });
         return;
       }
-      runtimeErrors.push({ type: "console", text });
-      log.push({ t: new Date().toISOString(), consoleError: text });
+      runtimeErrors.push({ type: "console", text, location });
+      log.push({ t: new Date().toISOString(), consoleError: text, url: locUrl });
     }
   });
   page.on("pageerror", (err) => {
+    if (/academy pool is empty/i.test(String(err))) {
+      log.push({ t: new Date().toISOString(), assertedEmptyPoolPage: String(err) });
+      return;
+    }
     runtimeErrors.push({ type: "page", text: String(err) });
     log.push({ t: new Date().toISOString(), pageError: String(err) });
   });
+  page.on("requestfailed", (req) => {
+    const url = req.url();
+    const failure = req.failure()?.errorText || "requestfailed";
+    const resourceType = req.resourceType();
+    const row = { url, resourceType, failure };
+    if (isDocumentedImageFailure(url) || resourceType === "image" && isDocumentedImageFailure(url)) {
+      log.push({ t: new Date().toISOString(), documentedImageRequest: row });
+      return;
+    }
+    // Fail app/module load failures; ignore only documented image/flag assets.
+    if (resourceType === "script" || resourceType === "document" || /\.m?js(\?|$)/i.test(url)) {
+      runtimeErrors.push({ type: "requestfailed", ...row });
+      log.push({ t: new Date().toISOString(), moduleRequestFailed: row });
+      return;
+    }
+    if (resourceType === "image" || /\.(png|svg|jpe?g|webp)(\?|$)/i.test(url)) {
+      // Undocumented image failure — record as error for review.
+      runtimeErrors.push({ type: "image-requestfailed", ...row });
+      log.push({ t: new Date().toISOString(), imageRequestFailed: row });
+      return;
+    }
+    log.push({ t: new Date().toISOString(), otherRequestFailed: row });
+  });
+  page.on("response", (res) => {
+    if (res.status() !== 404) return;
+    const url = res.url();
+    const resourceType = res.request().resourceType();
+    const row = { url, resourceType, status: 404 };
+    if (isDocumentedImageFailure(url)) {
+      log.push({ t: new Date().toISOString(), documentedImage404: row });
+      return;
+    }
+    if (resourceType === "script" || resourceType === "document" || /\.m?js(\?|$)/i.test(url)) {
+      runtimeErrors.push({ type: "http404-module", ...row });
+      return;
+    }
+    if (resourceType === "image" || /\.(png|svg|jpe?g|webp)(\?|$)/i.test(url)) {
+      runtimeErrors.push({ type: "http404-image", ...row });
+      return;
+    }
+    log.push({ t: new Date().toISOString(), http404: row });
+  });
   page.on("dialog", async (dialog) => {
-    runtimeErrors.push({ type: "dialog", text: dialog.message() });
-    log.push({ t: new Date().toISOString(), alert: dialog.message() });
+    const text = dialog.message();
+    if (/academy pool is empty/i.test(text)) {
+      log.push({ t: new Date().toISOString(), assertedEmptyPoolDialog: text });
+      await dialog.dismiss();
+      return;
+    }
+    runtimeErrors.push({ type: "dialog", text });
+    log.push({ t: new Date().toISOString(), alert: text });
     await dialog.dismiss();
   });
 }
@@ -219,12 +300,15 @@ async function newSeededContext(browser, seed, extraInit = null) {
   const context = await browser.newContext();
   await context.addInitScript((s) => {
     const orig = crypto.getRandomValues.bind(crypto);
-    window.__fix14Entropy = { seed: s, consumed: 0 };
+    window.__fix14Entropy = { seed: s, consumed: 0, matchingCalls: 0 };
     crypto.getRandomValues = function getRandomValues(arr) {
-      if (arr instanceof Uint32Array && arr.length === 1 && window.__fix14Entropy.consumed === 0) {
-        arr[0] = s >>> 0;
-        window.__fix14Entropy.consumed = 1;
-        return arr;
+      if (arr instanceof Uint32Array && arr.length === 1) {
+        window.__fix14Entropy.matchingCalls += 1;
+        if (window.__fix14Entropy.consumed === 0) {
+          arr[0] = s >>> 0;
+          window.__fix14Entropy.consumed = 1;
+          return arr;
+        }
       }
       return orig(arr);
     };
@@ -426,37 +510,57 @@ async function runB01(browser, base) {
     await startCareer(page);
     const tray = await revealAllOffers(page);
     assert(tray.entropy?.consumed === 1, "entropy consumed once", tray.entropy);
+    assert(tray.entropy?.matchingCalls === 1, "exactly one matching entropy call", tray.entropy);
     assert(tray.grid.length === 3, "three cards", tray.grid);
     assert(tray.grid.every((c) => /Home/i.test(c.tag)), "all Home tags", tray.grid);
     assert(tray.reveals.length === 3, "three reveals", tray.reveals);
-    // Compare order matches reveal order
     assert(
       tray.reveals.map((r) => r.name).join("|") === tray.grid.map((c) => c.name).join("|"),
       "reveal/compare order",
       tray
     );
+    const leagues = tray.grid.map((c) => c.league);
+    assert(
+      leagues.some((l) => /Premier League/i.test(l)) && leagues.some((l) => /Championship/i.test(l)),
+      "two parent divisions on tray",
+      leagues
+    );
     const chosen = await chooseGridCard(page, 1);
-    assert(/Swansea/i.test(chosen.name) || /Swansea/i.test(chosen.parent), "second card Swansea", chosen);
+    assert(/Swansea/i.test(chosen.name + chosen.parent), "second card Swansea", chosen);
+    // Parent ID before signing
+    const beforeSign = await page.evaluate(() => {
+      const snap = window.__exportCareerSnapshot?.();
+      const p = snap?.player;
+      return {
+        clubId: p?.club?.clubId || null,
+        parentClubId: p?.club?.parentClub?.clubId || null,
+        isAcademy: p?.club?.isAcademy,
+        name: p?.club?.name || p?.club?.displayName,
+      };
+    });
+    assert(beforeSign.isAcademy === true, "still academy before signing", beforeSign);
+    assert(
+      beforeSign.parentClubId === "club:england:swansea-city",
+      "selected parent ID before signing",
+      beforeSign
+    );
     await driveOpeningToDesk(page);
     const state = await page.evaluate(() => window.__getLiveCareerDebug?.());
+    const snap = await page.evaluate(() => window.__exportCareerSnapshot?.());
     assert(state?.name === "Fix14 B01", "player name", state);
-    const hist = await page.evaluate(() => document.getElementById("season-log")?.innerText || "");
-    assert(/Swansea/i.test(hist) || /Swansea/i.test(state?.club || ""), "selected academy in history", {
-      hist: hist.slice(0, 400),
-      club: state?.club,
-    });
-    // Parent identity through opening
-    assert(
-      /Swansea/i.test(state?.club || "") || /Swansea/i.test(hist),
-      "parent/academy identity",
-      state
-    );
+    const opening = snap?.player?.seasons?.[0];
+    assert(/Swansea/i.test(opening?.club || opening?.clubDisplay || ""), "opening history Swansea", opening);
     await shot(page, "B01-desk");
     await dumpState(page, "B01-state");
+    await writeFile(
+      join(STATE_DIR, "B01-tray.json"),
+      JSON.stringify({ tray, beforeSign, opening, terminal: state }, null, 2)
+    );
     await record("B01", "PASS", {
       seed: SEEDS.B01_ENGLAND_16_ALL_HOME,
       grid: tray.grid,
       chosen,
+      beforeSign,
       expectedParents: EXPECTED.B01,
     });
   } finally {
@@ -494,25 +598,28 @@ async function runB02(browser, base) {
       { hist: hist.slice(0, 500), openingClub, club: state?.club }
     );
     const nextAction = state?.nextAction || null;
-    assert(nextAction?.canSimulate || state?.isAcademy || !state?.freeAgent, "valid next action", {
-      nextAction,
-      isAcademy: state?.isAcademy,
-      club: state?.club,
-    });
+    assert(nextAction?.id === "start-season", "valid next-action ID", nextAction);
+    assert(nextAction?.canSimulate === true, "can simulate next", nextAction);
     await page.evaluate((data) => window.__restoreCareerSnapshot?.(data), snap);
     await page.waitForTimeout(200);
     const restoredSnap = await page.evaluate(() => window.__exportCareerSnapshot?.());
+    const restoredState = await page.evaluate(() => window.__getLiveCareerDebug?.());
     assert(restoredSnap?.player?.nationality === "Serbia", "restored nationality", restoredSnap?.player?.nationality);
     assert(
       restoredSnap?.player?.seasons?.[0]?.club === snap.player.seasons?.[0]?.club,
-      "restore without redraw",
+      "restore same opening without redraw",
       {
         before: snap.player.seasons?.[0]?.club,
         after: restoredSnap?.player?.seasons?.[0]?.club,
       }
     );
+    assert(restoredState?.nextAction?.id === "start-season", "restored next action", restoredState?.nextAction);
     await shot(page, "B02-desk");
     await dumpState(page, "B02-state");
+    await writeFile(
+      join(STATE_DIR, "B02-tray.json"),
+      JSON.stringify({ tray, chosen, nextAction, openingClub, terminal: state }, null, 2)
+    );
     await record("B02", "PASS", {
       seed: SEEDS.B02_SERBIA_18_MIXED,
       grid: tray.grid,
@@ -534,19 +641,53 @@ async function runB03(browser, base) {
     const tray = await revealAllOffers(page);
     assert(tray.grid.length === 3, "three offers", tray.grid);
     assert(tray.grid.every((c) => /Abroad/i.test(c.tag)), "all Abroad", tray.grid);
-    const nations = tray.grid.map((c) => c.league.split(" - ")[0] || c.parent);
-    // Distinct destination nations from league labels / parents
     assert(new Set(tray.grid.map((c) => c.name)).size === 3, "distinct academies", tray.grid);
     const chosen = await chooseGridCard(page, 0);
-    await driveOpeningToDesk(page);
-    const state = await page.evaluate(() => window.__getLiveCareerDebug?.());
-    assert(/Berkane|RS Berkane/i.test(state?.club || "") || /Berkane/i.test(chosen.name), "parent verified", {
-      club: state?.club,
-      chosen,
+    const beforeSign = await page.evaluate(() => {
+      const p = window.__exportCareerSnapshot?.()?.player;
+      return {
+        parentClubId: p?.club?.parentClub?.clubId || null,
+        nation: p?.club?.nation || p?.club?.parentClub?.nation || null,
+        isAcademy: p?.club?.isAcademy,
+      };
     });
+    assert(beforeSign.parentClubId === "club:morocco:rs-berkane", "selected parent in player state", beforeSign);
+    await driveOpeningToDesk(page);
+    const snap = await page.evaluate(() => window.__exportCareerSnapshot?.());
+    const nations = (snap?.player?.__fix14OfferNations) || null;
+    // Resolve canonical nations from the known tray parents / opening club nation chain
+    const canonicalNations = await page.evaluate(() => {
+      // Reconstruct from season club + debug is insufficient; use offer grid tags already asserted Abroad.
+      return null;
+    });
+    void canonicalNations;
+    const expectedNations = [
+      { parentId: "club:morocco:rs-berkane", nation: "Morocco", needle: /Berkane/i },
+      { parentId: "club:croatia:varazdin", nation: "Croatia", needle: /Varaždin|Varazdin/i },
+      { parentId: "club:egypt:el-gouna", nation: "Egypt", needle: /Gouna/i },
+    ];
+    assert(
+      expectedNations.every((n) => tray.grid.some((c) => n.needle.test(c.name + c.parent))),
+      "three canonical destination academies on tray",
+      { grid: tray.grid, expectedNations }
+    );
+    assert(new Set(expectedNations.map((n) => n.nation)).size === 3, "three distinct canonical nations");
+    const opening = snap?.player?.seasons?.[0];
+    assert(/Berkane/i.test(opening?.club || ""), "opening records Berkane", opening);
     await shot(page, "B03-desk");
     await dumpState(page, "B03-state");
-    await record("B03", "PASS", { seed: SEEDS.B03_GHANA_16, grid: tray.grid, nations, expectedParents: EXPECTED.B03 });
+    await writeFile(
+      join(STATE_DIR, "B03-tray.json"),
+      JSON.stringify({ tray, beforeSign, expectedNations, opening }, null, 2)
+    );
+    await record("B03", "PASS", {
+      seed: SEEDS.B03_GHANA_16,
+      grid: tray.grid,
+      beforeSign,
+      expectedNations,
+      expectedParents: EXPECTED.B03,
+      nations,
+    });
   } finally {
     await context.close();
   }
@@ -560,8 +701,15 @@ async function runB04(browser, base) {
       await fillSetup(page, { name: "Fix14 B04", nationality: "England", age: 16 });
       await startCareer(page);
       const tray = await revealAllOffers(page);
-      assert(tray.entropy?.consumed === 1, "one selection", tray.entropy);
+      assert(tray.entropy?.consumed === 1, "seed consumed", tray.entropy);
+      assert(tray.entropy?.matchingCalls === 1, "all matching entropy calls counted once", tray.entropy);
       assert(tray.grid.length === 3, "offer count 3", tray);
+      assert(tray.reveals.length === 3, "three reveals", tray.reveals);
+      assert(
+        tray.reveals.map((r) => r.name).join("|") === tray.grid.map((c) => c.name).join("|"),
+        "reveal sequence matches grid",
+        tray
+      );
       return { tray, context };
     } catch (err) {
       await context.close();
@@ -570,16 +718,27 @@ async function runB04(browser, base) {
   }
   const a = await once(SEEDS.B04_ENGLAND_16_A);
   const namesA = a.tray.grid.map((c) => c.name).join("|");
+  const revealsA = a.tray.reveals.map((r) => r.name).join("|");
   await a.context.close();
   const b = await once(SEEDS.B04_ENGLAND_16_A);
   const namesA2 = b.tray.grid.map((c) => c.name).join("|");
+  const revealsA2 = b.tray.reveals.map((r) => r.name).join("|");
   await b.context.close();
-  assert(namesA === namesA2, "identical seed replay", { namesA, namesA2 });
+  assert(namesA === namesA2 && revealsA === revealsA2, "identical seed replay reveal+grid", {
+    namesA,
+    namesA2,
+    revealsA,
+    revealsA2,
+  });
   const c = await once(SEEDS.B04_ENGLAND_16_B);
   const namesB = c.tray.grid.map((c) => c.name).join("|");
   await c.context.close();
   assert(namesA !== namesB, "different seed different tray", { namesA, namesB });
-  await record("B04", "PASS", { namesA, namesB, seeds: [SEEDS.B04_ENGLAND_16_A, SEEDS.B04_ENGLAND_16_B] });
+  await writeFile(
+    join(STATE_DIR, "B04-trays.json"),
+    JSON.stringify({ a: a.tray, b: b.tray, c: c.tray }, null, 2)
+  );
+  await record("B04", "PASS", { namesA, namesB, revealsA, seeds: [SEEDS.B04_ENGLAND_16_A, SEEDS.B04_ENGLAND_16_B] });
 }
 
 async function runB05(browser, base) {
@@ -677,12 +836,26 @@ async function runB05(browser, base) {
       assert(state?.age === 18, "age preserved", state);
       assert(calls.length >= 1, "picker observed", calls);
       assert(calls.some((c) => Number(c.opts?.age) === 18), "bootstrap forwarded age 18", calls);
-      assert((await page.evaluate(() => window.__fix14Entropy?.consumed)) === 1, "seed consumed");
+      const entropy = await page.evaluate(() => window.__fix14Entropy);
+      assert(entropy?.consumed === 1 && entropy?.matchingCalls === 1, "seed consumed once", entropy);
+      const snap = await page.evaluate(() => window.__exportCareerSnapshot?.());
+      const opening = snap?.player?.seasons?.[0];
+      // Age-18 draw for this seed starts at Leeds (first domestic).
+      assert(
+        /Leeds/i.test(opening?.club || opening?.clubDisplay || state?.club || ""),
+        "bootstrap used expected first academy",
+        { opening, club: state?.club }
+      );
       await shot(page, "B05-bootstrap");
       await dumpState(page, "B05-bootstrap");
+      await writeFile(
+        join(STATE_DIR, "B05-bootstrap-tray.json"),
+        JSON.stringify({ calls, opening, club: state?.club, entropy }, null, 2)
+      );
       await record("B05-bootstrap", "PASS", {
         age: state?.age,
         club: state?.club,
+        openingClub: opening?.club,
         pickerAges: calls.map((c) => c.opts?.age),
       });
     } finally {
@@ -717,20 +890,24 @@ async function runB05(browser, base) {
       );
       const setupVisible = await page.evaluate(() => {
         const form = document.getElementById("setup-form");
+        const start = document.getElementById("start-career-btn");
+        const setupSection =
+          document.getElementById("setup-section") ||
+          document.querySelector(".career-setup-form")?.closest("section");
         return {
           formPresent: Boolean(form),
           formEnabled: Boolean(form && ![...form.elements].every((el) => el.disabled)),
+          setupVisible: Boolean(setupSection && !setupSection.classList.contains("hidden")),
+          startVisible: Boolean(start && start.offsetParent !== null && !start.classList.contains("hidden")),
+          startEnabled: Boolean(start && !start.disabled),
           nameValue: document.getElementById("player-name")?.value || "",
         };
       });
       assert(/academy pool is empty/i.test(boot), "startup error", { boot });
-      assert(setupVisible.formPresent && setupVisible.formEnabled, "setup usable after error", setupVisible);
+      assert(setupVisible.setupVisible, "setup section visible", setupVisible);
+      assert(setupVisible.startVisible && setupVisible.startEnabled, "Start Career visible+enabled", setupVisible);
       await shot(page, "B05-empty");
       await record("B05-empty", "PASS", { boot, setupVisible });
-      // Intentional asserted error — strip from unexpected error list
-      for (let i = runtimeErrors.length - 1; i >= 0; i--) {
-        if (/academy pool is empty/i.test(runtimeErrors[i].text)) runtimeErrors.splice(i, 1);
-      }
     } finally {
       await context.close();
     }
@@ -738,8 +915,27 @@ async function runB05(browser, base) {
   await record("B05", "PASS", { cases: ["one", "two", "bootstrap", "empty"] });
 }
 
+const FIX04_REQUIRED = [
+  "continue-empty",
+  "reject-offer",
+  "final-empty-release",
+  "final-offers",
+  "double-continue",
+  "pending-review-restore",
+  "parent-shortcut-safe",
+  "ordinary-career-graduate",
+];
+
 async function runB06(base) {
   note("B06: spawning existing Fix 04 academy checklist with pinned ordinary seed");
+  const summaryPath = join(root, "qa/evidence/academy-checklist/checklist-summary.json");
+  const stamp = Date.now();
+  // Force a freshly generated summary — do not accept a pre-existing tracked PASS file.
+  if (existsSync(summaryPath)) {
+    await writeFile(join(STATE_DIR, `B06-preexisting-summary-${stamp}.json`), await readFile(summaryPath));
+    const { unlink } = await import("node:fs/promises");
+    await unlink(summaryPath);
+  }
   const env = {
     ...process.env,
     BASE_URL: base,
@@ -764,15 +960,37 @@ async function runB06(base) {
   await writeFile(join(STATE_DIR, "B06-fix04-stdout.log"), stdout);
   await writeFile(join(STATE_DIR, "B06-fix04-stderr.log"), stderr);
   assert(code === 0, "Fix 04 checklist exit 0", { code, stderr: stderr.slice(-500) });
-  // Parse results from summary if present
-  const summaryPath = join(root, "qa/evidence/academy-checklist/checklist-summary.json");
-  let summary = null;
-  if (existsSync(summaryPath)) {
-    summary = JSON.parse(await readFile(summaryPath, "utf8"));
-    assert(summary.failed === 0 && summary.blocked === 0, "Fix 04 no failures", summary);
-    assert(summary.passed >= 8, "eight required cases", summary);
+  assert(existsSync(summaryPath), "fresh Fix 04 summary written", { summaryPath });
+  const summary = JSON.parse(await readFile(summaryPath, "utf8"));
+  await writeFile(join(STATE_DIR, "B06-fix04-checklist-summary.json"), JSON.stringify(summary, null, 2));
+  assert(summary.failed === 0 && summary.blocked === 0, "Fix 04 no failures", summary);
+  assert(summary.passed === 8, "exactly eight passes", summary);
+  const byName = Object.fromEntries((summary.results || []).map((r) => [r.name, r]));
+  for (const name of FIX04_REQUIRED) {
+    assert(byName[name]?.status === "PASS", `required PASS ${name}`, byName[name]);
   }
-  await record("B06", "PASS", { exit: code, passed: summary?.passed, results: summary?.results });
+  const ordinary = byName["ordinary-career-graduate"];
+  assert(ordinary?.seasons >= 2 && ordinary?.club, "ordinary senior terminal state", ordinary);
+  // Validate child browser error log — only allow empty / no unexpected page errors.
+  const childErrors = (summary.log || []).filter(
+    (row) => row.consoleError || row.pageError || row.alert
+  );
+  const unexpectedChild = childErrors.filter((row) => {
+    const text = row.consoleError || row.pageError || row.alert || "";
+    if (/academy pool is empty/i.test(text)) return false;
+    if (isDocumentedImageFailure(text)) return false;
+    // reject-offer flow intentionally surfaces wage-headroom alerts.
+    if (row.alert && isAssertedFix04Dialog(row.alert)) return false;
+    return true;
+  });
+  assert(unexpectedChild.length === 0, "Fix 04 child unexpected errors", unexpectedChild);
+  await record("B06", "PASS", {
+    exit: code,
+    passed: summary.passed,
+    results: summary.results,
+    ordinary,
+    freshSummary: "qa/evidence/fix14-browser/B06-fix04-checklist-summary.json",
+  });
 }
 
 async function main() {

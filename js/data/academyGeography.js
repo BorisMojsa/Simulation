@@ -244,9 +244,61 @@ const DISTANCE_WEIGHT = {
   4: 0.08, // very far — rare but possible
 };
 
+function normalizeNationKey(raw) {
+  return String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+/** Own-key Map so strings like `constructor` cannot resolve via Object.prototype. */
+const NATION_LABEL_BY_KEY = new Map();
+for (const label of Object.keys(NATION_REGION)) {
+  const key = normalizeNationKey(label);
+  if (!NATION_LABEL_BY_KEY.has(key)) NATION_LABEL_BY_KEY.set(key, label);
+}
+
+/**
+ * Preferred canonical labels for aliases / alternate spellings.
+ * Values are geographic keys used with NATION_REGION.
+ */
+const PREFERRED_NATION_LABEL = new Map([
+  ["usa", "United States"],
+  ["united states of america", "United States"],
+  ["united states", "United States"],
+  ["türkiye", "Turkey"],
+  ["turkey", "Turkey"],
+  ["czechia", "Czech Republic"],
+  ["czech republic", "Czech Republic"],
+  ["holland", "Netherlands"],
+  ["netherlands", "Netherlands"],
+  ["korea republic", "South Korea"],
+  ["south korea", "South Korea"],
+]);
+
+/**
+ * Resolve a nation string to a known geographic label (case/whitespace insensitive).
+ * Returns null for unknown nations (callers keep the unknown-distance fallback).
+ * Does not rewrite player identity — callers must preserve submitted nationality.
+ */
+export function resolveGeographicNation(raw) {
+  if (raw == null) return null;
+  const trimmed = String(raw).trim();
+  if (!trimmed) return null;
+  const key = normalizeNationKey(trimmed);
+  if (PREFERRED_NATION_LABEL.has(key)) return PREFERRED_NATION_LABEL.get(key);
+  if (NATION_LABEL_BY_KEY.has(key)) return NATION_LABEL_BY_KEY.get(key);
+  return null;
+}
+
 export function regionForNation(nation) {
-  if (!nation) return null;
-  return NATION_REGION[nation] || null;
+  const label = resolveGeographicNation(nation);
+  if (!label) return null;
+  // Own-key Map lookup only — never index NATION_REGION with untrusted strings for inheritance.
+  const key = normalizeNationKey(label);
+  const canonical = NATION_LABEL_BY_KEY.get(key);
+  if (!canonical) return null;
+  return Object.prototype.hasOwnProperty.call(NATION_REGION, canonical) ? NATION_REGION[canonical] : null;
 }
 
 export function regionDistance(fromNation, toNation) {
@@ -254,9 +306,9 @@ export function regionDistance(fromNation, toNation) {
   const b = regionForNation(toNation);
   if (!a || !b) return 3;
   if (a === b) return 0;
-  const row = REGION_DISTANCE[a];
+  const row = Object.prototype.hasOwnProperty.call(REGION_DISTANCE, a) ? REGION_DISTANCE[a] : null;
   if (!row) return 3;
-  return row[b] ?? 3;
+  return Object.prototype.hasOwnProperty.call(row, b) ? row[b] : 3;
 }
 
 /** Weight for offering a club in `clubNation` to a player from `playerNation`. */
