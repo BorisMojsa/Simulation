@@ -209,6 +209,81 @@ export function buildFix13AliasGkSnapshot(opts = {}) {
   return snap;
 }
 
+/**
+ * Minimal production club-season payload for Fix 13 B05 attribute-recap gates.
+ * Seeds thin/empty `attributeChanges` into showSeasonAnimation without inventing
+ * a separate renderer. Empty match slate so dashboard phases skip quickly.
+ */
+export function buildFix13GkAttributeRecapSeasonData(player, attributeChanges = {}) {
+  if (!player || typeof player !== "object") {
+    return { ok: false, reason: "no-player" };
+  }
+  const league =
+    LEAGUE_BY_ID.get(player.club?.leagueId) || LEAGUE_BY_ID.get("league:england-premier-league");
+  if (!league) return { ok: false, reason: "no-league" };
+  const club = player.club || league.clubs?.[0];
+  const seasonNumber = (player.seasons?.length || 0) + 1;
+  const season = {
+    seasonNumber,
+    seasonId: `fix13-gk-recap-${seasonNumber}`,
+    year: Number(player.startYear) || 2026,
+    age: player.age,
+    clubId: club?.clubId,
+    clubName: club?.name,
+    clubDisplay: club?.displayName || club?.name,
+    league: league.name,
+    leagueId: league.leagueId,
+    matches: 0,
+    appearances: 0,
+    minutes: 0,
+    goals: 0,
+    assists: 0,
+    cleanSheets: 0,
+    yellowCards: 0,
+    redCards: 0,
+    avgMatchRating: 6.5,
+    leagueMatches: [],
+    leagueAllMatches: [],
+    domesticCupCampaigns: [],
+    trophies: [],
+  };
+  const standings = {
+    table: (league.clubs || []).map((c, i) => ({
+      clubId: c.clubId,
+      name: c.name,
+      displayName: c.displayName || c.name,
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      gf: 0,
+      ga: 0,
+      gd: 0,
+      pts: 0,
+      position: i + 1,
+    })),
+    playerRecord: null,
+  };
+  return {
+    ok: true,
+    seasonData: {
+      season,
+      league,
+      standings,
+      leagueAllMatches: [],
+      leaguePlayerMatches: [],
+      domesticCupCampaigns: [],
+      individualAwards: [],
+      attributeChanges: attributeChanges && typeof attributeChanges === "object" ? attributeChanges : {},
+      previousRating: player.rating,
+      newRating: player.rating,
+      performanceScore: 0.55,
+      continueDashboard: false,
+      revealedFixtureIds: [],
+    },
+  };
+}
+
 export function buildFix13OutfieldSnapshot(opts = {}) {
   resetClubFinanceLedgers();
   reseedCareerRng(opts.seed || 13004);

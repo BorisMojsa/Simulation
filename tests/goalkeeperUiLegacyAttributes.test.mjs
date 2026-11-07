@@ -466,7 +466,56 @@ describe("F05 club summary attributeChanges and rounding", () => {
 });
 
 describe("F06 matched ensure fingerprints", () => {
-  it("identical GK and outfield snapshots stay equal after ensure", () => {
+  it("identical GK and outfield snapshots stay equal after ensure and matched seasons", async () => {
+    const { writeFile, mkdir } = await import("node:fs/promises");
+    const { join, dirname } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const { LEAGUES, LEAGUE_LOOKUP } = await import("../js/data/leagues.js");
+    const { simulateSeason } = await import("../js/simulation/seasonSimulator.js");
+    const { buildFix13ModernGkSnapshot, buildFix13OutfieldSnapshot } = await import(
+      "../js/simulation/fix13GoalkeeperBrowserFixtures.js"
+    );
+
+    function fingerprint(player, seasonData) {
+      return {
+        attributes: structuredClone(player.attributes),
+        rating: player.rating,
+        baseOverallRaw: player.baseOverallRaw,
+        ovr: calculateOverall(player.attributes, player.position).raw,
+        minutes: seasonData?.season?.minutes ?? seasonData?.season?.seasonEvidence?.total?.minutes ?? null,
+        cleanSheets: seasonData?.season?.cleanSheets ?? null,
+        matches: seasonData?.season?.matches ?? null,
+        attributeChangeKeys: Object.keys(seasonData?.attributeChanges || {}),
+        rngSeed: getSimRng().seed(),
+      };
+    }
+
+    function runCompletedSeason(snap, seed) {
+      resetClubFinanceLedgers();
+      reseedCareerRng(seed);
+      const world = createWorldState({ startYear: 2026, seed });
+      setWorldState(world);
+      const restored = deserializeCareerSnapshot(structuredClone(snap));
+      const player = restored.player;
+      ensurePlayerModel(player);
+      let data = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, { autoDecisionPolicy: "stay" });
+      let guards = 0;
+      while ((data?.awaitingScenario || data?.awaitingDecision) && guards < 24) {
+        guards += 1;
+        if (data.awaitingScenario) {
+          player.pendingSeniorScenario = null;
+          if (data.checkpoint) data.checkpoint.pendingSeniorScenario = null;
+        }
+        player.seasonCheckpoint = data.checkpoint || null;
+        data = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+          autoDecisionPolicy: "stay",
+          checkpoint: data.checkpoint || null,
+        });
+      }
+      assert.ok(data?.season || data?.attributeChanges, "season completed", { keys: Object.keys(data || {}) });
+      return { player, seasonData: data, fingerprint: fingerprint(player, data) };
+    }
+
     const mkGk = () => ({
       name: "TwinGK",
       position: "GK",
@@ -516,6 +565,41 @@ describe("F06 matched ensure fingerprints", () => {
     ensurePlayerModel(s1);
     ensurePlayerModel(s2);
     assert.deepEqual(s1.attributes, s2.attributes);
+
+    const gkSnap = buildFix13ModernGkSnapshot({ seed: 13061, careerId: "f06-matched-gk" });
+    const ofSnap = buildFix13OutfieldSnapshot({ seed: 13062, careerId: "f06-matched-st" });
+    const gkA = runCompletedSeason(gkSnap, 13061);
+    const gkB = runCompletedSeason(gkSnap, 13061);
+    const ofA = runCompletedSeason(ofSnap, 13062);
+    const ofB = runCompletedSeason(ofSnap, 13062);
+
+    assert.deepEqual(gkA.fingerprint.attributes, gkB.fingerprint.attributes);
+    assert.equal(gkA.fingerprint.ovr, gkB.fingerprint.ovr);
+    assert.equal(gkA.fingerprint.rngSeed, gkB.fingerprint.rngSeed);
+    assert.equal(gkA.fingerprint.minutes, gkB.fingerprint.minutes);
+    assert.equal(gkA.fingerprint.cleanSheets, gkB.fingerprint.cleanSheets);
+    assert.deepEqual(gkA.fingerprint.attributeChangeKeys, GK_ORDER);
+    assert.equal("Shooting" in (gkA.seasonData.attributeChanges || {}), false);
+
+    assert.deepEqual(ofA.fingerprint.attributes, ofB.fingerprint.attributes);
+    assert.equal(ofA.fingerprint.ovr, ofB.fingerprint.ovr);
+    assert.deepEqual(ofA.fingerprint.attributeChangeKeys, [...OUTFIELD_ATTRIBUTE_KEYS]);
+
+    // Presentation intent: GK payload is canonical-role-only; durable extras remain on the player.
+    assert.equal(gkA.player.attributes.Speed, gkSnap.player.attributes.Speed);
+    assert.ok(!gkA.fingerprint.attributeChangeKeys.includes("Speed"));
+
+    const evidence = {
+      generatedAt: new Date().toISOString(),
+      note:
+        "Matched Fix 13 final runs with identical start snapshots/seeds. Durable GK/outfield state and RNG agree across repeats. attributeChanges is presentation-only (canonical role keys).",
+      gk: { runA: gkA.fingerprint, runB: gkB.fingerprint },
+      outfield: { runA: ofA.fingerprint, runB: ofB.fingerprint },
+    };
+    const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+    const outPath = join(root, "qa/fix13-runs/f06-matched-season.json");
+    await mkdir(dirname(outPath), { recursive: true });
+    await writeFile(outPath, JSON.stringify(evidence, null, 2));
   });
 });
 

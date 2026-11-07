@@ -330,6 +330,98 @@ async function driveSeasonToDesk(page, { timeoutMs = 240000 } = {}) {
   throw Object.assign(new Error("Timed out driving season to desk"), { data: snap });
 }
 
+/**
+ * Drive an already-started production showSeasonAnimation to the desk using only
+ * real #continue-btn / skip controls. Never force-hides overlays.
+ */
+async function drivePresentationToDesk(page, { timeoutMs = 180000 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  let continueClicks = 0;
+  let summaryLabels = null;
+  let summaryItems = null;
+  while (Date.now() < deadline) {
+    const ui = await page.evaluate(() => {
+      const visible = (el) => Boolean(el && !el.disabled && el.offsetParent !== null);
+      const overlay = document.getElementById("season-animation-overlay");
+      const dash = document.getElementById("simulation-dashboard");
+      const summary = document.getElementById("summary-animation");
+      const cont = document.getElementById("continue-btn");
+      const contHost = document.getElementById("animation-continue");
+      const d = window.__getLiveCareerDebug?.() || {};
+      const items = [...document.querySelectorAll("#rating-changes-grid .rating-item")].map((el) => ({
+        label: el.querySelector(".rating-name")?.textContent?.trim() || "",
+        delta: el.querySelector(".rating-change")?.textContent?.trim() || "",
+        value: el.querySelector(".rating-new")?.textContent?.trim() || "",
+        polarity: el.classList.contains("positive")
+          ? "positive"
+          : el.classList.contains("negative")
+            ? "negative"
+            : "neutral",
+      }));
+      return {
+        overlayHidden: !overlay || overlay.classList.contains("hidden"),
+        dashboardHidden: !dash || dash.classList.contains("hidden") || !dash.classList.contains("active"),
+        summaryVisible: Boolean(
+          summary && !summary.classList.contains("hidden") && summary.classList.contains("active")
+        ),
+        continueVisible: visible(cont) && contHost && !contHost.classList.contains("hidden"),
+        seasonActionInFlight: Boolean(d.seasonActionInFlight),
+        items,
+      };
+    });
+    if (ui.summaryVisible) {
+      summaryItems = ui.items;
+      summaryLabels = ui.items.map((i) => i.label);
+    }
+    if (
+      ui.overlayHidden &&
+      ui.dashboardHidden &&
+      ui.seasonActionInFlight === false &&
+      continueClicks > 0
+    ) {
+      return {
+        continueClosed: true,
+        continueClicks,
+        summaryLabels,
+        summaryItems,
+        seasonActionInFlight: false,
+      };
+    }
+    const cont = await clickProductionContinue(page);
+    if (cont.clicked) {
+      continueClicks += 1;
+      await page.waitForTimeout(160);
+      continue;
+    }
+    await page.evaluate(() => {
+      for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "sim-skip-match-btn", "match-skip-btn"]) {
+        const el = document.getElementById(id);
+        if (el && !el.disabled && el.offsetParent !== null) el.click();
+      }
+    });
+    await page.waitForTimeout(140);
+  }
+  throw Object.assign(new Error("Timed out driving presentation to desk"), {
+    data: { continueClicks, summaryLabels, summaryItems },
+  });
+}
+
+async function presentGkAttributeRecap(page, attributeChanges) {
+  await page.evaluate((changes) => {
+    window.__fix13RecapPromise = window.__presentFix13GkAttributeRecap?.(changes);
+  }, attributeChanges);
+  await page.waitForFunction(
+    () => {
+      const overlay = document.getElementById("season-animation-overlay");
+      const d = window.__getLiveCareerDebug?.() || {};
+      return Boolean(overlay && !overlay.classList.contains("hidden") && d.seasonActionInFlight);
+    },
+    null,
+    { timeout: 30000 }
+  );
+  return drivePresentationToDesk(page);
+}
+
 async function startNewGkCareer(page) {
   const actions = [];
   await page.waitForFunction(
@@ -593,72 +685,77 @@ const handlers = {
       outDriven.summaryLabels
     );
 
-    // Seed thin/empty GK change maps into the production summary renderer and
-    // read the real #rating-changes-grid DOM (not an in-test key filter).
+    // Empty GK attributeChanges through production showSeasonAnimation → own Continue.
     await restore(page, fixtures.modern);
-    const emptyDom = await page.evaluate(async () => {
-      const { showSummaryAnimation } = await import("./js/ui/seasonAnimation.js?v=92");
-      const overlay = document.getElementById("season-animation-overlay");
-      overlay?.classList.remove("hidden");
-      const player = window.__exportCareerSnapshot().player;
-      showSummaryAnimation(
-        { clubDisplay: player.club?.displayName || "Club", age: player.age, matches: 0, goals: 0, assists: 0, cleanSheets: 0, yellowCards: 0, redCards: 0, avgMatchRating: 6.5 },
-        {},
-        player
-      );
-      const items = [...document.querySelectorAll("#rating-changes-grid .rating-item")].map((el) => ({
-        label: el.querySelector(".rating-name")?.textContent?.trim() || "",
-        delta: el.querySelector(".rating-change")?.textContent?.trim() || "",
-        value: el.querySelector(".rating-new")?.textContent?.trim() || "",
-      }));
-      return { items, labels: items.map((i) => i.label) };
-    });
-    assert(emptyDom.items.length === 0, "empty map renders no rating rows", emptyDom);
-
-    const thinDom = await page.evaluate(async () => {
-      const { showSummaryAnimation } = await import("./js/ui/seasonAnimation.js?v=92");
-      const player = window.__exportCareerSnapshot().player;
-      const attributeChanges = {
-        Reflexes: { old: 70, new: 71, change: 1 },
-        Handling: { new: 72 }, // unavailable old endpoint
-        Speed: { old: 40, new: 41, change: 1 }, // must not appear on GK
-        Shooting: { old: 20, new: 21, change: 1 },
-      };
-      showSummaryAnimation(
-        { clubDisplay: player.club?.displayName || "Club", age: player.age, matches: 1, goals: 0, assists: 0, cleanSheets: 0, yellowCards: 0, redCards: 0, avgMatchRating: 6.8 },
-        attributeChanges,
-        player
-      );
-      // Stale key-list argument must be ignored when a player object is passed —
-      // also prove a mixed payload cannot inject outfield labels.
-      return [...document.querySelectorAll("#rating-changes-grid .rating-item")].map((el) => ({
-        label: el.querySelector(".rating-name")?.textContent?.trim() || "",
-        delta: el.querySelector(".rating-change")?.textContent?.trim() || "",
-        value: el.querySelector(".rating-new")?.textContent?.trim() || "",
-      }));
-    });
-    assert(thinDom.some((r) => r.label === "Reflexes" && r.delta === "+1" && r.value === "71"), "reflexes row", thinDom);
-    assert(thinDom.some((r) => r.label === "Handling" && r.delta === "—" && r.value === "72"), "handling unavailable old", thinDom);
-    assert(!thinDom.some((r) => r.label === "Speed" || r.label === "Shooting"), "no outfield rows from mixed payload", thinDom);
-    assert(thinDom.every((r) => GK_ATTRIBUTE_KEYS.includes(r.label)), "only GK labels", thinDom);
-
-    // Outfield club recap already returned via production #continue-btn (outDriven).
-    // Close the seeded summary overlay without inventing a completion callback.
-    await page.evaluate(() => {
-      document.getElementById("summary-animation")?.classList.add("hidden");
-      document.getElementById("summary-animation")?.classList.remove("active");
-      document.getElementById("season-animation-overlay")?.classList.add("hidden");
-      document.getElementById("animation-continue")?.classList.add("hidden");
-    });
-
-    const desk = await page.evaluate((continueClosed) => ({
+    const emptyDriven = await presentGkAttributeRecap(page, {});
+    assert(emptyDriven.continueClosed, "empty GK continue closed", emptyDriven);
+    assert(emptyDriven.continueClicks >= 1, "empty GK production Continue clicked", emptyDriven);
+    assert(
+      Array.isArray(emptyDriven.summaryItems) && emptyDriven.summaryItems.length === 0,
+      "empty map renders no rating rows in production grid",
+      emptyDriven.summaryItems
+    );
+    const emptyDesk = await page.evaluate(() => ({
       overlayHidden: document.getElementById("season-animation-overlay")?.classList.contains("hidden"),
       inFlight: Boolean(window.__getLiveCareerDebug?.()?.seasonActionInFlight),
-      continueClosed,
-    }), outDriven.continueClosed);
-    assert(desk.overlayHidden && desk.inFlight === false && desk.continueClosed, "returned desk", desk);
+      careerVisible: !document.getElementById("career-section")?.classList.contains("hidden"),
+    }));
+    assert(
+      emptyDesk.overlayHidden && emptyDesk.inFlight === false && emptyDesk.careerVisible,
+      "empty GK returned to desk via its own Continue",
+      emptyDesk
+    );
+
+    // Thin / mixed GK attributeChanges through production animation → own Continue.
+    await restore(page, fixtures.modern);
+    const thinChanges = {
+      Reflexes: { old: 70, new: 71, change: 1 },
+      Handling: { new: 72 }, // unavailable old endpoint → —
+      Speed: { old: 40, new: 41, change: 1 }, // must not appear on GK
+      Shooting: { old: 20, new: 21, change: 1 },
+    };
+    const thinDriven = await presentGkAttributeRecap(page, thinChanges);
+    assert(thinDriven.continueClosed, "thin GK continue closed", thinDriven);
+    assert(thinDriven.continueClicks >= 1, "thin GK production Continue clicked", thinDriven);
+    const thinDom = thinDriven.summaryItems || [];
+    assert(
+      thinDom.some((r) => r.label === "Reflexes" && r.delta === "+1" && r.value === "71"),
+      "reflexes row",
+      thinDom
+    );
+    assert(
+      thinDom.some((r) => r.label === "Handling" && r.delta === "—" && r.value === "72"),
+      "handling unavailable old",
+      thinDom
+    );
+    assert(
+      !thinDom.some((r) => r.label === "Speed" || r.label === "Shooting"),
+      "no outfield rows from mixed payload",
+      thinDom
+    );
+    assert(thinDom.every((r) => GK_ATTRIBUTE_KEYS.includes(r.label)), "only GK labels", thinDom);
+    const thinDesk = await page.evaluate(() => ({
+      overlayHidden: document.getElementById("season-animation-overlay")?.classList.contains("hidden"),
+      inFlight: Boolean(window.__getLiveCareerDebug?.()?.seasonActionInFlight),
+      careerVisible: !document.getElementById("career-section")?.classList.contains("hidden"),
+    }));
+    assert(
+      thinDesk.overlayHidden && thinDesk.inFlight === false && thinDesk.careerVisible,
+      "thin GK returned to desk via its own Continue",
+      thinDesk
+    );
+
     const shotPath = await shot(page, "B05-outfield");
-    return { label: "controlled", outDriven, emptyDom, thinDom, desk, shotPath, errors: [...runtime] };
+    return {
+      label: "controlled",
+      outDriven,
+      emptyDriven,
+      thinDriven,
+      emptyDesk,
+      thinDesk,
+      shotPath,
+      errors: [...runtime],
+    };
   },
 };
 
@@ -671,6 +768,7 @@ async function main() {
       "js/ui/rendering.js",
       "js/ui/seasonAnimation.js",
       "js/ui/retirementAnimation.js",
+      "js/ui/abilityFormatting.js",
       "js/simulation/playerModelMigration.js",
       "js/simulation/careerSnapshot.js",
       "js/simulation/seasonSimulator.js",

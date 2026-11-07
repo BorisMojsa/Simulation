@@ -34,6 +34,7 @@ import { buildAcademyBrowserFixture } from "./js/simulation/academyBrowserFixtur
 import { buildMatchParticipationKoBrowserFixture } from "./js/simulation/matchParticipationKoBrowserFixture.js";
 import { buildMatchParticipationGkBrowserFixture } from "./js/simulation/matchParticipationGkBrowserFixture.js";
 import { buildFix12TournamentPresentationBrowserFixture } from "./js/simulation/fix12TournamentPresentationBrowserFixture.js";
+import { buildFix13GkAttributeRecapSeasonData } from "./js/simulation/fix13GoalkeeperBrowserFixtures.js";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -354,6 +355,48 @@ window.__loadMatchParticipationKoCompleteBrowserFixture = async function loadMat
  * showSeasonAnimation through national dashboard/recap and final #continue-btn
  * → finishSeasonAnimation desk return. Browser QA must only click controls.
  */
+/**
+ * Fix 13 B05: present a thin/empty GK attributeChanges map through production
+ * showSeasonAnimation → real #continue-btn → finishSeasonAnimation desk return.
+ * Browser QA must only click controls; do not force-hide overlays.
+ */
+window.__presentFix13GkAttributeRecap = async function presentFix13GkAttributeRecap(
+  attributeChanges = {}
+) {
+  if (!player) return { ok: false, reason: "no-player" };
+  const built = buildFix13GkAttributeRecapSeasonData(player, attributeChanges);
+  if (!built.ok) return built;
+  seasonActionInFlight = true;
+  lastFinishedSeasonKey = null;
+  ensureContractAuthority(player);
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  try {
+    await showSeasonAnimation(
+      built.seasonData,
+      player,
+      getDisplayAttributeKeys(player.position),
+      () => {
+        finishSeasonAnimation();
+        seasonActionInFlight = false;
+      }
+    );
+  } catch (err) {
+    seasonActionInFlight = false;
+    recoverSeasonPresentationFailure(err, { alert: false, committed: true });
+    throw err;
+  }
+  seasonActionInFlight = false;
+  syncSimulateButton();
+  return {
+    ok: true,
+    attributeChangeKeys: Object.keys(built.seasonData.attributeChanges || {}),
+    seasonsCount: player.seasons?.length ?? 0,
+  };
+};
+
 window.__loadFix12TournamentPresentationBrowserFixture = async function loadFix12TournamentPresentationBrowserFixture(
   opts = {}
 ) {
