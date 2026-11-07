@@ -16,7 +16,6 @@ import {
 } from "./clubFinance.js";
 import { roundFee } from "./playerValuation.js";
 import { CONTRACT_RULES, SQUAD_REVIEW } from "../config/recruitmentConfig.js";
-import { getWorldState } from "./worldState.js";
 import { resolveMoveRegistration } from "./destinationSchedule.js";
 import {
   ensureContractAuthority,
