@@ -15,6 +15,10 @@ import {
 } from "./js/simulation/careerSnapshot.js";
 import { getOrInitClubSeasonFinance } from "./js/simulation/clubFinance.js";
 import {
+  buildMembershipBrowserFixture,
+  inspectMembershipDebug,
+} from "./js/simulation/membershipBrowserFixture.js?v=96";
+import {
   ensureContractAuthority,
   selectNextCareerAction,
   isFreeAgent,
@@ -654,10 +658,78 @@ window.__zeroPendingOfferWageHeadroom = function zeroPendingOfferWageHeadroom(of
   };
 };
 
+window.__loadMembershipBrowserFixture = function loadMembershipBrowserFixture(opts = {}) {
+  const result = buildMembershipBrowserFixture(opts);
+  if (!result.ok) {
+    console.error("Membership fixture failed:", result.reason, result);
+    return result;
+  }
+  player = result.player;
+  dealBookingGuard = null;
+  seasonActionInFlight = false;
+  ensureContractAuthority(player);
+  document.getElementById("career-start-overlay")?.classList.add("hidden");
+  setupSection?.classList.add("hidden");
+  careerSection?.classList.remove("hidden");
+  refreshAll();
+  syncSimulateButton();
+  return {
+    ok: true,
+    mode: result.mode,
+    clubId: result.clubId,
+    borrowerId: result.borrowerId || null,
+    evidence: result.evidence,
+    next: result.next || null,
+    destination: result.destination || null,
+    move: result.move || null,
+    zones: result.zones || null,
+    offerMeta: result.offerMeta || null,
+    snapshotOk: result.snapshotOk,
+    snapshotCompare: result.snapshotCompare || null,
+    checkpoint: result.checkpoint || null,
+    loan: result.loan || null,
+    expect: result.expect || null,
+    season: result.season || null,
+    membership: inspectMembershipDebug(player, getWorldState()),
+    playingClubId: player.playingClubId,
+    employmentClubId: player.employmentClubId,
+    clubLeagueId: player.club?.leagueId || null,
+  };
+};
+
+window.__getMembershipDebug = function getMembershipDebug() {
+  return inspectMembershipDebug(player, getWorldState());
+};
+
+window.__resolvePlayingClubAt = function resolvePlayingClubAtDebug(date) {
+  if (!player) return null;
+  return resolvePlayingClubAt(player, date);
+};
+
+window.__getPlayingRegistrationDebug = function getPlayingRegistrationDebug(date = null) {
+  if (!player) return null;
+  const stints = (player.playingStints || []).map((s) => ({ ...s }));
+  const returnStint = stints.find((s) => s.kind === "loan_return" || s.kind === "loan_recall") || null;
+  const loanStint = stints.find((s) => s.onLoan && s.to != null) || stints.find((s) => s.onLoan) || null;
+  return {
+    date,
+    playingClubId: date ? resolvePlayingClubAt(player, date) : player.playingClubId,
+    stintAtDate: date ? resolvePlayingStintAt(player, date) : null,
+    returnStint,
+    loanStint,
+    stints,
+    activeLoanStatus: player.activeLoan?.status || null,
+    clubId: player.club?.clubId || null,
+    clubLeagueId: player.club?.leagueId || null,
+  };
+};
+
 window.__getLiveCareerDebug = function getLiveCareerDebug() {
   if (!player) return null;
+  const membership = inspectMembershipDebug(player, getWorldState());
   const last = player.seasons?.[player.seasons.length - 1] || null;
   return {
+    membership,
     name: player.name,
     age: player.age,
     club: player.club?.displayName || player.club?.name,
@@ -1417,6 +1489,9 @@ function finishOfferWindow(accepted, offer) {
     } else if (fixture === "academy" || fixture.startsWith("academy-")) {
       const mode = params.get("mode") || fixture.replace(/^academy-?/, "") || "continue-empty";
       queueMicrotask(() => window.__loadAcademyBrowserFixture?.({ mode: mode || "continue-empty" }));
+    } else if (fixture === "membership" || fixture.startsWith("membership-")) {
+      const mode = params.get("mode") || fixture.replace(/^membership-?/, "") || "promotion";
+      queueMicrotask(() => window.__loadMembershipBrowserFixture?.({ mode: mode || "promotion" }));
     }
   } catch (err) {
     console.warn("Fixture boot skipped:", err);

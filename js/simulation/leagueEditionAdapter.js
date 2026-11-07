@@ -15,6 +15,7 @@
 import { commitMatch, createEdition, commitEdition, getEdition } from "./competitionStore.js";
 import { ensureLeagueMatchId } from "./leagueTable.js";
 import { getWorldState } from "./worldState.js";
+import { resolveLeagueClubs } from "./leagueMembership.js";
 
 export function ensureLeagueEdition(league, seasonYear, world = getWorldState()) {
   if (!league?.leagueId && !league?.name) return null;
@@ -22,13 +23,17 @@ export function ensureLeagueEdition(league, seasonYear, world = getWorldState())
   const editionId = String(seasonYear ?? "unknown");
   let edition = getEdition(competitionId, editionId, world);
   if (edition) return edition;
+  const clubs =
+    league.clubs?.length && league._editionResolved
+      ? league.clubs
+      : resolveLeagueClubs(league, { world, seasonYear });
   edition = createEdition({
     competitionId,
     editionId,
     name: league.displayName || league.name || competitionId,
     ruleVersion: "league-table-v1",
     kind: "league",
-    participants: (league.clubs || []).map((c) => ({
+    participants: (clubs || []).map((c) => ({
       clubId: c.clubId,
       name: c.name,
       displayName: c.displayName,

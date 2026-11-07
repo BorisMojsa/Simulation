@@ -14,11 +14,11 @@ import { createStreamRng } from "./rng.js";
 import { refreshAbilityCaches } from "./playerAbility.js?v=88";
 import { periodSceneContribution } from "./seniorCareerScenarios.js?v=88";
 import {
-  applyDivisionMovement,
   divisionMoveSlots,
   findSisterLeagues,
   qualificationForPosition,
 } from "./leaguePhase.js";
+import { finalizeMembershipForSeasonSegments } from "./leagueMembership.js";
 import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=89";
 import { findLeagueById } from "./destinationSchedule.js?v=81";
 import { evaluateSeasonAwards } from "./individualAwards.js?v=86";
@@ -211,7 +211,13 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     player.activeLoan.endSeason != null &&
     (player.seasons?.length ?? 0) >= player.activeLoan.endSeason
   ) {
-    endLoan(player, isFreeAgent(player) || !assertPlayableRegistration(player).ok ? "expiry" : "return");
+    const boundaryYear = (player.startYear || 2026) + (player.seasons?.length ?? 0);
+    const boundaryDate = `${boundaryYear}-06-30`;
+    endLoan(
+      player,
+      isFreeAgent(player) || !assertPlayableRegistration(player).ok ? "expiry" : "return",
+      { effectiveDate: boundaryDate, seasonBoundary: true }
+    );
   }
 
   // Free agent / expired: do not invent a senior club period.
@@ -982,6 +988,12 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   // History written under the clubs actually represented; then open a completed-
   // evidence boundary review before irreversible release when the term ends.
   player.seasonCheckpoint = null;
+  const completedClubId =
+    playerRow?.clubId ||
+    player.playingClubId ||
+    player.employmentClubId ||
+    player.club?.clubId ||
+    null;
   let expiry = { ok: true, action: "still-active" };
   if (
     player.contractEndSeason != null &&
@@ -1067,13 +1079,49 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   }
   season.contractExpiry = expiry;
 
-  const divisionMove = player.club
-    ? applyDivisionMovement(player, playerRow, playingLeague, leagues)
-    : null;
+  // Balanced pair transitions for every supported pair touched this season.
+  const completedSeasonYear = (player.startYear || 2026) + seasonIndex;
+  const segmentLeagueIds = [
+    ...(chrono.leagueMatchSegments || []).map((s) => s.leagueId || s.key),
+    playingLeague?.leagueId,
+    league?.leagueId,
+    chrono.activeLeague?.leagueId,
+    chrono.checkpoint?.leagueId,
+  ].filter(Boolean);
+  const membershipResult = finalizeMembershipForSeasonSegments({
+    player,
+    segmentLeagueIds,
+    primaryLeague: playingLeague,
+    primaryTable: chrono.table,
+    completedSeasonYear,
+    completedClubId,
+    allLeagues: leagues,
+    world: getWorldState(),
+  });
+  const divisionMove = membershipResult?.ok ? membershipResult.playerMove || null : null;
   if (divisionMove) {
     season.divisionMove = divisionMove;
     if (standing) standing.divisionMove = divisionMove.type;
   }
+  const primaryTransition =
+    membershipResult?.results?.find((r) => r.transition?.key) ||
+    membershipResult?.results?.[0] ||
+    null;
+  season.membershipTransition = membershipResult?.ok
+    ? {
+        alreadyApplied: Boolean(primaryTransition?.alreadyApplied),
+        skipped: Boolean(membershipResult.skipped),
+        key: primaryTransition?.transition?.key || null,
+        keys: membershipResult.transitionKeys || [],
+        promoted: primaryTransition?.transition?.promoted || null,
+        relegated: primaryTransition?.transition?.relegated || null,
+        pairs: (membershipResult.results || []).map((r) => ({
+          pairId: r.pairId,
+          key: r.transition?.key || null,
+          skipped: Boolean(r.skipped),
+        })),
+      }
+    : { ok: false, reason: membershipResult?.reason || "failed" };
 
   applySeasonDevelopment(getWorldState());
 

@@ -81,6 +81,12 @@ import {
   resolvePreSeasonContinentalStanding,
   commitCompletedDomesticEdition,
 } from "./earnedQualification.js";
+import {
+  freezeEditionRoster,
+  leagueViewForEdition,
+  pairPolicyForLeague,
+  resolveLeagueClubs,
+} from "./leagueMembership.js";
 
 function commitActiveLeagueQualification({
   world,
@@ -120,16 +126,32 @@ function commitActiveLeagueQualification({
   });
 }
 
-function ensurePlayerInClubs(league, player) {
-  const clubs = [...(league.clubs || [])].map(attachClubIdentity);
-  if (!player?.club?.name) return clubs;
-  // Academy identities are never senior competition participants.
+/**
+ * Resolve edition clubs from career membership. Modeled senior leagues must
+ * already contain the player's club — never append a 21st/25th side.
+ * Academy identities are never senior competition participants.
+ */
+function ensurePlayerInClubs(league, player, { world = null, seasonYear = null } = {}) {
+  const clubs = resolveLeagueClubs(league, { world, seasonYear });
+  if (!player?.club?.name && !player?.club?.clubId) return clubs;
   if (player.club.isAcademy) {
     throw new Error(
       "ensurePlayerInClubs: academy club cannot be appended to a senior league roster"
     );
   }
-  if (clubs.some((c) => c.name === player.club.name || c.clubId === player.club.clubId)) return clubs;
+  const present = clubs.some(
+    (c) =>
+      (player.club.clubId && c.clubId === player.club.clubId) ||
+      (player.club.name && c.name === player.club.name)
+  );
+  if (present) return clubs;
+  const leagueId = league.leagueId || league.name;
+  if (pairPolicyForLeague(leagueId) || (league.clubs || []).length >= 10) {
+    throw new Error(
+      `leagueMembership: player club ${player.club.clubId || player.club.name} missing from ${leagueId} edition roster`
+    );
+  }
+  // Non-modeled paths may still enroll the player side.
   clubs.push(
     attachClubIdentity({
       name: player.club.name,
@@ -206,7 +228,11 @@ function applyDestinationLeagueContext(recon, world) {
   if (!destLeague || recon.destinationMeta?.sameLeague) {
     return null;
   }
-  const clubs = (recon.destinationClubs || destLeague.clubs || []).map((c) =>
+  const seasonYear = recon.destinationMeta?.scheduleSeasonStartYear;
+  const clubs = (recon.destinationClubs?.length
+    ? recon.destinationClubs
+    : resolveLeagueClubs(destLeague, { world, seasonYear })
+  ).map((c) =>
     attachClubIdentity({
       ...c,
       tier: destLeague.tier,
@@ -221,7 +247,7 @@ function applyDestinationLeagueContext(recon, world) {
     ensureRecordClub(records, match.away, world);
     updateLeagueRecords(records, match);
   }
-  return { activeLeague: destLeague, clubs, records };
+  return { activeLeague: { ...destLeague, clubs }, clubs, records };
 }
 
 function tagLeagueMatch(match, { activeLeague, player, historySegment, seasonStartYear, world }) {
@@ -383,19 +409,16 @@ export function simulateChronologicalSeason({
     });
   }
 
-  // ---- League fixtures ----
-  let activeLeague = league;
-  let clubs = ensurePlayerInClubs(league, player).map((c) =>
-    attachClubIdentity({
-      ...c,
-      tier: league.tier,
-      league: league.name,
-      leagueId: league.leagueId,
-      nation: league.nation,
-    })
-  );
+  // ---- League fixtures (career/edition roster authority) ----
+  freezeEditionRoster(league, seasonStartYear, world);
+  const editionLeague = leagueViewForEdition(league, { world, seasonYear: seasonStartYear });
+  let activeLeague = editionLeague;
+  let clubs = ensurePlayerInClubs(editionLeague, player, {
+    world,
+    seasonYear: seasonStartYear,
+  });
   const fixtures = flattenRoundRobinFixtures(clubs, {
-    idPrefix: `lg:${league.leagueId || league.name}:${seasonStartYear}`,
+    idPrefix: `lg:${editionLeague.leagueId || editionLeague.name}:${seasonStartYear}`,
   });
   const datedLeague = dateLeagueFixtures(fixtures, seasonStartYear);
   let records = initLeagueRecords(clubs, world);

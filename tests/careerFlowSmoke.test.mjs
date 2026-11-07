@@ -22,13 +22,16 @@ import {
 } from "../js/simulation/proContractOffers.js";
 import { rivalsForClub } from "../js/data/clubRivals.js";
 import {
-  applyDivisionMovement,
   findSisterLeagues,
   qualificationForPosition,
 } from "../js/simulation/leaguePhase.js";
 import { hashSeed } from "../js/simulation/rng.js";
 import { academyNationOf } from "../js/data/academyOfferStories.js";
 import { regionDistance } from "../js/data/academyGeography.js";
+import { createWorldState, setWorldState } from "../js/simulation/worldState.js";
+import { resetClubFinanceLedgers } from "../js/simulation/clubFinance.js";
+import { finalizeMembershipAfterSeason } from "../js/simulation/leagueMembership.js";
+import { controlledPairFinalize } from "./helpers/membershipTestUtils.mjs";
 
 function test(name, fn) {
   try {
@@ -304,20 +307,37 @@ test("2. Bundesliga 2nd place promotes; bottom does not relegate", () => {
   assert.equal(qualificationForPosition(2, second, sisters), "Promoted");
   assert.equal(qualificationForPosition(18, second, sisters), "");
 
+  resetClubFinanceLedgers();
+  const world = createWorldState({ seed: 11, startYear: 2026 });
+  setWorldState(world);
+  const club = second.clubs.find((c) => c.name === "Hannover 96") || second.clubs[1];
   const player = {
-    club: {
-      name: "Hannover 96",
-      displayName: "Hannover 96",
-      league: second.name,
-      leagueDisplay: second.displayName,
-      tier: second.tier,
-      financialTier: 3,
-    },
+    startYear: 2026,
+    seasons: [],
+    club: { ...club },
+    playingClubId: club.clubId,
+    employmentClubId: club.clubId,
   };
-  const move = applyDivisionMovement(player, { position: 2 }, second, LEAGUES);
-  assert.equal(move?.type, "promoted");
+  const result = controlledPairFinalize({
+    player,
+    league: second,
+    position: 2,
+    world,
+    seasonYear: 2026,
+  });
+  assert.equal(result.ok, true, String(result.reason));
+  assert.equal(result.playerMove?.type, "promoted");
   assert.equal(player.club.league, top.name);
-  assert.equal(applyDivisionMovement(player, { position: 18 }, second, LEAGUES), null);
+  assert.equal(world.leagueMemberships.get(top.leagueId).length, 18);
+  assert.equal(world.leagueMemberships.get(second.leagueId).length, 18);
+  const again = finalizeMembershipAfterSeason({
+    player,
+    completedLeague: second,
+    completedSeasonYear: 2026,
+    world,
+    completedClubId: club.clubId,
+  });
+  assert.equal(again.alreadyApplied, true);
 });
 
 test("Bundesliga bottom places relegate to 2. Bundesliga", () => {
@@ -325,18 +345,29 @@ test("Bundesliga bottom places relegate to 2. Bundesliga", () => {
   const second = LEAGUES.find((l) => l.name === "Germany - 2. Bundesliga");
   const sisters = findSisterLeagues(top, LEAGUES);
   assert.equal(qualificationForPosition(17, top, sisters), "Relegated");
+  resetClubFinanceLedgers();
+  const world = createWorldState({ seed: 12, startYear: 2026 });
+  setWorldState(world);
+  const club = top.clubs.find((c) => c.name === "Mainz 05") || top.clubs[top.clubs.length - 1];
   const player = {
-    club: {
-      name: "Mainz 05",
-      league: top.name,
-      leagueDisplay: top.displayName,
-      tier: top.tier,
-      financialTier: 3,
-    },
+    startYear: 2026,
+    seasons: [],
+    club: { ...club },
+    playingClubId: club.clubId,
+    employmentClubId: club.clubId,
   };
-  const move = applyDivisionMovement(player, { position: 17 }, top, LEAGUES);
-  assert.equal(move?.type, "relegated");
+  const result = controlledPairFinalize({
+    player,
+    league: top,
+    position: 17,
+    world,
+    seasonYear: 2026,
+  });
+  assert.equal(result.ok, true, String(result.reason));
+  assert.equal(result.playerMove?.type, "relegated");
   assert.equal(player.club.league, second.name);
+  assert.equal(world.leagueMemberships.get(top.leagueId).length, 18);
+  assert.equal(world.leagueMemberships.get(second.leagueId).length, 18);
 });
 
 console.log(process.exitCode ? "Some tests failed." : "All smoke tests passed.");

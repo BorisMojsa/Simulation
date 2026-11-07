@@ -176,6 +176,10 @@ export function createWorldState({ seed = null, startYear = 2026 } = {}) {
     clubs,
     nations,
     leagueMemberships,
+    leagueEditionRosters: new Map(),
+    membershipTransitions: new Map(),
+    membershipDiagnostics: new Map(),
+    worldLeagueRng: null,
     form: new Map(),
     standings: new Map(),
     cupResults: new Map(),
@@ -193,6 +197,8 @@ export function createWorldState({ seed = null, startYear = 2026 } = {}) {
         "schemaVersion<3 careers without baselineNations freeze values from their live nations map and mark legacyGameplayPointsPrior=1180 where applicable; they are never upgraded in place to the new secondary inventory.",
       replacementMigration:
         "schemaVersion<4 careers keep saved replacementOvr values; fractional evolution applies going forward without rewriting baselines from bundled data.",
+      membershipPolicy:
+        "leagueMemberships is the live career roster authority; leagueEditionRosters freezes participants per edition; membershipTransitions records idempotent pair exchanges.",
     },
   };
 }
@@ -248,6 +254,11 @@ export function serializeWorldState(world = activeWorld) {
     clubs: [...world.clubs.entries()],
     nations: [...world.nations.entries()],
     leagueMemberships: [...world.leagueMemberships.entries()],
+    leagueEditionRosters: [...(world.leagueEditionRosters || new Map()).entries()],
+    membershipTransitions: [...(world.membershipTransitions || new Map()).entries()],
+    membershipDiagnostics: [...(world.membershipDiagnostics || new Map()).entries()],
+    worldLeagueRng: world.worldLeagueRng || null,
+    standingsEdition: world.standingsEdition || null,
     form: [...world.form.entries()],
     standings: [...world.standings.entries()],
     cupResults: [...world.cupResults.entries()],
@@ -309,6 +320,12 @@ export function deserializeWorldState(data) {
     clubs,
     nations,
     leagueMemberships: new Map(data.leagueMemberships || []),
+    // Legacy snapshots without new fields keep membership as-is; do not reset to bundled.
+    leagueEditionRosters: new Map(data.leagueEditionRosters || []),
+    membershipTransitions: new Map(data.membershipTransitions || []),
+    membershipDiagnostics: new Map(data.membershipDiagnostics || []),
+    worldLeagueRng: data.worldLeagueRng || null,
+    standingsEdition: data.standingsEdition || null,
     form: new Map(data.form || []),
     standings: new Map(data.standings || []),
     cupResults: new Map(data.cupResults || []),
