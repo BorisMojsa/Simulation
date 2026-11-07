@@ -4,7 +4,7 @@ import { pickScenariosForPosition } from "../data/careerOpeningScenarios.js?v=76
 import {
   pickThreeAcademies,
   buildNarrativeAcademySeason,
-} from "../simulation/narrativeAcademySeason.js?v=83";
+} from "../simulation/narrativeAcademySeason.js?v=84";
 import {
   finalizeAcademyPlayer,
   applySkipOpeningDevelopment,

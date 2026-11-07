@@ -12,7 +12,7 @@ import { createServer } from "node:http";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { join, dirname, extname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawn } from "node:child_process";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -90,7 +90,26 @@ function projectLeaguesSource(src, mode) {
   const all = ACADEMY_POOL.slice();
   ACADEMY_POOL.length = 0;
   const mode = ${JSON.stringify(mode)};
-  if (mode === "empty") return;
+  if (mode === "empty") {
+    // All-invalid parent rows: pool non-empty but nothing eligible for offers.
+    for (const row of all.slice(0, 8)) {
+      ACADEMY_POOL.push({
+        ...row,
+        isAcademy: true,
+        parentClub: null,
+        name: row?.name || "Ghost Academy",
+      });
+    }
+    if (!ACADEMY_POOL.length) {
+      ACADEMY_POOL.push({
+        name: "Ghost Academy",
+        isAcademy: true,
+        nation: "England",
+        parentClub: { name: "", clubId: "" },
+      });
+    }
+    return;
+  }
   const england = all.filter((a) => a?.nation === "England" && a?.parentClub?.clubId);
   if (mode === "one") {
     if (england[0]) ACADEMY_POOL.push(england[0]);
@@ -600,8 +619,11 @@ async function runB02(browser, base) {
     const nextAction = state?.nextAction || null;
     assert(nextAction?.id === "start-season", "valid next-action ID", nextAction);
     assert(nextAction?.canSimulate === true, "can simulate next", nextAction);
-    await page.evaluate((data) => window.__restoreCareerSnapshot?.(data), snap);
+    const restoreResult = await page.evaluate((data) => window.__restoreCareerSnapshot?.(data), snap);
+    assert(restoreResult?.ok === true, "restore returns ok:true", restoreResult);
     await page.waitForTimeout(200);
+    const entropyAfterRestore = await page.evaluate(() => window.__fix14Entropy || null);
+    assert(entropyAfterRestore?.consumed === 1, "entropy still one after restore", entropyAfterRestore);
     const restoredSnap = await page.evaluate(() => window.__exportCareerSnapshot?.());
     const restoredState = await page.evaluate(() => window.__getLiveCareerDebug?.());
     assert(restoredSnap?.player?.nationality === "Serbia", "restored nationality", restoredSnap?.player?.nationality);
@@ -618,13 +640,23 @@ async function runB02(browser, base) {
     await dumpState(page, "B02-state");
     await writeFile(
       join(STATE_DIR, "B02-tray.json"),
-      JSON.stringify({ tray, chosen, nextAction, openingClub, terminal: state }, null, 2)
+      JSON.stringify({
+        tray,
+        chosen,
+        nextAction,
+        openingClub,
+        restoreResult,
+        entropyAfterRestore,
+        terminal: state,
+      }, null, 2)
     );
     await record("B02", "PASS", {
       seed: SEEDS.B02_SERBIA_18_MIXED,
       grid: tray.grid,
       chosen,
       nextAction,
+      restoreResult,
+      entropyAfterRestore,
       expectedParents: EXPECTED.B02,
     });
   } finally {
@@ -654,39 +686,66 @@ async function runB03(browser, base) {
     assert(beforeSign.parentClubId === "club:morocco:rs-berkane", "selected parent in player state", beforeSign);
     await driveOpeningToDesk(page);
     const snap = await page.evaluate(() => window.__exportCareerSnapshot?.());
-    const nations = (snap?.player?.__fix14OfferNations) || null;
-    // Resolve canonical nations from the known tray parents / opening club nation chain
-    const canonicalNations = await page.evaluate(() => {
-      // Reconstruct from season club + debug is insufficient; use offer grid tags already asserted Abroad.
-      return null;
+    const { ACADEMY_POOL } = await import(pathToFileURL(join(root, "js/data/leagues.js")).href);
+    const { academyNationOf } = await import(pathToFileURL(join(root, "js/data/academyOfferStories.js")).href);
+    const { resolveGeographicNation } = await import(pathToFileURL(join(root, "js/data/academyGeography.js")).href);
+    const byParentId = new Map();
+    for (const row of ACADEMY_POOL) {
+      const id = row?.parentClub?.clubId;
+      if (!id || byParentId.has(id)) continue;
+      byParentId.set(id, row);
+    }
+    const mapped = tray.grid.map((card) => {
+      const blob = `${card.name || ""} ${card.parent || ""}`;
+      let match = null;
+      for (const id of EXPECTED.B03) {
+        const row = byParentId.get(id);
+        if (!row) continue;
+        const parentName = row.parentClub?.name || "";
+        const academyName = row.name || "";
+        const needles = [parentName, academyName].filter(Boolean);
+        if (needles.some((n) => new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(blob))) {
+          match = row;
+          break;
+        }
+      }
+      if (!match) {
+        match = ACADEMY_POOL.find((a) => {
+          const parentName = a?.parentClub?.name || "";
+          const academyName = a?.name || "";
+          return [parentName, academyName].some(
+            (n) => n && new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(blob)
+          );
+        });
+      }
+      assert(match?.parentClub?.clubId, "card maps to catalog parent", { card, blob });
+      const parentId = match.parentClub.clubId;
+      const nation =
+        resolveGeographicNation(academyNationOf(match)) || academyNationOf(match) || match.parentClub?.nation;
+      return { name: card.name, parent: card.parent, parentId, nation };
     });
-    void canonicalNations;
-    const expectedNations = [
-      { parentId: "club:morocco:rs-berkane", nation: "Morocco", needle: /Berkane/i },
-      { parentId: "club:croatia:varazdin", nation: "Croatia", needle: /Varaždin|Varazdin/i },
-      { parentId: "club:egypt:el-gouna", nation: "Egypt", needle: /Gouna/i },
-    ];
+    assert(mapped.length === 3, "three catalog mappings", mapped);
+    assert(new Set(mapped.map((m) => m.parentId)).size === 3, "three distinct catalog parent IDs", mapped);
+    assert(new Set(mapped.map((m) => m.nation)).size === 3, "three distinct catalog nations", mapped);
     assert(
-      expectedNations.every((n) => tray.grid.some((c) => n.needle.test(c.name + c.parent))),
-      "three canonical destination academies on tray",
-      { grid: tray.grid, expectedNations }
+      EXPECTED.B03.every((id) => mapped.some((m) => m.parentId === id)),
+      "mapped parents match expected B03 set",
+      mapped
     );
-    assert(new Set(expectedNations.map((n) => n.nation)).size === 3, "three distinct canonical nations");
     const opening = snap?.player?.seasons?.[0];
     assert(/Berkane/i.test(opening?.club || ""), "opening records Berkane", opening);
     await shot(page, "B03-desk");
     await dumpState(page, "B03-state");
     await writeFile(
       join(STATE_DIR, "B03-tray.json"),
-      JSON.stringify({ tray, beforeSign, expectedNations, opening }, null, 2)
+      JSON.stringify({ tray, beforeSign, mapped, opening }, null, 2)
     );
     await record("B03", "PASS", {
       seed: SEEDS.B03_GHANA_16,
       grid: tray.grid,
       beforeSign,
-      expectedNations,
+      mapped,
       expectedParents: EXPECTED.B03,
-      nations,
     });
   } finally {
     await context.close();

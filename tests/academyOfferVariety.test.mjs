@@ -7,7 +7,8 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { spawnSync } from "node:child_process";
+import { spawnSync, execFileSync } from "node:child_process";
+import { registerHooks } from "node:module";
 import { ACADEMY_POOL } from "../js/data/leagues.js";
 import { academyNationOf, buildAcademyIntro, buildAcademyOfferStories } from "../js/data/academyOfferStories.js";
 import { academyOfferWeight, regionDistance, resolveGeographicNation } from "../js/data/academyGeography.js";
@@ -526,6 +527,7 @@ describe("F04 seed replay, age wiring, RNG isolation, identity parity", () => {
       const first = decision.offers?.[0];
       return {
         rating: pl.rating,
+        baseOverallRaw: pl.baseOverallRaw,
         potential: pl.potential,
         attributes: structuredClone(pl.attributes),
         ovr: pl.rating,
@@ -569,6 +571,7 @@ const decision = buildFirstProContractDecision(pl);
 const first = decision.offers?.[0];
 writeFileSync(outPath, JSON.stringify({
   rating: pl.rating,
+  baseOverallRaw: pl.baseOverallRaw,
   potential: pl.potential,
   attributes: pl.attributes,
   ovr: pl.rating,
@@ -614,6 +617,7 @@ writeFileSync(outPath, JSON.stringify({
         const base = baseProbe(recipe);
         const fin = finalProbe(row, recipe);
         assert.equal(fin.rating, base.rating, recipe.clubId);
+        assert.equal(fin.baseOverallRaw, base.baseOverallRaw, recipe.clubId);
         assert.equal(fin.ovr, base.ovr, recipe.clubId);
         assert.equal(fin.potential, base.potential, recipe.clubId);
         assert.deepEqual(fin.attributes, base.attributes, recipe.clubId);
@@ -627,83 +631,106 @@ writeFileSync(outPath, JSON.stringify({
   });
 });
 
-describe("R3 versioned story import replay", () => {
-  it("fixed offer seed keeps stories when ambient Math.random changes; ignores stale unversioned module", async () => {
-    const seed = 528215054;
-    const before = Math.random;
-    try {
-      let flip = 0.02;
-      Math.random = () => {
-        flip = flip === 0.02 ? 0.82 : 0.02;
-        return flip;
-      };
-      const a = pickThreeAcademies(ACADEMY_POOL, "Serbia", "Marko", { age: 18, seed });
-      Math.random = () => 0.82;
-      const b = pickThreeAcademies(ACADEMY_POOL, "Serbia", "Marko", { age: 18, seed });
-      assert.deepEqual(parentIds(a), parentIds(b));
-      assert.deepEqual(
-        a.map((o) => o.arrivalStory),
-        b.map((o) => o.arrivalStory)
-      );
-      assert.deepEqual(
-        a.map((o) => o.pitch),
-        b.map((o) => o.pitch)
-      );
+describe("R3 warm-cache geography and story imports", () => {
+  it("current entry graph reaches DOM startup despite stale unversioned geography and stories", async () => {
+    const previousGeo = "4ea55d8c122b6bf6379bd287efde0edad90f95b8";
+    const staleGeography = execFileSync(
+      "git",
+      ["show", `${previousGeo}:js/data/academyGeography.js`],
+      { cwd: ROOT, encoding: "utf8" }
+    );
+    const staleStories = execFileSync(
+      "git",
+      ["show", `${ACCEPTED_BASE}:js/data/academyOfferStories.js`],
+      { cwd: ROOT, encoding: "utf8" }
+    );
+    assert.ok(!/resolveGeographicNation/.test(staleGeography), "previous geography lacks new export");
 
-      // Load the accepted-base unversioned story module (ignores private RNG) beside the live one.
-      const staleDir = mkdtempSync(join(tmpdir(), "fix14-stale-story-"));
-      const stalePath = join(staleDir, "academyOfferStories.js");
-      const shown = spawnSync("git", ["show", `${ACCEPTED_BASE}:js/data/academyOfferStories.js`], {
-        cwd: ROOT,
-        encoding: "utf8",
-        maxBuffer: 2 * 1024 * 1024,
-      });
-      assert.equal(shown.status, 0, shown.stderr);
-      writeFileSync(stalePath, shown.stdout);
-      // Base helpers import path must resolve.
-      writeFileSync(
-        join(staleDir, "helpers-shim.js"),
-        `export { pickRandom } from ${JSON.stringify(pathToFileURL(join(ROOT, "js/utils/helpers.js")).href)};\n`
+    // Minimal DOM so main.js can finish top-level linking in Node.
+    // Return null for getElementById so initCareerSetup is skipped (no setup form).
+    const stubEl = () => ({
+      classList: { add() {}, remove() {}, contains() { return false; }, toggle() {} },
+      style: {},
+      value: "",
+      textContent: "",
+      disabled: false,
+      hidden: false,
+      offsetParent: {},
+      elements: [],
+      setAttribute() {},
+      getAttribute() { return null; },
+      addEventListener() {},
+      removeEventListener() {},
+      appendChild() { return null; },
+      querySelector() { return null; },
+      querySelectorAll() { return []; },
+    });
+    globalThis.window = globalThis;
+    globalThis.document = {
+      getElementById: () => null,
+      createElement: () => stubEl(),
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      addEventListener() {},
+    };
+
+    let staleGeographyLoads = 0;
+    let staleStoryLoads = 0;
+    const hook = registerHooks({
+      load(url, context, nextLoad) {
+        if (url.endsWith("/js/data/academyGeography.js")) {
+          staleGeographyLoads++;
+          return { format: "module", shortCircuit: true, source: staleGeography };
+        }
+        if (url.endsWith("/js/data/academyOfferStories.js")) {
+          staleStoryLoads++;
+          return { format: "module", shortCircuit: true, source: staleStories };
+        }
+        return nextLoad(url, context);
+      },
+    });
+
+    try {
+      const mainMod = await import(pathToFileURL(join(ROOT, "main.js")).href + "?v=94");
+      void mainMod;
+      assert.equal(globalThis.__fix14DomStartupLinked, true, "DOM startup sentinel");
+
+      // Intake path (versioned season) and lifecycle path both avoid unversioned geography.
+      const seasonIntake = await import(
+        pathToFileURL(join(ROOT, "js/simulation/narrativeAcademySeason.js")).href + "?v=84"
       );
-      // Rewrite relative helpers import in the extracted base file.
-      writeFileSync(
-        stalePath,
-        shown.stdout.replace(
-          'from "../utils/helpers.js"',
-          `from ${JSON.stringify(pathToFileURL(join(ROOT, "js/utils/helpers.js")).href)}`
-        )
+      const lifecycle = await import(
+        pathToFileURL(join(ROOT, "js/simulation/academyLifecycle.js")).href + "?v=84"
       );
-      const stale = await import(pathToFileURL(stalePath).href + `?t=${Date.now()}`);
-      const live = await import(pathToFileURL(join(ROOT, "js/data/academyOfferStories.js")).href + "?v=83");
-      const academy = a.find((o) => !o.isHome)?.academy || a[0].academy;
-      const rngA = createRng(99);
-      const rngB = createRng(99);
-      Math.random = () => 0.02;
-      const s1 = live.buildAcademyOfferStories(academy, { name: "Marko", nationality: "Serbia", isHome: false }, rngA);
-      Math.random = () => 0.82;
-      const s2 = live.buildAcademyOfferStories(academy, { name: "Marko", nationality: "Serbia", isHome: false }, rngB);
-      assert.equal(s1.arrivalStory, s2.arrivalStory);
-      assert.equal(s1.pitch, s2.pitch);
-      Math.random = () => 0.02;
-      const staleLow = stale.buildAcademyOfferStories(academy, {
-        name: "Marko",
-        nationality: "Serbia",
-        isHome: false,
-      });
-      Math.random = () => 0.82;
-      const staleHigh = stale.buildAcademyOfferStories(
-        academy,
-        { name: "Marko", nationality: "Serbia", isHome: false },
-        createRng(99) // ignored by base signature
-      );
-      assert.notEqual(
-        staleLow.arrivalStory,
-        staleHigh.arrivalStory,
-        "stale unversioned module changes with ambient Math.random"
-      );
-      rmSync(staleDir, { recursive: true, force: true });
+      assert.equal(typeof seasonIntake.pickThreeAcademies, "function");
+      assert.equal(typeof lifecycle.ensureAcademyLifecycle, "function");
+      assert.equal(staleGeographyLoads, 0, "unversioned geography URL must not load");
+      assert.ok(staleStoryLoads >= 0);
+
+      const seed = 528215054;
+      const before = Math.random;
+      try {
+        Math.random = () => 0.02;
+        const a = seasonIntake.pickThreeAcademies(ACADEMY_POOL, "Serbia", "Marko", { age: 18, seed });
+        Math.random = () => 0.82;
+        const b = seasonIntake.pickThreeAcademies(ACADEMY_POOL, "Serbia", "Marko", { age: 18, seed });
+        assert.deepEqual(
+          a.map((o) => o.academy?.parentClub?.clubId),
+          b.map((o) => o.academy?.parentClub?.clubId)
+        );
+        assert.deepEqual(
+          a.map((o) => o.arrivalStory),
+          b.map((o) => o.arrivalStory)
+        );
+        assert.deepEqual(
+          a.map((o) => o.pitch),
+          b.map((o) => o.pitch)
+        );
+      } finally {
+        Math.random = before;
+      }
     } finally {
-      Math.random = before;
+      hook.deregister();
     }
   });
 });

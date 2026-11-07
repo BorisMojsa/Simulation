@@ -26,7 +26,7 @@ import {
   acceptAcademyGraduationOffer,
   ensureAcademyLifecycle,
   migrateAcademyLifecycle,
-} from "./js/simulation/academyLifecycle.js";
+} from "./js/simulation/academyLifecycle.js?v=84";
 import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=81";
 import { buildFreeAgentBrowserFixture } from "./js/simulation/freeAgentBrowserFixture.js?v=90";
 import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipTransferBrowserFixture.js?v=91";
@@ -44,7 +44,7 @@ import {
   renderTransferOffers,
   renderCareerMoments,
 } from "./js/ui/rendering.js?v=91";
-import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=83";
+import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=84";
 import {
   showSeasonAnimation,
   openSimulationDashboardSegment,
@@ -83,6 +83,9 @@ const retireBtn = document.getElementById("retire-btn");
 const standingsBoard = document.getElementById("standings-board");
 const competitionsBoard = document.getElementById("competitions-board");
 const startCareerBtn = document.getElementById("start-career-btn");
+
+/** Deliberate DOM startup sentinel for warm-cache module-linking regressions. */
+globalThis.__fix14DomStartupLinked = true;
 
 if (setupForm) initCareerSetup(setupForm);
 

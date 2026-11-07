@@ -16,7 +16,7 @@ import {
   ACADEMY_RESULT_KIND,
 } from "../config/academyLifecycleConfig.js";
 import { POSITION_PROFILES } from "../config/playerConfig.js";
-import { buildNarrativeAcademySeason } from "./narrativeAcademySeason.js";
+import { buildNarrativeAcademySeason } from "./narrativeAcademySeason.js?v=84";
 import { buildFirstProContractDecision, signFirstProfessionalContract } from "./proContractOffers.js";
 import {
   ensureContractAuthority,
