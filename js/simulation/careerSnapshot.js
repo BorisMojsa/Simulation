@@ -5,7 +5,7 @@
  */
 import { serializeWorldState, deserializeWorldState } from "./worldState.js";
 import { exportClubFinanceState, importClubFinanceState } from "./clubFinance.js";
-import { ensureTransferSave, TRANSFER_SAVE_VERSION } from "./transferMigration.js";
+import { ensureTransferSave, TRANSFER_SAVE_VERSION } from "./transferMigration.js?v=102";
 import { getSimRng } from "./rng.js";
 import { ensurePlayerModel } from "./playerModelMigration.js";
 import { isGoalkeeperPosition } from "./playerAbility.js";

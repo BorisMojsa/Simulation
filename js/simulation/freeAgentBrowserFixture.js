@@ -17,19 +17,19 @@
 /** Deterministic identity that yields zero offers after FA search at default OVR. */
 export const FREE_AGENT_EMPTY_RESULT_CAREER_ID = "free-agent-ui-empty-2";
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
-import { createPlayerIdentity } from "./playerDevelopment.js";
+import { createPlayerIdentity } from "./playerDevelopment.js?v=91";
 import { createWorldState, setWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";
 import { reseedCareerRng } from "./rng.js";
-import { ensureTransferSave } from "./transferMigration.js";
+import { ensureTransferSave } from "./transferMigration.js?v=102";
 import {
   ensureContractAuthority,
   releaseToFreeAgency,
   selectNextCareerAction,
   isFreeAgent,
-} from "./contractLifecycle.js";
-import { generateTransferOffers } from "./transferMarket.js";
-import { acceptPipelineOffer } from "./dealPipeline.js";
+} from "./contractLifecycle.js?v=102";
+import { generateTransferOffers } from "./transferMarket.js?v=91";
+import { acceptPipelineOffer } from "./dealPipeline.js?v=91";
 import { refreshAbilityCaches } from "./playerAbility.js";
 
 export const FREE_AGENT_FIXTURE = {

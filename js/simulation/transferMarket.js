@@ -6,10 +6,10 @@ import {
   generatePipelineOffers,
   acceptPipelineOffer,
   buildValidatedOffer,
-} from "./dealPipeline.js";
+} from "./dealPipeline.js?v=91";
 import { getOrInitClubSeasonFinance } from "./clubFinance.js";
 import { LEAGUE_LOOKUP } from "../data/leagues.js";
-import { findSeniorClub } from "./seniorClubs.js";
+import { findSeniorClub } from "./seniorClubs.js?v=91";
 import { createStreamRng } from "./rng.js";
 
 export { calculateContractLength } from "./playerValuation.js";

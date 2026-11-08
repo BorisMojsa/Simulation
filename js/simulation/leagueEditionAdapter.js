@@ -15,7 +15,7 @@
 import { commitMatch, createEdition, commitEdition, getEdition } from "./competitionStore.js";
 import { ensureLeagueMatchId } from "./leagueTable.js";
 import { getWorldState } from "./worldState.js";
-import { resolveLeagueClubs } from "./leagueMembership.js";
+import { resolveLeagueClubs } from "./leagueMembership.js?v=91";
 
 export function ensureLeagueEdition(league, seasonYear, world = getWorldState()) {
   if (!league?.leagueId && !league?.name) return null;

@@ -5,7 +5,7 @@
 
 import { LEAGUES } from "../data/leagues.js";
 import { isUefaQualifyingLeague } from "../data/competitions/qualification.js";
-import { resolveKnockout, simulateMatch } from "./matchEngine.js";
+import { resolveKnockout, simulateMatch } from "./matchEngine.js?v=91";
 import { getSimRng } from "./rng.js";
 import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./worldState.js";
 import {
@@ -19,7 +19,7 @@ import {
   drainContinentalEdition,
   listContinentalFixtures,
   loadContinentalEdition,
-} from "./continentalTournament.js";
+} from "./continentalTournament.js?v=91";
 
 export {
   reconcileCampaignWithPlayerMatches,

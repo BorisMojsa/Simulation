@@ -50,7 +50,7 @@ import {
   roleGoalRatePer90,
   roleAssistRatePer90,
   abilityFactorFromOverall,
-} from "./matchEngine.js";
+} from "./matchEngine.js?v=91";
 
 /**
  * Leaf helpers are inlined so this module has no import edge to seasonEvidence /

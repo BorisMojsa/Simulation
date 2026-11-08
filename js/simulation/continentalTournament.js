@@ -27,19 +27,19 @@ import {
   getClubTargetDecision,
   markSyntheticFieldClub,
   resolveClubContinentalEntry,
-} from "./earnedQualification.js";
+} from "./earnedQualification.js?v=91";
 import {
   formatMatchScoreline,
   resolveKnockout,
   resolveTwoLeggedTie,
   simulateMatch,
-} from "./matchEngine.js";
+} from "./matchEngine.js?v=91";
 import { getSimRng } from "./rng.js";
 import { updateFatigue, updateFormFromObservation } from "./playerState.js";
 import { applyInjury, computeRiskMultiplier, sampleInjuryFromExposure } from "./playerHealth.js";
 import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./worldState.js";
-import { effectiveTeamStrength } from "./teamStrength.js";
-import { fixtureOpportunityCapacity } from "./playerMatchDay.js";
+import { effectiveTeamStrength } from "./teamStrength.js?v=91";
+import { fixtureOpportunityCapacity } from "./playerMatchDay.js?v=91";
 import {
   commitEdition,
   commitMatch,

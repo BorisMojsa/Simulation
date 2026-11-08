@@ -1,6 +1,6 @@
 import { LEAGUES } from "../data/leagues.js";
 import { getWorldState } from "./worldState.js";
-import { resolveClubLeagueMetadata, staticClubById } from "./leagueMembership.js";
+import { resolveClubLeagueMetadata, staticClubById } from "./leagueMembership.js?v=91";
 
 /** Flatten senior clubs with career-aware league metadata when a world is active. */
 export function allSeniorClubs(world = getWorldState()) {

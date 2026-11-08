@@ -7,8 +7,8 @@
  */
 import { LEAGUES, LEAGUE_BY_ID } from "../data/leagues.js";
 import { attachClubIdentity, getWorldState } from "./worldState.js";
-import { effectiveTeamStrength } from "./teamStrength.js";
-import { simulateMatch } from "./matchEngine.js";
+import { effectiveTeamStrength } from "./teamStrength.js?v=91";
+import { simulateMatch } from "./matchEngine.js?v=91";
 import { applyMatchFormUpdate } from "./worldState.js";
 import { createStreamRng, hashSeed } from "./rng.js";
 import { sortChronological, dateCupRounds } from "./seasonCalendar.js?v=89";
@@ -25,7 +25,7 @@ import {
   freezeEditionRoster,
   resolveLeagueClubs,
   pairPolicyForLeague,
-} from "./leagueMembership.js?v=90";
+} from "./leagueMembership.js?v=91";
 
 function isContinentalChronoEvent(ev) {
   return (

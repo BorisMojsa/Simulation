@@ -10,8 +10,8 @@
  * Legacy fields (`contractEndSeason`, `weeklyWage`, `wage`, `club`) remain projections
  * of this authority for compatibility — they must not contradict it.
  */
-import { findSeniorClub, findSeniorClubById } from "./seniorClubs.js";
-import { evaluateSportingFit } from "./recruitmentModel.js";
+import { findSeniorClub, findSeniorClubById } from "./seniorClubs.js?v=91";
+import { evaluateSportingFit } from "./recruitmentModel.js?v=91";
 import { releaseWageCommitment, weeklyToAnnual, getOrInitClubSeasonFinance } from "./clubFinance.js";
 import { safePlayerOverall } from "./playerOverallSafe.js";
 import { ensurePlayingStints, recordPlayingTransition } from "./playingRegistration.js";

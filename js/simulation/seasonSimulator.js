@@ -17,11 +17,11 @@ import {
   divisionMoveSlots,
   findSisterLeagues,
   qualificationForPosition,
-} from "./leaguePhase.js";
-import { finalizeMembershipForSeasonSegments } from "./leagueMembership.js";
-import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=90";
-import { findLeagueById } from "./destinationSchedule.js?v=82";
-import { evaluateSeasonAwards } from "./individualAwards.js?v=86";
+} from "./leaguePhase.js?v=91";
+import { finalizeMembershipForSeasonSegments } from "./leagueMembership.js?v=91";
+import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=94";
+import { findLeagueById } from "./destinationSchedule.js?v=91";
+import { evaluateSeasonAwards } from "./individualAwards.js?v=91";
 import {
   buildSeasonEvidence,
   evidenceToDevelopmentContext,
@@ -42,20 +42,20 @@ import {
   advanceFreeAgentPeriod,
   isFreeAgent,
   selectNextCareerAction,
-} from "./contractLifecycle.js";
+} from "./contractLifecycle.js?v=102";
 import {
   assessClubPlayingTime,
   participationLedgerFromAssessment,
 } from "./playingTimeAssessment.js";
-import { generatePipelineOffers, acceptPipelineOffer } from "./dealPipeline.js";
+import { generatePipelineOffers, acceptPipelineOffer } from "./dealPipeline.js?v=91";
 import {
   advanceAcademyPeriod,
   toAcademySeasonResult,
   ensureAcademyLifecycle,
   migrateAcademyLifecycle,
   isAcademyEnrolled,
-} from "./academyLifecycle.js";
-import { endLoan } from "./loanMarket.js";
+} from "./academyLifecycle.js?v=102";
+import { endLoan } from "./loanMarket.js?v=91";
 import {
   playerEntitledToClubHonor,
   playingStintsForEvidence,

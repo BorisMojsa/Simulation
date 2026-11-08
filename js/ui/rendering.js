@@ -6,7 +6,7 @@ import {
   formatSigned,
 } from "../utils/helpers.js";
 import { enrichTrophyWin, trophyImageHtml } from "../data/trophyAssets.js";
-import { describeTeamStrength } from "../simulation/teamStrength.js";
+import { describeTeamStrength } from "../simulation/teamStrength.js?v=91";
 import { getWorldState } from "../simulation/worldState.js";
 import { getDisplayAttributeKeys, isGoalkeeperPosition } from "../simulation/playerAbility.js?v=62";
 import {
@@ -21,11 +21,11 @@ import {
   markOfferStatus,
   isContractActive,
   isFreeAgent,
-} from "../simulation/contractLifecycle.js";
+} from "../simulation/contractLifecycle.js?v=102";
 import {
   findExecutableParentOffer,
   reconcileAcademyReviewTray,
-} from "../simulation/academyLifecycle.js";
+} from "../simulation/academyLifecycle.js?v=91";
 import {
   formatStageLabel,
   projectTournamentRecords,

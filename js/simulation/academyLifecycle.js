@@ -16,8 +16,8 @@ import {
   ACADEMY_RESULT_KIND,
 } from "../config/academyLifecycleConfig.js";
 import { POSITION_PROFILES } from "../config/playerConfig.js";
-import { buildNarrativeAcademySeason } from "./narrativeAcademySeason.js?v=84";
-import { buildFirstProContractDecision, signFirstProfessionalContract } from "./proContractOffers.js";
+import { buildNarrativeAcademySeason } from "./narrativeAcademySeason.js?v=91";
+import { buildFirstProContractDecision, signFirstProfessionalContract } from "./proContractOffers.js?v=102";
 import {
   ensureContractAuthority,
   releaseToFreeAgency,
@@ -26,7 +26,7 @@ import {
   consumeRelatedDecisionAfterDeal,
   markOfferStatus,
   isOfferExecutable,
-} from "./contractLifecycle.js";
+} from "./contractLifecycle.js?v=102";
 import {
   applyAcademyGrowth,
   developmentPeriodId,
@@ -38,7 +38,7 @@ import { getOrUpdateForecast } from "./playerPotential.js";
 import { refreshAbilityCaches } from "./playerAbility.js";
 import { ensurePlayerModel } from "./playerModelMigration.js";
 import { createStreamRng } from "./rng.js";
-import { findSeniorClub, findSeniorClubById } from "./seniorClubs.js";
+import { findSeniorClub, findSeniorClubById } from "./seniorClubs.js?v=91";
 import { clamp } from "../utils/helpers.js";
 
 export {

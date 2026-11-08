@@ -2,11 +2,11 @@
  * Ordinary loans and purchase options — employment vs playing registration.
  */
 import { createStreamRng } from "./rng.js";
-import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js";
-import { resolveClubLeagueMetadata } from "./leagueMembership.js";
+import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js?v=91";
+import { resolveClubLeagueMetadata } from "./leagueMembership.js?v=91";
 import { getWorldState } from "./worldState.js";
-import { findEligibleClubs, pickWeighted } from "./recruitmentModel.js";
-import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js";
+import { findEligibleClubs, pickWeighted } from "./recruitmentModel.js?v=91";
+import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js?v=91";
 import {
   getOrInitClubSeasonFinance,
   validateDealAffordability,
@@ -16,13 +16,13 @@ import {
 } from "./clubFinance.js";
 import { roundFee } from "./playerValuation.js";
 import { CONTRACT_RULES, SQUAD_REVIEW } from "../config/recruitmentConfig.js";
-import { resolveMoveRegistration } from "./destinationSchedule.js";
+import { resolveMoveRegistration } from "./destinationSchedule.js?v=91";
 import {
   ensureContractAuthority,
   releaseToFreeAgency,
   isContractActive,
   completedSeasons,
-} from "./contractLifecycle.js";
+} from "./contractLifecycle.js?v=102";
 import { recordPlayingTransition, ensurePlayingStints } from "./playingRegistration.js";
 
 const LOAN_DEST_MIN_SHARE = SQUAD_REVIEW.loanDestinationMinMinutesShare;

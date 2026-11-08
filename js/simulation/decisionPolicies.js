@@ -1,10 +1,10 @@
 /**
  * Deterministic mid-season decision policies for tests and automated careers.
  */
-import { resolveSquadDecision } from "./squadDecisions.js";
-import { startLoan } from "./loanMarket.js";
-import { acceptPipelineOffer } from "./dealPipeline.js";
-import { resolveMoveRegistration } from "./destinationSchedule.js";
+import { resolveSquadDecision } from "./squadDecisions.js?v=91";
+import { startLoan } from "./loanMarket.js?v=91";
+import { acceptPipelineOffer } from "./dealPipeline.js?v=91";
+import { resolveMoveRegistration } from "./destinationSchedule.js?v=91";
 
 /**
  * Apply a named policy. Returns { applied, dealType, offer, loan }.

@@ -14,7 +14,7 @@ import {
   prepareNationalEdition,
   drainNationalEdition,
   buildNationalCampaignView,
-} from "./nationalTournament.js";
+} from "./nationalTournament.js?v=91";
 import { ensurePlayingStints } from "./playingRegistration.js";
 
 export const FIX12_TOURNAMENT_PRESENTATION_FIXTURE = {

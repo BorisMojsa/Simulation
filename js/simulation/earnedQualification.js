@@ -21,15 +21,15 @@ import {
   leagueIdFromName,
   uefaSlotsForLeague,
 } from "../data/competitions/qualification.js";
-import { findSisterLeagues, qualificationForPosition } from "./leaguePhase.js";
+import { findSisterLeagues, qualificationForPosition } from "./leaguePhase.js?v=91";
 import { createStreamRng } from "./rng.js";
 import { attachClubIdentity, getWorldState } from "./worldState.js";
-import { simulateMatch } from "./matchEngine.js";
+import { simulateMatch } from "./matchEngine.js?v=91";
 import { flattenRoundRobinFixtures } from "./seasonCalendar.js?v=89";
 import { competitionIdSlug } from "./continentalSchedule.js";
 import { formatForCompetitionName } from "../data/competitions/formats.js";
 import { LEAGUE_FORMATS } from "../data/competitions/leagueFormats.js";
-import { effectiveTeamStrength } from "./teamStrength.js";
+import { effectiveTeamStrength } from "./teamStrength.js?v=91";
 
 /**
  * Expected double-round-robin (or declared format) coverage for a domestic table.

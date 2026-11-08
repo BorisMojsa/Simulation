@@ -9,8 +9,8 @@ import {
   simulateMatch,
   resolveKnockout,
   finalizePlayerMatchStats,
-} from "./matchEngine.js";
-import { createPlayerIdentity } from "./playerDevelopment.js";
+} from "./matchEngine.js?v=91";
+import { createPlayerIdentity } from "./playerDevelopment.js?v=91";
 import { createWorldState, setWorldState } from "./worldState.js";
 import { reseedCareerRng } from "./rng.js";
 import { ensurePlayingStints } from "./playingRegistration.js";

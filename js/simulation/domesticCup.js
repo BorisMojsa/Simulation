@@ -1,4 +1,4 @@
-import { resolveKnockout, simulateMatch, formatMatchScoreline } from "./matchEngine.js";
+import { resolveKnockout, simulateMatch, formatMatchScoreline } from "./matchEngine.js?v=91";
 import { cupConfigForNation } from "../data/domesticCups.js";
 import { LEAGUES } from "../data/leagues.js";
 import { getSimRng } from "./rng.js";

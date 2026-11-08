@@ -17,11 +17,11 @@ import {
   getWorldState,
 } from "./worldState.js";
 import { createStreamRng, hashSeed } from "./rng.js";
-import { simulateMatch } from "./matchEngine.js";
+import { simulateMatch } from "./matchEngine.js?v=91";
 import { applyMatchFormUpdate } from "./worldState.js";
 import { flattenRoundRobinFixtures, dateLeagueFixtures } from "./seasonCalendar.js?v=89";
 import { rebuildTableFromMatches } from "./leagueTable.js";
-import { ensureLeagueEdition, commitLeagueMatchResult } from "./leagueEditionAdapter.js";
+import { ensureLeagueEdition, commitLeagueMatchResult } from "./leagueEditionAdapter.js?v=91";
 
 /** Explicit shared exchange counts for the five modeled pairs (game policy). */
 export const DIVISION_PAIR_POLICY = Object.freeze([

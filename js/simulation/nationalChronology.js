@@ -3,8 +3,8 @@
  * Fixtures play once on their scheduled dates; views project from committed results.
  */
 
-import { processPlayerMatchDay } from "./playerMatchDay.js";
-import { resolveKnockout } from "./matchEngine.js";
+import { processPlayerMatchDay } from "./playerMatchDay.js?v=91";
+import { resolveKnockout } from "./matchEngine.js?v=91";
 import { mergePendingEvents } from "./seasonCalendar.js?v=89";
 import {
   prepareInternationalSeason,
@@ -16,7 +16,7 @@ import {
   buildInternationalSeasonView,
   drainNationalEdition,
   loadNationalEdition,
-} from "./nationalTournament.js";
+} from "./nationalTournament.js?v=91";
 
 function nationalOpts({
   edition,

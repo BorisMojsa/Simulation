@@ -9,9 +9,9 @@ import {
   ensureContractAuthority,
   applyContractExpiryAtBoundary,
   CONTRACT_LIFECYCLE_VERSION,
-} from "./contractLifecycle.js";
+} from "./contractLifecycle.js?v=102";
 import { ensurePlayingStints } from "./playingRegistration.js";
-import { migrateAcademyLifecycle, ensureAcademyLifecycle } from "./academyLifecycle.js";
+import { migrateAcademyLifecycle, ensureAcademyLifecycle } from "./academyLifecycle.js?v=102";
 
 const DEAL_PIPELINE_VERSION = "deal-pipeline-v2";
 

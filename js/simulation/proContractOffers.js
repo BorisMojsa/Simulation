@@ -1,11 +1,11 @@
 import { rivalsForClub } from "../data/clubRivals.js";
-import { allSeniorClubs, findSeniorClub } from "./seniorClubs.js";
-import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js";
-import { evaluateSportingFit } from "./recruitmentModel.js";
+import { allSeniorClubs, findSeniorClub } from "./seniorClubs.js?v=91";
+import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js?v=91";
+import { evaluateSportingFit } from "./recruitmentModel.js?v=91";
 import { createStreamRng } from "./rng.js";
 import { safePlayerOverall } from "./playerOverallSafe.js";
 
-export { allSeniorClubs, findSeniorClub } from "./seniorClubs.js";
+export { allSeniorClubs, findSeniorClub } from "./seniorClubs.js?v=91";
 
 function parentOfferChance(rating) {
   if (rating >= 74) return 0.97;

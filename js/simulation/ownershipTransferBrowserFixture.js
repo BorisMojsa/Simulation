@@ -3,17 +3,17 @@
  * Pauses at the January squad window with a validated Brentford permanent offer.
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
-import { createPlayerIdentity } from "./playerDevelopment.js";
-import { simulateSeason } from "./seasonSimulator.js";
+import { createPlayerIdentity } from "./playerDevelopment.js?v=91";
+import { simulateSeason } from "./seasonSimulator.js?v=94";
 import { createWorldState, setWorldState, getWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";
 import { reseedCareerRng } from "./rng.js";
-import { resolveMoveRegistration } from "./destinationSchedule.js";
-import { allSeniorClubs } from "./seniorClubs.js";
+import { resolveMoveRegistration } from "./destinationSchedule.js?v=91";
+import { allSeniorClubs } from "./seniorClubs.js?v=91";
 import { ensurePlayingStints } from "./playingRegistration.js";
-import { commitCompletedDomesticEdition } from "./earnedQualification.js";
-import { qualificationForPosition, findSisterLeagues } from "./leaguePhase.js";
-import { prepareContinentalEdition } from "./continentalTournament.js";
+import { commitCompletedDomesticEdition } from "./earnedQualification.js?v=91";
+import { qualificationForPosition, findSisterLeagues } from "./leaguePhase.js?v=91";
+import { prepareContinentalEdition } from "./continentalTournament.js?v=91";
 
 export const OWNERSHIP_TRANSFER_FIXTURE = {
   careerId: "ownership-transfer-fixture-v1",

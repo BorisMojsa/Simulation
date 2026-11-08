@@ -2,7 +2,7 @@
  * Shared dated match-day processing for the user player.
  * Used by league / cup / continental / international chronological paths.
  */
-import { simulateMatch, finalizePlayerMatchStats } from "./matchEngine.js";
+import { simulateMatch, finalizePlayerMatchStats } from "./matchEngine.js?v=91";
 import { resolvePlayerParticipation } from "./playerSelection.js";
 import {
   advanceHealth,
@@ -13,7 +13,7 @@ import {
 } from "./playerHealth.js";
 import { advanceStateBetweenDates, updateFormFromObservation, updateFatigue } from "./playerState.js";
 import { refreshAbilityCaches } from "./playerAbility.js";
-import { effectiveTeamStrength } from "./teamStrength.js";
+import { effectiveTeamStrength } from "./teamStrength.js?v=91";
 import { applyMatchFormUpdate, getWorldState } from "./worldState.js";
 import { resolveValidatedClubSide, resolvePlayingStintAt } from "./playingRegistration.js";
 

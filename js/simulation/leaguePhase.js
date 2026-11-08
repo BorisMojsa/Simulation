@@ -8,7 +8,7 @@ import {
   CAF_ASSOCIATION_SLOTS,
   associationIdForNation,
 } from "../data/competitions/qualification.js";
-import { sharedMoveSlots, applyDivisionMovement as applyDivisionMovementImpl } from "./leagueMembership.js";
+import { sharedMoveSlots, applyDivisionMovement as applyDivisionMovementImpl } from "./leagueMembership.js?v=91";
 
 export function leagueMatchCount(league) {
   const teamCount = league?.clubs?.length ?? 20;

@@ -1,8 +1,8 @@
-import { simulateMatch } from "./matchEngine.js";
-import { leagueMatchCount } from "./leaguePhase.js";
+import { simulateMatch } from "./matchEngine.js?v=91";
+import { leagueMatchCount } from "./leaguePhase.js?v=91";
 import { getSimRng, createStreamRng } from "./rng.js";
 import { attachClubIdentity, applyMatchFormUpdate, getWorldState } from "./worldState.js";
-import { effectiveTeamStrength } from "./teamStrength.js";
+import { effectiveTeamStrength } from "./teamStrength.js?v=91";
 import { dateLeagueFixtures, flattenRoundRobinFixtures } from "./seasonCalendar.js?v=89";
 import { resolvePlayerParticipation } from "./playerSelection.js";
 import { advanceHealth, applyInjury, computeRiskMultiplier, sampleInjuryFromExposure } from "./playerHealth.js";
@@ -10,13 +10,13 @@ import { advanceStateBetweenDates, updateFormFromObservation, updateFatigue } fr
 import { refreshAbilityCaches } from "./playerAbility.js";
 import { performanceObservationFromMatch } from "./playerSeasonLedger.js";
 import { stableCareerId } from "./playerDevelopmentModel.js";
-import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js";
+import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js?v=102";
 import {
   freezeEditionRoster,
   leagueViewForEdition,
   pairPolicyForLeague,
   resolveLeagueClubs,
-} from "./leagueMembership.js?v=90";
+} from "./leagueMembership.js?v=91";
 
 function ensurePlayerInClubs(league, player, { world = null, seasonYear = null } = {}) {
   const clubs = resolveLeagueClubs(league, { world, seasonYear });

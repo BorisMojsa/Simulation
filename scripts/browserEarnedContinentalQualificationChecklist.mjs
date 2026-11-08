@@ -476,6 +476,51 @@ async function freshRestore(page, snap) {
   await restore(page, snap);
 }
 
+/** Open a brand-new browser context+page on the same origin (isolated module cache). */
+async function openFreshContextPage(browser, baseUrl, guards = null) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  if (guards) {
+    page.on("pageerror", (err) =>
+      guards.errors.push({ type: "pageerror", message: String(err?.message || err) })
+    );
+    page.on("console", (msg) => {
+      if (msg.type() !== "error") return;
+      const text = msg.text();
+      if (/Failed to load resource/i.test(text)) guards.warnings.push({ type: "console", message: text });
+      else guards.errors.push({ type: "console", message: text });
+    });
+  }
+  const resp = await page.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
+  if (!resp || !resp.ok()) throw new Error(`fresh context goto failed: ${baseUrl} status=${resp?.status()}`);
+  await page.waitForFunction(() => typeof window.__restoreCareerSnapshot === "function", null, {
+    timeout: 60000,
+  });
+  await page.waitForFunction(() => typeof window.__exportCareerSnapshot === "function", null, {
+    timeout: 60000,
+  });
+  return { context, page };
+}
+
+function continueCommitProbe(beforeSnap, afterSnap) {
+  const beforeSeasons = beforeSnap?.player?.seasons?.length ?? 0;
+  const afterSeasons = afterSnap?.player?.seasons?.length ?? 0;
+  const beforeAge = beforeSnap?.player?.age ?? null;
+  const afterAge = afterSnap?.player?.age ?? null;
+  const beforeLedger = beforeSnap?.world?.fixtureLedger?.length ?? 0;
+  const afterLedger = afterSnap?.world?.fixtureLedger?.length ?? 0;
+  const beforeFinance = JSON.stringify(beforeSnap?.clubFinance || null);
+  const afterFinance = JSON.stringify(afterSnap?.clubFinance || null);
+  return {
+    seasonsUnchanged: beforeSeasons === afterSeasons,
+    ageUnchanged: beforeAge === afterAge,
+    fixtureLedgerUnchanged: beforeLedger === afterLedger,
+    clubFinanceUnchanged: beforeFinance === afterFinance,
+    before: { seasons: beforeSeasons, age: beforeAge, fixtureLedger: beforeLedger },
+    after: { seasons: afterSeasons, age: afterAge, fixtureLedger: afterLedger },
+  };
+}
+
 async function debug(page) {
   return page.evaluate(() => window.__getLiveCareerDebug?.() || null);
 }
@@ -1701,10 +1746,14 @@ const cases = {
       }
     );
 
-    // Branch A continues the live paused session (no reload/import/restore).
-    // Branch B finishes after a fresh-page restore of the identical pause snapshot.
-    async function finishLiveFromPause(shotPrefix) {
-      const ui = await uiState(page);
+    // A: continue live paused session (no reload/restore).
+    // B/C/D: each restore the immutable pause JSON in a separate fresh browser context.
+    const browser = page.context().browser();
+    const baseUrl = new URL(page.url()).origin + "/";
+    assert(browser, "B06 requires an attached browser for fresh contexts");
+
+    async function assertPausedReady(p, label) {
+      const ui = await uiState(p);
       assert(
         ui.debug?.seasonCheckpoint === "awaiting_decision" ||
           ui.nextAction?.id === "resolve-decision" ||
@@ -1712,32 +1761,13 @@ const cases = {
           ui.nextAction?.id === "resume-season" ||
           Boolean(ui.debug?.pendingDecision) ||
           Boolean(paused.snapshot.player?.seasonCheckpoint),
-        "live mid-season pause still awaiting decision",
+        `${label}: mid-season pause still awaiting decision`,
         { seasonCheckpoint: ui.debug?.seasonCheckpoint, nextAction: ui.nextAction }
       );
-      const driven = await driveSeasonToDesk(page, {
-        seasonsBefore: 0,
-        alreadyRunning: true,
-        shotPrefix,
-        deskPolicy: "stay",
-        timeoutMs: 240000,
-      });
-      const desk = await exportSnapshot(page);
-      return { driven, desk, path: "live" };
     }
-    async function finishRestoredFromPause(shotPrefix) {
-      await freshRestore(page, paused.snapshot);
-      const ui = await uiState(page);
-      assert(
-        ui.debug?.seasonCheckpoint === "awaiting_decision" ||
-          ui.nextAction?.id === "resolve-decision" ||
-          ui.nextAction?.id === "resolve-offers" ||
-          ui.nextAction?.id === "resume-season" ||
-          Boolean(ui.debug?.pendingDecision) ||
-          Boolean(paused.snapshot.player?.seasonCheckpoint),
-        "restored mid-season pause still awaiting decision",
-        { seasonCheckpoint: ui.debug?.seasonCheckpoint, nextAction: ui.nextAction }
-      );
+
+    async function finishLiveFromPause(shotPrefix) {
+      await assertPausedReady(page, "live-A");
       const driven = await driveSeasonToDesk(page, {
         seasonsBefore: 0,
         alreadyRunning: true,
@@ -1746,83 +1776,130 @@ const cases = {
         timeoutMs: 240000,
       });
       const desk = await exportSnapshot(page);
-      return { driven, desk, path: "restored" };
+      const continueProbe = continueCommitProbe(driven.beforeContinue?.snapshot, desk);
+      return {
+        driven,
+        desk,
+        preDecision: null,
+        beforeContinue: driven.beforeContinue?.snapshot || null,
+        continueProbe,
+        path: "live",
+        context: "shared-live-page",
+      };
+    }
+
+    async function finishRestoredInFreshContext(shotPrefix, branchId) {
+      const { context, page: p } = await openFreshContextPage(browser, baseUrl, guards);
+      try {
+        await restore(p, paused.snapshot);
+        await assertPausedReady(p, branchId);
+        const preDecision = await exportSnapshot(p);
+        await writeCase(`B06-${branchId}-pre-decision.json`, slimEvidence(preDecision));
+        await writeFullSnapshot(`B06-${branchId}-pre-decision.full.json`, preDecision);
+        const driven = await driveSeasonToDesk(p, {
+          seasonsBefore: 0,
+          alreadyRunning: true,
+          shotPrefix,
+          deskPolicy: "stay",
+          timeoutMs: 240000,
+        });
+        const desk = await exportSnapshot(p);
+        const continueProbe = continueCommitProbe(driven.beforeContinue?.snapshot, desk);
+        if (driven.beforeContinue?.snapshot) {
+          await writeCase(`B06-${branchId}-before-continue.json`, slimEvidence(driven.beforeContinue));
+          await writeFullSnapshot(`B06-${branchId}-before-continue.full.json`, driven.beforeContinue.snapshot);
+        }
+        return {
+          driven,
+          desk,
+          preDecision,
+          beforeContinue: driven.beforeContinue?.snapshot || null,
+          continueProbe,
+          path: "restored-fresh-context",
+          context: branchId,
+        };
+      } finally {
+        await context.close().catch(() => {});
+      }
     }
 
     const branchA = await finishLiveFromPause("B06");
     await writeCase("B06-desk-a.json", slimEvidence(branchA.desk));
     await writeFullSnapshot("B06-desk-a.full.json", branchA.desk);
+    if (branchA.beforeContinue) {
+      await writeCase("B06-a-before-continue.json", slimEvidence({ snapshot: branchA.beforeContinue }));
+      await writeFullSnapshot("B06-a-before-continue.full.json", branchA.beforeContinue);
+    }
     const a = qualSummary(branchA.desk.player, branchA.desk);
     assert(a.seasons === 1, "branch A completes exactly one season", a);
     assert(a.europe.competition === "Champions League", "branch A CL from seeded parent", a);
 
-    const branchB = await finishRestoredFromPause("B06-branch");
+    const branchB = await finishRestoredInFreshContext("B06-branch", "desk-b");
     await writeCase("B06-desk-b.json", slimEvidence(branchB.desk));
     await writeFullSnapshot("B06-desk-b.full.json", branchB.desk);
     const b = qualSummary(branchB.desk.player, branchB.desk);
 
-    // Additional control: double-restore repeatability (separate from live-vs-restored).
-    // Branches C/D each restore the pause JSON in a fresh context (handoff naming).
-    await freshRestore(page, paused.snapshot);
-    const dualA = await finishRestoredFromPause("B06-dual-a");
-    await writeCase("B06-desk-c.json", slimEvidence(dualA.desk));
-    await writeFullSnapshot("B06-desk-c.full.json", dualA.desk);
-    await freshRestore(page, paused.snapshot);
-    const dualB = await finishRestoredFromPause("B06-dual-b");
-    await writeCase("B06-desk-d.json", slimEvidence(dualB.desk));
-    await writeFullSnapshot("B06-desk-d.full.json", dualB.desk);
-    const dualFieldDiffs = collectFieldDiffs(
-      {
-        world: dualA.desk.world,
-        clubFinance: dualA.desk.clubFinance,
-        pendingOffers: dualA.desk.player?.pendingOffers || [],
-        rngState: dualA.desk.world?.rngState,
-      },
-      {
-        world: dualB.desk.world,
-        clubFinance: dualB.desk.clubFinance,
-        pendingOffers: dualB.desk.player?.pendingOffers || [],
-        rngState: dualB.desk.world?.rngState,
-      }
-    );
+    const branchC = await finishRestoredInFreshContext("B06-dual-a", "desk-c");
+    await writeCase("B06-desk-c.json", slimEvidence(branchC.desk));
+    await writeFullSnapshot("B06-desk-c.full.json", branchC.desk);
+
+    const branchD = await finishRestoredInFreshContext("B06-dual-b", "desk-d");
+    await writeCase("B06-desk-d.json", slimEvidence(branchD.desk));
+    await writeFullSnapshot("B06-desk-d.full.json", branchD.desk);
+
+    const fullSnapEqual = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+    const abFullDiffs = collectFieldDiffs(branchA.desk, branchB.desk);
+    const cdFullDiffs = collectFieldDiffs(branchC.desk, branchD.desk);
+    const abEqual = fullSnapEqual(branchA.desk, branchB.desk);
+    const cdEqual = fullSnapEqual(branchC.desk, branchD.desk);
     const dualEqual =
-      JSON.stringify(dualA.desk.world) === JSON.stringify(dualB.desk.world) &&
-      Number(dualA.desk.world?.rngState) === Number(dualB.desk.world?.rngState) &&
-      JSON.stringify(dualA.desk.clubFinance) === JSON.stringify(dualB.desk.clubFinance) &&
-      JSON.stringify(dualA.desk.player.pendingOffers || []) ===
-        JSON.stringify(dualB.desk.player.pendingOffers || []);
+      fullSnapEqual(branchC.desk.world, branchD.desk.world) &&
+      Number(branchC.desk.world?.rngState) === Number(branchD.desk.world?.rngState) &&
+      fullSnapEqual(branchC.desk.clubFinance, branchD.desk.clubFinance) &&
+      fullSnapEqual(branchC.desk.player?.pendingOffers || [], branchD.desk.player?.pendingOffers || []);
+
     await writeCase("B06-dual-restore-compare.json", {
       dualEqual,
-      pathA: dualA.path,
-      pathB: dualB.path,
+      fullSnapshotEqualCD: cdEqual,
+      pathC: branchC.path,
+      pathD: branchD.path,
       branchC: "B06-desk-c",
       branchD: "B06-desk-d",
-      fieldDiffCount: dualFieldDiffs.length,
-      fieldDiffs: dualFieldDiffs,
+      freshContexts: true,
+      fieldDiffCount: cdFullDiffs.length,
+      fieldDiffs: cdFullDiffs,
+      continueProbeC: branchC.continueProbe,
+      continueProbeD: branchD.continueProbe,
+      traceC: branchC.driven.trace,
+      traceD: branchD.driven.trace,
     });
 
-    const liveRestoredFieldDiffs = collectFieldDiffs(branchA.desk, branchB.desk);
     const protectedCompare = {
-      worldEqual: JSON.stringify(branchA.desk.world) === JSON.stringify(branchB.desk.world),
+      worldEqual: fullSnapEqual(branchA.desk.world, branchB.desk.world),
+      fullSnapshotEqualAB: abEqual,
       rngEqual:
         Number(branchA.desk.world?.rngSeed) === Number(branchB.desk.world?.rngSeed) &&
         Number(branchA.desk.world?.rngState) === Number(branchB.desk.world?.rngState) &&
         Number(branchA.desk.rngSeed ?? branchA.desk.world?.rngState) ===
           Number(branchB.desk.rngSeed ?? branchB.desk.world?.rngState),
-      clubFinanceEqual: JSON.stringify(branchA.desk.clubFinance) === JSON.stringify(branchB.desk.clubFinance),
-      pendingOffersEqual:
-        JSON.stringify(branchA.desk.player.pendingOffers || []) ===
-        JSON.stringify(branchB.desk.player.pendingOffers || []),
-      pendingDecisionEqual:
-        JSON.stringify(branchA.desk.player.pendingDecision || null) ===
-        JSON.stringify(branchB.desk.player.pendingDecision || null),
-      playingStintsEqual:
-        JSON.stringify(branchA.desk.player.playingStints || []) ===
-        JSON.stringify(branchB.desk.player.playingStints || []),
-      seasonsEqual: JSON.stringify(branchA.desk.player.seasons || []) === JSON.stringify(branchB.desk.player.seasons || []),
-      qualificationEqual:
-        JSON.stringify(branchA.desk.world?.qualification || []) ===
-        JSON.stringify(branchB.desk.world?.qualification || []),
+      clubFinanceEqual: fullSnapEqual(branchA.desk.clubFinance, branchB.desk.clubFinance),
+      pendingOffersEqual: fullSnapEqual(
+        branchA.desk.player.pendingOffers || [],
+        branchB.desk.player.pendingOffers || []
+      ),
+      pendingDecisionEqual: fullSnapEqual(
+        branchA.desk.player.pendingDecision || null,
+        branchB.desk.player.pendingDecision || null
+      ),
+      playingStintsEqual: fullSnapEqual(
+        branchA.desk.player.playingStints || [],
+        branchB.desk.player.playingStints || []
+      ),
+      seasonsEqual: fullSnapEqual(branchA.desk.player.seasons || [], branchB.desk.player.seasons || []),
+      qualificationEqual: fullSnapEqual(
+        branchA.desk.world?.qualification || [],
+        branchB.desk.world?.qualification || []
+      ),
       wageEqual: branchA.desk.player.weeklyWage === branchB.desk.player.weeklyWage,
       contractEqual: branchA.desk.player.contractStatus === branchB.desk.player.contractStatus,
     };
@@ -1831,22 +1908,54 @@ const cases = {
       branchAPath: branchA.path,
       branchBPath: branchB.path,
       liveVersusRestored: true,
+      freshContextsBCD: true,
       dualRestoreEqual: dualEqual,
-      liveRestoredFieldDiffCount: liveRestoredFieldDiffs.length,
-      liveRestoredFieldDiffs: liveRestoredFieldDiffs,
+      fullSnapshotEqualAB: abEqual,
+      fullSnapshotEqualCD: cdEqual,
+      liveRestoredFieldDiffCount: abFullDiffs.length,
+      liveRestoredFieldDiffs: abFullDiffs,
+      continueProbeA: branchA.continueProbe,
+      continueProbeB: branchB.continueProbe,
+      continueProbeC: branchC.continueProbe,
+      continueProbeD: branchD.continueProbe,
+      traceA: branchA.driven.trace,
+      traceB: branchB.driven.trace,
+      traceC: branchC.driven.trace,
+      traceD: branchD.driven.trace,
       pendingOffersA: (branchA.desk.player.pendingOffers || []).map((o) => o.clubId || o.club),
       pendingOffersB: (branchB.desk.player.pendingOffers || []).map((o) => o.clubId || o.club),
       ledgerKeysA: Object.keys(branchA.desk.clubFinance?.ledgers || {}).sort(),
       ledgerKeysB: Object.keys(branchB.desk.clubFinance?.ledgers || {}).sort(),
     });
+    await writeCase("B06-action-traces.json", {
+      A: branchA.driven.trace,
+      B: branchB.driven.trace,
+      C: branchC.driven.trace,
+      D: branchD.driven.trace,
+    });
+    await writeCase("B06-continue-commit-probes.json", {
+      A: branchA.continueProbe,
+      B: branchB.continueProbe,
+      C: branchC.continueProbe,
+      D: branchD.continueProbe,
+    });
+
     // Evaluate gates only after all branch evidence is written.
+    assert(cdEqual, "B06 C↔D full snapshots must be byte-equal", {
+      fieldDiffCount: cdFullDiffs.length,
+      fieldDiffs: cdFullDiffs.slice(0, 40),
+    });
     assert(dualEqual, "B06 dual-restore repeatability must hold", {
-      fieldDiffCount: dualFieldDiffs.length,
-      fieldDiffs: dualFieldDiffs.slice(0, 40),
+      fieldDiffCount: cdFullDiffs.length,
+      fieldDiffs: cdFullDiffs.slice(0, 40),
+    });
+    assert(abEqual, "B06 A↔B full snapshots must be byte-equal", {
+      fieldDiffCount: abFullDiffs.length,
+      fieldDiffs: abFullDiffs.slice(0, 40),
     });
     assert(protectedCompare.worldEqual, "B06 world state must match across branches", {
-      fieldDiffCount: liveRestoredFieldDiffs.length,
-      fieldDiffs: liveRestoredFieldDiffs.slice(0, 40),
+      fieldDiffCount: abFullDiffs.length,
+      fieldDiffs: abFullDiffs.slice(0, 40),
     });
     assert(protectedCompare.rngEqual, "B06 RNG state must match across branches", {
       a: { seed: branchA.desk.world?.rngSeed, state: branchA.desk.world?.rngState, top: branchA.desk.rngSeed },
@@ -1859,6 +1968,17 @@ const cases = {
     assert(protectedCompare.playingStintsEqual, "B06 playingStints must match across branches");
     assert(protectedCompare.seasonsEqual, "B06 seasons evidence must match across branches");
     assert(protectedCompare.qualificationEqual, "B06 qualification maps must match across branches");
+    for (const [label, probe] of [
+      ["A", branchA.continueProbe],
+      ["B", branchB.continueProbe],
+      ["C", branchC.continueProbe],
+      ["D", branchD.continueProbe],
+    ]) {
+      assert(probe.seasonsUnchanged, `B06 Continue must not add a season commit (${label})`, probe);
+      assert(probe.ageUnchanged, `B06 Continue must not advance age (${label})`, probe);
+      assert(probe.fixtureLedgerUnchanged, `B06 Continue must not add fixtures (${label})`, probe);
+      assert(probe.clubFinanceUnchanged, `B06 Continue must not mutate finance (${label})`, probe);
+    }
     const liveLoanClubs = (branchA.desk.player.pendingDecision?.loanOffers || []).map((o) => o.clubId || o.club);
     const restoredLoanClubs = (branchB.desk.player.pendingDecision?.loanOffers || []).map((o) => o.clubId || o.club);
     const marketDivergence = {
@@ -1893,8 +2013,19 @@ const cases = {
       deskB: b,
       branchCompare: true,
       protectedCompare,
+      freshContextsBCD: true,
+      fullSnapshotEqualAB: abEqual,
+      fullSnapshotEqualCD: cdEqual,
       traceA: branchA.driven.trace,
       traceB: branchB.driven.trace,
+      traceC: branchC.driven.trace,
+      traceD: branchD.driven.trace,
+      continueProbes: {
+        A: branchA.continueProbe,
+        B: branchB.continueProbe,
+        C: branchC.continueProbe,
+        D: branchD.continueProbe,
+      },
     };
   },
 

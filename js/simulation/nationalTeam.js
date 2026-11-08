@@ -10,13 +10,13 @@ import {
   eligiblePool,
   buildField,
   pickCallUpMessage,
-} from "./nationalHelpers.js";
+} from "./nationalHelpers.js?v=91";
 import {
   prepareInternationalSeason,
   drainNationalEdition,
   buildInternationalSeasonView,
   buildNationalCampaignView,
-} from "./nationalTournament.js";
+} from "./nationalTournament.js?v=91";
 import { getSimRng } from "./rng.js";
 import { getWorldState } from "./worldState.js";
 

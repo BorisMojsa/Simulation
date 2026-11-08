@@ -6,7 +6,7 @@ import { clamp } from "../utils/helpers.js";
 import { createStreamRng, hashSeed } from "./rng.js";
 import { safePlayerOverall } from "./playerOverallSafe.js";
 import { roleStarterBenchmark } from "./playerSelection.js";
-import { sportingProfileFromTeam } from "./teamStrength.js";
+import { sportingProfileFromTeam } from "./teamStrength.js?v=91";
 import {
   ROLE_GAPS,
   CLUB_STRENGTH_BANDS,

@@ -4,8 +4,8 @@
  * from committed store results.
  */
 
-import { processPlayerMatchDay } from "./playerMatchDay.js";
-import { resolveKnockout } from "./matchEngine.js";
+import { processPlayerMatchDay } from "./playerMatchDay.js?v=91";
+import { resolveKnockout } from "./matchEngine.js?v=91";
 import { mergePendingEvents } from "./seasonCalendar.js?v=89";
 import {
   prepareContinentalEdition,
@@ -16,7 +16,7 @@ import {
   buildContinentalCampaignView,
   drainContinentalEdition,
   loadContinentalEdition,
-} from "./continentalTournament.js";
+} from "./continentalTournament.js?v=91";
 
 function continentalOpts({
   edition,

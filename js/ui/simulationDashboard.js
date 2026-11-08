@@ -11,7 +11,7 @@ import {
   formatMatchContribution,
   ensureLeagueMatchId,
 } from "../simulation/leagueTable.js";
-import { renderLeagueTable } from "./rendering.js";
+import { renderLeagueTable } from "./rendering.js?v=92";
 import { escapeHtml } from "../utils/helpers.js";
 import {
   formatRecordLine,

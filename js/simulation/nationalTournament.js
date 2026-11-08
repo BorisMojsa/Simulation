@@ -31,7 +31,7 @@ import {
   getEdition,
   getMatch,
 } from "./competitionStore.js";
-import { resolveKnockout, simulateMatch, formatMatchScoreline } from "./matchEngine.js";
+import { resolveKnockout, simulateMatch, formatMatchScoreline } from "./matchEngine.js?v=91";
 import {
   accountNationalTable,
   rankNationalGroup,
@@ -42,7 +42,7 @@ import {
   eligiblePool,
   nationTeam,
   nationalCallUpChance,
-} from "./nationalHelpers.js";
+} from "./nationalHelpers.js?v=91";
 import { getSimRng } from "./rng.js";
 import { addDays, simDate } from "./seasonCalendar.js?v=89";
 import { applyMatchFormUpdate, getWorldState } from "./worldState.js";

@@ -4,9 +4,9 @@
  * carry correctly across competition boundaries.
  */
 import { attachClubIdentity, getWorldState } from "./worldState.js";
-import { effectiveTeamStrength } from "./teamStrength.js?v=90";
+import { effectiveTeamStrength } from "./teamStrength.js?v=91";
 import { getSimRng, createStreamRng } from "./rng.js";
-import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js";
+import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js?v=102";
 import {
   dateLeagueFixtures,
   flattenRoundRobinFixtures,
@@ -19,25 +19,25 @@ import {
 import { rivalsForClub } from "../data/clubRivals.js";
 import { createRng } from "./rng.js";
 import { squadReviewCheckpointDate } from "../data/registrationWindows.js";
-import { evaluateSquadDecision, resolveSquadDecision } from "./squadDecisions.js";
-import { generateLoanOffers } from "./loanMarket.js";
-import { generatePipelineOffers } from "./dealPipeline.js";
+import { evaluateSquadDecision, resolveSquadDecision } from "./squadDecisions.js?v=91";
+import { generateLoanOffers } from "./loanMarket.js?v=91";
+import { generatePipelineOffers } from "./dealPipeline.js?v=91";
 import { exportClubFinanceState, importClubFinanceState } from "./clubFinance.js";
 import {
   reconcileAfterClubChange,
   playerEligibleForClubMatch,
   findLeagueById,
-} from "./destinationSchedule.js?v=81";
-import { applyDecisionPolicy } from "./decisionPolicies.js";
-import { processPlayerMatchDay } from "./playerMatchDay.js";
-import { resolveKnockout } from "./matchEngine.js?v=90";
-import { simulateMatch } from "./matchEngine.js?v=90";
+} from "./destinationSchedule.js?v=91";
+import { applyDecisionPolicy } from "./decisionPolicies.js?v=91";
+import { processPlayerMatchDay } from "./playerMatchDay.js?v=91";
+import { resolveKnockout } from "./matchEngine.js?v=91";
+import { simulateMatch } from "./matchEngine.js?v=91";
 import { applyMatchFormUpdate } from "./worldState.js";
 import { stableCareerId } from "./playerDevelopmentModel.js";
 import { resolveDevelopmentPeriod } from "./seasonEvidence.js";
 import {
   simulateEuropeanFinalsShowcase,
-} from "./europeanCompetition.js?v=81";
+} from "./europeanCompetition.js?v=91";
 import {
   prepareSeasonContinental,
   buildContinentalChronoEvents,
@@ -46,7 +46,7 @@ import {
   buildContinentalCampaignView,
   reloadEditionFromWorld,
   eventsForAttachedPendingFixtures,
-} from "./continentalChronology.js";
+} from "./continentalChronology.js?v=91";
 import {
   prepareSeasonInternational,
   buildNationalChronoEvents,
@@ -54,20 +54,20 @@ import {
   finalizeSeasonNational,
   buildInternationalSeasonView,
   reloadNationalEditionFromWorld,
-} from "./nationalChronology.js";
+} from "./nationalChronology.js?v=91";
 import {
   prepareDomesticCupBracket,
   prepareDestinationCupContinuation,
   simulateDomesticCupRound,
   finalizeDomesticCup,
   rebindDomesticCupAttachment,
-} from "./domesticCup.js";
+} from "./domesticCup.js?v=91";
 import { resolveValidatedClubSide } from "./playingRegistration.js";
 import {
   leagueMatchCount,
   findSisterLeagues,
   qualificationForPosition,
-} from "./leaguePhase.js";
+} from "./leaguePhase.js?v=91";
 import { LEAGUES } from "../data/leagues.js";
 import {
   planSeniorScenarioEvents,
@@ -76,17 +76,17 @@ import {
   ensureSeniorCareerState,
 } from "./seniorCareerScenarios.js?v=88";
 import { ensureLeagueMatchId } from "./leagueTable.js";
-import { commitLeagueMatchResult } from "./leagueEditionAdapter.js";
+import { commitLeagueMatchResult } from "./leagueEditionAdapter.js?v=91";
 import {
   resolvePreSeasonContinentalStanding,
   commitCompletedDomesticEdition,
-} from "./earnedQualification.js";
+} from "./earnedQualification.js?v=91";
 import {
   freezeEditionRoster,
   leagueViewForEdition,
   pairPolicyForLeague,
   resolveLeagueClubs,
-} from "./leagueMembership.js?v=90";
+} from "./leagueMembership.js?v=91";
 
 function commitActiveLeagueQualification({
   world,

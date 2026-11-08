@@ -1,44 +1,44 @@
 import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js?v=61";
-import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=77";
+import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=91";
 import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=62";
-import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=81";
-import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=81";
-import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=81";
-import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=81";
+import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=91";
+import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=91";
+import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=91";
+import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=91";
 import { createRng } from "./js/simulation/rng.js";
-import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=81";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=92";
+import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=102";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=94";
 import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
 import {
   serializeCareerSnapshot,
   deserializeCareerSnapshot,
-} from "./js/simulation/careerSnapshot.js";
+} from "./js/simulation/careerSnapshot.js?v=102";
 import { getOrInitClubSeasonFinance } from "./js/simulation/clubFinance.js";
 import {
   buildMembershipBrowserFixture,
   inspectMembershipDebug,
-} from "./js/simulation/membershipBrowserFixture.js?v=97";
+} from "./js/simulation/membershipBrowserFixture.js?v=103";
 import {
   ensureContractAuthority,
   selectNextCareerAction,
   isFreeAgent,
   declineWindowAndContinue,
   settleBoundaryContractReview,
-} from "./js/simulation/contractLifecycle.js?v=81";
+} from "./js/simulation/contractLifecycle.js?v=102";
 import {
   declineAcademyReview,
   acceptAcademyGraduationOffer,
   ensureAcademyLifecycle,
   migrateAcademyLifecycle,
-} from "./js/simulation/academyLifecycle.js?v=84";
-import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=81";
-import { buildFreeAgentBrowserFixture } from "./js/simulation/freeAgentBrowserFixture.js?v=90";
-import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipTransferBrowserFixture.js?v=91";
-import { buildAcademyBrowserFixture } from "./js/simulation/academyBrowserFixture.js";
-import { buildMatchParticipationKoBrowserFixture } from "./js/simulation/matchParticipationKoBrowserFixture.js";
-import { buildMatchParticipationGkBrowserFixture } from "./js/simulation/matchParticipationGkBrowserFixture.js";
-import { buildFix12TournamentPresentationBrowserFixture } from "./js/simulation/fix12TournamentPresentationBrowserFixture.js";
-import { buildFix13GkAttributeRecapSeasonData } from "./js/simulation/fix13GoalkeeperBrowserFixtures.js";
+} from "./js/simulation/academyLifecycle.js?v=102";
+import { buildLiveLoanBrowserFixture } from "./js/simulation/liveLoanBrowserFixture.js?v=102";
+import { buildFreeAgentBrowserFixture } from "./js/simulation/freeAgentBrowserFixture.js?v=102";
+import { buildOwnershipTransferBrowserFixture } from "./js/simulation/ownershipTransferBrowserFixture.js?v=102";
+import { buildAcademyBrowserFixture } from "./js/simulation/academyBrowserFixture.js?v=102";
+import { buildMatchParticipationKoBrowserFixture } from "./js/simulation/matchParticipationKoBrowserFixture.js?v=102";
+import { buildMatchParticipationGkBrowserFixture } from "./js/simulation/matchParticipationGkBrowserFixture.js?v=102";
+import { buildFix12TournamentPresentationBrowserFixture } from "./js/simulation/fix12TournamentPresentationBrowserFixture.js?v=102";
+import { buildFix13GkAttributeRecapSeasonData } from "./js/simulation/fix13GoalkeeperBrowserFixtures.js?v=102";
 import {
   appendSeasonCard,
   renderPlayerOverview,
@@ -47,14 +47,14 @@ import {
   renderCompetitions,
   renderTransferOffers,
   renderCareerMoments,
-} from "./js/ui/rendering.js?v=91";
-import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=84";
+} from "./js/ui/rendering.js?v=92";
+import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=102";
 import {
   showSeasonAnimation,
   openSimulationDashboardSegment,
   hideSimulationDashboard,
   getDashboardRevealState,
-} from "./js/ui/seasonAnimation.js?v=92";
+} from "./js/ui/seasonAnimation.js?v=94";
 import { showRetirementAnimation } from "./js/ui/retirementAnimation.js?v=82";
 import { showSeniorScenarioOverlay } from "./js/ui/seniorScenarioOverlay.js?v=88";
 import { applySeniorScenarioPolicy } from "./js/simulation/seniorCareerScenarios.js?v=88";

@@ -9,7 +9,7 @@ import {
   COPA_AMERICA_INVITES,
 } from "../data/competitions/qualification.js";
 import { clamp } from "../utils/helpers.js";
-import { resolveKnockout, simulateMatch, formatMatchScoreline } from "./matchEngine.js";
+import { resolveKnockout, simulateMatch, formatMatchScoreline } from "./matchEngine.js?v=91";
 import { getNationProfile } from "../data/strength/nationProfiles.js";
 import { getSimRng } from "./rng.js";
 import { applyMatchFormUpdate, getWorldState } from "./worldState.js";

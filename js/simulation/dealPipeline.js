@@ -4,13 +4,13 @@
  * pre-contracts and loans must all route through here.
  */
 import { LEAGUES } from "../data/leagues.js";
-import { allSeniorClubs, findSeniorClub, findSeniorClubById } from "./seniorClubs.js";
+import { allSeniorClubs, findSeniorClub, findSeniorClubById } from "./seniorClubs.js?v=91";
 import {
   findEligibleClubs,
   pickWeighted,
   evaluateSportingFit,
   RECRUITMENT_CONFIG_VERSION,
-} from "./recruitmentModel.js";
+} from "./recruitmentModel.js?v=91";
 import {
   sellerReservation,
   buyerWillingness,
@@ -30,7 +30,7 @@ import {
 import { createStreamRng } from "./rng.js";
 import { safePlayerOverall } from "./playerOverallSafe.js";
 import { FINANCE_PROFILE_VERSION } from "../data/clubFinanceProfiles.js";
-import { resolveMoveRegistration } from "./destinationSchedule.js";
+import { resolveMoveRegistration } from "./destinationSchedule.js?v=91";
 import {
   ensureContractAuthority,
   evaluateRenewalReview,
@@ -43,7 +43,7 @@ import {
   bumpContractRevision,
   completedSeasons,
   isFreeAgent,
-} from "./contractLifecycle.js";
+} from "./contractLifecycle.js?v=102";
 import { recordPlayingTransition, ensurePlayingStints } from "./playingRegistration.js";
 import { CONTRACT_RULES } from "../config/recruitmentConfig.js";
 

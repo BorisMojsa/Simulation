@@ -1,7 +1,7 @@
 import { ATTRIBUTE_MODIFIERS, POSITION_PROFILES, STATS_KEYS } from "../config/playerConfig.js";
 import { clamp, randFloat, randInt } from "../utils/helpers.js";
-import { findSeniorClub, findSeniorClubById } from "./seniorClubs.js";
-import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js";
+import { findSeniorClub, findSeniorClubById } from "./seniorClubs.js?v=91";
+import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js?v=91";
 import {
   calculateOverall,
   getDisplayAttributeKeys,
@@ -27,7 +27,7 @@ import {
   acceptAcademyGraduationOffer,
   findExecutableParentOffer,
   reconcileAcademyReviewTray,
-} from "./academyLifecycle.js";
+} from "./academyLifecycle.js?v=102";
 
 export { applySkipOpeningDevelopment };
 

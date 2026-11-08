@@ -4,9 +4,9 @@
  * or apply committed-fixture pair finalization (never fabricated standings).
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
-import { createPlayerIdentity } from "./playerDevelopment.js";
-import { simulateSeason } from "./seasonSimulator.js";
-import { simulateChronologicalSeason } from "./chronologicalSeason.js";
+import { createPlayerIdentity } from "./playerDevelopment.js?v=91";
+import { simulateSeason } from "./seasonSimulator.js?v=94";
+import { simulateChronologicalSeason } from "./chronologicalSeason.js?v=94";
 import {
   createWorldState,
   setWorldState,
@@ -23,12 +23,12 @@ import {
   commitForcedEditionResults,
   pairPolicyForLeague,
   leagueIdOf,
-} from "./leagueMembership.js?v=90";
-import { buildDestinationLeagueSchedule } from "./destinationSchedule.js";
-import { roundTripCareerSnapshot } from "./careerSnapshot.js";
-import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js";
-import { buildValidatedOffer, applyOfferToPlayer } from "./dealPipeline.js";
-import { startLoan, endLoan } from "./loanMarket.js";
+} from "./leagueMembership.js?v=91";
+import { buildDestinationLeagueSchedule } from "./destinationSchedule.js?v=91";
+import { roundTripCareerSnapshot } from "./careerSnapshot.js?v=102";
+import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js?v=91";
+import { buildValidatedOffer, applyOfferToPlayer } from "./dealPipeline.js?v=91";
+import { startLoan, endLoan } from "./loanMarket.js?v=91";
 
 const PL = () => LEAGUE_BY_ID.get("league:england-premier-league");
 const CH = () => LEAGUE_BY_ID.get("league:england-championship");
