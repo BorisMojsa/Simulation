@@ -142,6 +142,22 @@ function secondaryAttributeContribution(player, minuteShare, xiShare) {
 }
 
 /**
+ * Detach a sporting profile from the live world club/nation object.
+ * `replacementOvr` must be deep-cloned: a shallow `{ ...profile }` still shares
+ * that nested map, so later `adjustQuality` would rewrite historical match
+ * strength evidence on the live path (restore JSON already disconnects it).
+ */
+export function snapshotSportingProfile(profile, kind = null) {
+  if (!profile) return null;
+  const out = { ...profile };
+  if (kind) out.kind = kind;
+  if (profile.replacementOvr && typeof profile.replacementOvr === "object") {
+    out.replacementOvr = { ...profile.replacementOvr };
+  }
+  return out;
+}
+
+/**
  * Build a sporting profile snapshot for a club or nation team object.
  * Prefers mutable career profile fields when present.
  */
@@ -151,13 +167,13 @@ export function sportingProfileFromTeam(team, worldState = null) {
   if (team.isNation || team.nationId) {
     const id = team.nationId || team.name;
     const mutable = worldState?.nations?.get?.(id) || worldState?.nations?.[id];
-    if (mutable) return { ...mutable, kind: "nation" };
+    if (mutable) return snapshotSportingProfile(mutable, "nation");
     const r = resolveNation(team.name || id);
     if (!r.ok) {
       console.warn(r.diagnostic || "unresolved nation", team);
       return fallbackNation(team);
     }
-    return { ...r.profile, kind: "nation" };
+    return snapshotSportingProfile(r.profile, "nation");
   }
 
   const clubId = team.clubId || null;
@@ -165,7 +181,7 @@ export function sportingProfileFromTeam(team, worldState = null) {
     const mutable =
       (clubId && (worldState.clubs.get?.(clubId) || worldState.clubs[clubId])) ||
       null;
-    if (mutable) return { ...mutable, kind: "club" };
+    if (mutable) return snapshotSportingProfile(mutable, "club");
   }
 
   // Academy sides inherit the senior club's sporting profile (no separate academy ratings).
@@ -186,9 +202,9 @@ export function sportingProfileFromTeam(team, worldState = null) {
   const seed = r.profile;
   if (worldState?.clubs) {
     const mutable = worldState.clubs.get?.(seed.clubId) || worldState.clubs[seed.clubId];
-    if (mutable) return { ...mutable, kind: "club" };
+    if (mutable) return snapshotSportingProfile(mutable, "club");
   }
-  return { ...seed, kind: "club" };
+  return snapshotSportingProfile(seed, "club");
 }
 
 function fallbackClub(team) {
@@ -348,7 +364,10 @@ export function phaseEffectiveStrength(regulationEff, {
     };
   }
 
-  const profile = regulationEff.profile;
+  const profile = snapshotSportingProfile(
+    regulationEff.profile,
+    regulationEff.profile?.kind || null
+  );
   const form = clamp(finiteNumber(regulationEff.formAdj, 0) ?? 0, -2.5, 2.5);
   const participates =
     Boolean(player) &&
@@ -465,6 +484,9 @@ export function effectiveTeamStrength(team, {
     99
   );
 
+  // Snapshot again at the match boundary so regulationEffectiveStrength stays
+  // immutable even if a caller passed a live world profile reference.
+  const profileSnap = snapshotSportingProfile(profile, profile.kind || null);
   return {
     clubId: profile.clubId || null,
     nationId: profile.nationId || null,
@@ -477,7 +499,7 @@ export function effectiveTeamStrength(team, {
     goalkeeper: Number(goalkeeper.toFixed(2)),
     financialPower: profile.financialPower ?? team.financialTier ?? 2,
     reputation: profile.reputation ?? overall,
-    profile,
+    profile: profileSnap,
     playerImpact: impact,
     formAdj: form,
     tierLabel: tierLabelFromQuality(overall),

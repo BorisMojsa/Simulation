@@ -23,7 +23,7 @@ import {
   commitForcedEditionResults,
   pairPolicyForLeague,
   leagueIdOf,
-} from "./leagueMembership.js";
+} from "./leagueMembership.js?v=90";
 import { buildDestinationLeagueSchedule } from "./destinationSchedule.js";
 import { roundTripCareerSnapshot } from "./careerSnapshot.js";
 import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js";

@@ -16,7 +16,7 @@ import {
   leagueViewForEdition,
   pairPolicyForLeague,
   resolveLeagueClubs,
-} from "./leagueMembership.js";
+} from "./leagueMembership.js?v=90";
 
 function ensurePlayerInClubs(league, player, { world = null, seasonYear = null } = {}) {
   const clubs = resolveLeagueClubs(league, { world, seasonYear });

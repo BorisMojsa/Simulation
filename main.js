@@ -7,7 +7,7 @@ import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=81";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=81";
 import { createRng } from "./js/simulation/rng.js";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=81";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=91";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=92";
 import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
 import {
   serializeCareerSnapshot,
@@ -17,7 +17,7 @@ import { getOrInitClubSeasonFinance } from "./js/simulation/clubFinance.js";
 import {
   buildMembershipBrowserFixture,
   inspectMembershipDebug,
-} from "./js/simulation/membershipBrowserFixture.js?v=96";
+} from "./js/simulation/membershipBrowserFixture.js?v=97";
 import {
   ensureContractAuthority,
   selectNextCareerAction,

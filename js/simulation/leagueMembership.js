@@ -86,6 +86,17 @@ export function transitionKey(pairId, completedSeasonYear) {
   return `${pairId}::${completedSeasonYear}`;
 }
 
+/**
+ * Deterministic UTC ms for a membership edition / transition boundary.
+ * June 1 of `seasonYear` matches the career development-period start
+ * (`resolveDevelopmentPeriod`) — not wall-clock `Date.now()`.
+ */
+export function membershipBoundaryTimeMs(seasonYear) {
+  const y = Number(seasonYear);
+  if (!Number.isFinite(y)) return 0;
+  return Date.UTC(y, 5, 1);
+}
+
 function ensureMembershipMaps(world) {
   if (!world) return null;
   if (!(world.leagueMemberships instanceof Map)) {
@@ -253,7 +264,7 @@ export function freezeEditionRoster(league, seasonYear, world = getWorldState())
     leagueId,
     seasonYear,
     clubIds: [...clubIds],
-    frozenAt: Date.now(),
+    frozenAt: membershipBoundaryTimeMs(seasonYear),
   };
   w.leagueEditionRosters.set(key, record);
   return record;
@@ -786,7 +797,8 @@ export function commitDivisionPairTransition({
     priorLower: [...lowerRoster],
     nextUpper: [...nextUpper],
     nextLower: [...nextLower],
-    appliedAt: Date.now(),
+    // Membership takes effect at the next edition boundary (June 1 after completion).
+    appliedAt: membershipBoundaryTimeMs(Number(completedSeasonYear) + 1),
   };
   w.membershipTransitions.set(key, transition);
 

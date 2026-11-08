@@ -111,6 +111,37 @@ function assert(cond, msg, data) {
     throw err;
   }
 }
+/** Full field-level diff for QA evidence (empty array when equal). */
+function collectFieldDiffs(a, b, path = "", out = []) {
+  if (Object.is(a, b)) return out;
+  if (typeof a !== typeof b || a == null || b == null || typeof a !== "object") {
+    out.push({ path: path || "(root)", a, b });
+    return out;
+  }
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b)) {
+      out.push({ path: `${path || "(root)"}(type)`, aType: Array.isArray(a) ? "array" : typeof a, bType: Array.isArray(b) ? "array" : typeof b });
+      return out;
+    }
+    if (a.length !== b.length) {
+      out.push({ path: `${path || "(root)"}(length)`, a: a.length, b: b.length });
+    }
+    const n = Math.max(a.length, b.length);
+    for (let i = 0; i < n; i++) {
+      if (i >= a.length) out.push({ path: `${path}[${i}]`, a: undefined, b: b[i], missing: "a" });
+      else if (i >= b.length) out.push({ path: `${path}[${i}]`, a: a[i], b: undefined, missing: "b" });
+      else collectFieldDiffs(a[i], b[i], `${path}[${i}]`, out);
+    }
+    return out;
+  }
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of keys) {
+    if (!(k in a)) out.push({ path: path ? `${path}.${k}` : k, a: undefined, b: b[k], missing: "a" });
+    else if (!(k in b)) out.push({ path: path ? `${path}.${k}` : k, a: a[k], b: undefined, missing: "b" });
+    else collectFieldDiffs(a[k], b[k], path ? `${path}.${k}` : k, out);
+  }
+  return out;
+}
 function jsonClone(v) {
   return JSON.parse(JSON.stringify(v));
 }
@@ -1731,10 +1762,29 @@ const cases = {
     const b = qualSummary(branchB.desk.player, branchB.desk);
 
     // Additional control: double-restore repeatability (separate from live-vs-restored).
+    // Branches C/D each restore the pause JSON in a fresh context (handoff naming).
     await freshRestore(page, paused.snapshot);
     const dualA = await finishRestoredFromPause("B06-dual-a");
+    await writeCase("B06-desk-c.json", slimEvidence(dualA.desk));
+    await writeFullSnapshot("B06-desk-c.full.json", dualA.desk);
     await freshRestore(page, paused.snapshot);
     const dualB = await finishRestoredFromPause("B06-dual-b");
+    await writeCase("B06-desk-d.json", slimEvidence(dualB.desk));
+    await writeFullSnapshot("B06-desk-d.full.json", dualB.desk);
+    const dualFieldDiffs = collectFieldDiffs(
+      {
+        world: dualA.desk.world,
+        clubFinance: dualA.desk.clubFinance,
+        pendingOffers: dualA.desk.player?.pendingOffers || [],
+        rngState: dualA.desk.world?.rngState,
+      },
+      {
+        world: dualB.desk.world,
+        clubFinance: dualB.desk.clubFinance,
+        pendingOffers: dualB.desk.player?.pendingOffers || [],
+        rngState: dualB.desk.world?.rngState,
+      }
+    );
     const dualEqual =
       JSON.stringify(dualA.desk.world) === JSON.stringify(dualB.desk.world) &&
       Number(dualA.desk.world?.rngState) === Number(dualB.desk.world?.rngState) &&
@@ -1745,9 +1795,13 @@ const cases = {
       dualEqual,
       pathA: dualA.path,
       pathB: dualB.path,
+      branchC: "B06-desk-c",
+      branchD: "B06-desk-d",
+      fieldDiffCount: dualFieldDiffs.length,
+      fieldDiffs: dualFieldDiffs,
     });
-    assert(dualEqual, "B06 dual-restore repeatability must hold");
 
+    const liveRestoredFieldDiffs = collectFieldDiffs(branchA.desk, branchB.desk);
     const protectedCompare = {
       worldEqual: JSON.stringify(branchA.desk.world) === JSON.stringify(branchB.desk.world),
       rngEqual:
@@ -1778,12 +1832,22 @@ const cases = {
       branchBPath: branchB.path,
       liveVersusRestored: true,
       dualRestoreEqual: dualEqual,
+      liveRestoredFieldDiffCount: liveRestoredFieldDiffs.length,
+      liveRestoredFieldDiffs: liveRestoredFieldDiffs,
       pendingOffersA: (branchA.desk.player.pendingOffers || []).map((o) => o.clubId || o.club),
       pendingOffersB: (branchB.desk.player.pendingOffers || []).map((o) => o.clubId || o.club),
       ledgerKeysA: Object.keys(branchA.desk.clubFinance?.ledgers || {}).sort(),
       ledgerKeysB: Object.keys(branchB.desk.clubFinance?.ledgers || {}).sort(),
     });
-    assert(protectedCompare.worldEqual, "B06 world state must match across branches");
+    // Evaluate gates only after all branch evidence is written.
+    assert(dualEqual, "B06 dual-restore repeatability must hold", {
+      fieldDiffCount: dualFieldDiffs.length,
+      fieldDiffs: dualFieldDiffs.slice(0, 40),
+    });
+    assert(protectedCompare.worldEqual, "B06 world state must match across branches", {
+      fieldDiffCount: liveRestoredFieldDiffs.length,
+      fieldDiffs: liveRestoredFieldDiffs.slice(0, 40),
+    });
     assert(protectedCompare.rngEqual, "B06 RNG state must match across branches", {
       a: { seed: branchA.desk.world?.rngSeed, state: branchA.desk.world?.rngState, top: branchA.desk.rngSeed },
       b: { seed: branchB.desk.world?.rngSeed, state: branchB.desk.world?.rngState, top: branchB.desk.rngSeed },

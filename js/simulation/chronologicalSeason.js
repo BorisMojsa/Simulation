@@ -4,7 +4,7 @@
  * carry correctly across competition boundaries.
  */
 import { attachClubIdentity, getWorldState } from "./worldState.js";
-import { effectiveTeamStrength } from "./teamStrength.js";
+import { effectiveTeamStrength } from "./teamStrength.js?v=90";
 import { getSimRng, createStreamRng } from "./rng.js";
 import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js";
 import {
@@ -30,8 +30,8 @@ import {
 } from "./destinationSchedule.js?v=81";
 import { applyDecisionPolicy } from "./decisionPolicies.js";
 import { processPlayerMatchDay } from "./playerMatchDay.js";
-import { resolveKnockout } from "./matchEngine.js";
-import { simulateMatch } from "./matchEngine.js";
+import { resolveKnockout } from "./matchEngine.js?v=90";
+import { simulateMatch } from "./matchEngine.js?v=90";
 import { applyMatchFormUpdate } from "./worldState.js";
 import { stableCareerId } from "./playerDevelopmentModel.js";
 import { resolveDevelopmentPeriod } from "./seasonEvidence.js";
@@ -86,7 +86,7 @@ import {
   leagueViewForEdition,
   pairPolicyForLeague,
   resolveLeagueClubs,
-} from "./leagueMembership.js";
+} from "./leagueMembership.js?v=90";
 
 function commitActiveLeagueQualification({
   world,

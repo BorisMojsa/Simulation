@@ -19,8 +19,8 @@ import {
   qualificationForPosition,
 } from "./leaguePhase.js";
 import { finalizeMembershipForSeasonSegments } from "./leagueMembership.js";
-import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=89";
-import { findLeagueById } from "./destinationSchedule.js?v=81";
+import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=90";
+import { findLeagueById } from "./destinationSchedule.js?v=82";
 import { evaluateSeasonAwards } from "./individualAwards.js?v=86";
 import {
   buildSeasonEvidence,

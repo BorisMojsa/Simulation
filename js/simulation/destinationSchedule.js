@@ -25,7 +25,7 @@ import {
   freezeEditionRoster,
   resolveLeagueClubs,
   pairPolicyForLeague,
-} from "./leagueMembership.js";
+} from "./leagueMembership.js?v=90";
 
 function isContinentalChronoEvent(ev) {
   return (

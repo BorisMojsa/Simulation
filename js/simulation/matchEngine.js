@@ -1,6 +1,6 @@
 import { clamp } from "../utils/helpers.js";
 import { getSimRng } from "./rng.js";
-import { effectiveTeamStrength, phaseEffectiveStrength } from "./teamStrength.js";
+import { effectiveTeamStrength, phaseEffectiveStrength } from "./teamStrength.js?v=90";
 
 /**
  * Goal environment coefficients (documented game-design targets, not claimed
