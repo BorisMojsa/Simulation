@@ -43,7 +43,7 @@ import {
   bumpContractRevision,
   completedSeasons,
   isFreeAgent,
-} from "./contractLifecycle.js?v=102";
+} from "./contractLifecycle.js?v=103";
 import { recordPlayingTransition, ensurePlayingStints } from "./playingRegistration.js";
 import { CONTRACT_RULES } from "../config/recruitmentConfig.js";
 

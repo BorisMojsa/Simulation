@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
 import { LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js";
 import { buildMembershipBrowserFixture } from "./js/simulation/membershipBrowserFixture.js";
 import { simulateSeason } from "./js/simulation/seasonSimulator.js";
 import { resolvePlayingClubAt } from "./js/simulation/playingRegistration.js";
 
+const reviewedCommit = execSync("git rev-parse HEAD", { encoding: "utf8" }).trim();
 const fixture = buildMembershipBrowserFixture({ mode: "ui-loan-return-ready", seed: 42 });
 assert.equal(fixture.ok, true, fixture.reason);
 assert.equal(fixture.loan.loanStillActive, true);
@@ -26,7 +28,7 @@ assert.ok(first, "the returned parent must have real league fixtures");
 console.log(
   JSON.stringify(
     {
-      reviewedCommit: "bd11e80b0b006047152123b7a2ad61e9ee4dabaa",
+      reviewedCommit,
       input: { mode: "ui-loan-return-ready", seed: 42 },
       parentId,
       borrowerId,

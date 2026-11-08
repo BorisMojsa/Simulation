@@ -26,7 +26,7 @@ import {
   consumeRelatedDecisionAfterDeal,
   markOfferStatus,
   isOfferExecutable,
-} from "./contractLifecycle.js?v=102";
+} from "./contractLifecycle.js?v=103";
 import {
   applyAcademyGrowth,
   developmentPeriodId,

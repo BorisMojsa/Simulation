@@ -9,7 +9,7 @@ import {
   ensureContractAuthority,
   applyContractExpiryAtBoundary,
   CONTRACT_LIFECYCLE_VERSION,
-} from "./contractLifecycle.js?v=102";
+} from "./contractLifecycle.js?v=103";
 import { ensurePlayingStints } from "./playingRegistration.js";
 import { migrateAcademyLifecycle, ensureAcademyLifecycle } from "./academyLifecycle.js?v=102";
 

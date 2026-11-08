@@ -76,10 +76,11 @@ async function loadMode(page, mode) {
 
 async function clickMatching(page, pattern) {
   return page.evaluate((pat) => {
+    const visible = (el) => Boolean(el && !el.disabled && el.offsetParent !== null);
     const re = new RegExp(pat, "i");
     const buttons = [...document.querySelectorAll("button")].filter((b) => {
       const t = (b.textContent || "").trim();
-      return re.test(t) && !b.disabled;
+      return re.test(t) && visible(b);
     });
     if (!buttons.length) return null;
     // Prefer bulk skip / continue over single-match skip when several match.
@@ -104,29 +105,20 @@ async function clickSimulate(page) {
   return label;
 }
 
-/** Drive Pause / Skip Remaining / animation Continue until season settles or next Simulate is ready. */
+/** Drive presentation skips, senior scenarios, offers, and Continue until the desk settles. */
 async function driveSeasonUi(page, { expectSeasonsAtLeast = null, timeoutMs = 180000 } = {}) {
   const started = Date.now();
   const actions = [];
   while (Date.now() - started < timeoutMs) {
     const state = await page.evaluate(() => {
+      const visible = (el) => Boolean(el && !el.disabled && el.offsetParent !== null);
       const d = window.__getLiveCareerDebug?.() || {};
       const m = window.__getMembershipDebug?.() || {};
       const sim = document.getElementById("simulate-btn");
-      const continueBtn = document.getElementById("animation-continue");
+      const continueHost = document.getElementById("animation-continue");
+      const continueBtn = document.getElementById("continue-btn");
       const overlay = document.getElementById("season-animation-overlay");
-      const pauseBtn = [...document.querySelectorAll("button")].find((b) =>
-        /^pause|^paused$/i.test((b.textContent || "").trim())
-      );
-      const skipRemainingBtn = [...document.querySelectorAll("button")].find((b) =>
-        /skip remaining|skip phase/i.test((b.textContent || "").trim())
-      );
-      const skipBtn = skipRemainingBtn || [...document.querySelectorAll("button")].find((b) =>
-        /skip match|^skip$/i.test((b.textContent || "").trim())
-      );
-      const stayBtn = [...document.querySelectorAll("button")].find((b) =>
-        /stay|reject|decline|dismiss|continue career|train/i.test((b.textContent || "").trim())
-      );
+      const senior = document.getElementById("senior-scenario-overlay");
       return {
         seasonsCount: d.seasonsCount ?? 0,
         clubLeagueId: d.clubLeagueId || m.clubLeagueId || d.playingClubId,
@@ -135,14 +127,16 @@ async function driveSeasonUi(page, { expectSeasonsAtLeast = null, timeoutMs = 18
         transitionCount: m.transitionCount ?? 0,
         pendingOffers: d.pendingOffers?.length || 0,
         pendingDecision: Boolean(d.pendingDecision),
+        nextActionId: d.nextAction?.id || null,
         freeAgent: Boolean(d.freeAgent),
         simDisabled: Boolean(sim?.disabled),
         simLabel: (sim?.textContent || "").trim(),
-        continueVisible: Boolean(continueBtn && !continueBtn.classList.contains("hidden")),
+        continueVisible: Boolean(
+          (continueHost && !continueHost.classList.contains("hidden")) || visible(continueBtn)
+        ),
         overlayHidden: !overlay || overlay.classList.contains("hidden"),
-        hasPause: Boolean(pauseBtn),
-        hasSkip: Boolean(skipBtn),
-        hasStay: Boolean(stayBtn),
+        scenarioOpen: Boolean(senior && !senior.classList.contains("hidden")),
+        seasonActionInFlight: Boolean(d.seasonActionInFlight),
         standingsRows: document.querySelectorAll(
           "#standings-panel tbody tr, .standings-table tbody tr, #league-standings tbody tr"
         ).length,
@@ -152,77 +146,163 @@ async function driveSeasonUi(page, { expectSeasonsAtLeast = null, timeoutMs = 18
       };
     });
 
-    if (
+    const seasonDone =
       expectSeasonsAtLeast != null &&
       state.seasonsCount >= expectSeasonsAtLeast &&
-      state.overlayHidden &&
       !state.pendingOffers &&
-      !state.pendingDecision
-    ) {
+      !state.pendingDecision &&
+      state.nextActionId !== "resolve-scenario" &&
+      state.nextActionId !== "resolve-decision" &&
+      state.nextActionId !== "resolve-offers" &&
+      !state.seasonActionInFlight;
+
+    if (seasonDone && state.overlayHidden && !state.scenarioOpen) {
       return { ...state, actions };
     }
 
-    if (state.continueVisible) {
-      await page.click("#animation-continue");
-      actions.push("animation-continue");
-      await page.waitForTimeout(150);
+    const step = await page.evaluate(({ seasonDoneNow }) => {
+      const visible = (el) => Boolean(el && !el.disabled && el.offsetParent !== null);
+      const debug = window.__getLiveCareerDebug?.() || {};
+      const senior = document.getElementById("senior-scenario-overlay");
+      const scenarioNext = document.getElementById("senior-scenario-next");
+      const scenarioOpen = senior && !senior.classList.contains("hidden");
+      const continueHost = document.getElementById("animation-continue");
+      const continueBtn = document.getElementById("continue-btn");
+
+      if (visible(scenarioNext)) {
+        scenarioNext.click();
+        return { action: "scenario-next", label: (scenarioNext.textContent || "").trim() };
+      }
+      if (
+        (debug.nextAction?.id === "resolve-scenario" || scenarioOpen) &&
+        typeof window.__applyPendingSeniorScenarioPolicy === "function"
+      ) {
+        const applied = window.__applyPendingSeniorScenarioPolicy("balanced");
+        if (applied?.ok) {
+          const choices = [
+            ...(document.getElementById("senior-scenario-choices")?.querySelectorAll("button") || []),
+          ].filter(visible);
+          const wanted = String(applied.chosenOptionId || "");
+          const hit =
+            choices.find((b) => (b.dataset?.choiceId || b.id || "") === wanted) ||
+            choices.find((b) =>
+              wanted && new RegExp(wanted.split(":").pop() || wanted, "i").test(b.textContent || "")
+            ) ||
+            choices[Math.min(1, Math.max(0, choices.length - 1))] ||
+            choices[0];
+          if (hit) {
+            hit.click();
+            return { action: "scenario-policy-choice", label: (hit.textContent || "").trim() };
+          }
+        }
+      }
+      if (scenarioOpen) {
+        const choice = [...senior.querySelectorAll("button")].find(visible);
+        if (choice) {
+          const label = (choice.textContent || "").trim();
+          choice.click();
+          return { action: "scenario-choice", label };
+        }
+      }
+
+      // After the season is committed, prefer Continue over more skips.
+      if (seasonDoneNow && continueHost && !continueHost.classList.contains("hidden") && continueBtn) {
+        continueBtn.click();
+        return { action: "continue-post-commit", label: (continueBtn.textContent || "").trim() };
+      }
+      if (seasonDoneNow && visible(continueBtn)) {
+        continueBtn.click();
+        return { action: "continue-post-commit", label: (continueBtn.textContent || "").trim() };
+      }
+
+      if (continueHost && !continueHost.classList.contains("hidden") && continueBtn) {
+        continueBtn.click();
+        return { action: "continue", label: (continueBtn.textContent || "").trim() };
+      }
+
+      for (const id of [
+        "sim-skip-phase-btn",
+        "match-skip-phase-btn",
+        "sim-skip-match-btn",
+        "match-skip-btn",
+      ]) {
+        const button = document.getElementById(id);
+        if (visible(button)) {
+          // Once committed, do not keep skipping forever — leave for Continue.
+          if (seasonDoneNow) break;
+          button.click();
+          return { action: "presentation-skip", label: id };
+        }
+      }
+
+      if (
+        debug.pendingOffers?.length ||
+        debug.pendingDecision ||
+        debug.nextAction?.id === "resolve-offers" ||
+        debug.nextAction?.id === "resolve-decision"
+      ) {
+        const buttons = [...document.querySelectorAll("button")].filter(visible);
+        const stay =
+          buttons.find((b) =>
+            /decline offers|decline offer|reject all|stay|continue at|see-out|keep current|no thanks|dismiss|reject/i.test(
+              (b.textContent || "").trim()
+            )
+          ) || null;
+        // Only Accept when stay/decline is unavailable (e.g. renewal-only tray).
+        const accept = buttons.find((b) => /accept|sign|renew/i.test((b.textContent || "").trim()));
+        const hit = stay || accept;
+        if (hit) {
+          const label = (hit.textContent || "").trim();
+          hit.click();
+          return { action: "decision", label };
+        }
+      }
+
+      const momentHit = [...document.querySelectorAll("button")].filter(visible).find((b) =>
+        /help them settle|enter career desk|see the first offer|see contract offers|reaffirm focus|speak privately|encourage the rumour|listen in the huddle|politely explain|train first|use earplugs|explain the schedule|decline politely|glance at the main|change quietly|next offer|^next$/i.test(
+          (b.textContent || "").trim()
+        )
+      );
+      if (momentHit) {
+        const label = (momentHit.textContent || "").trim();
+        momentHit.click();
+        return { action: "scenario-moment", label };
+      }
+
+      if (!seasonDoneNow) {
+        const skip = [...document.querySelectorAll("button")].filter(visible).find((b) =>
+          /skip remaining|skip phase/i.test((b.textContent || "").trim())
+        );
+        if (skip) {
+          const label = (skip.textContent || "").trim();
+          skip.click();
+          return { action: "skip", label };
+        }
+      }
+      return null;
+    }, { seasonDoneNow: seasonDone });
+
+    if (step) {
+      actions.push(`${step.action}:${step.label}`);
+      await page.waitForTimeout(180);
       continue;
     }
-    if (!state.overlayHidden && (state.hasSkip || state.hasPause)) {
-      // Always prefer Skip remaining / Skip phase over one-match Skip.
-      const skipped =
-        (await clickMatching(page, "skip remaining")) ||
-        (await clickMatching(page, "skip phase")) ||
-        (await clickMatching(page, "skip match|^skip$"));
-      if (skipped) {
-        actions.push(`skip:${skipped}`);
-        await page.waitForTimeout(250);
-        continue;
-      }
-      const cont = await clickMatching(page, "^continue$");
-      if (cont) {
-        actions.push(`continue:${cont}`);
-        await page.waitForTimeout(200);
-        continue;
-      }
-    }
-    if (state.pendingOffers || state.pendingDecision) {
-      const stay =
-        (await clickMatching(page, "decline offers|decline offer|reject all|stay")) ||
-        (await clickMatching(page, "reject|dismiss|keep current|no thanks|continue at"));
-      assert(stay, "pending decision/offers but no stay/reject control", state);
-      actions.push(`decision:${stay}`);
-      await page.waitForTimeout(400);
-      // Offers dismissal often returns to a live/paused dashboard — keep skipping.
-      const skipped =
-        (await clickMatching(page, "skip remaining")) ||
-        (await clickMatching(page, "skip phase")) ||
-        (await clickMatching(page, "^continue$"));
-      if (skipped) actions.push(`post-decision:${skipped}`);
-      continue;
-    }
-    if (!state.simDisabled && /simulate|next season|continue season|continue career|train/i.test(state.simLabel)) {
+
+    if (
+      !state.simDisabled &&
+      /simulate|next season|continue season|continue career|train|return from loan/i.test(state.simLabel)
+    ) {
       if (expectSeasonsAtLeast == null || state.seasonsCount >= expectSeasonsAtLeast) {
         return { ...state, actions };
       }
-      // Need another season — click Simulate.
       await clickSimulate(page);
       actions.push(`simulate:${state.simLabel}`);
       await page.waitForTimeout(300);
       continue;
     }
-    // Dashboard visible but still mid-reveal: keep trying bulk skip.
-    const bulk =
-      (await clickMatching(page, "skip remaining")) ||
-      (await clickMatching(page, "skip phase"));
-    if (bulk) {
-      actions.push(`bulk:${bulk}`);
-      await page.waitForTimeout(250);
-      continue;
-    }
     await page.waitForTimeout(200);
   }
-  throw new Error(`driveSeasonUi timeout actions=${actions.join(",")}`);
+  throw new Error(`driveSeasonUi timeout actions=${actions.slice(-40).join(",")}`);
 }
 
 async function runCase(name, fn) {
@@ -388,9 +468,29 @@ async function main() {
         assert(loaded.evidence?.inPremier === true, "in PL after promo", loaded);
         assert(loaded.checkpoint || loaded.next?.status, "paused checkpoint", loaded);
         const before = await debug(page);
+        // next-pause can open on a squad discussion before presentation skips exist.
+        if (before?.pendingDecision || before?.nextAction?.id === "resolve-decision") {
+          const resolved =
+            (await clickMatching(page, "stay|compete|see-out|acknowledge|remain|continue at")) ||
+            (await clickMatching(page, "reject|dismiss|decline"));
+          assert(resolved, "resolve paused decision before skip", before);
+          await page.waitForTimeout(300);
+        }
         const pause = await clickMatching(page, "^pause$|pause simulation");
         assert(pause || true, "pause optional if already paused");
-        const skip = await clickMatching(page, "skip remaining|skip match|^skip$");
+        const skip =
+          (await clickMatching(page, "skip remaining|skip phase|skip match|^skip$")) ||
+          (await page.evaluate(() => {
+            const visible = (el) => Boolean(el && !el.disabled && el.offsetParent !== null);
+            for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "sim-skip-match-btn", "match-skip-btn"]) {
+              const button = document.getElementById(id);
+              if (visible(button)) {
+                button.click();
+                return id;
+              }
+            }
+            return null;
+          }));
         assert(skip, "skip remaining required on paused next edition", { before, loaded });
         const after = await driveSeasonUi(page, { expectSeasonsAtLeast: 1 });
         assert(after.membership?.premier === 20, "no membership drift", after);
@@ -435,119 +535,451 @@ async function main() {
         const parentId = loaded.clubId;
         const borrowerId = loaded.borrowerId;
         assert(parentId && borrowerId, "parent/borrower ids", loaded);
-        const before = await debug(page);
-        assert(before?.parentClubSnapshotLeagueId === "league:england-premier-league", "debug stale snapshot", before);
-        // Next season via production Simulate — return + parent Championship season.
-        const simLabel = await clickSimulate(page);
-        const returned = await waitFor(
-          page,
-          () => {
-            const d = window.__getLiveCareerDebug?.() || {};
-            const m = window.__getMembershipDebug?.() || {};
-            const reg = window.__getPlayingRegistrationDebug?.();
-            const league = m.clubLeagueId || d.clubLeagueId;
-            const loanDone = d.activeLoan?.status === "returned" || !d.activeLoan;
-            if (league === "league:england-championship" && loanDone && reg?.returnStint?.from) {
-              return {
-                league,
-                loanStatus: d.activeLoan?.status || "cleared",
-                membership: m.membership,
-                returnFrom: reg.returnStint.from,
-                returnClubId: reg.returnStint.playingClubId,
-              };
-            }
-            return null;
-          },
-          120000
-        );
-        assert(returned?.returnFrom, "return stint recorded", returned);
-        assert(
-          String(returned.returnFrom) <= "2027-08-12",
-          "return on/before first parent fixture",
-          returned
-        );
-        assert(returned.returnClubId === parentId, "return stint is parent", returned);
 
-        const skip = await clickMatching(page, "skip remaining|skip phase");
-        assert(skip, "skip remaining required to progress returned season", { returned, simLabel });
-        await page.waitForTimeout(500);
-
-        // Inspect a real dated parent fixture and its registration side.
-        const fixtureProbe = await page.evaluate((ids) => {
-          const world = window.__getMembershipDebug?.();
-          const regApi = window.__getPlayingRegistrationDebug;
-          const resolve = window.__resolvePlayingClubAt;
-          // Pull first Championship fixture involving the parent from live career debug / standings context.
+        // Authoritative pre-Simulate witness from live snapshot + membership (not date fallback).
+        const before = await page.evaluate(() => {
+          const snap = window.__exportCareerSnapshot?.() || null;
           const d = window.__getLiveCareerDebug?.() || {};
-          const matches = d.recentLeagueFixtures || d.leagueFixtures || [];
-          let sample = matches.find(
-            (m) =>
-              m?.date &&
-              [m.home?.clubId || m.homeClubId, m.away?.clubId || m.awayClubId].includes(ids.parentId)
-          );
-          if (!sample) {
-            // Fallback: ask registration debug alone with the known first CH date window.
-            const probeDate = "2027-08-12";
-            return {
-              date: probeDate,
-              expected: ids.parentId,
-              actual: resolve?.(probeDate) || null,
-              reg: regApi?.(probeDate) || null,
-              source: "date-fallback",
-              membership: world?.membership || null,
-            };
-          }
-          const date = sample.date;
-          const home = sample.home?.clubId || sample.homeClubId;
-          const away = sample.away?.clubId || sample.awayClubId;
+          const m = window.__getMembershipDebug?.() || {};
           return {
-            date,
-            home,
-            away,
-            expected: ids.parentId,
-            actual: resolve?.(date) || null,
-            reg: regApi?.(date) || null,
-            source: "live-fixture",
-            membership: world?.membership || null,
+            snapLeague: snap?.player?.parentClubSnapshot?.leagueId || null,
+            snapClubId: snap?.player?.parentClubSnapshot?.clubId || null,
+            debugSnapLeague: d.parentClubSnapshotLeagueId || null,
+            employmentClubId: snap?.player?.employmentClubId || d.employmentClubId || null,
+            playingClubId: snap?.player?.playingClubId || d.playingClubId || null,
+            loanStatus: snap?.player?.activeLoan?.status || d.activeLoan?.status || null,
+            clubLeagueId: m.clubLeagueId || snap?.player?.club?.leagueId || null,
+            membership: m.membership || null,
+            seasonsCount: snap?.player?.seasons?.length ?? d.seasonsCount ?? 0,
+            simulateDisabled: Boolean(document.getElementById("simulate-btn")?.disabled),
+          };
+        });
+        assert(before.snapLeague === "league:england-premier-league", "serialized stale PL snapshot", before);
+        assert(before.debugSnapLeague === "league:england-premier-league", "debug exposes stale snapshot", before);
+        assert(before.employmentClubId === parentId, "employer is parent", before);
+        assert(before.playingClubId === borrowerId, "playing club is borrower", before);
+        assert(before.loanStatus === "active", "loan active pre-simulate", before);
+        assert(before.clubLeagueId === "league:england-championship" || loaded.loan?.parentWorldLeagueId === "league:england-championship", "live parent CH", before);
+        assert(before.simulateDisabled === false, "Simulate enabled", before);
+        const seasonsBefore = before.seasonsCount;
+        const shotBefore = await shot(page, "07a-moved-parent-pre-simulate");
+
+        const simLabel = await clickSimulate(page);
+        const after = await driveSeasonUi(page, { expectSeasonsAtLeast: seasonsBefore + 1, timeoutMs: 240000 });
+        assert(after.seasonsCount === seasonsBefore + 1, "exactly one new season", after);
+
+        const proof = await page.evaluate((ids) => {
+          const snap = window.__exportCareerSnapshot?.() || null;
+          const d = window.__getLiveCareerDebug?.() || {};
+          const m = window.__getMembershipDebug?.() || {};
+          const resolve = window.__resolvePlayingClubAt;
+          const regApi = window.__getPlayingRegistrationDebug;
+          const player = snap?.player || {};
+          const world = snap?.world || {};
+          // serializeWorldState stores matches as Map entries: [matchId, match]
+          const rawMatches = Array.isArray(world.matches) ? world.matches : [];
+          const matches = rawMatches
+            .map((entry) => (Array.isArray(entry) ? entry[1] : entry))
+            .filter(Boolean);
+          const chMatches = matches.filter(
+            (fx) =>
+              fx &&
+              String(fx.matchId || fx.id || "").includes("league:england-championship:2027")
+          );
+          const parentFixtures = chMatches
+            .filter((fx) => {
+              const home = fx.homeClubId || fx.home?.clubId;
+              const away = fx.awayClubId || fx.away?.clubId;
+              return home === ids.parentId || away === ids.parentId;
+            })
+            .slice()
+            .sort((a, b) => {
+              const da = String(a.date || "");
+              const db = String(b.date || "");
+              if (da !== db) return da < db ? -1 : 1;
+              return String(a.matchId || a.id || "").localeCompare(String(b.matchId || b.id || ""));
+            });
+          const first = parentFixtures[0] || null;
+          const clubs = new Set();
+          for (const fx of chMatches) {
+            const home = fx.homeClubId || fx.home?.clubId;
+            const away = fx.awayClubId || fx.away?.clubId;
+            if (home) clubs.add(home);
+            if (away) clubs.add(away);
+          }
+          const uniqueIds = new Set(chMatches.map((fx) => fx.matchId || fx.id).filter(Boolean));
+          const regs = parentFixtures.map((fx) => {
+            const sideClub =
+              fx.playerSide === "home"
+                ? fx.homeClubId || fx.home?.clubId
+                : fx.playerSide === "away"
+                  ? fx.awayClubId || fx.away?.clubId
+                  : fx.playerClubId || null;
+            return {
+              date: fx.date,
+              matchId: fx.matchId || fx.id || null,
+              home: fx.homeClubId || fx.home?.clubId || null,
+              away: fx.awayClubId || fx.away?.clubId || null,
+              registration: resolve?.(fx.date) || null,
+              minutes: fx.playerStats?.minutes ?? fx.playerParticipation?.minutes ?? null,
+              side: sideClub,
+            };
+          });
+          const wrongReg = regs.filter((r) => r.registration && r.registration !== ids.parentId);
+          const borrowerCredit = regs.filter((r) => r.side === ids.borrowerId);
+          const positiveParent = regs.filter(
+            (r) => r.registration === ids.parentId && Number(r.minutes) > 0
+          );
+          const returnStint = (player.playingStints || [])
+            .filter((s) => s && String(s.kind || "").includes("loan_return"))
+            .slice(-1)[0] || regApi?.()?.returnStint || null;
+          const borrowerClosed = (player.playingStints || []).find(
+            (s) => s?.playingClubId === ids.borrowerId && s?.to
+          );
+          return {
+            seasonsCount: player.seasons?.length ?? d.seasonsCount ?? 0,
+            clubId: player.club?.clubId || d.clubId,
+            clubLeagueId: player.club?.leagueId || m.clubLeagueId || d.clubLeagueId,
+            loanStatus: player.activeLoan?.status || d.activeLoan?.status || null,
+            parentSnap: player.parentClubSnapshot?.leagueId || d.parentClubSnapshotLeagueId || null,
+            membership: m.membership || null,
+            returnStint,
+            borrowerClosedTo: borrowerClosed?.to || null,
+            firstFixture: first
+              ? {
+                  date: first.date,
+                  matchId: first.matchId || first.id || null,
+                  home: first.homeClubId || first.home?.clubId || null,
+                  away: first.awayClubId || first.away?.clubId || null,
+                  competitionId: first.competitionId || first.leagueId || null,
+                  registration: resolve?.(first.date) || null,
+                  minutes: first.playerStats?.minutes ?? null,
+                  side:
+                    first.playerSide === "home"
+                      ? first.home?.clubId
+                      : first.playerSide === "away"
+                        ? first.away?.clubId
+                        : first.playerClubId || null,
+                  source: "world.matches",
+                }
+              : null,
+            editionClubCount: clubs.size,
+            editionFixtureCount: uniqueIds.size || chMatches.length,
+            parentFixtureCount: parentFixtures.length,
+            wrongRegistrationCount: wrongReg.length,
+            borrowerSideCreditCount: borrowerCredit.length,
+            positiveMinuteParentFixtures: positiveParent.length,
+            overlayHidden: (() => {
+              const overlay = document.getElementById("season-animation-overlay");
+              return !overlay || overlay.classList.contains("hidden");
+            })(),
+            seasonActionInFlight: Boolean(d.seasonActionInFlight),
+            nextAction: d.nextAction || null,
           };
         }, { parentId, borrowerId });
 
-        assert(fixtureProbe?.date, "dated parent fixture required", fixtureProbe);
+        assert(proof.clubId === parentId, "desk club is parent", proof);
+        assert(proof.clubLeagueId === "league:england-championship", "Championship desk league", proof);
+        assert(proof.loanStatus === "returned" || proof.loanStatus == null || proof.loanStatus === "cleared", "loan settled", proof);
+        assert(!proof.parentSnap, "parent snapshot cleared", proof);
+        assert(proof.membership?.premier === 20 && proof.membership?.championship === 24, "capacities", proof);
+        assert(proof.returnStint?.playingClubId === parentId, "return stint parent", proof);
+        assert(proof.returnStint?.leagueId === "league:england-championship", "return stint CH", proof);
+        assert(String(proof.returnStint?.from || "") <= "2027-08-12", "return on/before first fixture", proof);
+        assert(proof.borrowerClosedTo, "borrower stint closed", proof);
+        assert(proof.firstFixture?.source === "world.matches", "committed first fixture required", proof);
+        assert(proof.firstFixture?.matchId, "first fixture has match id", proof);
+        assert(proof.firstFixture?.date, "first fixture has date", proof);
         assert(
-          fixtureProbe.actual === parentId,
-          "registration on fixture date must be parent",
-          fixtureProbe
+          proof.firstFixture.home === parentId || proof.firstFixture.away === parentId,
+          "first fixture involves parent",
+          proof.firstFixture
         );
-        assert(
-          fixtureProbe.actual !== borrowerId,
-          "must not remain registered to borrower after return",
-          fixtureProbe
-        );
-        assert(
-          String(returned.returnFrom) <= String(fixtureProbe.date),
-          "return boundary <= fixture date",
-          { returned, fixtureProbe }
-        );
-
-        const m = await membership(page);
-        const d = await debug(page);
-        const reg = await page.evaluate(() => window.__getPlayingRegistrationDebug?.());
-        assert(m?.clubLeagueId === "league:england-championship", "Championship label", m);
-        assert(m?.membership?.premier === 20 && m?.membership?.championship === 24, "capacities", m);
-        assert(!d?.parentClubSnapshotLeagueId, "snapshot cleared", d);
-        assert(reg?.returnStint?.playingClubId === parentId, "return stint parent", reg);
-        const shotPath = await shot(page, "07-moved-parent-loan-return");
+        assert(proof.firstFixture.registration === parentId, "first fixture registration parent", proof.firstFixture);
+        assert(proof.editionClubCount === 24, "24 Championship clubs", proof);
+        assert(proof.editionFixtureCount === 552, "552 Championship fixtures", proof);
+        assert(proof.parentFixtureCount === 46, "46 parent fixtures", proof);
+        assert(proof.wrongRegistrationCount === 0, "all parent dates register to parent", proof);
+        assert(proof.borrowerSideCreditCount === 0, "no post-return borrower credit", proof);
+        assert(proof.positiveMinuteParentFixtures > 0, "positive parent minutes", proof);
+        assert(proof.overlayHidden, "presentation overlay closed", proof);
+        assert(!proof.seasonActionInFlight, "no action in flight", proof);
+        const shotDesk = await shot(page, "07-moved-parent-loan-return");
+        const shotEdition = await shot(page, "07b-moved-parent-returned-edition");
         return {
           loaded,
           before,
           simLabel,
-          returned,
-          skip,
-          fixtureProbe,
-          registration: reg,
-          membership: m,
-          debug: d,
-          shotPath,
+          after,
+          proof,
+          shotBefore,
+          shotPath: shotDesk,
+          shotEdition,
+          commit,
+          dirty,
+        };
+      })
+    )
+  );
+
+  results.push(
+    await runCase("promoted-parent-loan-return-ui", async () =>
+      withBrowser(async (page) => {
+        const loaded = await loadMode(page, "ui-loan-return-promoted-parent");
+        assert(loaded?.ok, "fixture load", loaded);
+        assert(loaded.loan?.parentSnapshotLeagueId === "league:england-championship", "stale snapshot CH", loaded);
+        assert(loaded.loan?.parentWorldLeagueId === "league:england-premier-league", "parent already promoted", loaded);
+        assert(loaded.loan?.loanStillActive === true, "loan still active", loaded);
+        const parentId = loaded.clubId;
+        const borrowerId = loaded.borrowerId;
+        const before = await page.evaluate(() => {
+          const snap = window.__exportCareerSnapshot?.() || null;
+          const d = window.__getLiveCareerDebug?.() || {};
+          return {
+            snapLeague: snap?.player?.parentClubSnapshot?.leagueId || null,
+            debugSnapLeague: d.parentClubSnapshotLeagueId || null,
+            employmentClubId: snap?.player?.employmentClubId || null,
+            playingClubId: snap?.player?.playingClubId || null,
+            seasonsCount: snap?.player?.seasons?.length ?? 0,
+            simulateDisabled: Boolean(document.getElementById("simulate-btn")?.disabled),
+          };
+        });
+        assert(before.snapLeague === "league:england-championship", "serialized stale CH snapshot", before);
+        assert(before.debugSnapLeague === "league:england-championship", "debug stale CH snapshot", before);
+        assert(before.employmentClubId === parentId, "employer parent", before);
+        assert(before.playingClubId === borrowerId, "playing borrower", before);
+        assert(before.simulateDisabled === false, "Simulate enabled", before);
+        const shotBefore = await shot(page, "10a-promoted-parent-pre-simulate");
+        const simLabel = await clickSimulate(page);
+        const after = await driveSeasonUi(page, { expectSeasonsAtLeast: before.seasonsCount + 1, timeoutMs: 240000 });
+        assert(after.seasonsCount === before.seasonsCount + 1, "exactly one new season", after);
+        const proof = await page.evaluate((ids) => {
+          const snap = window.__exportCareerSnapshot?.() || null;
+          const resolve = window.__resolvePlayingClubAt;
+          const player = snap?.player || {};
+          const rawMatches = Array.isArray(snap?.world?.matches) ? snap.world.matches : [];
+          const matches = rawMatches.map((e) => (Array.isArray(e) ? e[1] : e)).filter(Boolean);
+          const plMatches = matches.filter(
+            (fx) =>
+              fx &&
+              String(fx.matchId || fx.id || "").includes("league:england-premier-league:2027")
+          );
+          const parentFixtures = plMatches
+            .filter((fx) => {
+              const home = fx.homeClubId || fx.home?.clubId;
+              const away = fx.awayClubId || fx.away?.clubId;
+              return home === ids.parentId || away === ids.parentId;
+            })
+            .slice()
+            .sort((a, b) => {
+              const da = String(a.date || "");
+              const db = String(b.date || "");
+              if (da !== db) return da < db ? -1 : 1;
+              return String(a.matchId || a.id || "").localeCompare(String(b.matchId || b.id || ""));
+            });
+          const clubs = new Set();
+          for (const fx of plMatches) {
+            const home = fx.homeClubId || fx.home?.clubId;
+            const away = fx.awayClubId || fx.away?.clubId;
+            if (home) clubs.add(home);
+            if (away) clubs.add(away);
+          }
+          const first = parentFixtures[0] || null;
+          const regs = parentFixtures.map((fx) => ({
+            registration: resolve?.(fx.date) || null,
+            minutes: fx.playerStats?.minutes ?? null,
+            side:
+              fx.playerSide === "home"
+                ? fx.homeClubId || fx.home?.clubId
+                : fx.playerSide === "away"
+                  ? fx.awayClubId || fx.away?.clubId
+                  : fx.playerClubId || null,
+          }));
+          const returnStint = (player.playingStints || [])
+            .filter((s) => s && String(s.kind || "").includes("loan_return"))
+            .slice(-1)[0] || null;
+          return {
+            clubId: player.club?.clubId || null,
+            clubLeagueId: player.club?.leagueId || null,
+            parentSnap: player.parentClubSnapshot?.leagueId || null,
+            returnStint,
+            firstFixture: first
+              ? {
+                  date: first.date,
+                  matchId: first.matchId || first.id || null,
+                  home: first.homeClubId || first.home?.clubId || null,
+                  away: first.awayClubId || first.away?.clubId || null,
+                  registration: resolve?.(first.date) || null,
+                  source: "world.matches",
+                }
+              : null,
+            editionClubCount: clubs.size,
+            editionFixtureCount: new Set(plMatches.map((fx) => fx.matchId || fx.id).filter(Boolean)).size,
+            parentFixtureCount: parentFixtures.length,
+            wrongRegistrationCount: regs.filter((r) => r.registration && r.registration !== ids.parentId).length,
+            borrowerSideCreditCount: regs.filter((r) => r.side === ids.borrowerId).length,
+            positiveMinuteParentFixtures: regs.filter(
+              (r) => r.registration === ids.parentId && Number(r.minutes) > 0
+            ).length,
+          };
+        }, { parentId, borrowerId });
+        assert(proof.clubId === parentId, "desk club parent", proof);
+        assert(proof.clubLeagueId === "league:england-premier-league", "PL desk", proof);
+        assert(!proof.parentSnap, "snapshot cleared", proof);
+        assert(proof.returnStint?.leagueId === "league:england-premier-league", "return stint PL", proof);
+        assert(proof.firstFixture?.source === "world.matches", "committed first fixture", proof);
+        assert(proof.firstFixture?.registration === parentId, "first registration parent", proof.firstFixture);
+        assert(proof.editionClubCount === 20, "20 PL clubs", proof);
+        assert(proof.editionFixtureCount === 380, "380 PL fixtures", proof);
+        assert(proof.parentFixtureCount === 38, "38 parent fixtures", proof);
+        assert(proof.wrongRegistrationCount === 0, "all regs parent", proof);
+        assert(proof.borrowerSideCreditCount === 0, "no borrower credit", proof);
+        assert(proof.positiveMinuteParentFixtures > 0, "positive minutes", proof);
+        const shotDesk = await shot(page, "10-promoted-parent-loan-return");
+        return { loaded, before, simLabel, after, proof, shotBefore, shotDesk, commit, dirty };
+      })
+    )
+  );
+
+  results.push(
+    await runCase("coterminal-pending-renewal-loan-return-ui", async () =>
+      withBrowser(async (page) => {
+        const loaded = await loadMode(page, "ui-loan-return-coterminal");
+        assert(loaded?.ok, "fixture load", loaded);
+        assert(loaded.loan?.coterminal === true, "coterminal flag", loaded);
+        assert(loaded.loan?.pendingReview === "pending", "pending review", loaded);
+        const parentId = loaded.clubId;
+        const borrowerId = loaded.borrowerId;
+        const pre = await page.evaluate(() => {
+          const snap = window.__exportCareerSnapshot?.() || null;
+          const d = window.__getLiveCareerDebug?.() || {};
+          return {
+            review: snap?.player?.pendingContractReview?.status || null,
+            loan: snap?.player?.activeLoan?.status || null,
+            snapLeague: snap?.player?.parentClubSnapshot?.leagueId || null,
+            seasonsCount: snap?.player?.seasons?.length ?? 0,
+            simulateDisabled: Boolean(document.getElementById("simulate-btn")?.disabled),
+            renewalOfferId: snap?.player?.pendingOffers?.[0]?.offerId || null,
+            nextAction: d.nextAction || null,
+          };
+        });
+        assert(pre.review === "pending", "review pending pre-sim", pre);
+        assert(pre.loan === "active", "loan active pre-sim", pre);
+        assert(pre.snapLeague === "league:england-premier-league", "stale PL snapshot", pre);
+        const shotBefore = await shot(page, "11a-coterminal-pre-simulate");
+        // Simulate settles loan via pending-review gate and leaves desk on renewal.
+        await clickSimulate(page);
+        await page.waitForTimeout(500);
+        const gated = await page.evaluate(() => {
+          const snap = window.__exportCareerSnapshot?.() || null;
+          const d = window.__getLiveCareerDebug?.() || {};
+          const reg = window.__getPlayingRegistrationDebug?.();
+          return {
+            review: snap?.player?.pendingContractReview?.status || null,
+            loan: snap?.player?.activeLoan?.status || null,
+            clubLeagueId: snap?.player?.club?.leagueId || null,
+            seasonsCount: snap?.player?.seasons?.length ?? 0,
+            returnStint: reg?.returnStint || null,
+            simulateDisabled: Boolean(document.getElementById("simulate-btn")?.disabled),
+            pendingOffers: (snap?.player?.pendingOffers || []).map((o) => ({
+              offerId: o.offerId,
+              isRenewal: o.isRenewal,
+            })),
+            nextAction: d.nextAction || null,
+          };
+        });
+        assert(gated.review === "pending", "review survives loan settle", gated);
+        assert(gated.loan === "returned" || gated.loan === "expired", "loan settled under review", gated);
+        assert(gated.clubLeagueId === "league:england-championship", "live CH after settle", gated);
+        assert(gated.seasonsCount === pre.seasonsCount, "no season while pending", gated);
+        assert(gated.returnStint?.leagueId === "league:england-championship", "pending return stint CH", gated);
+        assert(String(gated.returnStint?.from || "") === "2027-06-30", "return date 2027-06-30", gated);
+        assert(gated.simulateDisabled === true || gated.nextAction, "sim gated or nextAction set", gated);
+        const shotGated = await shot(page, "11b-coterminal-pending-desk");
+        const renewal = gated.pendingOffers.find((o) => o.isRenewal) || gated.pendingOffers[0];
+        assert(renewal?.offerId, "renewal still on tray", gated);
+        const acceptLabel =
+          (await clickMatching(page, "Accept|Sign|Renew")) ||
+          (await page.evaluate((offerId) => {
+            const snap = window.__exportCareerSnapshot?.();
+            const offer = (snap?.player?.pendingOffers || []).find((o) => o.offerId === offerId);
+            const fn = window.__acceptPipelineOffer || window.__acceptTransferOffer;
+            if (!fn || !offer) return null;
+            const res = fn(offer);
+            return res?.ok ? "qa-accept" : null;
+          }, renewal.offerId));
+        assert(acceptLabel, "accepted renewal", { acceptLabel, renewal });
+        await page.waitForTimeout(400);
+        const afterAccept = await page.evaluate(() => {
+          const snap = window.__exportCareerSnapshot?.() || null;
+          return {
+            review: snap?.player?.pendingContractReview?.status || null,
+            contractEndSeason: snap?.player?.contractEndSeason ?? null,
+            seasonsCount: snap?.player?.seasons?.length ?? 0,
+            simulateDisabled: Boolean(document.getElementById("simulate-btn")?.disabled),
+            clubLeagueId: snap?.player?.club?.leagueId || null,
+          };
+        });
+        assert(afterAccept.review !== "pending", "review settled after accept", afterAccept);
+        assert(afterAccept.clubLeagueId === "league:england-championship", "still CH", afterAccept);
+        assert(afterAccept.simulateDisabled === false, "Simulate unlocked", afterAccept);
+        await clickSimulate(page);
+        const after = await driveSeasonUi(page, {
+          expectSeasonsAtLeast: afterAccept.seasonsCount + 1,
+          timeoutMs: 240000,
+        });
+        assert(after.seasonsCount === afterAccept.seasonsCount + 1, "one season after renewal", after);
+        const proof = await page.evaluate((ids) => {
+          const snap = window.__exportCareerSnapshot?.() || null;
+          const resolve = window.__resolvePlayingClubAt;
+          const player = snap?.player || {};
+          const rawMatches = Array.isArray(snap?.world?.matches) ? snap.world.matches : [];
+          const matches = rawMatches.map((e) => (Array.isArray(e) ? e[1] : e)).filter(Boolean);
+          const chMatches = matches.filter(
+            (fx) =>
+              fx &&
+              String(fx.matchId || fx.id || "").includes("league:england-championship:2027")
+          );
+          const parentFixtures = chMatches
+            .filter((fx) => {
+              const home = fx.homeClubId || fx.home?.clubId;
+              const away = fx.awayClubId || fx.away?.clubId;
+              return home === ids.parentId || away === ids.parentId;
+            })
+            .slice()
+            .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.matchId || "").localeCompare(String(b.matchId || "")));
+          const first = parentFixtures[0] || null;
+          return {
+            clubLeagueId: player.club?.leagueId || null,
+            parentFixtureCount: parentFixtures.length,
+            firstFixture: first
+              ? {
+                  date: first.date,
+                  matchId: first.matchId || first.id || null,
+                  registration: resolve?.(first.date) || null,
+                  source: "world.matches",
+                }
+              : null,
+            wrongRegistrationCount: parentFixtures.filter((fx) => resolve?.(fx.date) !== ids.parentId).length,
+          };
+        }, { parentId, borrowerId });
+        assert(proof.clubLeagueId === "league:england-championship", "final CH desk", proof);
+        assert(proof.parentFixtureCount === 46, "46 parent fixtures", proof);
+        assert(proof.firstFixture?.source === "world.matches", "committed first fixture", proof);
+        assert(proof.firstFixture?.registration === parentId, "first reg parent", proof.firstFixture);
+        assert(proof.wrongRegistrationCount === 0, "all regs parent", proof);
+        const shotDesk = await shot(page, "11-coterminal-returned-desk");
+        return {
+          loaded,
+          pre,
+          gated,
+          acceptLabel,
+          afterAccept,
+          after,
+          proof,
+          shotBefore,
+          shotGated,
+          shotDesk,
           commit,
           dirty,
         };

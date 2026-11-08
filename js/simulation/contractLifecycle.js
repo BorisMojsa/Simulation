@@ -817,6 +817,24 @@ export function selectNextCareerAction(player) {
   if (player.pendingDecision) {
     return { id: "resolve-decision", label: "Resolve squad discussion", canSimulate: false };
   }
+  // Co-terminal: soft-settle an ended loan under a pending parent review before
+  // the renewal tray owns the desk (offers may already be present).
+  if (player.pendingContractReview?.status === "pending") {
+    const loan = player.activeLoan;
+    const loanEnded =
+      loan?.status === "active" &&
+      loan.endSeason != null &&
+      (player.seasons?.length ?? 0) >= loan.endSeason;
+    if (loanEnded) {
+      return {
+        id: "settle-loan-pending-review",
+        label: "Return from loan / resolve contract review",
+        canSimulate: true,
+        mode: "pending-review",
+        reviewId: player.pendingContractReview.reviewId,
+      };
+    }
+  }
   if (player.pendingOffers?.length > 0) {
     return { id: "resolve-offers", label: "Review offers", canSimulate: false };
   }

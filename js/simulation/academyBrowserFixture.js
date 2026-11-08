@@ -22,7 +22,7 @@ import { createWorldState, setWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";
 import { reseedCareerRng } from "./rng.js";
 import { ensureTransferSave } from "./transferMigration.js?v=102";
-import { ensureContractAuthority, selectNextCareerAction } from "./contractLifecycle.js?v=102";
+import { ensureContractAuthority, selectNextCareerAction } from "./contractLifecycle.js?v=103";
 import {
   ensureAcademyLifecycle,
   buildAndPersistAcademyReview,

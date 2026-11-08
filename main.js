@@ -3,11 +3,12 @@ import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/si
 import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=62";
 import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=91";
 import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=91";
-import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=91";
+import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=104";
+import { resolvePlayingClubAt, resolvePlayingStintAt } from "./js/simulation/playingRegistration.js";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=91";
 import { createRng } from "./js/simulation/rng.js";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=102";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=94";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=106";
 import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
 import {
   serializeCareerSnapshot,
@@ -17,14 +18,14 @@ import { getOrInitClubSeasonFinance } from "./js/simulation/clubFinance.js";
 import {
   buildMembershipBrowserFixture,
   inspectMembershipDebug,
-} from "./js/simulation/membershipBrowserFixture.js?v=103";
+} from "./js/simulation/membershipBrowserFixture.js?v=106";
 import {
   ensureContractAuthority,
   selectNextCareerAction,
   isFreeAgent,
   declineWindowAndContinue,
   settleBoundaryContractReview,
-} from "./js/simulation/contractLifecycle.js?v=102";
+} from "./js/simulation/contractLifecycle.js?v=103";
 import {
   declineAcademyReview,
   acceptAcademyGraduationOffer,
@@ -709,7 +710,9 @@ window.__resolvePlayingClubAt = function resolvePlayingClubAtDebug(date) {
 window.__getPlayingRegistrationDebug = function getPlayingRegistrationDebug(date = null) {
   if (!player) return null;
   const stints = (player.playingStints || []).map((s) => ({ ...s }));
-  const returnStint = stints.find((s) => s.kind === "loan_return" || s.kind === "loan_recall") || null;
+  const returnStint =
+    stints.find((s) => s.kind === "loan_return" || s.kind === "loan_return_pending_review" || s.kind === "loan_recall") ||
+    null;
   const loanStint = stints.find((s) => s.onLoan && s.to != null) || stints.find((s) => s.onLoan) || null;
   return {
     date,
@@ -763,6 +766,8 @@ window.__getLiveCareerDebug = function getLiveCareerDebug() {
           transactionIds: player.activeLoan.transactionIds || [],
         }
       : null,
+    parentClubSnapshotLeagueId: player.parentClubSnapshot?.leagueId || null,
+    parentClubSnapshotClubId: player.parentClubSnapshot?.clubId || null,
     pendingDecision: player.pendingDecision?.kind || null,
     pendingOffers: (player.pendingOffers || []).map((o) => ({
       club: o.clubDisplay || o.club,

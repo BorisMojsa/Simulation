@@ -2,7 +2,7 @@
  * Deterministic mid-season decision policies for tests and automated careers.
  */
 import { resolveSquadDecision } from "./squadDecisions.js?v=91";
-import { startLoan } from "./loanMarket.js?v=91";
+import { startLoan } from "./loanMarket.js?v=104";
 import { acceptPipelineOffer } from "./dealPipeline.js?v=91";
 import { resolveMoveRegistration } from "./destinationSchedule.js?v=91";
 

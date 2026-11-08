@@ -27,7 +27,7 @@ import {
   releaseToFreeAgency,
   selectNextCareerAction,
   isFreeAgent,
-} from "./contractLifecycle.js?v=102";
+} from "./contractLifecycle.js?v=103";
 import { generateTransferOffers } from "./transferMarket.js?v=91";
 import { acceptPipelineOffer } from "./dealPipeline.js?v=91";
 import { refreshAbilityCaches } from "./playerAbility.js";

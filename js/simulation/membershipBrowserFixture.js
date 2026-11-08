@@ -5,8 +5,8 @@
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
 import { createPlayerIdentity } from "./playerDevelopment.js?v=91";
-import { simulateSeason } from "./seasonSimulator.js?v=94";
-import { simulateChronologicalSeason } from "./chronologicalSeason.js?v=94";
+import { simulateSeason } from "./seasonSimulator.js?v=106";
+import { simulateChronologicalSeason } from "./chronologicalSeason.js?v=105";
 import {
   createWorldState,
   setWorldState,
@@ -27,8 +27,9 @@ import {
 import { buildDestinationLeagueSchedule } from "./destinationSchedule.js?v=91";
 import { roundTripCareerSnapshot } from "./careerSnapshot.js?v=102";
 import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js?v=91";
-import { buildValidatedOffer, applyOfferToPlayer } from "./dealPipeline.js?v=91";
-import { startLoan, endLoan } from "./loanMarket.js?v=91";
+import { buildValidatedOffer, applyOfferToPlayer, generatePipelineOffers } from "./dealPipeline.js?v=91";
+import { startLoan, endLoan } from "./loanMarket.js?v=104";
+import { openBoundaryContractReview } from "./contractLifecycle.js?v=103";
 
 const PL = () => LEAGUE_BY_ID.get("league:england-premier-league");
 const CH = () => LEAGUE_BY_ID.get("league:england-championship");
@@ -358,6 +359,124 @@ export function buildMembershipBrowserFixture(opts = {}) {
       expect: {
         afterReturnLeagueId: CH().leagueId,
         parentMustRelegate: true,
+      },
+      worldSerialized: serializeWorldState(world),
+    };
+  }
+
+  if (mode === "ui-loan-return-coterminal") {
+    const base = buildMembershipBrowserFixture({
+      mode: "ui-loan-return-ready",
+      seed: cfg.seed,
+      startYear: cfg.startYear,
+    });
+    if (!base.ok) return base;
+    const player = base.player;
+    player.contractEndSeason = player.seasons.length;
+    openBoundaryContractReview(player, { performanceScore: 100, financeOk: true });
+    const gen = generatePipelineOffers(player, {
+      performanceScore: 100,
+      reviewPhase: "boundary",
+      forceReevaluate: true,
+      forceGenerate: true,
+    });
+    const renewal = (gen.offers || []).find((o) => o.isRenewal) || null;
+    if (!renewal) return { ok: false, reason: "coterminal-renewal-missing", base };
+    player.pendingOffers = [renewal];
+    if (player.pendingContractReview) player.pendingContractReview.offers = [renewal];
+    return {
+      ...base,
+      mode,
+      ok: true,
+      player,
+      loan: {
+        ...base.loan,
+        coterminal: true,
+        pendingReview: player.pendingContractReview?.status || null,
+        renewalOfferId: renewal.offerId || null,
+      },
+      renewal,
+    };
+  }
+
+  if (mode === "ui-loan-return-promoted-parent") {
+    // Parent starts in Championship; loan away; force promotion; leave career ready for return.
+    const built = makePlayer(CH(), "Birmingham City", cfg);
+    if (!built) return { ok: false, reason: "birmingham-missing" };
+    const { player, club } = built;
+    const borrower = findSeniorClubById(PL().clubs.find((c) => c.clubId !== club.clubId)?.clubId);
+    if (!borrower) return { ok: false, reason: "borrower-missing" };
+    const accepted = startLoan(player, {
+      isLoan: true,
+      wage: 4000,
+      expectedRole: "starter",
+      clubId: borrower.clubId,
+      club: borrower,
+      loanTerms: {
+        loanId: "fix03-browser-promoted-parent",
+        borrowingClubId: borrower.clubId,
+        parentClubId: club.clubId,
+        borrowerWageShare: 0.5,
+        parentWageShare: 0.5,
+        loanFee: 0,
+        endSeason: 1,
+        startDate: `${cfg.startYear}-07-15`,
+      },
+    });
+    if (!accepted.ok) return { ok: false, reason: accepted.reason || "loan-failed" };
+    biasClub(world, PL().leagueId, borrower.clubId, false);
+    biasClub(world, CH().leagueId, club.clubId, true);
+    const done = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+      pauseForDecisions: false,
+      autoDecisionPolicy: "stay",
+    });
+    if (!done?.season) return { ok: false, reason: "borrower-season-incomplete" };
+    if (!world.leagueMemberships.get(PL().leagueId).includes(club.clubId)) {
+      const chIds = world.leagueEditionRosters.get(`${CH().leagueId}::${cfg.startYear}`)?.clubIds;
+      const plIds = world.leagueEditionRosters.get(`${PL().leagueId}::${cfg.startYear}`)?.clubIds;
+      if (!chIds || !plIds) return { ok: false, reason: "missing-edition-freeze" };
+      const orderedCh = orderWithClubAt(chIds, club.clubId, 2);
+      commitForcedEditionResults(CH(), cfg.startYear, orderedCh, world);
+      commitForcedEditionResults(PL(), cfg.startYear, plIds, world);
+      const fin = finalizeMembershipAfterSeason({
+        completedLeague: CH(),
+        completedSeasonYear: cfg.startYear,
+        world,
+        completedClubId: club.clubId,
+      });
+      if (!fin.ok && !fin.alreadyApplied) {
+        return { ok: false, reason: fin.reason || "parent-promotion-failed" };
+      }
+    }
+    player.pendingOffers = [];
+    player.pendingDecision = null;
+    player.pendingSeniorScenario = null;
+    player.seasonCheckpoint = null;
+    player.simRevealCursor = null;
+    return {
+      ok: true,
+      mode,
+      player,
+      clubId: club.clubId,
+      borrowerId: borrower.clubId,
+      evidence: evidenceFromWorld(world, club.clubId),
+      loan: {
+        ok: accepted.ok,
+        parentSnapshotLeagueId: player.parentClubSnapshot?.leagueId,
+        playingClubId: player.playingClubId,
+        employmentClubId: player.employmentClubId,
+        parentWorldLeagueId:
+          world.clubs.get(club.clubId)?.leagueId ||
+          ((world.leagueMemberships.get(PL().leagueId) || []).includes(club.clubId)
+            ? PL().leagueId
+            : CH().leagueId),
+        seasonsCompleted: player.seasons?.length || 0,
+        loanStillActive: player.activeLoan?.status === "active",
+        canSimulateNext: true,
+      },
+      expect: {
+        afterReturnLeagueId: PL().leagueId,
+        parentMustPromote: true,
       },
       worldSerialized: serializeWorldState(world),
     };

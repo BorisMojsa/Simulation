@@ -4,7 +4,7 @@
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
 import { createPlayerIdentity } from "./playerDevelopment.js?v=91";
-import { simulateSeason } from "./seasonSimulator.js?v=94";
+import { simulateSeason } from "./seasonSimulator.js?v=106";
 import { createWorldState, setWorldState, getWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";
 import { reseedCareerRng } from "./rng.js";

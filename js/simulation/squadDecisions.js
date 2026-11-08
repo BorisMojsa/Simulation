@@ -4,7 +4,7 @@
 import { SQUAD_REVIEW } from "../config/recruitmentConfig.js";
 import { createStreamRng } from "./rng.js";
 import { evaluateSportingFit } from "./recruitmentModel.js?v=91";
-import { generateLoanOffers, endLoan } from "./loanMarket.js?v=91";
+import { generateLoanOffers, endLoan } from "./loanMarket.js?v=104";
 import { isAvailable } from "./playerHealth.js";
 import {
   ensureContractAuthority,
@@ -12,7 +12,7 @@ import {
   isContractActive,
   declineWindowAndContinue,
   settleBoundaryContractReview,
-} from "./contractLifecycle.js?v=102";
+} from "./contractLifecycle.js?v=103";
 import {
   assessClubPlayingTime,
   clubMinutesShareFromAssessment,

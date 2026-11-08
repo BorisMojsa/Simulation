@@ -19,7 +19,7 @@ import {
   qualificationForPosition,
 } from "./leaguePhase.js?v=91";
 import { finalizeMembershipForSeasonSegments } from "./leagueMembership.js?v=91";
-import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=94";
+import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=105";
 import { findLeagueById } from "./destinationSchedule.js?v=91";
 import { evaluateSeasonAwards } from "./individualAwards.js?v=91";
 import {
@@ -42,7 +42,7 @@ import {
   advanceFreeAgentPeriod,
   isFreeAgent,
   selectNextCareerAction,
-} from "./contractLifecycle.js?v=102";
+} from "./contractLifecycle.js?v=103";
 import {
   assessClubPlayingTime,
   participationLedgerFromAssessment,
@@ -55,7 +55,7 @@ import {
   migrateAcademyLifecycle,
   isAcademyEnrolled,
 } from "./academyLifecycle.js?v=102";
-import { endLoan } from "./loanMarket.js?v=91";
+import { endLoan } from "./loanMarket.js?v=104";
 import {
   playerEntitledToClubHonor,
   playingStintsForEvidence,

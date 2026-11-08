@@ -22,7 +22,7 @@ import {
   releaseToFreeAgency,
   isContractActive,
   completedSeasons,
-} from "./contractLifecycle.js?v=102";
+} from "./contractLifecycle.js?v=103";
 import { recordPlayingTransition, ensurePlayingStints } from "./playingRegistration.js";
 
 const LOAN_DEST_MIN_SHARE = SQUAD_REVIEW.loanDestinationMinMinutesShare;
@@ -553,11 +553,37 @@ export function endLoan(player, resolution = "return", opts = {}) {
   // Co-terminal loan end while a parent boundary review is open: settle the
   // borrower spell/finance, restore parent registration, but do NOT release or
   // discard the unresolved parent renewal decision.
+  // Use the same live-division projection and effective-date rules as a normal
+  // return — parentClubSnapshot may still name the pre-move division.
   if (pendingParentReview && resolution !== "purchase") {
     settleLoanSlotsAndWages(player, loan, sk, contractExpired ? "expiry" : "return");
-    player.club = { ...parent, isLoanSpell: false };
-    player.employmentClubId = loan.parentClubId;
-    player.playingClubId = loan.parentClubId;
+    const parentId = loan.parentClubId || parent?.clubId;
+    const liveMeta = resolveClubLeagueMetadata(parentId, getWorldState()) || findSeniorClubById(parentId);
+    const restoredParent = {
+      ...parent,
+      ...(liveMeta || {}),
+      clubId: parentId,
+      name: parent?.name || liveMeta?.name,
+      displayName: parent?.displayName || liveMeta?.displayName || parent?.name,
+      badge: parent?.badge || liveMeta?.badge,
+      overall: parent?.overall ?? liveMeta?.overall,
+      attack: parent?.attack ?? liveMeta?.attack,
+      midfield: parent?.midfield ?? liveMeta?.midfield,
+      defence: parent?.defence ?? liveMeta?.defence,
+      goalkeeper: parent?.goalkeeper ?? liveMeta?.goalkeeper,
+      financialTier: parent?.financialTier ?? liveMeta?.financialTier,
+      reputation: parent?.reputation ?? liveMeta?.reputation,
+      league: liveMeta?.league || parent?.league,
+      leagueDisplay: liveMeta?.leagueDisplay || parent?.leagueDisplay,
+      leagueId: liveMeta?.leagueId || parent?.leagueId,
+      tier: liveMeta?.tier ?? parent?.tier,
+      divisionLevel: liveMeta?.divisionLevel ?? parent?.divisionLevel,
+      nation: liveMeta?.nation || parent?.nation,
+      isLoanSpell: false,
+    };
+    player.club = restoredParent;
+    player.employmentClubId = parentId;
+    player.playingClubId = parentId;
     if (Number.isFinite(loan.previousWeeklyWage)) {
       player.weeklyWage = loan.previousWeeklyWage;
       player.wage = loan.previousWeeklyWage;
@@ -570,22 +596,18 @@ export function endLoan(player, resolution = "return", opts = {}) {
     player.parentClubSnapshot = null;
     if (!player.consumedTransitionIds) player.consumedTransitionIds = [];
     player.consumedTransitionIds.push(settleId);
-    const returnDate =
-      opts.effectiveDate ||
-      opts.date ||
-      loan.endDate ||
-      `${(player.startYear || 2026) + completedSeasons(player) + 1}-06-30`;
+    const returnDate = resolveLoanReturnEffectiveDate(player, loan, opts);
     ensurePlayingStints(player, { asOfDate: returnDate });
     recordPlayingTransition(player, {
       effectiveDate: returnDate,
-      playingClubId: loan.parentClubId,
-      employmentClubId: loan.parentClubId,
-      leagueId: parent?.leagueId || null,
-      clubName: parent?.name || null,
+      playingClubId: parentId,
+      employmentClubId: parentId,
+      leagueId: restoredParent.leagueId || null,
+      clubName: restoredParent.name || null,
       kind: "loan_return_pending_review",
       onLoan: false,
     });
-    return { ok: true, resolution: "return-pending-review" };
+    return { ok: true, resolution: "return-pending-review", effectiveDate: returnDate };
   }
 
   if (contractExpired) {
