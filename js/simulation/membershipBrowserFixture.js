@@ -5,7 +5,7 @@
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
 import { createPlayerIdentity } from "./playerDevelopment.js?v=91";
-import { simulateSeason } from "./seasonSimulator.js?v=106";
+import { simulateSeason } from "./seasonSimulator.js?v=107";
 import { simulateChronologicalSeason } from "./chronologicalSeason.js?v=105";
 import {
   createWorldState,
@@ -25,10 +25,10 @@ import {
   leagueIdOf,
 } from "./leagueMembership.js?v=91";
 import { buildDestinationLeagueSchedule } from "./destinationSchedule.js?v=91";
-import { roundTripCareerSnapshot } from "./careerSnapshot.js?v=102";
+import { roundTripCareerSnapshot } from "./careerSnapshot.js?v=103";
 import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js?v=91";
 import { buildValidatedOffer, applyOfferToPlayer, generatePipelineOffers } from "./dealPipeline.js?v=91";
-import { startLoan, endLoan } from "./loanMarket.js?v=104";
+import { startLoan, endLoan } from "./loanMarket.js?v=105";
 import { openBoundaryContractReview } from "./contractLifecycle.js?v=103";
 
 const PL = () => LEAGUE_BY_ID.get("league:england-premier-league");

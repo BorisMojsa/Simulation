@@ -2,6 +2,10 @@
  * R2 Item 2: loan return after parent promotion/relegation, including co-terminal renewal.
  */
 import assert from "node:assert/strict";
+import { gunzipSync } from "node:zlib";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { LEAGUES, LEAGUE_LOOKUP } from "../js/data/leagues.js";
 import { buildMembershipBrowserFixture } from "../js/simulation/membershipBrowserFixture.js";
@@ -13,15 +17,21 @@ import {
   settleBoundaryContractReview,
 } from "../js/simulation/contractLifecycle.js";
 import { generatePipelineOffers, acceptPipelineOffer } from "../js/simulation/dealPipeline.js";
-import { endLoan, resolveLoanReturnEffectiveDate } from "../js/simulation/loanMarket.js";
+import {
+  endLoan,
+  resolveLoanReturnEffectiveDate,
+  repairStalePendingLoanReturnBoundary,
+} from "../js/simulation/loanMarket.js";
 import { simulateSeason } from "../js/simulation/seasonSimulator.js";
 import { resolvePlayingClubAt } from "../js/simulation/playingRegistration.js";
 import { resolveClubLeagueMetadata } from "../js/simulation/leagueMembership.js";
-import { getWorldState } from "../js/simulation/worldState.js";
+import { getWorldState, setWorldState } from "../js/simulation/worldState.js";
 import {
   serializeCareerSnapshot,
   deserializeCareerSnapshot,
 } from "../js/simulation/careerSnapshot.js";
+
+const FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 
 const PARENT = "club:england:ipswich-town";
 const CH = "league:england-championship";
@@ -203,6 +213,86 @@ test("R2-02-D: restore at pending return boundary does not double-settle", () =>
     String(s.kind || "").includes("loan_return")
   );
   assert.equal(stints.length, 1);
+});
+
+test("R2-02-D legacy: 1867753 pending-return snapshot repairs stale division/date then plays parent season", () => {
+  const meta = JSON.parse(
+    readFileSync(join(FIXTURE_DIR, "r2-02-legacy-coterminal-pending-1867753.meta.json"), "utf8")
+  );
+  assert.equal(meta.producedByCommit, "186775393ce1b433543758816ee2bda4f68c0f32");
+  assert.equal(meta.clubLeagueId, PL);
+  assert.equal(meta.returnStint?.from, "2028-06-30");
+  assert.equal(meta.returnStint?.leagueId, PL);
+
+  const raw = gunzipSync(
+    readFileSync(join(FIXTURE_DIR, "r2-02-legacy-coterminal-pending-1867753.json.gz"))
+  );
+  const data = JSON.parse(raw.toString("utf8"));
+  // Capture pre-repair bytes from the raw payload (before ensureTransferSave repair).
+  assert.equal(data.player.club?.leagueId, PL);
+  assert.equal(
+    data.player.playingStints?.find((s) => s.kind === "loan_return_pending_review")?.from,
+    "2028-06-30"
+  );
+  const seasonsBefore = data.player.seasons?.length ?? 0;
+  const matchIdsBefore = (Array.isArray(data.world?.matches) ? data.world.matches : [])
+    .map((entry) => (Array.isArray(entry) ? entry[0] : entry?.matchId || entry?.id))
+    .filter(Boolean)
+    .sort();
+  const consumedBefore = [...(data.player.consumedTransitionIds || [])];
+  const returnStintIdBefore = data.player.playingStints?.find(
+    (s) => s.kind === "loan_return_pending_review"
+  )?.stintId;
+
+  const restored = deserializeCareerSnapshot(data);
+  assert.ok(restored?.player);
+  if (restored.world) setWorldState(restored.world);
+  const player = restored.player;
+  assert.equal(player.pendingContractReview?.status, "pending");
+  assert.equal(player.club?.leagueId, CH, "restored club uses live Championship");
+  const returnStint = [...(player.playingStints || [])]
+    .reverse()
+    .find((s) => String(s.kind || "").includes("loan_return"));
+  assert.equal(returnStint?.from, "2027-06-30");
+  assert.equal(returnStint?.leagueId, CH);
+  assert.equal(returnStint?.stintId, returnStintIdBefore, "same stint identity, patched in place");
+  assert.equal(player.seasons.length, seasonsBefore, "no new season on repair");
+  assert.deepEqual(player.consumedTransitionIds || [], consumedBefore, "no extra settlement id");
+  const matchIdsAfter = [...(getWorldState()?.matches?.keys?.() || [])].map(String).sort();
+  assert.deepEqual(matchIdsAfter, matchIdsBefore, "committed match history unchanged");
+
+  // Idempotent repair after restore.
+  const again = repairStalePendingLoanReturnBoundary(player, getWorldState());
+  assert.equal(again.repaired, false);
+
+  const dup = endLoan(player, "return");
+  assert.ok(dup.duplicate || dup.reason === "no-active-loan");
+  assert.equal(
+    (player.playingStints || []).filter((s) => String(s.kind || "").includes("loan_return")).length,
+    1
+  );
+
+  const renewal =
+    (player.pendingOffers || []).find((o) => o.isRenewal) ||
+    (player.pendingContractReview?.offers || []).find((o) => o.isRenewal);
+  assert.ok(renewal, "renewal tray intact after repair");
+  const accepted = acceptPipelineOffer(player, renewal);
+  assert.equal(accepted.ok, true);
+  const next = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: false,
+    autoDecisionPolicy: "stay",
+  });
+  assert.ok(next.season, "parent Championship season after renewal");
+  assert.equal(player.club?.leagueId, CH);
+  assert.equal(player.seasons.length, seasonsBefore + 1);
+  const parentFixtures = (next.leagueAllMatches || []).filter((m) =>
+    [m.home?.clubId, m.away?.clubId].includes(PARENT)
+  );
+  assert.equal(parentFixtures.length, 46);
+  assert.equal(
+    parentFixtures.filter((m) => resolvePlayingClubAt(player, m.date) !== PARENT).length,
+    0
+  );
 });
 
 test("resolveLoanReturnEffectiveDate prefers explicit then loan endDate then completed boundary", () => {

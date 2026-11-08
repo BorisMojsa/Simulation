@@ -55,7 +55,7 @@ import {
   migrateAcademyLifecycle,
   isAcademyEnrolled,
 } from "./academyLifecycle.js?v=102";
-import { endLoan } from "./loanMarket.js?v=104";
+import { endLoan } from "./loanMarket.js?v=105";
 import {
   playerEntitledToClubHonor,
   playingStintsForEvidence,

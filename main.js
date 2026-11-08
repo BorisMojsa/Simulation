@@ -3,22 +3,22 @@ import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/si
 import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=62";
 import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=91";
 import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=91";
-import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=104";
+import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=105";
 import { resolvePlayingClubAt, resolvePlayingStintAt } from "./js/simulation/playingRegistration.js";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=91";
 import { createRng } from "./js/simulation/rng.js";
-import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=102";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=106";
+import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=103";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=107";
 import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
 import {
   serializeCareerSnapshot,
   deserializeCareerSnapshot,
-} from "./js/simulation/careerSnapshot.js?v=102";
+} from "./js/simulation/careerSnapshot.js?v=103";
 import { getOrInitClubSeasonFinance } from "./js/simulation/clubFinance.js";
 import {
   buildMembershipBrowserFixture,
   inspectMembershipDebug,
-} from "./js/simulation/membershipBrowserFixture.js?v=106";
+} from "./js/simulation/membershipBrowserFixture.js?v=107";
 import {
   ensureContractAuthority,
   selectNextCareerAction,
@@ -1029,6 +1029,20 @@ async function simulateSeasonWithAnimation() {
       return;
     }
 
+    // Pending parent boundary review with no committed season: soft-settle may
+    // already have run inside simulateSeason. Do not open season animation or
+    // regenerate the renewal tray — keep the review desk intact.
+    if (
+      (seasonData.pendingContractReview || player.pendingContractReview?.status === "pending") &&
+      !seasonData.season
+    ) {
+      ensureTransferSave(player);
+      refreshOverview();
+      refreshTransferOffers();
+      syncSimulateButton();
+      return;
+    }
+
     // Fresh season start cursor when beginning a completed run without prior segment
     if (!player.simRevealCursor) player.simRevealCursor = [];
     await finalizeCompletedSeasonUi(seasonData);
@@ -1081,6 +1095,18 @@ async function resumeSeasonAfterDecision(opts = {}) {
 
 async function finalizeCompletedSeasonUi(seasonData) {
   if (!seasonData) {
+    syncSimulateButton();
+    return;
+  }
+
+  // Defense in depth: pending review with no season must not animate or rebook offers.
+  if (
+    (seasonData.pendingContractReview || player?.pendingContractReview?.status === "pending") &&
+    !seasonData.season
+  ) {
+    ensureTransferSave(player);
+    refreshOverview();
+    refreshTransferOffers();
     syncSimulateButton();
     return;
   }

@@ -691,6 +691,90 @@ export function resolveLoanReturnEffectiveDate(player, loan, opts = {}) {
   return `${startYear + completed}-06-30`;
 }
 
+/**
+ * Repair an identifiable unplayed co-terminal return boundary left by the old
+ * pending-review settlement (stale parent division + late return stint).
+ * Does not re-settle finance, invent transitions, or rewrite committed matches.
+ */
+export function repairStalePendingLoanReturnBoundary(player, world = getWorldState(), opts = {}) {
+  if (!player || typeof player !== "object") return { repaired: false, reason: "no-player" };
+  if (player.pendingContractReview?.status !== "pending") {
+    return { repaired: false, reason: "not-pending-review" };
+  }
+  const loan = player.activeLoan;
+  if (!loan || loan.status === "active") {
+    return { repaired: false, reason: "loan-not-settled" };
+  }
+  const parentId = loan.parentClubId || player.employmentClubId || player.club?.clubId;
+  if (!parentId) return { repaired: false, reason: "no-parent-id" };
+
+  const liveMeta = resolveClubLeagueMetadata(parentId, world) || findSeniorClubById(parentId);
+  const liveLeagueId = liveMeta?.leagueId || null;
+  const expectedDate = resolveLoanReturnEffectiveDate(player, loan, opts);
+  const stints = Array.isArray(player.playingStints) ? player.playingStints : [];
+  const returnStint = [...stints].reverse().find((s) =>
+    s && (s.kind === "loan_return_pending_review" || s.kind === "loan_return")
+  );
+  const clubStale =
+    Boolean(liveLeagueId) &&
+    player.club?.clubId === parentId &&
+    player.club?.leagueId &&
+    player.club.leagueId !== liveLeagueId;
+  const stintStale =
+    Boolean(returnStint) &&
+    ((liveLeagueId && returnStint.leagueId && returnStint.leagueId !== liveLeagueId) ||
+      (returnStint.from && String(returnStint.from) > String(expectedDate)));
+
+  if (!clubStale && !stintStale) {
+    return { repaired: false, reason: "no-identifiable-stale-boundary" };
+  }
+
+  const before = {
+    clubLeagueId: player.club?.leagueId || null,
+    stintFrom: returnStint?.from || null,
+    stintLeagueId: returnStint?.leagueId || null,
+  };
+
+  if (clubStale && liveMeta) {
+    player.club = {
+      ...player.club,
+      ...liveMeta,
+      clubId: parentId,
+      name: player.club?.name || liveMeta.name,
+      displayName: player.club?.displayName || liveMeta.displayName || liveMeta.name,
+      league: liveMeta.league || player.club?.league,
+      leagueDisplay: liveMeta.leagueDisplay || player.club?.leagueDisplay,
+      leagueId: liveLeagueId,
+      tier: liveMeta.tier ?? player.club?.tier,
+      divisionLevel: liveMeta.divisionLevel ?? player.club?.divisionLevel,
+      nation: liveMeta.nation || player.club?.nation,
+      isLoanSpell: false,
+    };
+  }
+  if (stintStale && returnStint) {
+    if (liveLeagueId) returnStint.leagueId = liveLeagueId;
+    if (returnStint.from && String(returnStint.from) > String(expectedDate)) {
+      returnStint.from = expectedDate;
+    }
+    if (liveMeta?.name) returnStint.clubName = returnStint.clubName || liveMeta.name;
+  }
+
+  player.employmentClubId = parentId;
+  player.playingClubId = parentId;
+  // Never re-enter endLoan / finance settlement here.
+  return {
+    repaired: true,
+    parentId,
+    expectedDate,
+    before,
+    after: {
+      clubLeagueId: player.club?.leagueId || null,
+      stintFrom: returnStint?.from || null,
+      stintLeagueId: returnStint?.leagueId || null,
+    },
+  };
+}
+
 export function recallLoan(player, dateKey = null) {
   const loan = player.activeLoan;
   if (!loan?.recallClause) return { ok: false, reason: "no-recall-clause" };

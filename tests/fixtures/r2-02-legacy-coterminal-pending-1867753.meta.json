@@ -1,0 +1,20 @@
+{
+  "producedByCommit": "186775393ce1b433543758816ee2bda4f68c0f32",
+  "seed": 42,
+  "mode": "ui-loan-return-ready",
+  "endLoanResolution": "return-pending-review",
+  "clubLeagueId": "league:england-premier-league",
+  "returnStint": {
+    "stintId": "stint:loan_return_pending_review:fix03-membership-fixture-v1:ui-loan-return-ready:club:england:ipswich-town:2028-06-30:2",
+    "from": "2028-06-30",
+    "to": null,
+    "playingClubId": "club:england:ipswich-town",
+    "employmentClubId": "club:england:ipswich-town",
+    "leagueId": "league:england-premier-league",
+    "clubName": "Ipswich Town",
+    "kind": "loan_return_pending_review",
+    "onLoan": false
+  },
+  "renewalOfferId": "club:england:ipswich-town:renewal:2027:starter:258000:0",
+  "seasonsCount": 1
+}

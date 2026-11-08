@@ -20,7 +20,7 @@ import { rivalsForClub } from "../data/clubRivals.js";
 import { createRng } from "./rng.js";
 import { squadReviewCheckpointDate } from "../data/registrationWindows.js";
 import { evaluateSquadDecision, resolveSquadDecision } from "./squadDecisions.js?v=91";
-import { generateLoanOffers } from "./loanMarket.js?v=104";
+import { generateLoanOffers } from "./loanMarket.js?v=105";
 import { generatePipelineOffers } from "./dealPipeline.js?v=91";
 import { exportClubFinanceState, importClubFinanceState } from "./clubFinance.js";
 import {

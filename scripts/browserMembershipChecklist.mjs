@@ -318,6 +318,15 @@ async function runCase(name, fn) {
   }
 }
 
+function isUnexpectedConsoleError(text) {
+  const t = String(text || "");
+  if (!t) return false;
+  // Benign browser/devtools noise that does not indicate product failure.
+  if (/Download the React DevTools/i.test(t)) return false;
+  if (/favicon\.ico/i.test(t)) return false;
+  return true;
+}
+
 async function withBrowser(fn) {
   const { chromium } = await loadPlaywright();
   const browser = await chromium.launch({
@@ -328,13 +337,21 @@ async function withBrowser(fn) {
   const page = await browser.newPage();
   page.setDefaultTimeout(60000);
   const consoleErrors = [];
-  page.on("pageerror", (e) => consoleErrors.push(String(e)));
+  const pageErrors = [];
+  page.on("pageerror", (e) => pageErrors.push(String(e)));
   page.on("console", (msg) => {
     if (msg.type() === "error") consoleErrors.push(msg.text());
   });
   try {
     const evidence = await fn(page);
-    return { ...evidence, consoleErrors };
+    const unexpectedConsole = consoleErrors.filter(isUnexpectedConsoleError);
+    assert(pageErrors.length === 0, "page errors during browser case", { pageErrors, consoleErrors });
+    assert(unexpectedConsole.length === 0, "unexpected console errors during browser case", {
+      unexpectedConsole,
+      consoleErrors,
+      pageErrors,
+    });
+    return { ...evidence, consoleErrors, pageErrors };
   } finally {
     await browser.close().catch(() => {});
   }
@@ -868,12 +885,14 @@ async function main() {
         assert(pre.snapLeague === "league:england-premier-league", "stale PL snapshot", pre);
         const shotBefore = await shot(page, "11a-coterminal-pre-simulate");
         // Simulate settles loan via pending-review gate and leaves desk on renewal.
+        // Must not open season animation or commit a new season.
         await clickSimulate(page);
         await page.waitForTimeout(500);
         const gated = await page.evaluate(() => {
           const snap = window.__exportCareerSnapshot?.() || null;
           const d = window.__getLiveCareerDebug?.() || {};
           const reg = window.__getPlayingRegistrationDebug?.();
+          const overlay = document.getElementById("season-animation-overlay");
           return {
             review: snap?.player?.pendingContractReview?.status || null,
             loan: snap?.player?.activeLoan?.status || null,
@@ -884,17 +903,28 @@ async function main() {
             pendingOffers: (snap?.player?.pendingOffers || []).map((o) => ({
               offerId: o.offerId,
               isRenewal: o.isRenewal,
+              status: o.status || null,
             })),
+            renewalOfferId: (snap?.player?.pendingOffers || []).find((o) => o.isRenewal)?.offerId || null,
             nextAction: d.nextAction || null,
+            overlayHidden: !overlay || overlay.classList.contains("hidden"),
+            seasonActionInFlight: Boolean(d.seasonActionInFlight),
           };
         });
         assert(gated.review === "pending", "review survives loan settle", gated);
         assert(gated.loan === "returned" || gated.loan === "expired", "loan settled under review", gated);
         assert(gated.clubLeagueId === "league:england-championship", "live CH after settle", gated);
-        assert(gated.seasonsCount === pre.seasonsCount, "no season while pending", gated);
+        assert(gated.seasonsCount === pre.seasonsCount, "zero new season commits while pending", gated);
+        assert(gated.overlayHidden, "no season animation for pending-review gate", gated);
+        assert(!gated.seasonActionInFlight, "season action not left in flight", gated);
         assert(gated.returnStint?.leagueId === "league:england-championship", "pending return stint CH", gated);
         assert(String(gated.returnStint?.from || "") === "2027-06-30", "return date 2027-06-30", gated);
-        assert(gated.simulateDisabled === true || gated.nextAction, "sim gated or nextAction set", gated);
+        assert(gated.renewalOfferId, "renewal tray intact after soft settle", gated);
+        assert(
+          gated.simulateDisabled === true || gated.nextAction?.id === "resolve-offers" || gated.nextAction?.id === "resolve-contract-review",
+          "sim gated to renewal tray",
+          gated
+        );
         const shotGated = await shot(page, "11b-coterminal-pending-desk");
         const renewal = gated.pendingOffers.find((o) => o.isRenewal) || gated.pendingOffers[0];
         assert(renewal?.offerId, "renewal still on tray", gated);

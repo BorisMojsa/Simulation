@@ -13,7 +13,7 @@ import { reseedCareerRng, createRng } from "./rng.js";
 import { initializePlayerDevelopment } from "./playerDevelopmentModel.js";
 import { ensurePlayingStints } from "./playingRegistration.js";
 import { refreshAbilityCaches } from "./playerAbility.js";
-import { serializeCareerSnapshot } from "./careerSnapshot.js?v=102";
+import { serializeCareerSnapshot } from "./careerSnapshot.js?v=103";
 
 function baseClub() {
   const league = LEAGUE_BY_ID.get("league:england-premier-league");

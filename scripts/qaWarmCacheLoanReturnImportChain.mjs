@@ -3,8 +3,9 @@
  * Warm-cache proof for R2 Item 2 loan-return import-chain versioning.
  *
  * Warm a browser on base 1867753, switch the same origin to the candidate
- * worktree without clearing cache, then assert revised modules load with
- * bumped ?v= query strings and that the loan-return fixture path works.
+ * worktree without clearing cache, then:
+ *  1. Reject any stale/old ?v= URLs for changed modules.
+ *  2. Drive the real co-terminal renewal flow in that warmed context.
  *
  *   CHROME_PATH=... node scripts/qaWarmCacheLoanReturnImportChain.mjs
  */
@@ -40,15 +41,32 @@ const WATCH = [
   "seasonSimulator.js",
   "chronologicalSeason.js",
   "membershipBrowserFixture.js",
+  "transferMigration.js",
+  "careerSnapshot.js",
 ];
 
+/** Minimum accepted candidate versions for modules changed by Item 2. */
 const NEED = {
-  "loanMarket.js": 104,
+  "loanMarket.js": 105,
   "contractLifecycle.js": 103,
-  "seasonSimulator.js": 106,
+  "seasonSimulator.js": 107,
   "chronologicalSeason.js": 105,
-  "membershipBrowserFixture.js": 106,
-  "main.js": 112,
+  "membershipBrowserFixture.js": 107,
+  "transferMigration.js": 103,
+  "careerSnapshot.js": 103,
+  "main.js": 114,
+};
+
+/** Base tip versions that must not be served after the candidate switch. */
+const BASE_FORBIDDEN = {
+  "loanMarket.js": new Set(["91"]),
+  "contractLifecycle.js": new Set(["102"]),
+  "seasonSimulator.js": new Set(["94"]),
+  "chronologicalSeason.js": new Set(["94"]),
+  "membershipBrowserFixture.js": new Set(["103"]),
+  "transferMigration.js": new Set(["102"]),
+  "careerSnapshot.js": new Set(["102"]),
+  "main.js": new Set(["108"]),
 };
 
 function note(msg, data) {
@@ -115,6 +133,54 @@ function createSwitchableServer(initialRoot) {
   };
 }
 
+function classifyRequested(requested) {
+  const classified = {};
+  for (const name of WATCH) {
+    const urls = requested.filter((u) => {
+      try {
+        const path = new URL(u).pathname;
+        return path.endsWith(`/${name}`) || path.endsWith(name);
+      } catch {
+        return u.includes(`/${name}`) || u.includes(name);
+      }
+    });
+    classified[name] = urls.map((u) => {
+      const version = (u.match(/\?v=(\d+)/) || [])[1] || null;
+      return { url: u, versioned: Boolean(version), version };
+    });
+  }
+  return classified;
+}
+
+function assertCandidateChain(classified) {
+  const failures = [];
+  for (const [name, minV] of Object.entries(NEED)) {
+    const rows = classified[name] || [];
+    if (!rows.length) {
+      // Some modules only load after fixture/simulate; checked later if needed.
+      continue;
+    }
+    const ok = rows.some((r) => r.versioned && Number(r.version) >= minV);
+    const bare = rows.some((r) => !r.versioned);
+    const tooOld = rows.filter(
+      (r) =>
+        !r.versioned ||
+        Number(r.version) < minV ||
+        (BASE_FORBIDDEN[name] && BASE_FORBIDDEN[name].has(String(r.version)))
+    );
+    if (!ok) failures.push({ name, reason: `missing ?v>=${minV}`, rows });
+    if (bare) failures.push({ name, reason: "unversioned URL still requested", rows });
+    if (tooOld.length) {
+      failures.push({
+        name,
+        reason: `stale/old URL still requested after candidate switch (need >=${minV})`,
+        rows: tooOld,
+      });
+    }
+  }
+  return failures;
+}
+
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
   const work = await mkdtemp(join(tmpdir(), "r2-02-warm-"));
@@ -163,66 +229,152 @@ async function main() {
       const u = req.url();
       if (/\.m?js(\?|$)/i.test(u)) requested.push(u);
     });
+    const pageErrors = [];
+    page2.on("pageerror", (e) => pageErrors.push(String(e)));
     await page2.goto(baseUrl, { waitUntil: "domcontentloaded", timeout: 60000 });
     await page2.waitForFunction(() => typeof window.__exportCareerSnapshot === "function", null, {
       timeout: 60000,
     });
     await page.close().catch(() => {});
 
-    const classified = {};
-    for (const name of WATCH) {
-      const urls = requested.filter((u) => u.includes(name));
-      classified[name] = urls.map((u) => {
-        const version = (u.match(/\?v=(\d+)/) || [])[1] || null;
-        return { url: u, versioned: Boolean(version), version };
-      });
-    }
-    report.candidateModules = { requested, classified };
+    // Force the Item 2 import graph through the membership coterminal fixture.
+    const loaded = await page2.evaluate(() =>
+      window.__loadMembershipBrowserFixture?.({ mode: "ui-loan-return-coterminal", seed: 42 })
+    );
+    assert(loaded?.ok, "coterminal fixture loads on warm-switched candidate", loaded);
+
+    const classified = classifyRequested(requested);
+    report.candidateModules = { requested: [...new Set(requested)], classified };
     await writeFile(join(OUT_DIR, "candidate-modules.json"), JSON.stringify(report.candidateModules, null, 2));
 
-    const failures = [];
-    for (const [name, minV] of Object.entries(NEED)) {
+    const failures = assertCandidateChain(classified);
+    // Require the critical changed modules to have appeared with new versions.
+    for (const name of ["loanMarket.js", "contractLifecycle.js", "membershipBrowserFixture.js", "main.js"]) {
       const rows = classified[name] || [];
+      const minV = NEED[name];
       const ok = rows.some((r) => r.versioned && Number(r.version) >= minV);
-      const bare = rows.some((r) => !r.versioned);
-      if (!ok) failures.push({ name, reason: `missing ?v>=${minV}`, rows });
-      if (bare) failures.push({ name, reason: "unversioned URL still requested", rows });
+      if (!ok) failures.push({ name, reason: `required module never requested at ?v>=${minV}`, rows });
     }
     report.importChainOk = failures.length === 0;
     report.importChainFailures = failures;
-    assert(report.importChainOk, "candidate must load versioned Item 2 modules after warm switch", {
+    assert(report.importChainOk, "candidate must load new Item 2 modules and reject stale URLs", {
       failures,
     });
 
-    const fixture = await page2.evaluate(async () => {
-      const loaded = window.__loadMembershipBrowserFixture?.({ mode: "ui-loan-return-ready", seed: 42 });
-      const debug = window.__getLiveCareerDebug?.() || {};
-      return {
-        ok: Boolean(loaded?.ok),
-        parentSnap: debug.parentClubSnapshotLeagueId || null,
-        loanStatus: debug.activeLoan?.status || null,
-        parentWorld: loaded?.loan?.parentWorldLeagueId || null,
-      };
-    });
-    report.fixtureProbe = fixture;
-    assert(fixture.ok, "loan-return fixture loads on warm-switched candidate", fixture);
-    assert(fixture.parentSnap === "league:england-premier-league", "debug exposes stale PL snapshot", fixture);
-    assert(fixture.parentWorld === "league:england-championship", "live parent CH", fixture);
-
     const endLoanProbe = await page2.evaluate(async () => {
       const urls = [...performance.getEntriesByType("resource")].map((e) => e.name);
-      const lmUrl = urls.find((u) => u.includes("loanMarket.js?v="));
-      if (!lmUrl) return { ok: false, reason: "loanMarket-url-missing" };
+      const lmUrl = urls.find((u) => {
+        const m = u.match(/loanMarket\.js\?v=(\d+)/);
+        return m && Number(m[1]) >= 105;
+      });
+      if (!lmUrl) return { ok: false, reason: "loanMarket-v105+-missing", urls: urls.filter((u) => u.includes("loanMarket")) };
       const mod = await import(lmUrl);
       return {
-        ok: typeof mod.endLoan === "function" && typeof mod.resolveLoanReturnEffectiveDate === "function",
+        ok:
+          typeof mod.endLoan === "function" &&
+          typeof mod.resolveLoanReturnEffectiveDate === "function" &&
+          typeof mod.repairStalePendingLoanReturnBoundary === "function",
         lmUrl,
-        hasResolveLoanReturnEffectiveDate: typeof mod.resolveLoanReturnEffectiveDate === "function",
       };
     });
     report.endLoanProbe = endLoanProbe;
-    assert(endLoanProbe.ok, "warm-loaded loanMarket exposes return helpers", endLoanProbe);
+    assert(endLoanProbe.ok, "warm-loaded loanMarket exposes return + repair helpers", endLoanProbe);
 
+    // Complete the real co-terminal renewal flow in this warmed context.
+    const pre = await page2.evaluate(() => {
+      const snap = window.__exportCareerSnapshot?.();
+      const d = window.__getLiveCareerDebug?.() || {};
+      return {
+        seasons: snap?.player?.seasons?.length ?? 0,
+        review: snap?.player?.pendingContractReview?.status || null,
+        loan: snap?.player?.activeLoan?.status || null,
+        next: d.nextAction || null,
+        simDisabled: Boolean(document.getElementById("simulate-btn")?.disabled),
+      };
+    });
+    assert(pre.review === "pending" && pre.loan === "active", "coterminal preconditions", pre);
+    assert(pre.simDisabled === false, "Simulate enabled for soft-settle", pre);
+
+    await page2.click("#simulate-btn");
+    await page2.waitForTimeout(600);
+    const gated = await page2.evaluate(() => {
+      const snap = window.__exportCareerSnapshot?.();
+      const overlay = document.getElementById("season-animation-overlay");
+      return {
+        seasons: snap?.player?.seasons?.length ?? 0,
+        review: snap?.player?.pendingContractReview?.status || null,
+        loan: snap?.player?.activeLoan?.status || null,
+        clubLeagueId: snap?.player?.club?.leagueId || null,
+        renewalOfferId: (snap?.player?.pendingOffers || []).find((o) => o.isRenewal)?.offerId || null,
+        overlayHidden: !overlay || overlay.classList.contains("hidden"),
+      };
+    });
+    assert(gated.review === "pending", "review intact after soft settle", gated);
+    assert(gated.seasons === pre.seasons, "zero new season commits", gated);
+    assert(gated.overlayHidden, "no season animation on pending gate", gated);
+    assert(gated.clubLeagueId === "league:england-championship", "live CH after settle", gated);
+    assert(gated.renewalOfferId, "renewal tray intact", gated);
+
+    const accepted = await page2.evaluate((offerId) => {
+      const snap = window.__exportCareerSnapshot?.();
+      const offer = (snap?.player?.pendingOffers || []).find((o) => o.offerId === offerId);
+      const fn = window.__acceptPipelineOffer || window.__acceptTransferOffer;
+      if (!fn || !offer) return { ok: false, reason: "missing-accept" };
+      return fn(offer);
+    }, gated.renewalOfferId);
+    assert(accepted?.ok, "accepted renewal in warmed context", accepted);
+
+    await page2.click("#simulate-btn");
+    // Drive presentation lightly until a new season commits.
+    const started = Date.now();
+    let after = null;
+    while (Date.now() - started < 240000) {
+      after = await page2.evaluate(() => {
+        const visible = (el) => Boolean(el && !el.disabled && el.offsetParent !== null);
+        const d = window.__getLiveCareerDebug?.() || {};
+        const senior = document.getElementById("senior-scenario-overlay");
+        const scenarioNext = document.getElementById("senior-scenario-next");
+        if (visible(scenarioNext)) scenarioNext.click();
+        else if (
+          (d.nextAction?.id === "resolve-scenario" || (senior && !senior.classList.contains("hidden"))) &&
+          window.__applyPendingSeniorScenarioPolicy
+        ) {
+          const applied = window.__applyPendingSeniorScenarioPolicy("balanced");
+          const choices = [
+            ...(document.getElementById("senior-scenario-choices")?.querySelectorAll("button") || []),
+          ].filter(visible);
+          const hit = choices[0];
+          if (applied?.ok && hit) hit.click();
+        } else {
+          for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "continue-btn"]) {
+            const b = document.getElementById(id);
+            if (visible(b) || (id === "continue-btn" && b && !document.getElementById("animation-continue")?.classList.contains("hidden"))) {
+              b.click();
+              break;
+            }
+          }
+          const stay = [...document.querySelectorAll("button")].filter(visible).find((b) =>
+            /decline offers|stay|continue at|reject/i.test((b.textContent || "").trim())
+          );
+          if (stay && (d.pendingOffers?.length || d.pendingDecision)) stay.click();
+        }
+        const snap = window.__exportCareerSnapshot?.();
+        const overlay = document.getElementById("season-animation-overlay");
+        return {
+          seasons: snap?.player?.seasons?.length ?? 0,
+          clubLeagueId: snap?.player?.club?.leagueId || null,
+          overlayHidden: !overlay || overlay.classList.contains("hidden"),
+          next: d.nextAction?.id || null,
+        };
+      });
+      if (after.seasons >= pre.seasons + 1 && after.overlayHidden && after.next !== "resolve-scenario") break;
+      await page2.waitForTimeout(200);
+    }
+    assert(after?.seasons >= pre.seasons + 1, "warmed renewal played parent season", after);
+    assert(after.clubLeagueId === "league:england-championship", "warmed desk is Championship", after);
+    assert(pageErrors.length === 0, "no page errors in warmed renewal flow", { pageErrors });
+
+    report.renewalFlow = { pre, gated, accepted, after, pageErrors };
     report.ok = true;
     await writeFile(join(OUT_DIR, "warm-cache-report.json"), JSON.stringify(report, null, 2));
     note("warm-cache proof PASS", { out: join(OUT_DIR, "warm-cache-report.json") });

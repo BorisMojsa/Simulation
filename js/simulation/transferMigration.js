@@ -12,6 +12,8 @@ import {
 } from "./contractLifecycle.js?v=103";
 import { ensurePlayingStints } from "./playingRegistration.js";
 import { migrateAcademyLifecycle, ensureAcademyLifecycle } from "./academyLifecycle.js?v=102";
+import { repairStalePendingLoanReturnBoundary } from "./loanMarket.js?v=105";
+import { getWorldState } from "./worldState.js";
 
 const DEAL_PIPELINE_VERSION = "deal-pipeline-v2";
 
@@ -117,6 +119,8 @@ export function ensureTransferSave(player, opts = {}) {
     ensureAcademyLifecycle(player);
     migrateAcademyLifecycle(player);
   }
+  // R2-02: repair identifiable stale pending-return boundaries from pre-fix saves.
+  repairStalePendingLoanReturnBoundary(player, opts.world || getWorldState(), opts);
   return player;
 }
 
