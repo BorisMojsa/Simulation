@@ -12,7 +12,7 @@ import {
 } from "./contractLifecycle.js?v=103";
 import { ensurePlayingStints } from "./playingRegistration.js";
 import { migrateAcademyLifecycle, ensureAcademyLifecycle } from "./academyLifecycle.js?v=103";
-import { repairStalePendingLoanReturnBoundary } from "./loanMarket.js?v=107";
+import { repairStalePendingLoanReturnBoundary } from "./loanMarket.js?v=108";
 import { getWorldState } from "./worldState.js";
 
 const DEAL_PIPELINE_VERSION = "deal-pipeline-v2";

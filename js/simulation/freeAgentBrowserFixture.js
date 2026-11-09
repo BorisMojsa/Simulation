@@ -21,7 +21,7 @@ import { createPlayerIdentity } from "./playerDevelopment.js?v=105";
 import { createWorldState, setWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";
 import { reseedCareerRng } from "./rng.js";
-import { ensureTransferSave } from "./transferMigration.js?v=103";
+import { ensureTransferSave } from "./transferMigration.js?v=104";
 import {
   ensureContractAuthority,
   releaseToFreeAgency,

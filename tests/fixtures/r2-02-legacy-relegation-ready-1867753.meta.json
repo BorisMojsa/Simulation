@@ -1,0 +1,20 @@
+{
+  "producedByCommit": "186775393ce1b433543758816ee2bda4f68c0f32",
+  "seed": 42,
+  "mode": "ui-relegation-ready",
+  "borrowerId": "club:england:arsenal",
+  "parentId": "club:england:ipswich-town",
+  "expectedReturnDate": "2028-06-30",
+  "defectLateDate": "2029-06-30",
+  "defectLeagueId": "league:england-championship",
+  "liveLeagueIdAfterPromotion": "league:england-premier-league",
+  "seasonsBeforeReturn": 2,
+  "consumedTransitionIds": [
+    "loan-start:r2-02-relegation-ready-arsenal-loan",
+    "loan-end:r2-02-relegation-ready-arsenal-loan:return"
+  ],
+  "beforeRenewalPath": "tests/fixtures/r2-02-legacy-relegation-ready-before-renewal-1867753.json.gz",
+  "afterRenewalPath": "tests/fixtures/r2-02-legacy-relegation-ready-after-renewal-1867753.json.gz",
+  "returnStintId": "stint:loan_return_pending_review:fix03-membership-fixture-v1:ui-relegation-ready:club:england:ipswich-town:2028-06-30:2",
+  "borrowerStintId": "stint:loan_start:fix03-membership-fixture-v1:ui-relegation-ready:club:england:arsenal:2027-07-15:1"
+}

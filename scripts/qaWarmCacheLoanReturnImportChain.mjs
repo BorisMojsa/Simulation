@@ -48,14 +48,14 @@ const WATCH = [
 
 /** Minimum accepted candidate versions for modules changed by Item 2. */
 const NEED = {
-  "loanMarket.js": 107,
+  "loanMarket.js": 108,
   "contractLifecycle.js": 103,
-  "seasonSimulator.js": 107,
-  "chronologicalSeason.js": 105,
-  "membershipBrowserFixture.js": 107,
-  "transferMigration.js": 103,
-  "careerSnapshot.js": 103,
-  "main.js": 117,
+  "seasonSimulator.js": 108,
+  "chronologicalSeason.js": 106,
+  "membershipBrowserFixture.js": 108,
+  "transferMigration.js": 104,
+  "careerSnapshot.js": 104,
+  "main.js": 119,
   "rendering.js": 93,
 };
 

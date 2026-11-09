@@ -708,10 +708,53 @@ function seasonClubId(season) {
   );
 }
 
-/** True once a completed season already records the parent after return. */
-function parentSeasonAlreadyPlayed(player, parentId) {
+/**
+ * True only when a completed season records the parent AFTER the matched loan
+ * ended (i.e. post-return parent play). Pre-loan parent seasons must not block
+ * repair of an unplayed co-terminal return.
+ */
+function parentPlayedAfterMatchedLoanEnded(player, loan, parentId, borrowerId) {
   if (!parentId) return false;
-  return (player?.seasons || []).some((season) => seasonClubId(season) === parentId);
+  const seasons = Array.isArray(player?.seasons) ? player.seasons : [];
+  if (!seasons.length) return false;
+
+  let lastLoanSeasonIdx = -1;
+  for (let i = 0; i < seasons.length; i++) {
+    const id = seasonClubId(seasons[i]);
+    if (borrowerId && id === borrowerId) lastLoanSeasonIdx = i;
+  }
+  // Fall back to loan timing via stints when season club ids are sparse.
+  if (lastLoanSeasonIdx < 0) {
+    const loanStart = [...(player?.playingStints || [])]
+      .reverse()
+      .find(
+        (s) =>
+          s &&
+          s.playingClubId === borrowerId &&
+          (s.onLoan || String(s.kind || "").startsWith("loan_start"))
+      );
+    if (loanStart?.from) {
+      // Any parent season whose club id matches after we have a borrower spell
+      // still needs an ordering signal; without a borrower season row, only
+      // treat later parent seasons as post-loan when seasonNumber exceeds the
+      // loan's completed season count.
+      const loanSeasonNumber = Number(loan?.endSeason) || null;
+      for (let i = 0; i < seasons.length; i++) {
+        if (seasonClubId(seasons[i]) !== parentId) continue;
+        const sn = Number(seasons[i]?.seasonNumber);
+        if (Number.isFinite(loanSeasonNumber) && Number.isFinite(sn) && sn > loanSeasonNumber) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return false;
+  }
+
+  for (let i = lastLoanSeasonIdx + 1; i < seasons.length; i++) {
+    if (seasonClubId(seasons[i]) === parentId) return true;
+  }
+  return false;
 }
 
 /**
@@ -765,12 +808,12 @@ function findMatchingParentReturnStint(player, parentId) {
 
 /**
  * Repair only an identifiable pre-fix co-terminal return boundary that has not
- * yet been followed by a parent season. Matches the settled loan to both the
- * borrower spell and the parent return stint, then corrects only the proven
- * legacy defects: classic +1y return date, snapshot/live division mismatch on
- * that unplayed tip, and borrower close aligned to the repaired open date.
- * Does not rewrite valid explicit dates, historical post-promotion stints, or
- * committed match/season history.
+ * yet been followed by parent play after the matched loan ended. Pre-loan parent
+ * seasons do not block. Matches the settled loan to both stints, then corrects
+ * only the proven legacy defects: classic +1y return date, snapshot/live
+ * division mismatch on that unplayed tip, and borrower close aligned to the
+ * repaired open date. Does not rewrite valid explicit dates, historical
+ * post-promotion stints, or committed match/season/finance history.
  */
 export function repairStalePendingLoanReturnBoundary(player, world = getWorldState(), opts = {}) {
   if (!player || typeof player !== "object") return { repaired: false, reason: "no-player" };
@@ -790,8 +833,8 @@ export function repairStalePendingLoanReturnBoundary(player, world = getWorldSta
   if (returnStint.to != null) {
     return { repaired: false, reason: "return-stint-already-closed" };
   }
-  if (parentSeasonAlreadyPlayed(player, parentId)) {
-    return { repaired: false, reason: "parent-season-already-played" };
+  if (parentPlayedAfterMatchedLoanEnded(player, loan, parentId, borrowerId)) {
+    return { repaired: false, reason: "parent-played-after-loan-ended" };
   }
 
   const borrowerStint = findMatchingBorrowerLoanStint(player, loan, returnStint);
