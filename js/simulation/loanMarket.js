@@ -692,15 +692,43 @@ export function resolveLoanReturnEffectiveDate(player, loan, opts = {}) {
 }
 
 /**
+ * Matching borrower loan stint that should close when the parent return opens.
+ * Prefers the open/overlapping loan_start for the loan's borrowing club.
+ */
+function findMatchingBorrowerLoanStint(player, loan, returnStint) {
+  const stints = Array.isArray(player?.playingStints) ? player.playingStints : [];
+  const borrowerId = loan?.borrowingClubId || null;
+  const returnFrom = returnStint?.from ? String(returnStint.from) : null;
+  const candidates = stints.filter((s) => {
+    if (!s) return false;
+    const kind = String(s.kind || "");
+    const isLoanSpell =
+      s.onLoan === true || kind === "loan_start" || kind.startsWith("loan_start");
+    if (!isLoanSpell) return false;
+    if (borrowerId && s.playingClubId && s.playingClubId !== borrowerId) return false;
+    if (returnFrom && s.from && String(s.from) > returnFrom) return false;
+    return true;
+  });
+  if (!candidates.length) return null;
+  // Prefer the latest borrower spell that still overlaps the return open date.
+  return (
+    [...candidates].reverse().find((s) => {
+      if (!returnFrom) return s.to == null;
+      return s.to == null || String(s.to) > returnFrom;
+    }) || candidates[candidates.length - 1]
+  );
+}
+
+/**
  * Repair an identifiable unplayed co-terminal return boundary left by the old
- * pending-review settlement (stale parent division + late return stint).
- * Does not re-settle finance, invent transitions, or rewrite committed matches.
+ * pending-review settlement (stale parent division, late return stint, or a
+ * borrower spell that stays open past the parent return).
+ * Runs before and after renewal acceptance. Does not re-settle finance, invent
+ * transitions, or rewrite committed matches. Valid explicit dates that are
+ * already on/before the expected boundary are preserved.
  */
 export function repairStalePendingLoanReturnBoundary(player, world = getWorldState(), opts = {}) {
   if (!player || typeof player !== "object") return { repaired: false, reason: "no-player" };
-  if (player.pendingContractReview?.status !== "pending") {
-    return { repaired: false, reason: "not-pending-review" };
-  }
   const loan = player.activeLoan;
   if (!loan || loan.status === "active") {
     return { repaired: false, reason: "loan-not-settled" };
@@ -713,19 +741,36 @@ export function repairStalePendingLoanReturnBoundary(player, world = getWorldSta
   const expectedDate = resolveLoanReturnEffectiveDate(player, loan, opts);
   const stints = Array.isArray(player.playingStints) ? player.playingStints : [];
   const returnStint = [...stints].reverse().find((s) =>
-    s && (s.kind === "loan_return_pending_review" || s.kind === "loan_return")
+    s &&
+    (s.kind === "loan_return_pending_review" ||
+      s.kind === "loan_return" ||
+      s.kind === "loan_recall" ||
+      (String(s.kind || "").includes("loan_return") && s.playingClubId === parentId))
   );
+  if (!returnStint) {
+    return { repaired: false, reason: "no-return-stint" };
+  }
+
+  const borrowerStint = findMatchingBorrowerLoanStint(player, loan, returnStint);
   const clubStale =
     Boolean(liveLeagueId) &&
     player.club?.clubId === parentId &&
     player.club?.leagueId &&
     player.club.leagueId !== liveLeagueId;
-  const stintStale =
-    Boolean(returnStint) &&
-    ((liveLeagueId && returnStint.leagueId && returnStint.leagueId !== liveLeagueId) ||
-      (returnStint.from && String(returnStint.from) > String(expectedDate)));
+  const stintLeagueStale =
+    Boolean(liveLeagueId) &&
+    Boolean(returnStint.leagueId) &&
+    returnStint.leagueId !== liveLeagueId;
+  // Only pull a late date forward; never rewrite an earlier valid explicit date.
+  const stintDateStale =
+    Boolean(returnStint.from) && String(returnStint.from) > String(expectedDate);
+  const returnOpen = returnStint.from ? String(returnStint.from) : null;
+  const borrowerMisclosed =
+    Boolean(borrowerStint) &&
+    Boolean(returnOpen) &&
+    (borrowerStint.to == null || String(borrowerStint.to) !== returnOpen);
 
-  if (!clubStale && !stintStale) {
+  if (!clubStale && !stintLeagueStale && !stintDateStale && !borrowerMisclosed) {
     return { repaired: false, reason: "no-identifiable-stale-boundary" };
   }
 
@@ -733,6 +778,9 @@ export function repairStalePendingLoanReturnBoundary(player, world = getWorldSta
     clubLeagueId: player.club?.leagueId || null,
     stintFrom: returnStint?.from || null,
     stintLeagueId: returnStint?.leagueId || null,
+    borrowerTo: borrowerStint?.to ?? null,
+    borrowerStintId: borrowerStint?.stintId || null,
+    reviewStatus: player.pendingContractReview?.status || null,
   };
 
   if (clubStale && liveMeta) {
@@ -751,12 +799,18 @@ export function repairStalePendingLoanReturnBoundary(player, world = getWorldSta
       isLoanSpell: false,
     };
   }
-  if (stintStale && returnStint) {
-    if (liveLeagueId) returnStint.leagueId = liveLeagueId;
-    if (returnStint.from && String(returnStint.from) > String(expectedDate)) {
-      returnStint.from = expectedDate;
-    }
-    if (liveMeta?.name) returnStint.clubName = returnStint.clubName || liveMeta.name;
+  if (stintLeagueStale && liveLeagueId) {
+    returnStint.leagueId = liveLeagueId;
+  }
+  if (stintDateStale) {
+    returnStint.from = expectedDate;
+  }
+  if (liveMeta?.name) returnStint.clubName = returnStint.clubName || liveMeta.name;
+
+  // Half-open stints: close borrower exactly when the parent return opens.
+  const closeAt = returnStint.from ? String(returnStint.from) : null;
+  if (borrowerStint && closeAt && (borrowerStint.to == null || String(borrowerStint.to) !== closeAt)) {
+    borrowerStint.to = closeAt;
   }
 
   player.employmentClubId = parentId;
@@ -771,6 +825,9 @@ export function repairStalePendingLoanReturnBoundary(player, world = getWorldSta
       clubLeagueId: player.club?.leagueId || null,
       stintFrom: returnStint?.from || null,
       stintLeagueId: returnStint?.leagueId || null,
+      borrowerTo: borrowerStint?.to ?? null,
+      borrowerStintId: borrowerStint?.stintId || null,
+      reviewStatus: player.pendingContractReview?.status || null,
     },
   };
 }

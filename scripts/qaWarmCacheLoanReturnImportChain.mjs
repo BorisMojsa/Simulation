@@ -48,14 +48,14 @@ const WATCH = [
 
 /** Minimum accepted candidate versions for modules changed by Item 2. */
 const NEED = {
-  "loanMarket.js": 105,
+  "loanMarket.js": 106,
   "contractLifecycle.js": 103,
   "seasonSimulator.js": 107,
   "chronologicalSeason.js": 105,
   "membershipBrowserFixture.js": 107,
   "transferMigration.js": 103,
   "careerSnapshot.js": 103,
-  "main.js": 115,
+  "main.js": 116,
   "rendering.js": 93,
 };
 
@@ -321,17 +321,40 @@ async function main() {
     assert(gated.clubLeagueId === "league:england-championship", "live CH after settle", gated);
     assert(gated.renewalOfferId, "renewal tray intact", gated);
 
-    const accepted = await page2.evaluate((offerId) => {
+    // Accept through the visible renewal controls only — never QA hooks.
+    const consoleErrors = [];
+    page2.on("console", (msg) => {
+      if (msg.type() === "error") consoleErrors.push(msg.text());
+    });
+    const acceptLabel = await page2.evaluate(() => {
+      const visible = (el) => Boolean(el && !el.disabled && el.offsetParent !== null);
+      const buttons = [...document.querySelectorAll("button")].filter(visible);
+      const hit = buttons.find((b) =>
+        /accept renewal|accept offer|accept|sign|renew/i.test((b.textContent || "").trim())
+      );
+      if (!hit) return null;
+      hit.click();
+      return (hit.textContent || "").trim();
+    });
+    assert(acceptLabel, "clicked visible renewal control", { acceptLabel, gated });
+    assert(!/qa-accept/i.test(acceptLabel), "must not use QA accept hook", { acceptLabel });
+    await page2.waitForTimeout(500);
+    const afterAccept = await page2.evaluate(() => {
       const snap = window.__exportCareerSnapshot?.();
-      const offer = (snap?.player?.pendingOffers || []).find((o) => o.offerId === offerId);
-      const fn = window.__acceptPipelineOffer || window.__acceptTransferOffer;
-      if (!fn || !offer) return { ok: false, reason: "missing-accept" };
-      return fn(offer);
-    }, gated.renewalOfferId);
-    assert(accepted?.ok, "accepted renewal in warmed context", accepted);
+      return {
+        review: snap?.player?.pendingContractReview?.status || null,
+        seasons: snap?.player?.seasons?.length ?? 0,
+        clubLeagueId: snap?.player?.club?.leagueId || null,
+        simDisabled: Boolean(document.getElementById("simulate-btn")?.disabled),
+      };
+    });
+    assert(afterAccept.review !== "pending", "review settled via visible accept", afterAccept);
+    assert(afterAccept.clubLeagueId === "league:england-championship", "CH after accept", afterAccept);
+    assert(afterAccept.simDisabled === false, "Simulate unlocked after accept", afterAccept);
 
     await page2.click("#simulate-btn");
-    // Drive presentation lightly until a new season commits.
+    // Drive presentation with Continue / skip / scenario until the season desk
+    // settles with overlays closed.
     const started = Date.now();
     let after = null;
     while (Date.now() - started < 240000) {
@@ -339,9 +362,15 @@ async function main() {
         const visible = (el) => Boolean(el && !el.disabled && el.offsetParent !== null);
         const d = window.__getLiveCareerDebug?.() || {};
         const senior = document.getElementById("senior-scenario-overlay");
+        const seasonOverlay = document.getElementById("season-animation-overlay");
         const scenarioNext = document.getElementById("senior-scenario-next");
-        if (visible(scenarioNext)) scenarioNext.click();
-        else if (
+        const continueBtn = document.getElementById("continue-btn");
+        const animContinue = document.getElementById("animation-continue");
+        let clicked = null;
+        if (visible(scenarioNext)) {
+          scenarioNext.click();
+          clicked = "senior-scenario-next";
+        } else if (
           (d.nextAction?.id === "resolve-scenario" || (senior && !senior.classList.contains("hidden"))) &&
           window.__applyPendingSeniorScenarioPolicy
         ) {
@@ -350,37 +379,80 @@ async function main() {
             ...(document.getElementById("senior-scenario-choices")?.querySelectorAll("button") || []),
           ].filter(visible);
           const hit = choices[0];
-          if (applied?.ok && hit) hit.click();
+          if (applied?.ok && hit) {
+            hit.click();
+            clicked = "scenario-choice";
+          }
+        } else if (visible(continueBtn) || (continueBtn && animContinue && !animContinue.classList.contains("hidden"))) {
+          continueBtn.click();
+          clicked = "continue-btn";
         } else {
-          for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "continue-btn"]) {
+          for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn"]) {
             const b = document.getElementById(id);
-            if (visible(b) || (id === "continue-btn" && b && !document.getElementById("animation-continue")?.classList.contains("hidden"))) {
+            if (visible(b)) {
               b.click();
+              clicked = id;
               break;
             }
           }
-          const stay = [...document.querySelectorAll("button")].filter(visible).find((b) =>
-            /decline offers|stay|continue at|reject/i.test((b.textContent || "").trim())
-          );
-          if (stay && (d.pendingOffers?.length || d.pendingDecision)) stay.click();
+          if (!clicked) {
+            const stay = [...document.querySelectorAll("button")].filter(visible).find((b) =>
+              /decline offers|stay|continue at|reject/i.test((b.textContent || "").trim())
+            );
+            if (stay && (d.pendingOffers?.length || d.pendingDecision)) {
+              stay.click();
+              clicked = "stay-decline";
+            }
+          }
         }
         const snap = window.__exportCareerSnapshot?.();
-        const overlay = document.getElementById("season-animation-overlay");
+        const overlayHidden = !seasonOverlay || seasonOverlay.classList.contains("hidden");
+        const seniorHidden = !senior || senior.classList.contains("hidden");
         return {
           seasons: snap?.player?.seasons?.length ?? 0,
           clubLeagueId: snap?.player?.club?.leagueId || null,
-          overlayHidden: !overlay || overlay.classList.contains("hidden"),
+          overlayHidden,
+          seniorHidden,
           next: d.nextAction?.id || null,
+          seasonActionInFlight: Boolean(d.seasonActionInFlight),
+          clicked,
         };
       });
-      if (after.seasons >= pre.seasons + 1 && after.overlayHidden && after.next !== "resolve-scenario") break;
+      if (
+        after.seasons >= pre.seasons + 1 &&
+        after.overlayHidden &&
+        after.seniorHidden &&
+        !after.seasonActionInFlight &&
+        after.next !== "resolve-scenario" &&
+        (after.next === "start-season" || after.next == null || after.next === "simulate-season")
+      ) {
+        break;
+      }
       await page2.waitForTimeout(200);
     }
     assert(after?.seasons >= pre.seasons + 1, "warmed renewal played parent season", after);
     assert(after.clubLeagueId === "league:england-championship", "warmed desk is Championship", after);
+    assert(after.overlayHidden, "season overlay closed on final desk", after);
+    assert(after.seniorHidden, "scenario overlay closed on final desk", after);
+    assert(!after.seasonActionInFlight, "no season action left in flight", after);
     assert(pageErrors.length === 0, "no page errors in warmed renewal flow", { pageErrors });
+    const unexpectedConsole = consoleErrors.filter(
+      (t) => !/Failed to load resource|net::ERR_|Download the React DevTools/i.test(String(t || ""))
+    );
+    assert(unexpectedConsole.length === 0, "no unexpected console errors", {
+      unexpectedConsole,
+      consoleErrors,
+    });
 
-    report.renewalFlow = { pre, gated, accepted, after, pageErrors };
+    report.renewalFlow = {
+      pre,
+      gated,
+      acceptLabel,
+      afterAccept,
+      after,
+      pageErrors,
+      consoleErrors,
+    };
     report.ok = true;
     await writeFile(join(OUT_DIR, "warm-cache-report.json"), JSON.stringify(report, null, 2));
     note("warm-cache proof PASS", { out: join(OUT_DIR, "warm-cache-report.json") });

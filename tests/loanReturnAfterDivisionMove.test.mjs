@@ -244,6 +244,15 @@ test("R2-02-D legacy: 1867753 pending-return snapshot repairs stale division/dat
     (s) => s.kind === "loan_return_pending_review"
   )?.stintId;
 
+  const borrowerStintIdBefore = data.player.playingStints?.find(
+    (s) => s.kind === "loan_start"
+  )?.stintId;
+  assert.equal(
+    data.player.playingStints?.find((s) => s.kind === "loan_start")?.to,
+    "2028-06-30",
+    "legacy borrower stint still open through late boundary"
+  );
+
   const restored = deserializeCareerSnapshot(data);
   assert.ok(restored?.player);
   if (restored.world) setWorldState(restored.world);
@@ -256,12 +265,17 @@ test("R2-02-D legacy: 1867753 pending-return snapshot repairs stale division/dat
   assert.equal(returnStint?.from, "2027-06-30");
   assert.equal(returnStint?.leagueId, CH);
   assert.equal(returnStint?.stintId, returnStintIdBefore, "same stint identity, patched in place");
+  const borrowerStint = (player.playingStints || []).find(
+    (s) => s.stintId === borrowerStintIdBefore || s.kind === "loan_start"
+  );
+  assert.equal(borrowerStint?.stintId, borrowerStintIdBefore, "same borrower stint identity");
+  assert.equal(borrowerStint?.to, "2027-06-30", "borrower closes exactly when parent opens");
   assert.equal(player.seasons.length, seasonsBefore, "no new season on repair");
   assert.deepEqual(player.consumedTransitionIds || [], consumedBefore, "no extra settlement id");
   const matchIdsAfter = [...(getWorldState()?.matches?.keys?.() || [])].map(String).sort();
   assert.deepEqual(matchIdsAfter, matchIdsBefore, "committed match history unchanged");
 
-  // Idempotent repair after restore.
+  // Idempotent repair after restore (boundary already repaired on load).
   const again = repairStalePendingLoanReturnBoundary(player, getWorldState());
   assert.equal(again.repaired, false);
 
@@ -278,6 +292,46 @@ test("R2-02-D legacy: 1867753 pending-return snapshot repairs stale division/dat
   assert.ok(renewal, "renewal tray intact after repair");
   const accepted = acceptPipelineOffer(player, renewal);
   assert.equal(accepted.ok, true);
+  assert.notEqual(player.pendingContractReview?.status, "pending", "review settled after accept");
+
+  // Repair still runs after renewal acceptance. First call is idempotent when
+  // load already closed the borrower; a reintroduced stale leftover is repaired
+  // without a second loan settlement.
+  const afterAcceptRepair = repairStalePendingLoanReturnBoundary(player, getWorldState());
+  assert.equal(afterAcceptRepair.repaired, false, "no further repair after accept");
+  assert.equal(
+    (player.playingStints || []).find((s) => s.stintId === borrowerStintIdBefore)?.to,
+    "2027-06-30",
+    "borrower remains closed at parent open after accept"
+  );
+
+  const borrowerAgain = (player.playingStints || []).find((s) => s.stintId === borrowerStintIdBefore);
+  const returnAgain = [...(player.playingStints || [])]
+    .reverse()
+    .find((s) => String(s.kind || "").includes("loan_return"));
+  borrowerAgain.to = "2028-06-30";
+  returnAgain.from = "2028-06-30";
+  returnAgain.leagueId = PL;
+  player.club.leagueId = PL;
+  const reopened = repairStalePendingLoanReturnBoundary(player, getWorldState());
+  assert.equal(reopened.repaired, true, "repairs identifiable leftover after accept");
+  assert.equal(reopened.after?.borrowerTo, "2027-06-30");
+  assert.equal(reopened.after?.stintFrom, "2027-06-30");
+  assert.equal(reopened.after?.stintLeagueId, CH);
+  assert.equal(reopened.after?.clubLeagueId, CH);
+  assert.equal(borrowerAgain.to, returnAgain.from, "borrower closes exactly when parent opens");
+
+  const loanSettleIds = (player.consumedTransitionIds || []).filter((id) =>
+    String(id).startsWith("loan-end:")
+  );
+  assert.deepEqual(
+    loanSettleIds,
+    consumedBefore.filter((id) => String(id).startsWith("loan-end:")),
+    "no duplicate loan settlement after accept"
+  );
+  const dupAfterAccept = endLoan(player, "return");
+  assert.ok(dupAfterAccept.duplicate || dupAfterAccept.reason === "no-active-loan");
+
   const next = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
     pauseForDecisions: false,
     autoDecisionPolicy: "stay",

@@ -4,7 +4,7 @@
 import { SQUAD_REVIEW } from "../config/recruitmentConfig.js";
 import { createStreamRng } from "./rng.js";
 import { evaluateSportingFit } from "./recruitmentModel.js?v=91";
-import { generateLoanOffers, endLoan } from "./loanMarket.js?v=105";
+import { generateLoanOffers, endLoan } from "./loanMarket.js?v=106";
 import { isAvailable } from "./playerHealth.js";
 import {
   ensureContractAuthority,
