@@ -3,7 +3,7 @@ import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/si
 import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=62";
 import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=105";
 import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=105";
-import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=106";
+import { startLoan, endLoan } from "./js/simulation/loanMarket.js?v=107";
 import { resolvePlayingClubAt, resolvePlayingStintAt } from "./js/simulation/playingRegistration.js";
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=105";
 import { createRng } from "./js/simulation/rng.js";

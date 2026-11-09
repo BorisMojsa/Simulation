@@ -12,7 +12,7 @@ import {
 } from "./contractLifecycle.js?v=103";
 import { ensurePlayingStints } from "./playingRegistration.js";
 import { migrateAcademyLifecycle, ensureAcademyLifecycle } from "./academyLifecycle.js?v=103";
-import { repairStalePendingLoanReturnBoundary } from "./loanMarket.js?v=106";
+import { repairStalePendingLoanReturnBoundary } from "./loanMarket.js?v=107";
 import { getWorldState } from "./worldState.js";
 
 const DEAL_PIPELINE_VERSION = "deal-pipeline-v2";
@@ -119,7 +119,7 @@ export function ensureTransferSave(player, opts = {}) {
     ensureAcademyLifecycle(player);
     migrateAcademyLifecycle(player);
   }
-  // R2-02: repair identifiable stale pending-return boundaries from pre-fix saves.
+  // R2-02: repair only identifiable pre-fix co-terminal returns before the parent season.
   repairStalePendingLoanReturnBoundary(player, opts.world || getWorldState(), opts);
   return player;
 }

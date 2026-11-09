@@ -28,7 +28,7 @@ import { buildDestinationLeagueSchedule } from "./destinationSchedule.js?v=91";
 import { roundTripCareerSnapshot } from "./careerSnapshot.js?v=103";
 import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js?v=91";
 import { buildValidatedOffer, applyOfferToPlayer, generatePipelineOffers } from "./dealPipeline.js?v=105";
-import { startLoan, endLoan } from "./loanMarket.js?v=106";
+import { startLoan, endLoan } from "./loanMarket.js?v=107";
 import { openBoundaryContractReview } from "./contractLifecycle.js?v=103";
 
 const PL = () => LEAGUE_BY_ID.get("league:england-premier-league");

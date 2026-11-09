@@ -691,41 +691,86 @@ export function resolveLoanReturnEffectiveDate(player, loan, opts = {}) {
   return `${startYear + completed}-06-30`;
 }
 
+function shiftIsoYear(dateKey, deltaYears) {
+  const raw = String(dateKey || "");
+  const m = raw.match(/^(\d{4})-(\d{2}-\d{2})$/);
+  if (!m) return null;
+  return `${Number(m[1]) + deltaYears}-${m[2]}`;
+}
+
+function seasonClubId(season) {
+  return (
+    season?.playingClubId ||
+    season?.clubId ||
+    season?.employmentClubId ||
+    season?.club?.clubId ||
+    null
+  );
+}
+
+/** True once a completed season already records the parent after return. */
+function parentSeasonAlreadyPlayed(player, parentId) {
+  if (!parentId) return false;
+  return (player?.seasons || []).some((season) => seasonClubId(season) === parentId);
+}
+
 /**
- * Matching borrower loan stint that should close when the parent return opens.
- * Prefers the open/overlapping loan_start for the loan's borrowing club.
+ * Matching borrower loan stint for the settled loan. Requires the loan's
+ * borrowingClubId and an overlapping loan_start / onLoan spell.
  */
 function findMatchingBorrowerLoanStint(player, loan, returnStint) {
   const stints = Array.isArray(player?.playingStints) ? player.playingStints : [];
   const borrowerId = loan?.borrowingClubId || null;
+  if (!borrowerId) return null;
   const returnFrom = returnStint?.from ? String(returnStint.from) : null;
   const candidates = stints.filter((s) => {
     if (!s) return false;
+    if (s.playingClubId !== borrowerId) return false;
     const kind = String(s.kind || "");
     const isLoanSpell =
       s.onLoan === true || kind === "loan_start" || kind.startsWith("loan_start");
     if (!isLoanSpell) return false;
-    if (borrowerId && s.playingClubId && s.playingClubId !== borrowerId) return false;
     if (returnFrom && s.from && String(s.from) > returnFrom) return false;
     return true;
   });
   if (!candidates.length) return null;
-  // Prefer the latest borrower spell that still overlaps the return open date.
   return (
     [...candidates].reverse().find((s) => {
       if (!returnFrom) return s.to == null;
-      return s.to == null || String(s.to) > returnFrom;
+      return s.to == null || String(s.to) > returnFrom || String(s.to) === returnFrom;
     }) || candidates[candidates.length - 1]
   );
 }
 
 /**
- * Repair an identifiable unplayed co-terminal return boundary left by the old
- * pending-review settlement (stale parent division, late return stint, or a
- * borrower spell that stays open past the parent return).
- * Runs before and after renewal acceptance. Does not re-settle finance, invent
- * transitions, or rewrite committed matches. Valid explicit dates that are
- * already on/before the expected boundary are preserved.
+ * Matching open parent return stint for a settled loan. Prefers the pre-fix
+ * co-terminal marker `loan_return_pending_review`.
+ */
+function findMatchingParentReturnStint(player, parentId) {
+  const stints = Array.isArray(player?.playingStints) ? player.playingStints : [];
+  const matches = stints.filter(
+    (s) =>
+      s &&
+      s.playingClubId === parentId &&
+      (s.kind === "loan_return_pending_review" ||
+        s.kind === "loan_return" ||
+        String(s.kind || "").includes("loan_return"))
+  );
+  if (!matches.length) return null;
+  return (
+    [...matches].reverse().find((s) => s.kind === "loan_return_pending_review") ||
+    matches[matches.length - 1]
+  );
+}
+
+/**
+ * Repair only an identifiable pre-fix co-terminal return boundary that has not
+ * yet been followed by a parent season. Matches the settled loan to both the
+ * borrower spell and the parent return stint, then corrects only the proven
+ * legacy defects: classic +1y return date, snapshot/live division mismatch on
+ * that unplayed tip, and borrower close aligned to the repaired open date.
+ * Does not rewrite valid explicit dates, historical post-promotion stints, or
+ * committed match/season history.
  */
 export function repairStalePendingLoanReturnBoundary(player, world = getWorldState(), opts = {}) {
   if (!player || typeof player !== "object") return { repaired: false, reason: "no-player" };
@@ -733,44 +778,56 @@ export function repairStalePendingLoanReturnBoundary(player, world = getWorldSta
   if (!loan || loan.status === "active") {
     return { repaired: false, reason: "loan-not-settled" };
   }
-  const parentId = loan.parentClubId || player.employmentClubId || player.club?.clubId;
-  if (!parentId) return { repaired: false, reason: "no-parent-id" };
+  const parentId = loan.parentClubId || null;
+  const borrowerId = loan.borrowingClubId || null;
+  if (!parentId || !borrowerId) return { repaired: false, reason: "loan-clubs-unmatched" };
 
-  const liveMeta = resolveClubLeagueMetadata(parentId, world) || findSeniorClubById(parentId);
-  const liveLeagueId = liveMeta?.leagueId || null;
-  const expectedDate = resolveLoanReturnEffectiveDate(player, loan, opts);
-  const stints = Array.isArray(player.playingStints) ? player.playingStints : [];
-  const returnStint = [...stints].reverse().find((s) =>
-    s &&
-    (s.kind === "loan_return_pending_review" ||
-      s.kind === "loan_return" ||
-      s.kind === "loan_recall" ||
-      (String(s.kind || "").includes("loan_return") && s.playingClubId === parentId))
-  );
-  if (!returnStint) {
-    return { repaired: false, reason: "no-return-stint" };
+  const returnStint = findMatchingParentReturnStint(player, parentId);
+  if (!returnStint) return { repaired: false, reason: "no-return-stint" };
+  if (returnStint.kind !== "loan_return_pending_review") {
+    return { repaired: false, reason: "not-pre-fix-coterminal-return" };
+  }
+  if (returnStint.to != null) {
+    return { repaired: false, reason: "return-stint-already-closed" };
+  }
+  if (parentSeasonAlreadyPlayed(player, parentId)) {
+    return { repaired: false, reason: "parent-season-already-played" };
   }
 
   const borrowerStint = findMatchingBorrowerLoanStint(player, loan, returnStint);
-  const clubStale =
-    Boolean(liveLeagueId) &&
-    player.club?.clubId === parentId &&
-    player.club?.leagueId &&
-    player.club.leagueId !== liveLeagueId;
-  const stintLeagueStale =
-    Boolean(liveLeagueId) &&
-    Boolean(returnStint.leagueId) &&
-    returnStint.leagueId !== liveLeagueId;
-  // Only pull a late date forward; never rewrite an earlier valid explicit date.
-  const stintDateStale =
-    Boolean(returnStint.from) && String(returnStint.from) > String(expectedDate);
-  const returnOpen = returnStint.from ? String(returnStint.from) : null;
-  const borrowerMisclosed =
-    Boolean(borrowerStint) &&
-    Boolean(returnOpen) &&
-    (borrowerStint.to == null || String(borrowerStint.to) !== returnOpen);
+  if (!borrowerStint) return { repaired: false, reason: "borrower-stint-unmatched" };
 
-  if (!clubStale && !stintLeagueStale && !stintDateStale && !borrowerMisclosed) {
+  const liveMeta = resolveClubLeagueMetadata(parentId, world) || findSeniorClubById(parentId);
+  const liveLeagueId = liveMeta?.leagueId || null;
+  const expectedDate = String(resolveLoanReturnEffectiveDate(player, loan, opts));
+  const returnFrom = returnStint.from ? String(returnStint.from) : null;
+  const classicLateFrom = shiftIsoYear(expectedDate, 1);
+  const classicLateFromLoanEnd = loan.endDate ? shiftIsoYear(String(loan.endDate), 1) : null;
+  const classicLateDate =
+    Boolean(returnFrom) &&
+    (returnFrom === classicLateFrom ||
+      (classicLateFromLoanEnd && returnFrom === classicLateFromLoanEnd));
+  const tipLeagueStale =
+    Boolean(liveLeagueId) &&
+    ((player.club?.clubId === parentId &&
+      player.club?.leagueId &&
+      player.club.leagueId !== liveLeagueId) ||
+      (returnStint.leagueId && returnStint.leagueId !== liveLeagueId));
+  const borrowerTo = borrowerStint.to == null ? null : String(borrowerStint.to);
+  const borrowerAlignedToClassicLate =
+    borrowerTo != null &&
+    (borrowerTo === classicLateFrom ||
+      (classicLateFromLoanEnd && borrowerTo === classicLateFromLoanEnd));
+  const borrowerMisclosedAgainstCorrectReturn =
+    returnFrom === expectedDate &&
+    (borrowerTo == null || borrowerAlignedToClassicLate || borrowerTo !== returnFrom);
+
+  // Proven legacy signatures only. Explicit non-+1y dates are left alone.
+  const identifiable =
+    classicLateDate ||
+    tipLeagueStale ||
+    (borrowerMisclosedAgainstCorrectReturn && borrowerAlignedToClassicLate);
+  if (!identifiable) {
     return { repaired: false, reason: "no-identifiable-stale-boundary" };
   }
 
@@ -783,33 +840,36 @@ export function repairStalePendingLoanReturnBoundary(player, world = getWorldSta
     reviewStatus: player.pendingContractReview?.status || null,
   };
 
-  if (clubStale && liveMeta) {
-    player.club = {
-      ...player.club,
-      ...liveMeta,
-      clubId: parentId,
-      name: player.club?.name || liveMeta.name,
-      displayName: player.club?.displayName || liveMeta.displayName || liveMeta.name,
-      league: liveMeta.league || player.club?.league,
-      leagueDisplay: liveMeta.leagueDisplay || player.club?.leagueDisplay,
-      leagueId: liveLeagueId,
-      tier: liveMeta.tier ?? player.club?.tier,
-      divisionLevel: liveMeta.divisionLevel ?? player.club?.divisionLevel,
-      nation: liveMeta.nation || player.club?.nation,
-      isLoanSpell: false,
-    };
-  }
-  if (stintLeagueStale && liveLeagueId) {
-    returnStint.leagueId = liveLeagueId;
-  }
-  if (stintDateStale) {
+  if (classicLateDate) {
     returnStint.from = expectedDate;
   }
-  if (liveMeta?.name) returnStint.clubName = returnStint.clubName || liveMeta.name;
+  if (tipLeagueStale && liveMeta && liveLeagueId) {
+    if (player.club?.clubId === parentId) {
+      player.club = {
+        ...player.club,
+        ...liveMeta,
+        clubId: parentId,
+        name: player.club?.name || liveMeta.name,
+        displayName: player.club?.displayName || liveMeta.displayName || liveMeta.name,
+        league: liveMeta.league || player.club?.league,
+        leagueDisplay: liveMeta.leagueDisplay || player.club?.leagueDisplay,
+        leagueId: liveLeagueId,
+        tier: liveMeta.tier ?? player.club?.tier,
+        divisionLevel: liveMeta.divisionLevel ?? player.club?.divisionLevel,
+        nation: liveMeta.nation || player.club?.nation,
+        isLoanSpell: false,
+      };
+    }
+    returnStint.leagueId = liveLeagueId;
+    if (liveMeta.name) returnStint.clubName = returnStint.clubName || liveMeta.name;
+  }
 
-  // Half-open stints: close borrower exactly when the parent return opens.
   const closeAt = returnStint.from ? String(returnStint.from) : null;
-  if (borrowerStint && closeAt && (borrowerStint.to == null || String(borrowerStint.to) !== closeAt)) {
+  if (
+    closeAt &&
+    (classicLateDate || tipLeagueStale || borrowerAlignedToClassicLate) &&
+    (borrowerStint.to == null || String(borrowerStint.to) !== closeAt)
+  ) {
     borrowerStint.to = closeAt;
   }
 

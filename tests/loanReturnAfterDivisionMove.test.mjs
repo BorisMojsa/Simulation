@@ -349,6 +349,105 @@ test("R2-02-D legacy: 1867753 pending-return snapshot repairs stale division/dat
   );
 });
 
+test("R2-02-D save/restore: explicit 2027-07-15 return date is preserved", () => {
+  const fixture = buildMembershipBrowserFixture({ mode: "ui-loan-return-coterminal", seed: 42 });
+  assert.equal(fixture.ok, true, fixture.reason);
+  const player = fixture.player;
+  // Soft-settle the co-terminal loan without playing the parent season.
+  const settled = endLoan(player, "return");
+  assert.equal(settled.ok, true, settled);
+  const returnStint = [...(player.playingStints || [])]
+    .reverse()
+    .find((s) => s.kind === "loan_return_pending_review" || String(s.kind || "").includes("loan_return"));
+  assert.ok(returnStint, "pending return stint present");
+  returnStint.from = "2027-07-15";
+  returnStint.leagueId = CH;
+  const borrower = (player.playingStints || []).find(
+    (s) => s.playingClubId === player.activeLoan?.borrowingClubId || s.kind === "loan_start"
+  );
+  if (borrower) borrower.to = "2027-07-15";
+  player.club.leagueId = CH;
+
+  const mid = serializeCareerSnapshot({ player, world: getWorldState() });
+  assert.equal(
+    mid.player.playingStints?.find((s) => s.stintId === returnStint.stintId)?.from,
+    "2027-07-15",
+    "serialize keeps explicit date"
+  );
+
+  const restored = deserializeCareerSnapshot(JSON.parse(JSON.stringify(mid)));
+  if (restored.world) setWorldState(restored.world);
+  const restoredReturn = (restored.player.playingStints || []).find(
+    (s) => s.stintId === returnStint.stintId
+  );
+  assert.equal(restoredReturn?.from, "2027-07-15", "restore preserves explicit date");
+  assert.equal(restoredReturn?.leagueId, CH);
+  const noop = repairStalePendingLoanReturnBoundary(restored.player, getWorldState());
+  assert.equal(noop.repaired, false, "explicit date is not a legacy +1y defect");
+  assert.equal(
+    (restored.player.playingStints || []).find((s) => s.stintId === returnStint.stintId)?.from,
+    "2027-07-15"
+  );
+});
+
+test("R2-02-D save/restore: historical Championship return stint survives later promotion", () => {
+  const fixture = buildMembershipBrowserFixture({ mode: "ui-loan-return-ready", seed: 42 });
+  assert.equal(fixture.ok, true, fixture.reason);
+  const player = fixture.player;
+  const parentId = fixture.clubId || PARENT;
+  const beforeSeasons = player.seasons.length;
+  const result = simulateSeason(player, LEAGUES, LEAGUE_LOOKUP, {
+    pauseForDecisions: false,
+    autoDecisionPolicy: "stay",
+  });
+  assert.ok(result.season);
+  assert.equal(player.seasons.length, beforeSeasons + 1);
+  assert.equal(player.club?.leagueId, CH);
+  const returnStint = [...(player.playingStints || [])]
+    .reverse()
+    .find((s) => String(s.kind || "").includes("loan_return"));
+  assert.equal(returnStint?.leagueId, CH);
+  assert.equal(returnStint?.from, "2027-06-30");
+  assert.ok(
+    (player.seasons || []).some(
+      (s) => (s.playingClubId || s.clubId) === parentId
+    ),
+    "parent season already played"
+  );
+
+  // Later promotion: live tip moves to PL, but the historical return stint must stay CH.
+  player.club = {
+    ...player.club,
+    leagueId: PL,
+    league: "England - Premier League",
+    leagueDisplay: "Premier League",
+    divisionLevel: 1,
+  };
+  const world = getWorldState();
+  if (world?.clubs instanceof Map && world.clubs.get(parentId)) {
+    const club = world.clubs.get(parentId);
+    world.clubs.set(parentId, { ...club, leagueId: PL });
+  } else if (world?.clubLeagueById) {
+    world.clubLeagueById[parentId] = PL;
+  }
+  setWorldState(world);
+
+  const mid = serializeCareerSnapshot({ player, world: getWorldState() });
+  const restored = deserializeCareerSnapshot(JSON.parse(JSON.stringify(mid)));
+  if (restored.world) setWorldState(restored.world);
+  const restoredReturn = (restored.player.playingStints || []).find(
+    (s) => s.stintId === returnStint.stintId
+  );
+  assert.equal(restoredReturn?.leagueId, CH, "historical CH return preserved after promotion");
+  assert.equal(restoredReturn?.from, "2027-06-30");
+  const noop = repairStalePendingLoanReturnBoundary(restored.player, getWorldState());
+  assert.equal(noop.repaired, false, "played parent season blocks save-repair");
+  assert.equal(
+    (restored.player.playingStints || []).find((s) => s.stintId === returnStint.stintId)?.leagueId,
+    CH
+  );
+});
+
 test("resolveLoanReturnEffectiveDate prefers explicit then loan endDate then completed boundary", () => {
   assert.equal(
     resolveLoanReturnEffectiveDate({ startYear: 2026, seasons: [{}] }, { endDate: "2027-06-30" }, {}),
