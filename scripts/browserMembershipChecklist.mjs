@@ -16,8 +16,8 @@ const BASE = process.env.BASE_URL || "http://127.0.0.1:8000";
 const CHROME =
   process.env.CHROME_PATH ||
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const SHOT_DIR = join(root, "qa/screenshots/checklist-membership");
-const REPORT = join(root, "qa/findings/membership-browser-checklist.json");
+const SHOT_DIR = process.env.SHOT_DIR || join(root, "qa/screenshots/checklist-membership");
+const REPORT = process.env.REPORT_PATH || join(root, "qa/findings/membership-browser-checklist.json");
 
 function assert(cond, msg, data) {
   if (!cond) {
@@ -363,7 +363,10 @@ async function main() {
   let dirty = false;
   try {
     commit = execSync("git rev-parse HEAD", { cwd: root }).toString().trim();
-    dirty = Boolean(execSync("git status --porcelain", { cwd: root }).toString().trim());
+    // Ignore untracked local evidence dumps; only tracked modifications mark dirty.
+    dirty = Boolean(
+      execSync("git status --porcelain --untracked-files=no", { cwd: root }).toString().trim()
+    );
   } catch {
     /* ignore */
   }
