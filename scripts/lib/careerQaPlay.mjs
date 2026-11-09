@@ -21,6 +21,8 @@ import { ensurePlayerModel } from "../../js/simulation/playerModelMigration.js";
 import { ensureTransferSave } from "../../js/simulation/transferMigration.js";
 import { simulateSeason } from "../../js/simulation/seasonSimulator.js";
 import { acceptPipelineOffer } from "../../js/simulation/dealPipeline.js";
+import { generateTransferOffers } from "../../js/simulation/transferMarket.js";
+import { startLoan } from "../../js/simulation/loanMarket.js";
 import {
   declineWindowAndContinue,
   ensureContractAuthority,
@@ -28,7 +30,7 @@ import {
   selectNextCareerAction,
   settleBoundaryContractReview,
 } from "../../js/simulation/contractLifecycle.js";
-import { resolveSquadDecision } from "../../js/simulation/squadDecisions.js";
+import { queueSquadDecision, resolveSquadDecision } from "../../js/simulation/squadDecisions.js";
 import { applySeniorScenarioPolicy, ensureSeniorCareerState } from "../../js/simulation/seniorCareerScenarios.js";
 import { getBaseOverall, getCurrentOverall } from "../../js/simulation/playerAbility.js";
 import { roundAbilityForDisplay } from "../../js/ui/abilityFormatting.js";
@@ -52,13 +54,26 @@ const DRAIN_GUARD = 100;
 function sampleOvr(player, stage, extra = {}) {
   const base = getBaseOverall(player);
   const current = getCurrentOverall(player);
+  const rating = Number(player?.rating);
+  // Production desk headline uses currentOverall ?? rating via abilityFormatting;
+  // __getLiveCareerDebug().ovrDisplay rounds player.rating (legacy mirror).
+  const deskCurrent = Number.isFinite(current)
+    ? roundAbilityForDisplay(current)
+    : Number.isFinite(rating)
+      ? roundAbilityForDisplay(rating)
+      : null;
+  const deskOvrDisplay = Number.isFinite(rating) ? Math.round(rating) : deskCurrent;
   return {
     stage,
     age: player?.age ?? null,
     periodCount: player?.seasons?.length ?? 0,
     base: Number.isFinite(base) ? base : null,
     current: Number.isFinite(current) ? current : null,
-    desk: Number.isFinite(base) ? roundAbilityForDisplay(base) : Number.isFinite(current) ? roundAbilityForDisplay(current) : null,
+    deskBase: Number.isFinite(base) ? roundAbilityForDisplay(base) : null,
+    deskCurrent,
+    deskOvrDisplay,
+    // Back-compat alias: desk = rendered current ability on the career desk
+    desk: deskCurrent,
     nonFinite: !Number.isFinite(base) || !Number.isFinite(current),
     ...extra,
   };
@@ -138,42 +153,120 @@ function acknowledgeResolvedScenario(player, pending) {
   return { ok: true, action: "scenario-acknowledged" };
 }
 
-function resolveOffers(player, style, rng, decisions, market) {
-  const pending = player.pendingOffers || [];
+function acceptOfferLikeLiveDesk(player, offer) {
+  if (offer?.isLoan) return startLoan(player, offer);
+  if (
+    player.club?.isAcademy &&
+    (offer.academyReviewId || offer.isFirstPro || offer.dealType === "first_pro" || player.academyLifecycle?.pendingReview)
+  ) {
+    return acceptAcademyGraduationOffer(player, {
+      offer,
+      kind: offer.isParentOffer ? "parent" : "counter",
+      club: null,
+    });
+  }
+  return acceptPipelineOffer(player, offer);
+}
+
+function recordMarketReview(market, player, offers, { source = "desk-generate" } = {}) {
   const reviewId =
+    player.lastMarketReviewId ||
+    player.freeAgentSpell?.lastReviewId ||
     player.pendingContractReview?.id ||
     player.academyLifecycle?.pendingReview?.id ||
-    player.freeAgentSpell?.currentReviewId ||
-    `review:${player.age}:${pending.length}:${hashSeed(JSON.stringify(pending.map((o) => o.offerId || o.clubId || o.club)))}`;
-
-  const executable = offerExecutableCount(pending);
+    `review:${player.age}:${(offers || []).length}:${hashSeed(
+      JSON.stringify((offers || []).map((o) => o.offerId || o.clubId || o.club))
+    )}`;
+  const executable = offerExecutableCount(offers);
+  if (market.seenReviewIds?.has(reviewId)) {
+    return { reviewId, executable, duplicate: true };
+  }
+  market.seenReviewIds = market.seenReviewIds || new Set();
+  market.seenReviewIds.add(reviewId);
   const reviewRecord = {
     reviewId,
     age: player.age,
     executableOfferCount: executable,
     freeAgent: isFreeAgent(player),
-    open: true,
+    source,
+    open: executable > 0 || Boolean(player.pendingContractReview?.status === "pending"),
   };
   market.reviews.push(reviewRecord);
-
   if (isFreeAgent(player)) {
     if (!market.currentSpell) {
       market.currentSpell = { startAge: player.age, emptyStreak: 0, reviews: [] };
       market.spells.push(market.currentSpell);
     }
     if (executable === 0) {
-      if (market.lastCountedReviewId !== reviewId) {
-        market.currentSpell.emptyStreak += 1;
-        market.lastCountedReviewId = reviewId;
-        market.emptyReviews += 1;
-      }
-    } else if (market.lastCountedReviewId !== reviewId) {
+      market.currentSpell.emptyStreak += 1;
+      market.lastCountedReviewId = reviewId;
+      market.emptyReviews += 1;
+    } else {
       market.currentSpell.emptyStreak = 0;
       market.lastCountedReviewId = reviewId;
       market.validOfferReviews += 1;
     }
     market.currentSpell.reviews.push(reviewId);
   }
+  return { reviewId, executable, duplicate: false, reviewRecord };
+}
+
+/** Mirror main.js finalizeCompletedSeasonUi market generation (once per completed period). */
+function applyDeskMarketGeneration(player, seasonData) {
+  if (!seasonData?.season) return player.pendingOffers || [];
+  if (
+    (seasonData.pendingContractReview || player.pendingContractReview?.status === "pending") &&
+    !seasonData.season
+  ) {
+    return player.pendingOffers || [];
+  }
+  const isAcademyResult =
+    seasonData.academyPeriod ||
+    seasonData.reviewOnly ||
+    Boolean(seasonData.season?.isNarrativeAcademyYear) ||
+    Boolean(seasonData.season?.academyPeriod) ||
+    Boolean(seasonData.resultKind?.startsWith?.("academy"));
+  if (isAcademyResult) {
+    if (player.club?.isAcademy) ensureAcademyLifecycle(player);
+    return player.pendingOffers || [];
+  }
+  if (player.pendingContractReview?.status === "pending") {
+    if (!player.pendingDecision && (player.pendingOffers?.length || 0) > 0) {
+      return player.pendingOffers;
+    }
+    if (!player.pendingDecision) {
+      player.pendingOffers = generateTransferOffers(
+        seasonData.performanceScore,
+        player,
+        LEAGUES,
+        LEAGUE_LOOKUP,
+        seasonData.season?.avgMatchRating ?? null
+      );
+    }
+    return player.pendingOffers || [];
+  }
+  player.pendingOffers = generateTransferOffers(
+    seasonData.performanceScore,
+    player,
+    LEAGUES,
+    LEAGUE_LOOKUP,
+    seasonData.season?.avgMatchRating ?? null
+  );
+  if (!player.pendingDecision && !player.club?.isAcademy) {
+    queueSquadDecision(player, "pre-season", {
+      seasonIndex: player.seasons.length,
+      performanceScore: seasonData.performanceScore,
+    });
+  }
+  return player.pendingOffers || [];
+}
+
+function resolveOffers(player, style, rng, decisions, market) {
+  const pending = player.pendingOffers || [];
+  const recorded = recordMarketReview(market, player, pending, { source: "resolve-offers" });
+  const reviewId = recorded.reviewId;
+  const executable = recorded.executable;
+  const reviewRecord = recorded.reviewRecord || market.reviews[market.reviews.length - 1];
 
   if (player.club?.isAcademy && player.academyLifecycle?.pendingReview) {
     const ranked = rankOffers(pending, style, rng);
@@ -190,9 +283,9 @@ function resolveOffers(player, style, rng, decisions, market) {
       });
       if (result.ok) {
         market.signings += 1;
-        reviewRecord.open = false;
+        if (reviewRecord) reviewRecord.open = false;
         market.currentSpell = null;
-        return { ok: true, action: "academy-offer-accepted", offerId: offer.offerId };
+        return { ok: true, action: "academy-offer-accepted", offerId: offer.offerId, signed: true };
       }
       market.failedAccepts += 1;
     }
@@ -204,14 +297,14 @@ function resolveOffers(player, style, rng, decisions, market) {
       result: declined?.ok ? "declined" : declined?.reason || "failed",
     });
     market.refusals += 1;
-    reviewRecord.open = false;
+    if (reviewRecord) reviewRecord.open = false;
     return declined?.ok ? { ok: true, action: "academy-review-declined" } : { ok: false, reason: declined?.reason };
   }
 
   const ranked = rankOffers(pending, style, rng);
   const top = ranked[0];
   if (top && shouldAcceptTopOffer(style, rng, top)) {
-    const result = acceptPipelineOffer(player, top);
+    const result = acceptOfferLikeLiveDesk(player, top);
     decisions.push({
       kind: "offer",
       reviewId,
@@ -222,15 +315,20 @@ function resolveOffers(player, style, rng, decisions, market) {
     });
     if (result?.ok) {
       market.signings += 1;
-      reviewRecord.open = false;
+      if (reviewRecord) reviewRecord.open = false;
       market.currentSpell = null;
       market.moves.push({
         age: player.age,
         offerId: top.offerId,
         club: top.clubDisplay || top.club,
+        clubId: top.clubId || null,
         dealType: top.dealType || (top.isLoan ? "loan" : top.isRenewal ? "renewal" : "permanent"),
+        employmentClubId: player.employmentClubId || null,
+        playingClubId: player.playingClubId || player.club?.clubId || null,
+        loanActive: player.activeLoan?.status === "active",
       });
-      return { ok: true, action: "offer-accepted", offerId: top.offerId };
+      player.pendingOffers = [];
+      return { ok: true, action: "offer-accepted", offerId: top.offerId, signed: true };
     }
     market.failedAccepts += 1;
   }
@@ -244,7 +342,7 @@ function resolveOffers(player, style, rng, decisions, market) {
     result: declined?.ok ? "declined" : declined?.reason || "failed",
   });
   if (executable > 0) market.refusals += 1;
-  reviewRecord.open = Boolean(player.pendingOffers?.length || player.pendingContractReview);
+  if (reviewRecord) reviewRecord.open = Boolean(player.pendingOffers?.length || player.pendingContractReview?.status === "pending");
   return declined?.ok ? { ok: true, action: "offers-declined" } : { ok: false, reason: declined?.reason };
 }
 
@@ -317,6 +415,14 @@ function classifyPresentation(result) {
   };
 }
 
+function isZeroCommitGateResult(result) {
+  if (!result) return false;
+  if (result.reviewOnly) return true;
+  if ((result.pendingContractReview || result.pendingContractReview === true) && !result.season) return true;
+  if (result.pendingContractReview && !result.season) return true;
+  return false;
+}
+
 function drainOneSeason(player, style, rng, decisions, market, presentationNotes) {
   let checkpoint = player.seasonCheckpoint || null;
   let guard = 0;
@@ -328,6 +434,7 @@ function drainOneSeason(player, style, rng, decisions, market, presentationNotes
       if (!pre.ok) return { ok: false, reason: pre.reason, guard, nextAction: pre.nextAction || selectNextCareerAction(player)?.id };
       if (pre.action === "retired") return { ok: true, retired: true, completed: false, guard };
       if (pre.action !== "simulate") {
+        // Academy / parent-contract / offer gates: zero period commits.
         checkpoint = player.seasonCheckpoint || null;
         continue;
       }
@@ -351,6 +458,30 @@ function drainOneSeason(player, style, rng, decisions, market, presentationNotes
 
     const presentation = classifyPresentation(result);
     presentationNotes.push(presentation);
+
+    // Parent-contract / academy review-only: resolve gate, do not count a period.
+    if (isZeroCommitGateResult(result)) {
+      decisions.push({
+        kind: "zero-commit-gate",
+        result: result.pendingContractReview ? "pending-contract-review" : "review-only",
+      });
+      if (player.pendingContractReview?.status === "pending" || result.pendingContractReview) {
+        const settled = settleBoundaryContractReview(player, {
+          choice: "no-offer",
+          reason: "career-qa-zero-commit-gate",
+        });
+        if (!settled?.ok) {
+          return { ok: false, reason: `zero-commit-contract:${settled?.reason || "failed"}`, guard };
+        }
+      } else if (selectNextCareerAction(player)?.id?.includes("academy")) {
+        const gate = resolveOffers(player, style, rng, decisions, market);
+        if (!gate?.ok) return { ok: false, reason: `zero-commit-academy:${gate?.reason}`, guard };
+      }
+      checkpoint = null;
+      player.seasonCheckpoint = null;
+      continue;
+    }
+
     if (result?.awaitingScenario) {
       const pending = player.pendingSeniorScenario || result.pendingSeniorScenario;
       if (!pending) return { ok: false, reason: "awaiting-scenario-without-payload", guard };
@@ -414,44 +545,87 @@ function maybeRetire(player, rng) {
   return false;
 }
 
-function periodMeta(season, fallbackKind) {
+function periodKindFromCommitted(season, result) {
+  if (result?.freeAgent === true || season?.freeAgent === true) return "free-agent";
+  if (
+    result?.academyPeriod ||
+    season?.academyPeriod ||
+    season?.isNarrativeAcademyYear ||
+    season?.academy ||
+    season?.isAcademy ||
+    String(result?.resultKind || "").startsWith("academy")
+  ) {
+    return "academy";
+  }
+  // Club periods with playing evidence are never free-agent, even if the player
+  // later becomes unsigned.
+  const minutes = season?.minutes ?? season?.usefulMinutes ?? null;
+  const apps = season?.matches ?? season?.appearances ?? null;
+  if ((Number(minutes) > 0 || Number(apps) > 0) && season?.club && season.club !== "Free agent") {
+    return "senior";
+  }
+  if (season?.club && season.club !== "Free agent" && season?.league) return "senior";
+  return "senior";
+}
+
+function periodMeta(season, result = null) {
+  const kind = periodKindFromCommitted(season, result);
+  const isFa = kind === "free-agent";
   return {
     id: season?.seasonId || season?.periodId || season?.id || null,
-    kind: season?.freeAgent ? "free-agent" : season?.academy || season?.isAcademy ? "academy" : fallbackKind,
+    kind,
     age: season?.age ?? null,
-    clubId: season?.clubId || season?.club?.id || null,
-    club: season?.clubDisplay || season?.club || null,
-    appearances: season?.freeAgent ? 0 : season?.matches ?? season?.appearances ?? null,
-    minutes: season?.freeAgent ? 0 : season?.minutes ?? season?.usefulMinutes ?? null,
+    clubId: season?.clubId || season?.club?.clubId || season?.club?.id || null,
+    club: season?.clubDisplay || season?.clubName || season?.club || null,
+    appearances: isFa ? 0 : season?.matches ?? season?.appearances ?? null,
+    minutes: isFa ? 0 : season?.minutes ?? season?.usefulMinutes ?? null,
   };
 }
 
 function countAwards(seasons) {
   const wins = Object.create(null);
+  const events = [];
   let winCount = 0;
   for (const s of seasons || []) {
-    const seen = new Set();
-    for (const rec of s.awardRecords || []) {
-      if (!(rec?.outcome === "win" || rec?.won)) continue;
-      const key = rec.awardId || rec.label;
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      wins[key] = (wins[key] || 0) + 1;
-      winCount += 1;
+    const seasonId = s?.seasonId || s?.periodId || null;
+    const records = Array.isArray(s.awardRecords) ? s.awardRecords : [];
+    const seenEvent = new Set();
+    for (const rec of records) {
+      const outcome = rec?.outcome || (rec?.won ? "win" : rec?.nominated ? "nomination" : null);
+      const awardId = rec?.awardId || rec?.label || null;
+      if (!awardId) continue;
+      const eventKey = `${seasonId || "?"}:${awardId}:${outcome || "unknown"}:${rec?.scope || ""}`;
+      if (seenEvent.has(eventKey)) continue;
+      seenEvent.add(eventKey);
+      events.push({
+        seasonId,
+        awardId,
+        label: rec.label || awardId,
+        outcome,
+        scope: rec.scope || null,
+      });
+      if (outcome === "win" || rec?.won) {
+        wins[awardId] = (wins[awardId] || 0) + 1;
+        winCount += 1;
+      }
     }
-    for (const name of s.individualAwards || []) {
-      if (seen.has(name)) continue;
-      // labels already counted via records when present
-      if (Object.prototype.hasOwnProperty.call(wins, name)) continue;
-      wins[name] = (wins[name] || 0) + 1;
-      winCount += 1;
-      seen.add(name);
+    // Labels without records: count only when no awardRecords exist for the season.
+    if (!records.length) {
+      for (const name of s.individualAwards || []) {
+        const eventKey = `${seasonId || "?"}:${name}:win:label`;
+        if (seenEvent.has(eventKey)) continue;
+        seenEvent.add(eventKey);
+        events.push({ seasonId, awardId: name, label: name, outcome: "win", scope: "label-fallback" });
+        wins[name] = (wins[name] || 0) + 1;
+        winCount += 1;
+      }
     }
   }
-  return { wins, winCount };
+  return { wins, winCount, events };
 }
 
-function bootstrapFromRow(row, { openingPath = "interactive" } = {}) {
+function bootstrapFromRow(row) {
+  const openingPath = row.openingPath || "interactive";
   resetCareerState(row.seeds.world, row.startYear || 2026);
   const player = createPlayerIdentity({
     name: row.name,
@@ -483,9 +657,11 @@ function bootstrapFromRow(row, { openingPath = "interactive" } = {}) {
       policy: "balanced",
       rng: createRng(row.seeds.opening),
     });
-  } else {
+  } else if (openingPath === "skip") {
     applySkipOpeningDevelopment(player);
     openingTag = "skip";
+  } else {
+    throw new Error(`Unsupported openingPath: ${openingPath}`);
   }
   const openingAfter = player.baseOverallRaw;
   const academySeason = buildNarrativeAcademySeason(player, openingBefore, openingAfter);
@@ -561,6 +737,7 @@ function playCareerWithClock(row, options = {}) {
     spells: [],
     currentSpell: null,
     lastCountedReviewId: null,
+    seenReviewIds: new Set(),
     emptyReviews: 0,
     validOfferReviews: 0,
     refusals: 0,
@@ -571,7 +748,7 @@ function playCareerWithClock(row, options = {}) {
 
   let boot;
   try {
-    boot = bootstrapFromRow(row, { openingPath: options.openingPath || "interactive" });
+    boot = bootstrapFromRow(row);
   } catch (error) {
     return {
       ok: false,
@@ -589,7 +766,7 @@ function playCareerWithClock(row, options = {}) {
     boot;
   ovrTrail.push(academyEntry);
   trackPeaks(peaks, academyEntry);
-  periods.push(periodMeta(player.seasons[player.seasons.length - 1], "academy"));
+  periods.push(periodMeta(player.seasons[player.seasons.length - 1], { academyPeriod: true }));
 
   let firstPro = { signed: false, sample: null, source: null };
   if (player.club?.isAcademy || !player.club || isFreeAgent(player)) {
@@ -657,13 +834,75 @@ function playCareerWithClock(row, options = {}) {
     }
 
     const season = drain.result?.season || player.seasons?.[player.seasons.length - 1];
-    periods.push(periodMeta(season, isFreeAgent(player) ? "free-agent" : "senior"));
+    periods.push(periodMeta(season, drain.result));
     const sample = sampleOvr(player, "period-end", {
       seasonId: season?.seasonId || season?.id || null,
-      freeAgent: Boolean(drain.result?.freeAgent || season?.freeAgent),
+      freeAgent: periodKindFromCommitted(season, drain.result) === "free-agent",
     });
     ovrTrail.push(sample);
     trackPeaks(peaks, sample);
+
+    // Live-desk market generation once per completed period.
+    const offers = applyDeskMarketGeneration(player, drain.result);
+    const generated = recordMarketReview(market, player, offers, { source: "post-season-desk" });
+    if (generated.executable === 0 && isFreeAgent(player)) {
+      // Close empty review so the next FA wait can advance (production settlement).
+      declineWindowAndContinue(player, { choiceId: "continue-as-free-agent" });
+      if (generated.reviewRecord) generated.reviewRecord.open = false;
+      decisions.push({
+        kind: "empty-market-close",
+        reviewId: generated.reviewId,
+        result: "continue-as-free-agent",
+      });
+    }
+
+    // Preserve first successful signing even if it arrives after academy exit / FA.
+    if (!firstPro.signed) {
+      const signedMove = market.moves.find((m) => m.dealType !== "loan" || m.employmentClubId);
+      const action = selectNextCareerAction(player);
+      if (!isFreeAgent(player) && player.club && !player.club.isAcademy) {
+        firstPro = {
+          signed: true,
+          sample: sampleOvr(player, "first-pro-signing", {
+            club: player.club?.displayName || player.club?.name || null,
+            clubId: player.club?.clubId || player.club?.id || null,
+            offerId: signedMove?.offerId || null,
+            late: true,
+          }),
+          source: {
+            offerId: signedMove?.offerId || null,
+            club: player.club?.displayName || player.club?.name || null,
+            clubId: player.club?.clubId || player.club?.id || null,
+            age: player.age,
+            late: true,
+          },
+        };
+        ovrTrail.push(firstPro.sample);
+        trackPeaks(peaks, firstPro.sample);
+      } else if (action?.id === "resolve-offers" && (player.pendingOffers || []).length) {
+        const offerResult = resolveOffers(player, style, policyRng, decisions, market);
+        if (offerResult?.signed && !isFreeAgent(player) && player.club && !player.club.isAcademy) {
+          firstPro = {
+            signed: true,
+            sample: sampleOvr(player, "first-pro-signing", {
+              club: player.club?.displayName || player.club?.name || null,
+              clubId: player.club?.clubId || player.club?.id || null,
+              offerId: offerResult.offerId || null,
+              late: true,
+            }),
+            source: {
+              offerId: offerResult.offerId || null,
+              club: player.club?.displayName || player.club?.name || null,
+              clubId: player.club?.clubId || player.club?.id || null,
+              age: player.age,
+              late: true,
+            },
+          };
+          ovrTrail.push(firstPro.sample);
+          trackPeaks(peaks, firstPro.sample);
+        }
+      }
+    }
 
     const fingerprint = `${player.age}:${player.seasons?.length}:${selectNextCareerAction(player)?.id}:${player.club?.id || "fa"}`;
     if (fingerprint === lastFingerprint && beforeSeasons === (player.seasons?.length || 0) && beforeAge === player.age) {
@@ -716,6 +955,7 @@ function playCareerWithClock(row, options = {}) {
       pathStyle: style,
       policyId: row.policyId,
       policyVersion: row.policyVersion || CAREER_QA_POLICY_VERSION,
+      openingPath: row.openingPath || openingTag,
       seeds: row.seeds,
       maxAge: row.maxAge,
       startYear: row.startYear,
@@ -739,6 +979,7 @@ function playCareerWithClock(row, options = {}) {
       finalBase: finalSample.base,
       finalCurrent: finalSample.current,
       finalDesk: finalSample.desk,
+      finalDeskOvrDisplay: finalSample.deskOvrDisplay,
       trail: ovrTrail,
     },
     periods,
@@ -792,7 +1033,11 @@ function playCareerWithClock(row, options = {}) {
 
 /** Play one frozen manifest row under a deterministic clock. */
 export function playCareerFromRow(row, options = {}) {
-  return withDeterministicClock(row.seeds.world, () => playCareerWithClock(row, options));
+  if (options.openingPath != null && row.openingPath != null && options.openingPath !== row.openingPath) {
+    throw new Error(`Conflicting openingPath override ${options.openingPath} vs row ${row.openingPath}`);
+  }
+  const frozen = options.openingPath && !row.openingPath ? { ...row, openingPath: options.openingPath } : row;
+  return withDeterministicClock(frozen.seeds.world, () => playCareerWithClock(frozen, options));
 }
 
 /** Pure helpers exported for unit tests. */
@@ -808,25 +1053,32 @@ export const __test__ = {
   maybeRetire,
   countAwards,
   offerExecutableCount,
+  periodKindFromCommitted,
+  periodMeta,
+  applyDeskMarketGeneration,
+  recordMarketReview,
+  acceptOfferLikeLiveDesk,
   RETIREMENT_ODDS,
   recordEmptyStreak(market, reviewId, executable, freeAgent) {
     if (!freeAgent) return market;
+    market.seenReviewIds = market.seenReviewIds || new Set();
+    if (market.seenReviewIds.has(reviewId)) return market;
+    market.seenReviewIds.add(reviewId);
     if (!market.currentSpell) {
       market.currentSpell = { startAge: 0, emptyStreak: 0, reviews: [] };
       market.spells = market.spells || [];
       market.spells.push(market.currentSpell);
     }
     if (executable === 0) {
-      if (market.lastCountedReviewId !== reviewId) {
-        market.currentSpell.emptyStreak += 1;
-        market.lastCountedReviewId = reviewId;
-        market.emptyReviews = (market.emptyReviews || 0) + 1;
-      }
-    } else if (market.lastCountedReviewId !== reviewId) {
+      market.currentSpell.emptyStreak += 1;
+      market.lastCountedReviewId = reviewId;
+      market.emptyReviews = (market.emptyReviews || 0) + 1;
+    } else {
       market.currentSpell.emptyStreak = 0;
       market.lastCountedReviewId = reviewId;
       market.validOfferReviews = (market.validOfferReviews || 0) + 1;
     }
+    market.currentSpell.reviews.push(reviewId);
     return market;
   },
   endStatusFromForce(kind) {

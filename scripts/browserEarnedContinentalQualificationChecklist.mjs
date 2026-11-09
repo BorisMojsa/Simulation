@@ -570,8 +570,8 @@ async function driveSeasonToDesk(
     deskPolicy,
     alreadyRunning,
   };
-  // Clear desk decisions that block Simulate (injury recovery, offers, etc.) before arming.
-  for (let guard = 0; guard < 12; guard++) {
+  // Clear desk decisions / leftover overlays that block or intercept Simulate.
+  for (let guard = 0; guard < 24; guard++) {
     const pre = await uiState(page);
     if (!pre.simulateDisabled && pre.overlayHidden && pre.dashboardHidden && !pre.seasonActionInFlight) break;
     const cleared = await page.evaluate((policy) => {
@@ -584,6 +584,26 @@ async function driveSeasonToDesk(
         }
         return null;
       };
+      // Drain animation/dashboard overlays before arming Simulate.
+      const cont = document.getElementById("continue-btn");
+      const contSection = document.getElementById("animation-continue");
+      if (
+        cont &&
+        contSection &&
+        !contSection.classList.contains("hidden") &&
+        !cont.disabled &&
+        cont.offsetParent !== null
+      ) {
+        cont.click();
+        return "overlay:continue-btn";
+      }
+      for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "sim-skip-match-btn", "match-skip-btn"]) {
+        const el = document.getElementById(id);
+        if (el && !el.disabled && el.offsetParent !== null) {
+          el.click();
+          return `overlay:${id}`;
+        }
+      }
       if (policy === "accept-move" || policy === "accept-cross-league" || policy === "accept-brentford-loan") {
         const loan = click(/review loan options|see loan|loan options/i);
         if (loan) return `desk-decision:${loan}`;
@@ -595,7 +615,11 @@ async function driveSeasonToDesk(
         if (accept) return `desk-decision:${accept}`;
       }
       if (policy === "decline-offers") {
-        const decline = click(/decline all|decline offers|no thanks|continue as free agent|remain a free agent/i);
+        const decline =
+          click(/continue as free agent \(train\s*\/\s*wait\)/i) ||
+          click(/continue as free agent|remain a free agent/i) ||
+          click(/decline all|decline offers|no thanks/i) ||
+          click(/^decline$/i);
         if (decline) return `desk-decision:${decline}`;
       }
       const stay =
@@ -608,8 +632,12 @@ async function driveSeasonToDesk(
         click(/^see it out$|^remain$|^understood$|^got it$/i);
       return stay ? `desk-decision:${stay}` : null;
     }, deskPolicy);
-    if (cleared?.startsWith("desk-decision:")) {
-      trace.deskDecisions.push(cleared.slice("desk-decision:".length));
+    if (cleared?.startsWith("desk-decision:") || cleared?.startsWith("overlay:")) {
+      if (cleared.startsWith("desk-decision:")) {
+        trace.deskDecisions.push(cleared.slice("desk-decision:".length));
+      } else {
+        trace.deskDecisions.push(cleared);
+      }
       await page.waitForTimeout(200);
       continue;
     }
@@ -617,7 +645,38 @@ async function driveSeasonToDesk(
   }
   const ui0 = await uiState(page);
   if (!alreadyRunning) {
-    assert(ui0.simulateDisabled === false, "simulate must be enabled", ui0);
+    // One more overlay drain if Simulate is still covered.
+    if (!ui0.overlayHidden || !ui0.dashboardHidden) {
+      for (let i = 0; i < 8; i++) {
+        const drained = await page.evaluate(() => {
+          const cont = document.getElementById("continue-btn");
+          const section = document.getElementById("animation-continue");
+          if (
+            cont &&
+            section &&
+            !section.classList.contains("hidden") &&
+            !cont.disabled &&
+            cont.offsetParent !== null
+          ) {
+            cont.click();
+            return "continue";
+          }
+          for (const id of ["sim-skip-phase-btn", "match-skip-phase-btn", "sim-skip-match-btn", "match-skip-btn"]) {
+            const el = document.getElementById(id);
+            if (el && !el.disabled && el.offsetParent !== null) {
+              el.click();
+              return id;
+            }
+          }
+          return null;
+        });
+        if (!drained) break;
+        await page.waitForTimeout(150);
+      }
+    }
+    const uiArm = await uiState(page);
+    assert(uiArm.simulateDisabled === false, "simulate must be enabled", uiArm);
+    assert(uiArm.overlayHidden && uiArm.dashboardHidden, "overlays must be clear before simulate", uiArm);
     await page.click("#simulate-btn");
     trace.simulateClicks += 1;
   }
@@ -685,6 +744,8 @@ async function driveSeasonToDesk(
           // Stay path: clear inbound offers so the season can resume.
           if (policy === "stay" || policy === "decline-offers") {
             const decline =
+              trayButtons.find((b) => /continue as free agent \(train\s*\/\s*wait\)/i.test(b.textContent || "")) ||
+              trayButtons.find((b) => /continue as free agent|remain a free agent/i.test(b.textContent || "")) ||
               trayButtons.find((b) => /decline offers and continue at/i.test(b.textContent || "")) ||
               trayButtons.find((b) => /decline all|decline offers|no thanks/i.test(b.textContent || "")) ||
               trayButtons.find((b) => /^decline$/i.test((b.textContent || "").trim()));

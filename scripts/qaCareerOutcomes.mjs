@@ -11,7 +11,12 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildManifest, selectManifestRows, validateManifest } from "./lib/careerQaManifest.mjs";
+import {
+  buildManifest,
+  resolveOpeningOverride,
+  selectManifestRows,
+  validateManifest,
+} from "./lib/careerQaManifest.mjs";
 import { playCareerFromRow } from "./lib/careerQaPlay.mjs";
 import { aggregateCareers, canonicalCareerRecord, toHumanSummary } from "./lib/careerQaReport.mjs";
 
@@ -40,7 +45,7 @@ Options:
   --out <dir>            Fresh output directory (required)
   --manifest <file>      Replay exact frozen inputs
   --career-index <i>     Replay a single manifest row by index
-  --opening <path>       interactive (default) or skip
+  --opening <path>       interactive (default on sample) or skip; on replay must match manifest
   --help                 Show help
 `);
 }
@@ -53,7 +58,8 @@ function parseArgs(argv) {
     outDir: null,
     manifest: null,
     careerIndex: null,
-    opening: "interactive",
+    opening: null,
+    openingProvided: false,
     help: false,
   };
   const known = new Set(["--n", "--seed", "--maxAge", "--out", "--manifest", "--career-index", "--opening", "--help", "-h"]);
@@ -76,7 +82,10 @@ function parseArgs(argv) {
     else if (a === "--out") out.outDir = value;
     else if (a === "--manifest") out.manifest = value;
     else if (a === "--career-index") out.careerIndex = Number(value);
-    else if (a === "--opening") out.opening = value;
+    else if (a === "--opening") {
+      out.opening = value;
+      out.openingProvided = true;
+    }
   }
   return out;
 }
@@ -132,20 +141,19 @@ function main() {
     process.exit(2);
   }
 
-  if (opts.opening !== "interactive" && opts.opening !== "skip") {
-    console.error(`Invalid --opening ${opts.opening} (expected interactive|skip)`);
-    process.exit(2);
-  }
-
   let manifest;
   let mode;
+  let openingPath;
   try {
     if (opts.manifest) {
       if (opts.n != null || opts.seed != null) {
         throw new Error("Do not combine --manifest with --n/--seed");
       }
       manifest = loadManifestFile(opts.manifest);
-      if (opts.maxAge != null && manifest.maxAge == null) manifest.maxAge = opts.maxAge;
+      openingPath = resolveOpeningOverride(
+        manifest.openingPath,
+        opts.openingProvided ? opts.opening : null
+      );
       mode = "manifest-replay";
     } else {
       if (opts.n == null || opts.seed == null) {
@@ -154,7 +162,11 @@ function main() {
       if (!Number.isInteger(opts.n) || opts.n < 1) throw new Error(`Invalid --n ${opts.n}`);
       if (!Number.isInteger(opts.seed)) throw new Error(`Invalid --seed ${opts.seed}`);
       if (!Number.isInteger(opts.maxAge) || opts.maxAge < 20) throw new Error(`Invalid --maxAge ${opts.maxAge}`);
-      manifest = buildManifest(opts.seed, opts.n, { maxAge: opts.maxAge });
+      openingPath = opts.openingProvided ? opts.opening : "interactive";
+      if (openingPath !== "interactive" && openingPath !== "skip") {
+        throw new Error(`Invalid --opening ${openingPath} (expected interactive|skip)`);
+      }
+      manifest = buildManifest(opts.seed, opts.n, { maxAge: opts.maxAge, openingPath });
       mode = "sample";
     }
   } catch (error) {
@@ -177,7 +189,7 @@ function main() {
     ? `TZ=UTC node scripts/qaCareerOutcomes.mjs --manifest ${path.resolve(opts.manifest)}${
         opts.careerIndex != null ? ` --career-index ${opts.careerIndex}` : ""
       } --out <fresh-dir>`
-    : `TZ=UTC node scripts/qaCareerOutcomes.mjs --n ${manifest.n} --seed ${manifest.seed} --maxAge ${manifest.maxAge} --out <fresh-dir>`;
+    : `TZ=UTC node scripts/qaCareerOutcomes.mjs --n ${manifest.n} --seed ${manifest.seed} --maxAge ${manifest.maxAge} --opening ${openingPath} --out <fresh-dir>`;
 
   const runMeta = {
     schemaVersion: manifest.schemaVersion,
@@ -189,7 +201,7 @@ function main() {
     n: manifest.n,
     maxAge: manifest.maxAge,
     selectedRows: rows.map((r) => r.index),
-    opening: opts.opening,
+    opening: openingPath,
     startedAt,
     rerunCommand,
   };
@@ -197,9 +209,9 @@ function main() {
   writeJson(path.join(outDir, "manifest.json"), manifest);
 
   const careers = [];
-  console.log(`Career QA ${mode}: ${rows.length} row(s), out=${outDir}`);
+  console.log(`Career QA ${mode}: ${rows.length} row(s), opening=${openingPath}, out=${outDir}`);
   for (const row of rows) {
-    const record = playCareerFromRow(row, { openingPath: opts.opening });
+    const record = playCareerFromRow(row);
     const canonical = canonicalCareerRecord(record);
     careers.push(canonical);
     if ((careers.length % 5 === 0) || careers.length === 1 || careers.length === rows.length) {
