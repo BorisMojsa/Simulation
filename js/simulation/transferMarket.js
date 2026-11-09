@@ -6,7 +6,7 @@ import {
   generatePipelineOffers,
   acceptPipelineOffer,
   buildValidatedOffer,
-} from "./dealPipeline.js?v=91";
+} from "./dealPipeline.js?v=105";
 import { getOrInitClubSeasonFinance } from "./clubFinance.js";
 import { LEAGUE_LOOKUP } from "../data/leagues.js";
 import { findSeniorClub } from "./seniorClubs.js?v=91";

@@ -2,7 +2,7 @@ import { POSITION_PROFILES } from "../config/playerConfig.js";
 import { clubNameForDisplay, clamp, randFloat, randInt } from "../utils/helpers.js";
 import { academyNationOf, buildAcademyOfferStories } from "../data/academyOfferStories.js?v=83";
 import { academyOfferWeight, resolveGeographicNation } from "../data/academyGeography.js?v=84";
-import { agePerformanceModifier } from "./playerDevelopment.js?v=91";
+import { agePerformanceModifier } from "./playerDevelopment.js?v=105";
 import { createRng } from "./rng.js";
 
 /** Slot-3 abroad chance when ≥3 domestic parents and an abroad pool exist. */

@@ -16,8 +16,8 @@ import {
   ACADEMY_RESULT_KIND,
 } from "../config/academyLifecycleConfig.js";
 import { POSITION_PROFILES } from "../config/playerConfig.js";
-import { buildNarrativeAcademySeason } from "./narrativeAcademySeason.js?v=91";
-import { buildFirstProContractDecision, signFirstProfessionalContract } from "./proContractOffers.js?v=102";
+import { buildNarrativeAcademySeason } from "./narrativeAcademySeason.js?v=92";
+import { buildFirstProContractDecision, signFirstProfessionalContract } from "./proContractOffers.js?v=103";
 import {
   ensureContractAuthority,
   releaseToFreeAgency,

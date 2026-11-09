@@ -4,11 +4,11 @@ import { pickScenariosForPosition } from "../data/careerOpeningScenarios.js?v=76
 import {
   pickThreeAcademies,
   buildNarrativeAcademySeason,
-} from "../simulation/narrativeAcademySeason.js?v=91";
+} from "../simulation/narrativeAcademySeason.js?v=92";
 import {
   finalizeAcademyPlayer,
   applySkipOpeningDevelopment,
-} from "../simulation/playerDevelopment.js?v=91";
+} from "../simulation/playerDevelopment.js?v=105";
 import {
   ACADEMY_OPENING,
   advanceOpeningCursor,
@@ -23,7 +23,7 @@ import { stableCareerId } from "../simulation/playerDevelopmentModel.js?v=76";
 import {
   buildFirstProContractDecision,
   signFirstProfessionalContract,
-} from "../simulation/proContractOffers.js?v=102";
+} from "../simulation/proContractOffers.js?v=103";
 import { escapeHtml, formatCurrency } from "../utils/helpers.js";
 import {
   formatAbilityDisplayChange,

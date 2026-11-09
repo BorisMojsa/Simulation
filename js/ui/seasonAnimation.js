@@ -13,13 +13,13 @@ import {
   getDashboardRevealState,
   setAwaitingChoice,
   setCompetitionMenuVisible,
-} from "./simulationDashboard.js?v=91";
-import { renderLeagueTable } from "./rendering.js?v=92";
+} from "./simulationDashboard.js?v=92";
+import { renderLeagueTable } from "./rendering.js?v=93";
 import { playerEntitledToClubHonor } from "../simulation/playingRegistration.js";
 import {
   assertUsableAcademyResult,
   ACADEMY_RESULT_KIND,
-} from "../simulation/academyLifecycle.js?v=102";
+} from "../simulation/academyLifecycle.js?v=103";
 import { escapeHtml } from "../utils/helpers.js";
 import { getDisplayAttributeKeys } from "../simulation/playerAbility.js?v=62";
 import {

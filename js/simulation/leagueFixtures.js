@@ -10,7 +10,7 @@ import { advanceStateBetweenDates, updateFormFromObservation, updateFatigue } fr
 import { refreshAbilityCaches } from "./playerAbility.js";
 import { performanceObservationFromMatch } from "./playerSeasonLedger.js";
 import { stableCareerId } from "./playerDevelopmentModel.js";
-import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js?v=102";
+import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js?v=103";
 import {
   freezeEditionRoster,
   leagueViewForEdition,

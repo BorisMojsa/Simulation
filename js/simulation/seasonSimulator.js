@@ -47,14 +47,14 @@ import {
   assessClubPlayingTime,
   participationLedgerFromAssessment,
 } from "./playingTimeAssessment.js";
-import { generatePipelineOffers, acceptPipelineOffer } from "./dealPipeline.js?v=91";
+import { generatePipelineOffers, acceptPipelineOffer } from "./dealPipeline.js?v=105";
 import {
   advanceAcademyPeriod,
   toAcademySeasonResult,
   ensureAcademyLifecycle,
   migrateAcademyLifecycle,
   isAcademyEnrolled,
-} from "./academyLifecycle.js?v=102";
+} from "./academyLifecycle.js?v=103";
 import { endLoan } from "./loanMarket.js?v=105";
 import {
   playerEntitledToClubHonor,

@@ -1,9 +1,9 @@
 /**
  * Deterministic mid-season decision policies for tests and automated careers.
  */
-import { resolveSquadDecision } from "./squadDecisions.js?v=91";
+import { resolveSquadDecision } from "./squadDecisions.js?v=105";
 import { startLoan } from "./loanMarket.js?v=105";
-import { acceptPipelineOffer } from "./dealPipeline.js?v=91";
+import { acceptPipelineOffer } from "./dealPipeline.js?v=105";
 import { resolveMoveRegistration } from "./destinationSchedule.js?v=91";
 
 /**

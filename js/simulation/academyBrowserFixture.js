@@ -16,8 +16,8 @@ import {
   createPlayerIdentity,
   finalizeAcademyPlayer,
   applySkipOpeningDevelopment,
-} from "./playerDevelopment.js?v=91";
-import { buildNarrativeAcademySeason } from "./narrativeAcademySeason.js?v=91";
+} from "./playerDevelopment.js?v=105";
+import { buildNarrativeAcademySeason } from "./narrativeAcademySeason.js?v=92";
 import { createWorldState, setWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";
 import { reseedCareerRng } from "./rng.js";
@@ -27,8 +27,8 @@ import {
   ensureAcademyLifecycle,
   buildAndPersistAcademyReview,
   ACADEMY_EXIT_AGE,
-} from "./academyLifecycle.js?v=102";
-import { buildFirstProContractDecision } from "./proContractOffers.js?v=102";
+} from "./academyLifecycle.js?v=103";
+import { buildFirstProContractDecision } from "./proContractOffers.js?v=103";
 
 export const ACADEMY_FIXTURE = {
   careerId: "academy-ui-fixture-v1",

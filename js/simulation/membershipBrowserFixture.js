@@ -4,7 +4,7 @@
  * or apply committed-fixture pair finalization (never fabricated standings).
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
-import { createPlayerIdentity } from "./playerDevelopment.js?v=91";
+import { createPlayerIdentity } from "./playerDevelopment.js?v=105";
 import { simulateSeason } from "./seasonSimulator.js?v=107";
 import { simulateChronologicalSeason } from "./chronologicalSeason.js?v=105";
 import {
@@ -27,7 +27,7 @@ import {
 import { buildDestinationLeagueSchedule } from "./destinationSchedule.js?v=91";
 import { roundTripCareerSnapshot } from "./careerSnapshot.js?v=103";
 import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js?v=91";
-import { buildValidatedOffer, applyOfferToPlayer, generatePipelineOffers } from "./dealPipeline.js?v=91";
+import { buildValidatedOffer, applyOfferToPlayer, generatePipelineOffers } from "./dealPipeline.js?v=105";
 import { startLoan, endLoan } from "./loanMarket.js?v=105";
 import { openBoundaryContractReview } from "./contractLifecycle.js?v=103";
 

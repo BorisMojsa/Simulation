@@ -6,7 +6,7 @@
 import { attachClubIdentity, getWorldState } from "./worldState.js";
 import { effectiveTeamStrength } from "./teamStrength.js?v=91";
 import { getSimRng, createStreamRng } from "./rng.js";
-import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js?v=102";
+import { assertNotAcademyForSeniorSimulation } from "./academyLifecycle.js?v=103";
 import {
   dateLeagueFixtures,
   flattenRoundRobinFixtures,
@@ -19,16 +19,16 @@ import {
 import { rivalsForClub } from "../data/clubRivals.js";
 import { createRng } from "./rng.js";
 import { squadReviewCheckpointDate } from "../data/registrationWindows.js";
-import { evaluateSquadDecision, resolveSquadDecision } from "./squadDecisions.js?v=91";
+import { evaluateSquadDecision, resolveSquadDecision } from "./squadDecisions.js?v=105";
 import { generateLoanOffers } from "./loanMarket.js?v=105";
-import { generatePipelineOffers } from "./dealPipeline.js?v=91";
+import { generatePipelineOffers } from "./dealPipeline.js?v=105";
 import { exportClubFinanceState, importClubFinanceState } from "./clubFinance.js";
 import {
   reconcileAfterClubChange,
   playerEligibleForClubMatch,
   findLeagueById,
 } from "./destinationSchedule.js?v=91";
-import { applyDecisionPolicy } from "./decisionPolicies.js?v=91";
+import { applyDecisionPolicy } from "./decisionPolicies.js?v=105";
 import { processPlayerMatchDay } from "./playerMatchDay.js?v=91";
 import { resolveKnockout } from "./matchEngine.js?v=91";
 import { simulateMatch } from "./matchEngine.js?v=91";

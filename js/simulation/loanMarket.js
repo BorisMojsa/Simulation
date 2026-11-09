@@ -6,7 +6,7 @@ import { allSeniorClubs, findSeniorClubById } from "./seniorClubs.js?v=91";
 import { resolveClubLeagueMetadata } from "./leagueMembership.js?v=91";
 import { getWorldState } from "./worldState.js";
 import { findEligibleClubs, pickWeighted } from "./recruitmentModel.js?v=91";
-import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js?v=91";
+import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js?v=105";
 import {
   getOrInitClubSeasonFinance,
   validateDealAffordability,

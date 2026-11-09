@@ -43,6 +43,7 @@ const WATCH = [
   "membershipBrowserFixture.js",
   "transferMigration.js",
   "careerSnapshot.js",
+  "rendering.js",
 ];
 
 /** Minimum accepted candidate versions for modules changed by Item 2. */
@@ -54,7 +55,8 @@ const NEED = {
   "membershipBrowserFixture.js": 107,
   "transferMigration.js": 103,
   "careerSnapshot.js": 103,
-  "main.js": 114,
+  "main.js": 115,
+  "rendering.js": 93,
 };
 
 /** Base tip versions that must not be served after the candidate switch. */
@@ -67,6 +69,7 @@ const BASE_FORBIDDEN = {
   "transferMigration.js": new Set(["102"]),
   "careerSnapshot.js": new Set(["102"]),
   "main.js": new Set(["108"]),
+  "rendering.js": new Set(["92", "91"]),
 };
 
 function note(msg, data) {
@@ -222,6 +225,10 @@ async function main() {
 
     switcher.state.docRoot = root;
     note("switched origin to candidate (cache retained)");
+    // Close the warm page before recording candidate requests so base-tip module
+    // URLs cannot leak into the candidate request log. HTTP cache remains in the
+    // shared BrowserContext.
+    await page.close().catch(() => {});
 
     const page2 = await context.newPage();
     const requested = [];
@@ -235,7 +242,6 @@ async function main() {
     await page2.waitForFunction(() => typeof window.__exportCareerSnapshot === "function", null, {
       timeout: 60000,
     });
-    await page.close().catch(() => {});
 
     // Force the Item 2 import graph through the membership coterminal fixture.
     const loaded = await page2.evaluate(() =>

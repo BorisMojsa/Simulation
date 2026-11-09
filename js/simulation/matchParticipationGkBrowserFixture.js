@@ -4,7 +4,7 @@
  * are inspectable through the live career debug surface.
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
-import { createPlayerIdentity } from "./playerDevelopment.js?v=91";
+import { createPlayerIdentity } from "./playerDevelopment.js?v=105";
 import { simulateSeason } from "./seasonSimulator.js?v=107";
 import { createWorldState, setWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";

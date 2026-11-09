@@ -21,11 +21,11 @@ import {
   markOfferStatus,
   isContractActive,
   isFreeAgent,
-} from "../simulation/contractLifecycle.js?v=102";
+} from "../simulation/contractLifecycle.js?v=103";
 import {
   findExecutableParentOffer,
   reconcileAcademyReviewTray,
-} from "../simulation/academyLifecycle.js?v=91";
+} from "../simulation/academyLifecycle.js?v=103";
 import {
   formatStageLabel,
   projectTournamentRecords,

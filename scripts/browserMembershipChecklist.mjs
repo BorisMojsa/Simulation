@@ -363,10 +363,23 @@ async function main() {
   let dirty = false;
   try {
     commit = execSync("git rev-parse HEAD", { cwd: root }).toString().trim();
-    // Ignore untracked local evidence dumps; only tracked modifications mark dirty.
-    dirty = Boolean(
-      execSync("git status --porcelain --untracked-files=no", { cwd: root }).toString().trim()
-    );
+    // Ignore untracked dumps and generated qa/reports noise so clean-tip evidence
+    // reports the exact tested commit rather than checklist output side-effects.
+    const porcelain = execSync("git status --porcelain --untracked-files=no", {
+      cwd: root,
+      encoding: "utf8",
+    });
+    dirty = porcelain
+      .split("\n")
+      .map((line) => line.trimEnd())
+      .filter(Boolean)
+      .some((line) => {
+        // git porcelain: two status chars, space, then path (or "old -> new").
+        let path = line.length >= 3 ? line.slice(3) : line.trim();
+        if (path.includes(" -> ")) path = path.split(" -> ").pop();
+        path = path.replace(/^"|"$/g, "").trim();
+        return !path.startsWith("qa/") && !path.startsWith("reports/");
+      });
   } catch {
     /* ignore */
   }

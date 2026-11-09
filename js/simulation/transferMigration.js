@@ -11,7 +11,7 @@ import {
   CONTRACT_LIFECYCLE_VERSION,
 } from "./contractLifecycle.js?v=103";
 import { ensurePlayingStints } from "./playingRegistration.js";
-import { migrateAcademyLifecycle, ensureAcademyLifecycle } from "./academyLifecycle.js?v=102";
+import { migrateAcademyLifecycle, ensureAcademyLifecycle } from "./academyLifecycle.js?v=103";
 import { repairStalePendingLoanReturnBoundary } from "./loanMarket.js?v=105";
 import { getWorldState } from "./worldState.js";
 

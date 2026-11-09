@@ -1,6 +1,6 @@
 import { rivalsForClub } from "../data/clubRivals.js";
 import { allSeniorClubs, findSeniorClub } from "./seniorClubs.js?v=91";
-import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js?v=91";
+import { buildValidatedOffer, acceptPipelineOffer } from "./dealPipeline.js?v=105";
 import { evaluateSportingFit } from "./recruitmentModel.js?v=91";
 import { createStreamRng } from "./rng.js";
 import { safePlayerOverall } from "./playerOverallSafe.js";
