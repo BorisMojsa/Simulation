@@ -571,7 +571,9 @@ async function driveSeasonToDesk(
     alreadyRunning,
   };
   // Clear desk decisions / leftover overlays that block or intercept Simulate.
-  for (let guard = 0; guard < 24; guard++) {
+  // When alreadyRunning, leave Continue / decline to the main loop so post-commit
+  // clicks are counted and FA desk returns are not consumed early.
+  for (let guard = 0; !alreadyRunning && guard < 24; guard++) {
     const pre = await uiState(page);
     if (!pre.simulateDisabled && pre.overlayHidden && pre.dashboardHidden && !pre.seasonActionInFlight) break;
     const cleared = await page.evaluate((policy) => {
@@ -694,15 +696,19 @@ async function driveSeasonToDesk(
       };
       if (shotPrefix) await shot(page, `${shotPrefix}-before-continue`);
     }
+    const nextId = cur.nextAction?.id || cur.debug?.nextAction?.id || null;
+    const deskReadyNext =
+      nextId === "start-season" ||
+      nextId === "free-agent" ||
+      nextId === "search-offers" ||
+      nextId === "train-search";
     if (
       committed &&
       beforeContinue &&
       cur.overlayHidden &&
       cur.dashboardHidden &&
       cur.seasonActionInFlight === false &&
-      (trace.postCommitContinueClicks >= 1 ||
-        cur.nextAction?.id === "start-season" ||
-        cur.debug?.nextAction?.id === "start-season")
+      (trace.postCommitContinueClicks >= 1 || deskReadyNext)
     ) {
       return { trace, beforeContinue, final: cur };
     }
