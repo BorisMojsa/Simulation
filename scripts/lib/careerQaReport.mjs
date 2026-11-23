@@ -5,6 +5,11 @@ function finite(nums) {
   return (nums || []).filter((n) => Number.isFinite(n));
 }
 
+/**
+ * Linear interpolation between adjacent ordered values at index (n-1)*p.
+ * Distinct from nearest-rank floor((n-1)*p), which for [0, 10] at p=0.5 yields 0
+ * while this convention yields 5.
+ */
 export function percentile(values, p) {
   const sorted = [...finite(values)].sort((a, b) => a - b);
   if (!sorted.length) return null;
@@ -14,6 +19,14 @@ export function percentile(values, p) {
   const high = Math.ceil(index);
   if (low === high) return sorted[low];
   return sorted[low] * (high - index) + sorted[high] * (index - low);
+}
+
+/** Nearest-rank at floor((n-1)*p) — documented contrast to {@link percentile}. */
+export function percentileNearestRankFloor(values, p) {
+  const sorted = [...finite(values)].sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const q = Math.max(0, Math.min(1, Number(p)));
+  return sorted[Math.floor((sorted.length - 1) * q)];
 }
 
 export function summarize(values) {
@@ -71,9 +84,16 @@ export function aggregateCareers(records, meta = {}) {
   const finalCurrent = completed.map((r) => r.ratings?.finalCurrent).filter(Number.isFinite);
   const finalBase = completed.map((r) => r.ratings?.finalBase).filter(Number.isFinite);
 
-  const deskPeaks = completed
+  // Displayed desk headline uses current overall (see js/ui/rendering.js).
+  const deskCurrentPeaks = completed
     .map((r) => {
-      const v = r.ratings?.peakBase?.value ?? r.ratings?.peakCurrent?.value;
+      const v = r.ratings?.peakCurrent?.value;
+      return Number.isFinite(v) ? roundAbilityForDisplay(v) : null;
+    })
+    .filter(Number.isFinite);
+  const basePeaksDisplayed = completed
+    .map((r) => {
+      const v = r.ratings?.peakBase?.value;
       return Number.isFinite(v) ? roundAbilityForDisplay(v) : null;
     })
     .filter(Number.isFinite);
@@ -81,7 +101,8 @@ export function aggregateCareers(records, meta = {}) {
   const firstPro80to81 = firstProDesk.filter((d) => d === 80 || d === 81).length;
   const peak90 = peakCurrent.filter((v) => v >= 90).length;
   const peak95 = peakCurrent.filter((v) => v >= 95).length;
-  const desk99 = deskPeaks.filter((d) => d === 99).length;
+  const desk99 = deskCurrentPeaks.filter((d) => d === 99).length;
+  const base99 = basePeaksDisplayed.filter((d) => d === 99).length;
   const lowerTailPeak = peakCurrent.filter((v) => v < 70).length;
 
   const endReasons = countBy(all, (r) => r.end?.endReason || "unknown");
@@ -90,11 +111,13 @@ export function aggregateCareers(records, meta = {}) {
     schemaVersion: CAREER_QA_POLICY_VERSION,
     meta: {
       ...meta,
-      percentileDefinition: "nearest-rank on sorted finite values at index floor((n-1)*p); ties keep raw precision until presentation",
+      percentileDefinition:
+        "linear interpolation between adjacent ordered finite values at index (n-1)*p; distinct from nearest-rank floor((n-1)*p)",
       thresholdOvrBasis: {
-        firstPro80to81: "displayed desk OVR from base (roundAbilityForDisplay)",
+        firstPro80to81: "displayed desk OVR from first-pro current (roundAbilityForDisplay of ratings.firstPro.desk/current)",
         peak90and95: "raw current peak",
-        desk99: "displayed OVR from peak base (fallback peak current)",
+        desk99: "displayed current peak (roundAbilityForDisplay of peakCurrent); requires natural browser witness before claiming desk 99",
+        base99: "displayed base peak (roundAbilityForDisplay of peakBase); not the career-desk headline",
         oldCurrentPeakConvention: "ratings.peakRatingCurrentConvention / peakCurrent.value",
       },
       denominators: {
@@ -127,6 +150,7 @@ export function aggregateCareers(records, meta = {}) {
       at90plus: { numerator: peak90, denominator: completed.length },
       at95plus: { numerator: peak95, denominator: completed.length },
       desk99: { numerator: desk99, denominator: completed.length },
+      base99: { numerator: base99, denominator: completed.length },
     },
     finals: {
       completedDenominator: completed.length,
@@ -163,7 +187,8 @@ export function toHumanSummary(summary, meta) {
     `- mean current peak: ${summary.peaks.current.mean}`,
     `- 90+: ${summary.peaks.at90plus.numerator}/${summary.peaks.at90plus.denominator}`,
     `- 95+: ${summary.peaks.at95plus.numerator}/${summary.peaks.at95plus.denominator}`,
-    `- desk 99: ${summary.peaks.desk99.numerator}/${summary.peaks.desk99.denominator}`,
+    `- desk 99 (displayed current): ${summary.peaks.desk99.numerator}/${summary.peaks.desk99.denominator}`,
+    `- base 99 (displayed base): ${summary.peaks.base99.numerator}/${summary.peaks.base99.denominator}`,
     ``,
     `## End reasons`,
     ...Object.entries(summary.endReasons || {}).map(([k, v]) => `- ${k}: ${v}`),

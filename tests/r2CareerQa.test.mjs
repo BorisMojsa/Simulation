@@ -27,6 +27,8 @@ import {
   aggregateCareers,
   canonicalCareerRecord,
   diffCareerRecords,
+  percentile,
+  percentileNearestRankFloor,
 } from "../scripts/lib/careerQaReport.mjs";
 
 test("frozen manifest construction is deterministic and indexed", () => {
@@ -238,24 +240,65 @@ test("period classification uses committed result, not live free-agent flag", ()
   assert.equal(playTest.periodMeta(faSeason, { freeAgent: true }).appearances, 0);
 });
 
-test("desk OVR exports current separately from base and mirrors rating round", () => {
+test("desk OVR samples current separately from base and matches career-desk headline rounding", () => {
   const player = {
-    rating: 69.4,
-    baseOverallRaw: 70.4,
-    currentOverallRaw: 69.4,
-  };
-  // sampleOvr reads through getters; stub via Object for unit shape
-  const fake = {
     age: 22,
     seasons: [],
-    rating: 69.4,
+    rating: 70,
+    baseOverallRaw: 99.0,
+    currentOverallRaw: 97.4,
   };
-  // Monkey via direct values used by sample helper through ability APIs is harder;
-  // assert production rounding contract the runner mirrors.
-  assert.equal(Math.round(69.4), 69);
-  assert.equal(roundAbilityForDisplay(70.4), 70);
-  assert.equal(roundAbilityForDisplay(69.4), 69);
-  assert.ok(fake);
+  const sample = playTest.sampleOvr(player, "probe");
+  assert.equal(sample.base, 99.0);
+  assert.equal(sample.current, 97.4);
+  assert.equal(sample.deskBase, roundAbilityForDisplay(99.0));
+  assert.equal(sample.deskCurrent, roundAbilityForDisplay(97.4));
+  assert.equal(sample.desk, sample.deskCurrent);
+  // Production career-desk headline: currentOverall ?? rating
+  assert.equal(sample.desk, roundAbilityForDisplay(player.currentOverallRaw ?? player.rating));
+  assert.notEqual(sample.desk, sample.deskBase);
+
+  const summary = aggregateCareers([
+    {
+      end: { endReason: "engine-retirement" },
+      ratings: {
+        firstProStatus: "signed",
+        firstPro: { base: 99.0, current: 97.4, desk: sample.desk },
+        peakBase: { value: 99.0 },
+        peakCurrent: { value: 97.4 },
+        finalBase: 90,
+        finalCurrent: 88,
+      },
+    },
+  ]);
+  assert.equal(summary.peaks.desk99.numerator, 0, "desk99 uses displayed current peak, not base");
+  assert.equal(summary.peaks.base99.numerator, 1);
+  assert.equal(summary.firstPro.starts80to81.numerator, 0);
+  assert.equal(summary.meta.thresholdOvrBasis.firstPro80to81.includes("current"), true);
+
+  const rareFirstPro = aggregateCareers([
+    {
+      end: { endReason: "engine-retirement" },
+      ratings: {
+        firstProStatus: "signed",
+        firstPro: { base: 72, current: 80.4, desk: roundAbilityForDisplay(80.4) },
+        peakBase: { value: 72 },
+        peakCurrent: { value: 80.4 },
+        finalBase: 72,
+        finalCurrent: 80.4,
+      },
+    },
+  ]);
+  assert.equal(rareFirstPro.firstPro.starts80to81.numerator, 1);
+  assert.equal(rareFirstPro.meta.thresholdOvrBasis.firstPro80to81.includes("base"), false);
+});
+
+test("percentile uses linear interpolation and differs from nearest-rank floor", () => {
+  assert.equal(percentile([0, 10], 0.5), 5);
+  assert.equal(percentileNearestRankFloor([0, 10], 0.5), 0);
+  const summary = aggregateCareers([]);
+  assert.match(summary.meta.percentileDefinition, /linear interpolation/i);
+  assert.match(summary.meta.percentileDefinition, /nearest-rank/i);
 });
 
 test("runner short career records market reviews and honest period kinds", () => {
