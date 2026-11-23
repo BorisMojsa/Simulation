@@ -712,7 +712,8 @@ test("F10 witness index resolves uniquely and unknown ids fail before replay", (
   const index = loadWitnessIndex();
   const ids = index.witnesses.map((entry) => entry.id);
   assert.equal(new Set(ids).size, 3);
-  assert.deepEqual([...ids].sort(), ["cid_2369bc62", "cid_2e1ba005", "cid_85a7b61e"]);
+  // Round 2 Item 7 regenerated witnesses under the declared search schedule.
+  assert.deepEqual([...ids].sort(), ["cid_2e1ba005", "cid_4e86244d", "cid_ad1c5931"]);
   assert.throws(() => validateWitnessLookup("cid_does_not_exist"), /Witness not found/);
   const root = mkdtempSync(join(tmpdir(), "fix11-witness-index-"));
   try {
@@ -728,46 +729,46 @@ test("F10 witness index resolves uniquely and unknown ids fail before replay", (
     rmSync(root, { recursive: true, force: true });
   }
 
-  const plus6 = validateWitnessLookup("cid_2369bc62");
-  assert.equal(plus6.career.id, "cid_2369bc62");
+  const plus6 = validateWitnessLookup("cid_ad1c5931");
+  assert.equal(plus6.career.id, "cid_ad1c5931");
   assert.ok(plus6.path.endsWith(join("plus6-plus7", "career-plus6.json")));
-  const bySeason = validateWitnessLookup("cid_2369bc62:season:6");
-  assert.equal(bySeason.career.id, "cid_2369bc62");
-  assert.equal(bySeason.seasonNumber, 6);
-  assert.notEqual(bySeason.career.id, "cid_85a7b61e");
-  assert.throws(() => validateWitnessLookup("cid_2369bc62:season:17"), /season claim/);
+  const bySeason = validateWitnessLookup("cid_ad1c5931:season:2");
+  assert.equal(bySeason.career.id, "cid_ad1c5931");
+  assert.equal(bySeason.seasonNumber, 2);
+  assert.notEqual(bySeason.career.id, "cid_4e86244d");
+  assert.throws(() => validateWitnessLookup("cid_ad1c5931:season:17"), /season claim/);
   const byPath = validateWitnessLookup(plus6.path);
-  assert.equal(byPath.career.id, "cid_2369bc62");
+  assert.equal(byPath.career.id, "cid_ad1c5931");
 
   const altered = structuredClone(plus6.career);
-  altered.seasons.find((row) => row.seasonNumber === 6).rawAfter += 1;
+  altered.seasons.find((row) => row.seasonNumber === 2).rawAfter += 1;
   const validation = validateWitnessClaim(plus6.claim, plus6.career, altered);
   assert.equal(validation.ok, false);
   assert.match(validation.errors.join("\n"), /rawAfter/);
   rec("F10", "Constructed sustained-elite paths and indexed witness contracts", {
-    inputs: { witnessIds: ["cid_2369bc62", "cid_2e1ba005", "cid_85a7b61e"] },
+    inputs: { witnessIds: ["cid_ad1c5931", "cid_2e1ba005", "cid_4e86244d"] },
     expected: { uniqueWitnessIds: 3, unknownWitnessRejected: true },
   });
 });
 
 test("F10 saved career claims match the witness index without replay", () => {
-  for (const id of ["cid_2369bc62", "cid_2e1ba005", "cid_85a7b61e"]) {
+  for (const id of ["cid_ad1c5931", "cid_2e1ba005", "cid_4e86244d"]) {
     const resolved = validateWitnessLookup(id);
     assert.equal(resolved.career.id, id);
     assert.equal(resolved.claim.expected.careerId, id);
     const validation = validateWitnessClaim(resolved.claim, resolved.career);
     assert.equal(validation.ok, true, validation.errors.join("; "));
   }
-  const natural = validateWitnessLookup("cid_85a7b61e");
+  const natural = validateWitnessLookup("cid_4e86244d");
   assert.ok(natural.path.endsWith(join("natural-99", "career.json")));
-  assert.equal(natural.seasonNumber, 17);
+  assert.equal(natural.seasonNumber, 15);
   assert.equal(natural.career.everDisplayed99, true);
   assert.equal(natural.claim.expected.displayed99, true);
   const plus7 = validateWitnessLookup("cid_2e1ba005");
   assert.ok(plus7.path.endsWith(join("plus6-plus7", "career-plus7.json")));
   assert.equal(plus7.claim.expected.displayedDelta, 7);
   rec("F10", "Constructed sustained-elite paths and indexed witness contracts", {
-    expected: { savedClaimsMatch: true, natural99CareerId: "cid_85a7b61e" },
+    expected: { savedClaimsMatch: true, natural99CareerId: "cid_4e86244d" },
   });
 });
 

@@ -15,9 +15,9 @@
       "forceBreakthrough": true
     },
     "witnessIds": [
-      "cid_2369bc62",
+      "cid_ad1c5931",
       "cid_2e1ba005",
-      "cid_85a7b61e"
+      "cid_4e86244d"
     ]
   },
   "expected": {
@@ -33,7 +33,7 @@
     "uniqueWitnessIds": 3,
     "unknownWitnessRejected": true,
     "savedClaimsMatch": true,
-    "natural99CareerId": "cid_85a7b61e"
+    "natural99CareerId": "cid_4e86244d"
   },
   "notes": [
     "50/60/70 paths are constructed sustained-elite inputs, not natural careers.",
