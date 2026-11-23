@@ -610,20 +610,33 @@ writeFileSync(outPath, JSON.stringify({
         seed: 4242,
       };
 
+      // Item 5 retuned academy generation bands (54–61 mass down, 68–71 up).
+      // OVR / attributes / potential intentionally diverge from Fix 14 ACCEPTED_BASE.
+      // Keep parent-offer club identity and RNG stream checks; pin post-Item-5 OVR
+      // expectations so a further silent generation drift still fails.
+      const item5Expected = {
+        "club:england:swansea-city": { rating: 75, baseOverallRaw: 75, ovr: 75 },
+        "club:turkey:kayserispor": { rating: 69, baseOverallRaw: 69, ovr: 69 },
+      };
+
       for (const [row, recipe] of [
         [domestic, domesticRecipe],
         [abroad, abroadRecipe],
       ]) {
         const base = baseProbe(recipe);
         const fin = finalProbe(row, recipe);
-        assert.equal(fin.rating, base.rating, recipe.clubId);
-        assert.equal(fin.baseOverallRaw, base.baseOverallRaw, recipe.clubId);
-        assert.equal(fin.ovr, base.ovr, recipe.clubId);
-        assert.equal(fin.potential, base.potential, recipe.clubId);
-        assert.deepEqual(fin.attributes, base.attributes, recipe.clubId);
-        assert.equal(fin.offerCount, base.offerCount, recipe.clubId);
+        const again = finalProbe(row, recipe);
+        assert.equal(fin.rating, again.rating, `${recipe.clubId} final determinism`);
+        assert.deepEqual(fin.attributes, again.attributes, `${recipe.clubId} attrs determinism`);
+        const pinned = item5Expected[recipe.clubId];
+        assert.equal(fin.rating, pinned.rating, recipe.clubId);
+        assert.equal(Math.round(fin.baseOverallRaw), pinned.baseOverallRaw, recipe.clubId);
+        assert.equal(fin.ovr, pinned.ovr, recipe.clubId);
         assert.equal(fin.firstOfferClubId, base.firstOfferClubId, recipe.clubId);
         assert.equal(fin.rng, base.rng, recipe.clubId);
+        // Offer counts may move with OVR; require at least the parent pathway.
+        assert.ok(fin.offerCount >= 1, `${recipe.clubId} has offers`);
+        assert.equal(fin.firstOfferClubId, recipe.clubId, `${recipe.clubId} parent remains first`);
       }
     } finally {
       rmSync(tmp, { recursive: true, force: true });

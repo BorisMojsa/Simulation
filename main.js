@@ -1,5 +1,5 @@
 import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js?v=61";
-import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=105";
+import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=106";
 import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=62";
 import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=105";
 import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=105";

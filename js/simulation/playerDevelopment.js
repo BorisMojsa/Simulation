@@ -75,11 +75,13 @@ export function createPlayerIdentity({ name, nationality, position, age = 16 }) 
 export function rollAcademyStartingRating(rng = null) {
   const r = rng?.random?.() ?? Math.random();
   const int = (a, b) => (rng ? rng.int(a, b) : randInt(a, b));
-  if (r < 0.015) return int(76, 78);
-  if (r < 0.045) return int(75, 75);
-  if (r < 0.1) return int(72, 74);
-  if (r < 0.28) return int(68, 71);
-  if (r < 0.58) return int(62, 67);
+  // Item 5: lift typical first-pro starts toward 68–69 while keeping a thin elite tail.
+  // Mass shift: 54–61 42%→22%, expand 68–71 to 32%; exceptional band starts 76–78 at 2%.
+  if (r < 0.02) return int(76, 78);
+  if (r < 0.06) return int(75, 75);
+  if (r < 0.16) return int(72, 74);
+  if (r < 0.48) return int(68, 71);
+  if (r < 0.78) return int(62, 67);
   return int(54, 61);
 }
 
