@@ -194,19 +194,52 @@ async function flow1_emptyNoOffers(page) {
   return after;
 }
 
-async function flow2_searchAgain(page, prior) {
-  note("FLOW 2 start: second consecutive empty-result search");
-  // empty-result identity stays empty for two completed periods (ages 28 then 29).
-  // Flow 1 already completed period 1 — do exactly one more from that desk.
-  if (!prior || (prior.debug?.pendingOffers || []).length > 0 || (prior.debug?.seasons || 0) !== 1) {
+async function flow2_emptyThenOffers(page, prior) {
+  note("FLOW 2 start: empty search followed by Fix 07 recovery offers");
+  // Fixture contract (js/simulation/freeAgentBrowserFixture.js): period 1 fails the
+  // interest gate; the next scheduled search may bypass interest and surface offers.
+  // Do not require a second empty — that conflates ordinary empty with recovery.
+  if (!prior || (prior.debug?.seasons || 0) !== 1 || (prior.debug?.pendingOffers || []).length > 0) {
     await loadFixture(page, "?fixture=free-agent-empty-result");
-    await runEmptyResultSearch(page, "FLOW 2 seed period 1");
+    prior = await runEmptyResultSearch(page, "FLOW 2 seed period 1");
   }
-  const state = await runEmptyResultSearch(page, "FLOW 2");
-  assert(/Age\s+\d+/i.test(state.historyText) || /Period\s+\d+/i.test(state.historyText), "age/period labels", state);
-  assert(state.historyCount === 2, "FLOW 2: two visible empty-result periods", state);
-  await shot(page, "02-search-again");
-  return state;
+  assert(prior.simulateDisabled === false, "FLOW 2: search re-enabled after empty", prior);
+  assert((prior.debug?.pendingOffers || []).length === 0, "FLOW 2: no tray before recovery search", prior);
+
+  const before = await debug(page);
+  await clickSearch(page);
+  await waitRecap(page);
+  const mid = await debug(page);
+  const offerCopy = await page.evaluate(
+    () => document.querySelector(".free-agent-recap-offers")?.textContent || ""
+  );
+  note("FLOW 2 recovery recap", {
+    offerCopy,
+    pending: mid.debug?.pendingOffers?.length,
+    next: mid.debug?.nextAction?.id,
+  });
+  assert(
+    (mid.debug?.pendingOffers || []).length > 0,
+    "FLOW 2: recovery search surfaces executable offers",
+    { offerCopy, mid }
+  );
+  assert(/offer/i.test(offerCopy), "FLOW 2: recap mentions offers", { offerCopy, mid });
+  assert(mid.continueVisible === true, "FLOW 2: Continue visible on recovery recap", mid);
+
+  await clickContinue(page);
+  const after = await debug(page);
+  assert(after.overlayHidden, "FLOW 2: overlay closed", after);
+  assert(after.historyCount === before.historyCount + 1, "FLOW 2: history +1", after);
+  assert(after.debug?.age === before.debug.age + 1, "FLOW 2: age +1", after);
+  assert(
+    after.debug?.nextAction?.id === "resolve-offers" || (after.debug?.pendingOffers || []).length > 0,
+    "FLOW 2: desk holds offers after Continue",
+    after
+  );
+  assert(after.simulateDisabled === true, "FLOW 2: search blocked while offers pending", after);
+  assert(/Age\s+\d+/i.test(after.historyText) || /Period\s+\d+/i.test(after.historyText), "age/period labels", after);
+  await shot(page, "02-empty-then-offers");
+  return after;
 }
 
 async function flow3_doubleClicks(page) {
@@ -444,22 +477,8 @@ async function driveClubSeasonToDesk(page, label, timeoutMs = 90000) {
       continue;
     }
 
-    if (cur.debug?.pendingDecision || (cur.debug?.pendingOffers || []).length) {
-      note(`${label}: resolving desk decision/offers via UI`);
-      await page.evaluate(() => {
-        const btns = [...document.querySelectorAll("#transfer-offers button")];
-        btns
-          .find((b) =>
-            /stay|compete|acknowledge|decline offers and continue|see it out|continue as free agent/i.test(
-              b.textContent || ""
-            )
-          )
-          ?.click();
-      });
-      await page.waitForTimeout(250);
-      continue;
-    }
-
+    // Finish in-flight season presentation before desk decisions. Otherwise
+    // resolve-decision/offers clicks hit a covered tray and spin until timeout.
     if (!cur.overlayHidden) {
       try {
         await finishClubPresentation(page, Math.min(45000, deadline - Date.now()));
@@ -467,6 +486,40 @@ async function driveClubSeasonToDesk(page, label, timeoutMs = 90000) {
         // Re-check for scenario pause that appeared mid-skip.
         if (await resolveSeniorScenarioIfOpen(page)) continue;
         throw new Error(`${label}: ${err.message}`);
+      }
+      continue;
+    }
+
+    if (
+      cur.debug?.pendingDecision ||
+      cur.debug?.nextAction?.id === "resolve-decision" ||
+      (cur.debug?.pendingOffers || []).length
+    ) {
+      note(`${label}: resolving desk decision/offers via UI`);
+      const clicked = await page.evaluate(() => {
+        const btns = [...document.querySelectorAll("#transfer-offers button, .career-decision-card button")];
+        const labels = btns.map((b) => (b.textContent || "").trim()).filter(Boolean);
+        const pick =
+          btns.find((b) =>
+            /decline and leave|decline (the )?renewal|decline offers and continue|continue as free agent|let contract expire/i.test(
+              b.textContent || ""
+            )
+          ) ||
+          btns.find((b) => /stay and compete|^stay$|compete for place/i.test(b.textContent || "")) ||
+          btns.find((b) => /acknowledge|see it out|remain/i.test(b.textContent || "")) ||
+          btns.find((b) => /review loan|see loan/i.test(b.textContent || ""));
+        if (pick) {
+          pick.click();
+          return { ok: true, label: (pick.textContent || "").trim(), labels };
+        }
+        return { ok: false, labels };
+      });
+      note(`${label}: desk click`, clicked);
+      if (!clicked.ok) {
+        // Avoid tight spin when the tray is not yet painted.
+        await page.waitForTimeout(400);
+      } else {
+        await page.waitForTimeout(250);
       }
       continue;
     }
@@ -572,49 +625,51 @@ async function resolveSeniorScenarioIfOpen(page) {
 async function resolveDeskBlockers(page, rounds = 12) {
   for (let i = 0; i < rounds; i++) {
     const state = await debug(page);
-    if (!state.simulateDisabled && state.overlayHidden) return state;
+    const searching =
+      !state.simulateDisabled &&
+      state.overlayHidden &&
+      state.scenarioOverlayHidden &&
+      !(state.debug?.pendingOffers || []).length &&
+      !state.debug?.pendingDecision &&
+      state.debug?.nextAction?.id !== "resolve-decision" &&
+      state.debug?.nextAction?.id !== "resolve-offers";
+    if (searching) return state;
 
-    const handledScenario = await resolveSeniorScenarioIfOpen(page);
-    if (handledScenario) {
-      // Season often resumes into the dashboard after a scene.
-      const overlayOpen = await page.evaluate(
-        () => !document.getElementById("season-animation-overlay")?.classList.contains("hidden")
-      );
-      if (overlayOpen) {
-        try {
-          await finishClubPresentation(page, 60000);
-        } catch {
-          /* keep looping */
-        }
+    if (!state.overlayHidden) {
+      try {
+        await finishClubPresentation(page, 60000);
+      } catch {
+        if (await resolveSeniorScenarioIfOpen(page)) continue;
       }
       continue;
     }
 
-    await page.evaluate(() => {
-      const btns = [...document.querySelectorAll("#transfer-offers button")];
-      const fa = btns.find((b) => /continue as free agent/i.test(b.textContent || ""));
-      if (fa) {
-        fa.click();
-        return;
-      }
-      btns
-        .find((b) =>
-          /stay|compete|acknowledge|decline offers and continue|see it out/i.test(b.textContent || "")
-        )
-        ?.click();
-    });
-    await page.waitForTimeout(350);
+    const handledScenario = await resolveSeniorScenarioIfOpen(page);
+    if (handledScenario) continue;
 
-    const overlayOpen = await page.evaluate(
-      () => !document.getElementById("season-animation-overlay")?.classList.contains("hidden")
-    );
-    if (overlayOpen) {
-      try {
-        await finishClubPresentation(page, 60000);
-      } catch {
-        /* continue resolving */
+    const clicked = await page.evaluate(() => {
+      const btns = [
+        ...document.querySelectorAll("#transfer-offers button, .career-decision-card button, .decision-card button"),
+      ];
+      const labels = btns.map((b) => (b.textContent || "").trim()).filter(Boolean);
+      const pick =
+        btns.find((b) =>
+          /decline and leave|decline (the )?renewal|decline offers and continue|continue as free agent|reject renewal|let contract expire/i.test(
+            b.textContent || ""
+          )
+        ) ||
+        btns.find((b) => /see it out|acknowledge|remain/i.test(b.textContent || "")) ||
+        btns.find((b) => /stay and compete|^stay$/i.test(b.textContent || "")) ||
+        btns.find((b) => /review loan/i.test(b.textContent || ""));
+      // Never auto-accept renewals in this checklist — expiry / FA flows need release.
+      if (pick) {
+        pick.click();
+        return { ok: true, label: (pick.textContent || "").trim(), labels };
       }
-    }
+      return { ok: false, labels };
+    });
+    if (!clicked.ok) await page.waitForTimeout(400);
+    else await page.waitForTimeout(300);
   }
   return debug(page);
 }
@@ -686,8 +741,39 @@ async function flow5_contractExpiry(page) {
   assert(state.debug?.lastSeason?.freeAgent !== true, "expiry season is club football", state);
   assert((state.debug?.careerTotals?.matches || 0) > 0, "matches shown for contracted season", state);
 
+  // Boundary renewal may be waiting — decline it so the 1-year deal actually expires.
+  for (let i = 0; i < 10; i++) {
+    state = await debug(page);
+    if (state.debug?.freeAgent || !state.debug?.club) break;
+    if (state.debug?.nextAction?.id === "resolve-offers" || (state.debug?.pendingOffers || []).length) {
+      note("FLOW 5: declining boundary renewal/offers to expire contract");
+      await page.evaluate(() => {
+        const btns = [...document.querySelectorAll("#transfer-offers button, .career-decision-card button")];
+        const decline =
+          btns.find((b) =>
+            /decline and leave|decline (the )?renewal|decline offers and continue|let contract expire|reject/i.test(
+              b.textContent || ""
+            )
+          ) ||
+          btns.find((b) => /see it out|continue as free agent/i.test(b.textContent || ""));
+        decline?.click();
+      });
+      await page.waitForTimeout(350);
+      continue;
+    }
+    if (!state.overlayHidden) {
+      try {
+        await finishClubPresentation(page, 20000);
+      } catch {
+        await resolveSeniorScenarioIfOpen(page);
+      }
+      continue;
+    }
+    await resolveDeskBlockers(page, 4);
+  }
+
   // After expiry the player should be free (or reviewing offers). Clear blockers to search.
-  state = await resolveDeskBlockers(page, 16);
+  state = await resolveDeskBlockers(page, 24);
   state = await debug(page);
   note("FLOW 5 desk after expiry", {
     freeAgent: state.debug?.freeAgent,
@@ -695,10 +781,31 @@ async function flow5_contractExpiry(page) {
     label: state.simulateLabel,
     disabled: state.simulateDisabled,
     offers: state.debug?.pendingOffers?.length,
+    next: state.debug?.nextAction,
+    pendingDecision: state.debug?.pendingDecision,
   });
   assert(state.debug?.freeAgent || !state.debug?.club, "released after contract expiry", state);
-  assert(/free agent/i.test(state.simulateLabel || ""), "search as free agent available", state);
+  // Expiry can leave a valid offer tray; declining must restore FA search.
+  if (
+    (state.debug?.pendingOffers || []).length > 0 ||
+    state.debug?.nextAction?.id === "resolve-offers" ||
+    state.debug?.nextAction?.id === "resolve-decision"
+  ) {
+    note("FLOW 5: declining post-expiry tray to restore search");
+    state = await resolveDeskBlockers(page, 16);
+    state = await debug(page);
+  }
+  assert(
+    (state.debug?.pendingOffers || []).length === 0,
+    "FLOW 5: offer tray cleared before FA search",
+    state
+  );
   assert(state.simulateDisabled === false, "search enabled", state);
+  assert(
+    /free agent/i.test(state.simulateLabel || "") || /train\s*\/\s*search/i.test(state.simulateLabel || ""),
+    "search as free agent available",
+    state
+  );
 
   const beforeFa = state;
   await clickSearch(page);
@@ -789,7 +896,7 @@ async function run() {
   const results = {};
   try {
     if (only === "all" || only === "1") results.flow1 = await flow1_emptyNoOffers(page);
-    if (only === "all" || only === "2") results.flow2 = await flow2_searchAgain(page, results.flow1);
+    if (only === "all" || only === "2") results.flow2 = await flow2_emptyThenOffers(page, results.flow1);
     if (only === "all" || only === "3") results.flow3 = await flow3_doubleClicks(page);
     if (only === "all" || only === "4") results.flow4 = await flow4_offersDeclineAndAccept(page);
     if (only === "all" || only === "5") results.flow5 = await flow5_contractExpiry(page);
