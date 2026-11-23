@@ -343,6 +343,21 @@ export function appendSeasonCard(season, seasonLogEl, player) {
         ? ` <span class="muted">(${escapeHtml(season.developmentExplanations[0])})</span>`
         : ""
     }</dd>
+    ${
+      season.overachievementCredit?.receipt?.status === "credited" &&
+      (season.overachievementCredit.contribution || 0) > 0
+        ? `<dt>Team overachievement</dt>
+    <dd>Expected ${escapeHtml(String(season.overachievementCredit.receipt.expectedPosition))} · finished ${escapeHtml(
+            String(season.overachievementCredit.receipt.actualPosition)
+          )} · +${Number(season.overachievementCredit.contribution).toFixed(2)} OVR credit</dd>`
+        : season.seasonEvidence?.clubFinish?.expectedPosition != null &&
+            season.seasonEvidence?.clubFinish?.position != null
+          ? `<dt>League expectation</dt>
+    <dd>Expected ${escapeHtml(String(season.seasonEvidence.clubFinish.expectedPosition))} · finished ${escapeHtml(
+              String(season.seasonEvidence.clubFinish.position)
+            )}</dd>`
+          : ""
+    }
     <dt>Minutes / starts</dt>
     <dd>${season.minutes ?? "—"} min · ${season.starts ?? "—"} starts</dd>
     <dt>Average rating</dt>

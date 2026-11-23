@@ -8,7 +8,7 @@ import { resolvePlayingClubAt, resolvePlayingStintAt } from "./js/simulation/pla
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=105";
 import { createRng } from "./js/simulation/rng.js";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=104";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=108";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=109";
 import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
 import {
   serializeCareerSnapshot,
@@ -48,7 +48,7 @@ import {
   renderCompetitions,
   renderTransferOffers,
   renderCareerMoments,
-} from "./js/ui/rendering.js?v=93";
+} from "./js/ui/rendering.js?v=94";
 import { runCareerStartFlow } from "./js/ui/careerStartFlow.js?v=103";
 import {
   showSeasonAnimation,

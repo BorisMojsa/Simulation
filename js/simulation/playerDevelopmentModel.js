@@ -146,7 +146,11 @@ export function computeRecognitionContribution(recognition = {}) {
     const weight = clamp(t.participationWeight ?? 0.5, 0, 1);
     trophySum += (cfg.trophyParticipation[kind] ?? 0.2) * weight;
   }
-  return clamp(awardSum + trophySum, 0, cfg.maxContribution);
+  const overachievementSum = Math.max(
+    0,
+    Number(recognition.overachievementContribution ?? recognition.overachievement?.contribution) || 0
+  );
+  return clamp(awardSum + trophySum + overachievementSum, 0, cfg.maxContribution);
 }
 
 /**
@@ -827,6 +831,12 @@ export function developSeason(player, context = {}) {
     );
   }
   if (recognitionPoints >= 0.35) explanations.push("Individual recognition and achievements added a development boost.");
+  const oaReceipt = context.recognition?.overachievement || context.overachievement?.receipt;
+  if (oaReceipt?.status === "credited" && (oaReceipt.contribution || 0) > 0.05) {
+    explanations.push(
+      `Club overachievement (expected ${oaReceipt.expectedPosition}, finished ${oaReceipt.actualPosition}) earned development credit.`
+    );
+  }
   if (components.ageing < -0.05) explanations.push("Age-related physical changes offset some gains.");
   if (components.deconditioning < -0.05) {
     explanations.push(`Time lost to injury or missed training reduced development.`);

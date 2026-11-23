@@ -7,7 +7,7 @@ import {
   developmentPeriodId,
   ensureLearningPeriodLedger,
   stableCareerId,
-} from "./playerDevelopmentModel.js?v=88";
+} from "./playerDevelopmentModel.js?v=89";
 import { getOrUpdateForecast } from "./playerPotential.js";
 import { createEmptyLedger, recordMatchObservation, aggregateSeason } from "./playerSeasonLedger.js";
 import { createStreamRng } from "./rng.js";
@@ -30,7 +30,8 @@ import {
   competitionScopeOf,
   leagueOverallOf,
   resolveDevelopmentPeriod,
-} from "./seasonEvidence.js?v=86";
+} from "./seasonEvidence.js?v=87";
+import { freezeClubExpectedFinish } from "./clubExpectations.js";
 import { clubNameForDisplay, clamp, pickRandom, randFloat } from "../utils/helpers.js";
 import { applySeasonDevelopment, attachClubIdentity, ensureWorldState, getWorldState } from "./worldState.js";
 import {
@@ -326,6 +327,27 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   }
   const league = leagueLookup.get(player.club.league) || pickRandom(leagues);
 
+  // Freeze preseason expected finish once per period (strength rank before chrono play).
+  if (!player.development.seasonExpectations || typeof player.development.seasonExpectations !== "object") {
+    player.development.seasonExpectations = {};
+  }
+  const existingExpectation = player.development.seasonExpectations[periodId];
+  if (!existingExpectation || existingExpectation.status === "missing-evidence") {
+    const editionId =
+      storedCheckpointEarly?.editionId ||
+      storedCheckpointEarly?.leagueEditionId ||
+      `${league?.leagueId || league?.name || "league"}:${developmentPeriod.seasonStartYear}`;
+    player.development.seasonExpectations[periodId] = freezeClubExpectedFinish({
+      clubs: league?.clubs || [],
+      club: player.club,
+      worldState: getWorldState(),
+      leagueId: league?.leagueId || league?.name || null,
+      editionId,
+      source: "preseason-sporting-strength",
+    });
+  }
+  const frozenExpectation = player.development.seasonExpectations[periodId];
+
   const ledger = createEmptyLedger(seasonId);
   const storedCheckpoint = opts.checkpoint || player.seasonCheckpoint || null;
   const chronoOpts = {
@@ -341,6 +363,7 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
           ? null
           : "stay",
     checkpoint: storedCheckpoint,
+    frozenExpectation,
   };
   const chrono =
     storedCheckpoint?.status === "awaiting_decision" ||
@@ -734,11 +757,38 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     };
   });
 
+  // Midseason destination: freeze destination expectation once for that edition if absent.
+  const playingEditionId =
+    frozenExpectation?.editionId ||
+    `${playingLeague?.leagueId || playingLeague?.name || "league"}:${developmentPeriod.seasonStartYear}`;
+  let expectationForEvidence = frozenExpectation;
+  if (
+    playingClub &&
+    playingLeague &&
+    frozenExpectation?.clubId &&
+    playingClub.clubId &&
+    frozenExpectation.clubId !== playingClub.clubId
+  ) {
+    const destKey = `${periodId}:${playingClub.clubId}`;
+    if (!player.development.seasonExpectations[destKey]) {
+      player.development.seasonExpectations[destKey] = freezeClubExpectedFinish({
+        clubs: playingLeague.clubs || [],
+        club: playingClub,
+        worldState: getWorldState(),
+        leagueId: playingLeague.leagueId || playingLeague.name || null,
+        editionId: playingEditionId,
+        source: "midseason-stint-sporting-strength",
+      });
+    }
+    expectationForEvidence = player.development.seasonExpectations[destKey];
+  }
+
   const evidence = buildSeasonEvidence(player, {
     aggregate: agg,
     ledger,
     ledgerMatches: ledger.matches,
     league: playingLeague,
+    club: playingClub || player.club,
     clubOverall: playingClub?.overall,
     standing,
     table: chrono.table,
@@ -760,6 +810,9 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
     seasonDays: developmentPeriod.periodDays,
     requireDatedHealthWindow: true,
     playingStints: evidenceStints,
+    frozenExpectation: expectationForEvidence,
+    expectations: expectationForEvidence,
+    expectedFinish: expectationForEvidence?.expectedPosition,
   });
 
   const awardRng = createStreamRng(stableCareerId(player), `awards:${seasonId}`);
@@ -928,7 +981,13 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
       developmentPeriod: evidence.developmentPeriod,
       season: evidence.season,
       health: evidence.health,
+      clubFinish: evidence.clubFinish,
+      expectedFinish: evidence.expectedFinish,
+      overachievement: evidence.overachievement,
+      frozenExpectation: evidence.frozenExpectation,
     },
+    clubExpectation: expectationForEvidence,
+    overachievementCredit: devCtx.overachievement || null,
     developmentPeriod: evidence.developmentPeriod,
     ledgerRecords: chrono.ledgerRecords || [],
     ledgerSummary: {

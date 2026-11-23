@@ -476,7 +476,7 @@ export const DEVELOPMENT_CAPS = deepFreeze({
 
 /** Bounded recognition / trophy contribution inside the shared annual allowance. */
 export const RECOGNITION_CONFIG = deepFreeze({
-  /** Max overall points from combined awards + trophies in one development year. */
+  /** Max overall points from combined awards + trophies + overachievement in one development year. */
   maxContribution: 1.4,
   nomination: 0.15,
   selection: 0.35,
@@ -491,6 +491,15 @@ export const RECOGNITION_CONFIG = deepFreeze({
   },
   /** Nomination credit is replaced (not stacked) when the same award is won. */
   replaceNominationOnWin: true,
+  /**
+   * Club overachievement (expected finish − actual) participation-weighted credit.
+   * Separate from performance/environment channels; shares the recognition cap.
+   */
+  overachievement: {
+    maxContribution: 0.55,
+    placeScale: 0.08,
+    minuteTarget: 2400,
+  },
 });
 
 /** Season minutes that earn full development opportunity, by age. */

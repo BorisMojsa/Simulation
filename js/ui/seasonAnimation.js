@@ -14,7 +14,7 @@ import {
   setAwaitingChoice,
   setCompetitionMenuVisible,
 } from "./simulationDashboard.js?v=92";
-import { renderLeagueTable } from "./rendering.js?v=93";
+import { renderLeagueTable } from "./rendering.js?v=94";
 import { playerEntitledToClubHonor } from "../simulation/playingRegistration.js";
 import {
   assertUsableAcademyResult,

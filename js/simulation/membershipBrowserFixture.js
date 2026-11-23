@@ -5,7 +5,7 @@
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
 import { createPlayerIdentity } from "./playerDevelopment.js?v=106";
-import { simulateSeason } from "./seasonSimulator.js?v=108";
+import { simulateSeason } from "./seasonSimulator.js?v=109";
 import { simulateChronologicalSeason } from "./chronologicalSeason.js?v=106";
 import {
   createWorldState,

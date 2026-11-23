@@ -17,7 +17,7 @@ import {
   developmentPeriodId,
   ensureLearningPeriodLedger,
   stableCareerId,
-} from "./playerDevelopmentModel.js?v=88";
+} from "./playerDevelopmentModel.js?v=89";
 import { ensurePlayerModel } from "./playerModelMigration.js";
 import { getOrUpdateForecast } from "./playerPotential.js";
 import {

@@ -26,12 +26,16 @@
  * `environmentProxy`, `preDevelopmentOverall`, boolean `loan`, ...) are kept.
  */
 import { clamp } from "../utils/helpers.js";
-import { PERFORMANCE } from "../config/playerDevelopmentConfig.js";
+import { PERFORMANCE, RECOGNITION_CONFIG } from "../config/playerDevelopmentConfig.js";
 import { aggregateSeason } from "./playerSeasonLedger.js";
 import { normalizePosition } from "./playerAbility.js";
 import { toDay } from "./playerState.js";
 import { simDate } from "./seasonCalendar.js";
 import { developmentPeriodId } from "./playerDevelopmentModel.js";
+import {
+  computeOverachievementContribution,
+  resolveExpectedFinish,
+} from "./clubExpectations.js";
 
 function careerKey(player) {
   const explicit = player?.development?.careerId ?? player?.careerId;
@@ -618,8 +622,15 @@ function clubFinishBlock(player, ctx) {
   const table = ctx.table || ctx.leagueTable || standing?.table || null;
   const teams = numOrNull(ctx.teamCount) ?? (Array.isArray(table) ? table.length : null) ?? numOrNull(standing?.teams);
   const position = numOrNull(standing?.position);
+  const resolved = resolveExpectedFinish({
+    frozen: ctx.frozenExpectation || ctx.expectations || null,
+    table,
+    club: ctx.club || player?.club,
+  });
   const expectedPosition =
-    numOrNull(ctx.expectedFinish ?? ctx.expectations?.expectedPosition) ??
+    numOrNull(ctx.expectedFinish) ??
+    numOrNull(resolved.expectedPosition) ??
+    // Last resort: strength rank of the provided table (legacy).
     expectedPositionFromTable(table, ctx.club || player?.club);
   const delta = position != null && expectedPosition != null ? expectedPosition - position : null; // >0 overperformed
   return {
@@ -631,6 +642,9 @@ function clubFinishBlock(player, ctx) {
     goalsAgainst: numOrNull(standing?.goalsAgainst),
     expectedPosition,
     finishVsExpectation: delta,
+    expectationStatus: resolved.status || (expectedPosition != null ? "resolved" : "missing-evidence"),
+    expectationSource: resolved.source || null,
+    expectationEditionId: resolved.editionId || ctx.frozenExpectation?.editionId || null,
     percentile: position != null && teams > 1 ? 1 - (position - 1) / (teams - 1) : null,
     champion: position === 1,
     qualification: standing?.qualification ?? null,
@@ -1180,6 +1194,16 @@ export function buildSeasonEvidence(player, context = {}) {
       clubFinish.position != null && clubFinish.expectedPosition != null
         ? Math.max(0, clubFinish.expectedPosition - clubFinish.position)
         : null,
+    frozenExpectation: ctx.frozenExpectation
+      ? {
+          expectedPosition: ctx.frozenExpectation.expectedPosition ?? null,
+          status: ctx.frozenExpectation.status ?? null,
+          source: ctx.frozenExpectation.source ?? null,
+          editionId: ctx.frozenExpectation.editionId ?? null,
+          leagueId: ctx.frozenExpectation.leagueId ?? null,
+          clubId: ctx.frozenExpectation.clubId ?? null,
+        }
+      : null,
     trophies,
     stints,
     loanInfo,
@@ -1218,6 +1242,18 @@ export function attachRecognitionToEvidence(evidence, records = []) {
 /** Map evidence onto `developSeason` inputs. */
 export function evidenceToDevelopmentContext(evidence, extras = {}) {
   const records = Array.isArray(evidence.recognition) ? evidence.recognition : evidence.recognition?.records || [];
+  const oaCfg = RECOGNITION_CONFIG.overachievement || {};
+  const oa = computeOverachievementContribution({
+    expectedPosition: evidence.clubFinish?.expectedPosition ?? evidence.expectedFinish,
+    actualPosition: evidence.clubFinish?.position,
+    usefulMinutes: evidence.minutes,
+    reliability: evidence.reliability,
+    seasonP: evidence.seasonP,
+    teamCount: evidence.clubFinish?.teams,
+    minuteTarget: oaCfg.minuteTarget,
+    maxContribution: oaCfg.maxContribution,
+    placeScale: oaCfg.placeScale,
+  });
   return {
     usefulMinutes: evidence.minutes,
     healthyTrainingFraction: evidence.healthyTrainingFraction,
@@ -1229,6 +1265,9 @@ export function evidenceToDevelopmentContext(evidence, extras = {}) {
     recognition: {
       awards: records,
       trophies: evidence.trophies || [],
+      overachievementContribution: oa.contribution,
+      overachievement: oa.receipt,
     },
+    overachievement: oa,
   };
 }
