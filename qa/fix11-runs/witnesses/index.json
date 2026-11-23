@@ -2,19 +2,19 @@
   "schema": "fix11-witness-index-v1",
   "witnesses": [
     {
-      "id": "cid_2369bc62",
+      "id": "cid_ad1c5931",
       "file": "plus6-plus7/career-plus6.json",
       "expected": {
-        "careerId": "cid_2369bc62",
-        "seed": 2844156468,
+        "careerId": "cid_ad1c5931",
+        "seed": 410813333,
         "policy": "appropriate-minutes-loan",
-        "index": 21,
-        "seasonNumber": 6,
-        "rawBefore": 75.22852491653475,
-        "rawAfter": 80.76942922555527,
+        "index": 66,
+        "seasonNumber": 2,
+        "rawBefore": 71.36999999999999,
+        "rawAfter": 76.86442517211238,
         "displayedDelta": 6,
         "displayed99": false,
-        "peakRaw": 91.44291241996385,
+        "peakRaw": 91.22750122788453,
         "everDisplayed99": false
       }
     },
@@ -28,25 +28,27 @@
         "index": 221,
         "seasonNumber": 2,
         "rawBefore": 71.72250000000001,
-        "rawAfter": 78.58663109079293,
+        "rawAfter": 79.20583028253337,
         "displayedDelta": 7,
-        "displayed99": false
+        "displayed99": false,
+        "peakRaw": 99,
+        "everDisplayed99": true
       }
     },
     {
-      "id": "cid_85a7b61e",
+      "id": "cid_4e86244d",
       "file": "natural-99/career.json",
       "expected": {
-        "careerId": "cid_85a7b61e",
-        "seed": 2842332087,
+        "careerId": "cid_4e86244d",
+        "seed": 3855805658,
         "policy": "appropriate-minutes-loan",
-        "index": 91,
-        "seasonNumber": 17,
-        "rawBefore": 97.63834817445115,
-        "rawAfter": 98.66407918789605,
+        "index": 425,
+        "seasonNumber": 15,
+        "rawBefore": 98.14602302510379,
+        "rawAfter": 98.9095798256004,
         "displayedDelta": 1,
         "displayed99": true,
-        "peakRaw": 98.66407918789605,
+        "peakRaw": 99,
         "everDisplayed99": true
       }
     }

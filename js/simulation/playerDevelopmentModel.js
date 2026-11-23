@@ -775,12 +775,20 @@ export function developSeason(player, context = {}) {
     }
   }
   dev.seasonsDeveloped = (dev.seasonsDeveloped || 0) + 1;
+  // Enriched row feeds Item 7 rolling forecast assumptions (minutes, form, context).
   dev.history.push({
     seasonId: context.seasonId ?? null,
     age,
     overallBefore,
     overallAfter,
     breakthrough,
+    opportunity: opp.opportunity,
+    pLong,
+    reliability,
+    environment: env,
+    healthyTrainingFraction: healthy,
+    usefulMinutes: Number.isFinite(context.usefulMinutes) ? context.usefulMinutes : null,
+    overallDelta: overallAfter - overallBefore,
   });
   if (dev.history.length > caps.historyLength) dev.history.splice(0, dev.history.length - caps.historyLength);
   if (seasonKey) markEventApplied(player, seasonKey);

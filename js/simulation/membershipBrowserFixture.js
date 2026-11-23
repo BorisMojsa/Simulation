@@ -4,8 +4,8 @@
  * or apply committed-fixture pair finalization (never fabricated standings).
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
-import { createPlayerIdentity } from "./playerDevelopment.js?v=106";
-import { simulateSeason } from "./seasonSimulator.js?v=109";
+import { createPlayerIdentity } from "./playerDevelopment.js?v=107";
+import { simulateSeason } from "./seasonSimulator.js?v=110";
 import { simulateChronologicalSeason } from "./chronologicalSeason.js?v=106";
 import {
   createWorldState,

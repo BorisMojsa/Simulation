@@ -8,7 +8,7 @@ import {
 import {
   finalizeAcademyPlayer,
   applySkipOpeningDevelopment,
-} from "../simulation/playerDevelopment.js?v=106";
+} from "../simulation/playerDevelopment.js?v=107";
 import {
   ACADEMY_OPENING,
   advanceOpeningCursor,

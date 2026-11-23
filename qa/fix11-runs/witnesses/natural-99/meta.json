@@ -1,17 +1,15 @@
 {
-  "careerId": "cid_85a7b61e",
+  "careerId": "cid_4e86244d",
   "kind": "natural-witness",
   "displayed99": true,
-  "peakRaw": 98.66995362126346,
-  "ageAt99": 32,
-  "rawAt99": 98.66995362126346,
-  "clubAt99": "club:england:liverpool",
-  "startRaw": 70.72250000000001,
-  "position": "CDM",
-  "seed": 2842332087,
-  "index": 91,
+  "seasonNumber": 15,
+  "rawBefore": 98.14602302510379,
+  "rawAfter": 98.9095798256004,
+  "peakRaw": 99,
+  "seed": 3855805658,
+  "index": 425,
   "policy": "appropriate-minutes-loan",
-  "openingPath": "skip",
-  "discoveryRun": "discovery-plus7-250",
-  "replayCommand": "node scripts/calibrateFullCareerGrowth.mjs --mode witness-replay --witness cid_85a7b61e"
+  "discoveryRun": "r2-07-witness-search-500",
+  "replayCommand": "node scripts/calibrateFullCareerGrowth.mjs --mode witness-replay --witness cid_4e86244d",
+  "note": "Soft displayed-99 crossing (rawAfter < 99); base-only 99 reported separately from search hard99 hits."
 }

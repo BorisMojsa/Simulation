@@ -16,7 +16,7 @@ import {
   createPlayerIdentity,
   finalizeAcademyPlayer,
   applySkipOpeningDevelopment,
-} from "./playerDevelopment.js?v=106";
+} from "./playerDevelopment.js?v=107";
 import { buildNarrativeAcademySeason } from "./narrativeAcademySeason.js?v=92";
 import { createWorldState, setWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";

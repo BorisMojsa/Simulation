@@ -217,14 +217,21 @@ export const CEILING_CONFIG = Object.freeze({
  * effective age before these knots are read — see POSITION_MATURATION.
  * Fix 11: healthy young good seasons target median roughly +3–5 raw OVR;
  * exceptional paths with recognition/breakthrough still produce occasional +6/+7.
+ *
+ * Round 2 Item 7: after academy first-pro ~68, career peak current mean was ~81.3
+ * vs the 83–84 reference. Youth/early-senior knots raised ~7% so useful minutes
+ * and sustained good play close that gap while poor/ordinary/good/exceptional
+ * bands and age/position maturation stay differentiated (see phase 07 evidence).
  */
 export const LEARNING_CURVE_KNOTS = deepFreeze([
   // Youth rates support production-realistic good seasons (moderate seasonP) in the
   // +3–5 band; exceptional recognition/breakthrough paths still reach occasional +6/+7.
-  { age: 16, physical: 3.2, technical: 2.9, mental: 2.2, goalkeeping: 2.5 },
-  { age: 19, physical: 2.75, technical: 2.9, mental: 2.3, goalkeeping: 2.65 },
-  { age: 22, physical: 1.85, technical: 2.25, mental: 2.05, goalkeeping: 2.25 },
-  { age: 25, physical: 0.95, technical: 1.45, mental: 1.45, goalkeeping: 1.7 },
+  // Item 7 revision: modest youth lift vs Fix 11, with performance weight carrying more
+  // of the earned peak so ordinary full-minute seasons stay near the ordinary band.
+  { age: 16, physical: 3.35, technical: 3.03, mental: 2.3, goalkeeping: 2.62 },
+  { age: 19, physical: 2.88, technical: 3.03, mental: 2.4, goalkeeping: 2.78 },
+  { age: 22, physical: 1.94, technical: 2.36, mental: 2.15, goalkeeping: 2.36 },
+  { age: 25, physical: 1.0, technical: 1.52, mental: 1.52, goalkeeping: 1.78 },
   { age: 28, physical: 0.4, technical: 0.95, mental: 1.1, goalkeeping: 1.35 },
   { age: 31, physical: 0.12, technical: 0.5, mental: 0.75, goalkeeping: 0.95 },
   { age: 34, physical: 0, technical: 0.2, mental: 0.36, goalkeeping: 0.5 },
@@ -456,9 +463,11 @@ export const DEVELOPMENT_CAPS = deepFreeze({
    * can wipe new learning (net ≈ 0 or negative after ageing).
    */
   // Moderate production seasonP (~0.3–0.5) should still move a healthy youth season.
-  performanceLearningWeight: 1.45,
+  // Item 7: performance channel carries more of the earned peak so sustained good
+  // play compounds toward 83–84 while ordinary seasons stay nearer their band.
+  performanceLearningWeight: 1.68,
   performanceMultFloor: 0,
-  performanceMultCeil: 2.0,
+  performanceMultCeil: 2.15,
   /**
    * Extra overall-point drag when sustained poor performances are reliable.
    * Applied after learning so bad seasons can finish flat or slightly down.
@@ -625,6 +634,22 @@ export const FORECAST_CONFIG = deepFreeze({
     healthyTrainingFraction: 0.95,
     pLong: 0.15,
     reliability: 0.7,
+  },
+  /**
+   * Rolling career evidence → forecast assumptions (Item 7).
+   *
+   * Rationale from controlled comparisons before holdout:
+   * - Half-life 1.25 seasons: one poor year softens outlook; two–three good seasons
+   *   restore it; elite-bench (low opportunity) stays below regular-minutes peers.
+   * - Reliability weights pLong so short/noisy samples shrink toward neutral.
+   * - Environment tracks coaching/challenge from loans and transfers.
+   * - Window of 4 keeps interrupted careers grounded without lifelong lock-in.
+   */
+  rollingEvidence: {
+    revision: 1,
+    windowSeasons: 4,
+    halfLifeSeasons: 1.25,
+    minWeight: 0.05,
   },
   trajectoryNoiseSd: 0.4,
   shockSd: 0.35,

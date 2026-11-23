@@ -16,7 +16,7 @@ import {
   stableCareerId,
 } from "./playerDevelopmentModel.js?v=76";
 import { ensurePlayerModel } from "./playerModelMigration.js?v=76";
-import { getOrUpdateForecast } from "./playerPotential.js?v=76";
+import { getOrUpdateForecast } from "./playerPotential.js?v=77";
 import { applyMoraleDelta, ensureState, updateFormFromObservation } from "./playerState.js?v=76";
 import { clamp } from "../utils/helpers.js?v=76";
 import {

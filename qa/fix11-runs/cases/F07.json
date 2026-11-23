@@ -16,30 +16,30 @@
       {
         "position": "CM",
         "age": 19,
-        "poor": 0.080402084,
-        "ordinary": 2.30360314,
-        "good": 4.407944608
+        "poor": 0,
+        "ordinary": 2.408046222,
+        "good": 4.956722344
       },
       {
         "position": "ST",
         "age": 22,
-        "poor": 0.059012463,
-        "ordinary": 1.690768286,
-        "good": 3.235285115
+        "poor": 0,
+        "ordinary": 1.772703233,
+        "good": 3.648932335
       },
       {
         "position": "CB",
         "age": 17,
-        "poor": 0.070062016,
-        "ordinary": 2.007349459,
-        "good": 3.84106319
+        "poor": 0,
+        "ordinary": 2.098951865,
+        "good": 4.320482518
       },
       {
         "position": "GK",
         "age": 25,
-        "poor": 0.0484592,
-        "ordinary": 1.388406346,
-        "good": 2.656715543
+        "poor": 0,
+        "ordinary": 1.455537759,
+        "good": 2.996078923
       }
     ],
     "ordering": "good > ordinary > poor"

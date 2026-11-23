@@ -1,5 +1,5 @@
 import { ACADEMY_POOL, LEAGUES, LEAGUE_LOOKUP } from "./js/data/leagues.js?v=61";
-import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=106";
+import { createPlayerIdentity, promoteAcademyGraduateToFirstTeam } from "./js/simulation/playerDevelopment.js?v=107";
 import { getDisplayAttributeKeys, refreshAbilityCaches } from "./js/simulation/playerAbility.js?v=62";
 import { generateTransferOffers } from "./js/simulation/transferMarket.js?v=105";
 import { acceptPipelineOffer } from "./js/simulation/dealPipeline.js?v=105";
@@ -8,7 +8,7 @@ import { resolvePlayingClubAt, resolvePlayingStintAt } from "./js/simulation/pla
 import { queueSquadDecision, resolveSquadDecision } from "./js/simulation/squadDecisions.js?v=105";
 import { createRng } from "./js/simulation/rng.js";
 import { ensureTransferSave } from "./js/simulation/transferMigration.js?v=104";
-import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=109";
+import { simulateSeason } from "./js/simulation/seasonSimulator.js?v=110";
 import { createWorldState, setWorldState, getWorldState } from "./js/simulation/worldState.js";
 import {
   serializeCareerSnapshot,

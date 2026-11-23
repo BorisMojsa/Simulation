@@ -40,8 +40,8 @@
     "rows": [
       {
         "position": "ST",
-        "overallDelta": 3.669222027,
-        "componentSum": 3.669222027
+        "overallDelta": 4.024912125,
+        "componentSum": 4.024912125
       },
       {
         "position": "CM",
@@ -50,18 +50,18 @@
       },
       {
         "position": "CB",
-        "overallDelta": 1.464201569,
-        "componentSum": 1.464201569
+        "overallDelta": 1.571974438,
+        "componentSum": 1.571974438
       },
       {
         "position": "GK",
-        "overallDelta": 5.950451819,
-        "componentSum": 5.950451819
+        "overallDelta": 6.629512483,
+        "componentSum": 6.629512483
       },
       {
         "position": "CM",
-        "overallDelta": 0.073985375,
-        "componentSum": 0.073985375
+        "overallDelta": 0.09564218,
+        "componentSum": 0.09564218
       }
     ],
     "tolerance": 1e-9

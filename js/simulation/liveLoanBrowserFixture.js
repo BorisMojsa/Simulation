@@ -5,8 +5,8 @@
  * validated loan offers (sporting + finance + registration).
  */
 import { LEAGUES, LEAGUE_LOOKUP, LEAGUE_BY_ID } from "../data/leagues.js";
-import { createPlayerIdentity } from "./playerDevelopment.js?v=106";
-import { simulateSeason } from "./seasonSimulator.js?v=109";
+import { createPlayerIdentity } from "./playerDevelopment.js?v=107";
+import { simulateSeason } from "./seasonSimulator.js?v=110";
 import { createWorldState, setWorldState } from "./worldState.js";
 import { resetClubFinanceLedgers } from "./clubFinance.js";
 import { reseedCareerRng } from "./rng.js";

@@ -7,8 +7,8 @@ import {
   developmentPeriodId,
   ensureLearningPeriodLedger,
   stableCareerId,
-} from "./playerDevelopmentModel.js?v=89";
-import { getOrUpdateForecast } from "./playerPotential.js";
+} from "./playerDevelopmentModel.js?v=90";
+import { buildRollingEvidenceAssumptions, getOrUpdateForecast } from "./playerPotential.js";
 import { createEmptyLedger, recordMatchObservation, aggregateSeason } from "./playerSeasonLedger.js";
 import { createStreamRng } from "./rng.js";
 import { refreshAbilityCaches } from "./playerAbility.js?v=88";
@@ -866,7 +866,9 @@ export function simulateSeason(player, leagues, leagueLookup, opts = {}) {
   if (player.development) player.development.academyGrowthApplied = 0;
   const sceneContribution = periodSceneContribution(player, periodId);
 
-  getOrUpdateForecast(player, { sampleCount: 48 });
+  // Item 7: outlook uses rolling minutes/performance/health/environment evidence.
+  const forecastAssumptions = buildRollingEvidenceAssumptions(player);
+  getOrUpdateForecast(player, { sampleCount: 48, assumptions: forecastAssumptions });
   refreshAbilityCaches(player);
 
   const newRating = player.rating;
