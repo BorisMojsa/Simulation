@@ -180,6 +180,29 @@ function persistEdition(state, ctx) {
   return state;
 }
 
+/**
+ * Rebuild a knockout bracket result from a committed match. Restored editions
+ * reuse already-played fixtures without re-running them, so the bracket result
+ * must be re-derived here or later rounds cannot resolve their participants.
+ */
+function recordKnockoutResultFromFixture(state, fixture) {
+  if (!fixture?.matchKey) return;
+  if (fixture.stageType !== "knockout" && fixture.stageType !== "placement") return;
+  if (state.bracket.results[fixture.matchKey]) return;
+  if (fixture.status !== "played" || !fixture.winnerSide) return;
+  const homeId = fixture.homeParticipantId;
+  const awayId = fixture.awayParticipantId;
+  const winnerId = fixture.winnerSide === "home" ? homeId : awayId;
+  const loserId = fixture.winnerSide === "home" ? awayId : homeId;
+  state.bracket.results[fixture.matchKey] = {
+    matchKey: fixture.matchKey,
+    matchId: fixture.matchId,
+    winnerId,
+    loserId,
+    scoreline: formatMatchScoreline(fixture),
+  };
+}
+
 function syncFromStore(state, ctx) {
   if (!ctx.world?.matches) return;
   for (const id of Object.keys(state.fixtures)) {
@@ -188,6 +211,7 @@ function syncFromStore(state, ctx) {
       state.fixtures[id] = { ...state.fixtures[id], ...stored, status: "played" };
       if (!state.playedFixtureIds.includes(id)) state.playedFixtureIds.push(id);
       state.scheduledFixtureIds = state.scheduledFixtureIds.filter((x) => x !== id);
+      recordKnockoutResultFromFixture(state, state.fixtures[id]);
     }
   }
 }
@@ -722,9 +746,11 @@ export function processNationalFixture(editionState, matchId, opts = {}) {
   const existing = getMatch(matchId, ctx.world);
   if (existing?.status === "played") {
     state.fixtures[matchId] = { ...state.fixtures[matchId], ...existing, status: "played" };
+    recordKnockoutResultFromFixture(state, state.fixtures[matchId]);
     return { editionState: state, match: existing, playerIn: involvesPlayer(state, existing), reused: true };
   }
   if (state.fixtures[matchId].status === "played" && state.fixtures[matchId].homeGoals != null) {
+    recordKnockoutResultFromFixture(state, state.fixtures[matchId]);
     return {
       editionState: state,
       match: state.fixtures[matchId],

@@ -1,3 +1,4 @@
+import { getSimRng } from "./rng.js";
 /**
  * Academy-reference → senior category probabilities and two-step outcome sampling.
  * Independent of DOM / player state. Does not mutate academy weights.
@@ -134,7 +135,7 @@ export function allSeniorCategoryProbabilityTables() {
  */
 export function sampleAbilityCategory(disposition, rng) {
   const { senior } = seniorCategoryProbabilities(disposition);
-  const roll = rng?.random?.() ?? Math.random();
+  const roll = (rng?.random?.() ?? getSimRng().random());
   if (roll < senior.positive) return "positive";
   if (roll < senior.positive + senior.neutral) return "neutral";
   return "negative";
@@ -157,7 +158,7 @@ export function sampleOutcomeInCategory(outcomes, rng) {
     total += w;
     return w;
   });
-  let roll = (rng?.random?.() ?? Math.random()) * total;
+  let roll = ((rng?.random?.() ?? getSimRng().random())) * total;
   for (let i = 0; i < list.length; i++) {
     roll -= weights[i];
     if (roll <= 0) return list[i];

@@ -1,3 +1,4 @@
+import { getSimRng } from "../simulation/rng.js";
 /**
  * Academy opening moments. Each choice lists concrete results where
  * narrative text is paired with a narrative score (delta). Realized
@@ -173,7 +174,7 @@ export function pickScenariosForPosition(position, count = 5, rng = null) {
     const copy = [...arr];
     if (rng?.shuffle) return rng.shuffle(copy);
     for (let i = copy.length - 1; i > 0; i--) {
-      const j = Math.floor((rng?.random?.() ?? Math.random()) * (i + 1));
+      const j = Math.floor(((rng?.random?.() ?? getSimRng().random())) * (i + 1));
       [copy[i], copy[j]] = [copy[j], copy[i]];
     }
     return copy;
@@ -221,7 +222,7 @@ export function pickWeightedChoiceResult(choice, rng = null) {
   if (!(total > 0)) {
     throw new Error("pickWeightedChoiceResult: empty weight sum");
   }
-  let roll = (rng?.random?.() ?? Math.random()) * total;
+  let roll = ((rng?.random?.() ?? getSimRng().random())) * total;
   for (const r of results) {
     roll -= r.weight;
     if (roll <= 0) return r;

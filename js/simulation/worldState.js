@@ -13,7 +13,7 @@ import {
 } from "../data/strength/nationProfiles.js?v=59";
 import { CLUB_PROFILES, resolveClub } from "../data/identity/resolver.js";
 import { LEAGUES } from "../data/leagues.js";
-import { createRng, hashSeed, reseedCareerRng, setSimRng, getSimRng } from "./rng.js";
+import { createRng, hashSeed, reseedCareerRng, setSimRng, getSimRng, isCareerRngExplicit } from "./rng.js";
 import { clamp } from "../utils/helpers.js";
 
 export const WORLD_STATE_SCHEMA_VERSION = 4;
@@ -137,7 +137,13 @@ function migrateNationBaselines(baselineNations) {
  * bundled data cannot silently rewrite an in-progress career.
  */
 export function createWorldState({ seed = null, startYear = 2026 } = {}) {
-  const careerSeed = seed ?? hashSeed(`career:${Date.now()}:${Math.random()}`);
+  // Seedless world: derive from the explicitly seeded career stream when one is
+  // active (reproducible fixtures/replays); otherwise draw a fresh random seed.
+  const careerSeed =
+    seed ??
+    (isCareerRngExplicit()
+      ? Math.floor(getSimRng().random() * 4294967296) >>> 0 || 1
+      : hashSeed(`career:${Date.now()}:${Math.random()}`));
   const rng = createRng(careerSeed);
   setSimRng(rng);
   reseedCareerRng(careerSeed);

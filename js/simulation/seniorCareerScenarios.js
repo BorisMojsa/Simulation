@@ -10,7 +10,7 @@ import {
   pickWeightedSeniorResult,
 } from "../data/seniorCareerScenarios.js?v=88";
 import { DOMESTIC_CUPS } from "../data/domesticCups.js";
-import { createStreamRng } from "./rng.js";
+import { createStreamRng, getSimRng } from "./rng.js";
 import {
   alreadyAppliedLearningForPeriod,
   applyScenarioAbilityChange,
@@ -863,7 +863,7 @@ export function buildPendingSeniorScenario(player, event, opts = {}) {
 function shuffleIndices(n, rng) {
   const arr = Array.from({ length: n }, (_, i) => i);
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor((rng?.random?.() ?? Math.random()) * (i + 1));
+    const j = Math.floor(((rng?.random?.() ?? getSimRng().random())) * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;

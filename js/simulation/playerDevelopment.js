@@ -17,7 +17,7 @@ import {
 } from "./playerDevelopmentModel.js";
 import { getOrUpdateForecast } from "./playerPotential.js";
 import { ensurePlayerModel } from "./playerModelMigration.js";
-import { createStreamRng, reseedCareerRng, hashSeed } from "./rng.js";
+import { createStreamRng, reseedCareerRng, hashSeed, getSimRng } from "./rng.js";
 import {
   applyOpeningMoment,
   ensureAcademyOpeningState,
@@ -73,7 +73,7 @@ export function createPlayerIdentity({ name, nationality, position, age = 16 }) 
  * Roll starting academy OVR band target in 54–78 (generation target, not final truth).
  */
 export function rollAcademyStartingRating(rng = null) {
-  const r = rng?.random?.() ?? Math.random();
+  const r = (rng?.random?.() ?? getSimRng().random());
   const int = (a, b) => (rng ? rng.int(a, b) : randInt(a, b));
   // Item 5: lift typical first-pro starts toward 68–69 while keeping a thin elite tail.
   // Mass shift: 54–61 42%→22%, expand 68–71 to 32%; exceptional band starts 76–78 at 2%.

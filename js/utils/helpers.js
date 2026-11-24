@@ -1,3 +1,5 @@
+import { getSimRng } from "../simulation/rng.js";
+
 export function formatCurrency(amount) {
   return `GBP ${amount.toLocaleString()}`;
 }
@@ -39,12 +41,14 @@ export function slugify(value) {
     .replace(/^-+|-+$/g, "");
 }
 
+// Simulation randomness must come from the career-seeded RNG so a seed reproduces
+// the same career. (UI cosmetic randomness uses Math.random directly.)
 export function randInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return Math.floor(getSimRng().random() * (max - min + 1)) + min;
 }
 
 export function randFloat(min, max) {
-  return Math.random() * (max - min) + min;
+  return getSimRng().random() * (max - min) + min;
 }
 
 export function pickRandom(list) {

@@ -1,3 +1,4 @@
+import { getSimRng } from "./rng.js";
 /**
  * Independent seller reservation, buyer willingness, and player wage demands.
  * Capacity is validated separately in clubFinance — do not clamp fee to budget
@@ -12,7 +13,7 @@ import { weeklyToAnnual } from "./clubFinance.js";
  * Contract length using real age — under-18 max 3 years (FIFA-style adapter).
  */
 export function calculateContractLength(age, rating, potential, performanceScore, rng = null) {
-  const roll = (lo, hi) => (rng ? rng.int(lo, hi) : lo + Math.floor(Math.random() * (hi - lo + 1)));
+  const roll = (lo, hi) => (rng ? rng.int(lo, hi) : lo + Math.floor(getSimRng().random() * (hi - lo + 1)));
   const a = Number(age) || 20;
   if (a < CONTRACT_RULES.under18Age) {
     return Math.min(CONTRACT_RULES.under18MaxYears, roll(1, 3));

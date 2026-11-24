@@ -67,17 +67,27 @@ export function createStreamRng(careerId, streamName) {
 
 /** Career-scoped default RNG; re-seeded when a career starts. */
 let careerRng = createRng(1);
+// True once a caller has explicitly seeded the career RNG (reseed/setSimRng) in
+// this run. Seedless world creation then derives from that seeded stream so
+// seeded fixtures, QA harnesses and replays are reproducible.
+let careerRngExplicit = false;
 
 export function getSimRng() {
   return careerRng;
 }
 
+export function isCareerRngExplicit() {
+  return careerRngExplicit;
+}
+
 export function setSimRng(rng) {
   careerRng = rng || createRng(1);
+  careerRngExplicit = true;
   return careerRng;
 }
 
 export function reseedCareerRng(seed) {
   careerRng = createRng(seed);
+  careerRngExplicit = true;
   return careerRng;
 }
