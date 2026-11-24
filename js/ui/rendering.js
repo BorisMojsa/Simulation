@@ -491,7 +491,10 @@ export function renderCompetitions(player, boardEl) {
   }
 
   const seasonOptions = player.seasons
-    .map((s, i) => `<option value="${i}">Season ${i + 1} (${s.year || s.seasonLabel || ""})</option>`)
+    .map((s, i) => {
+      const yearText = seasonSelectorYearLabel(s, player);
+      return `<option value="${i}">${escapeHtml(seasonSelectorText(i, yearText))}</option>`;
+    })
     .join("");
 
   const shell = document.createElement("div");
@@ -921,18 +924,9 @@ export function renderLeagueTable(container, opts = {}) {
         ${badge}
         <div>
           <div class="team-name">${escapeHtml(team.displayName || team.name)}</div>
-          ${
-            team.qualification
-              ? `<div class="qualifier">${escapeHtml(team.qualification)}${
-                  live ? " · provisional" : ""
-                }</div>`
-              : ""
-          }
-          ${
-            team.divisionMove
-              ? `<div class="qualifier">${escapeHtml(String(team.divisionMove))}</div>`
-              : ""
-          }
+          ${standingQualifierLines(team, { live })
+            .map((line) => `<div class="qualifier">${escapeHtml(line)}</div>`)
+            .join("")}
         </div>
       </div>
       <div class="stats-cell">${team.played ?? team.matches ?? 0}</div>
@@ -997,6 +991,51 @@ export function renderLeagueTable(container, opts = {}) {
   return {
     positions: new Map((table || []).map((t) => [String(t.clubId || t.name), t.position])),
   };
+}
+
+/**
+ * Season-selector year text from fields already on the save. Returns null when
+ * the record carries no year identity (so the option shows only "Season N").
+ * Order matches the season card: explicit label, numeric year, then start year.
+ */
+export function seasonSelectorYearLabel(season, player) {
+  if (typeof season?.seasonLabel === "string" && season.seasonLabel.trim()) {
+    return season.seasonLabel.trim();
+  }
+  if (Number.isFinite(season?.year)) {
+    const y = Number(season.year);
+    return `${y}/${String(y + 1).slice(-2)}`;
+  }
+  if (Number.isFinite(season?.seasonNumber) && Number.isFinite(player?.startYear)) {
+    const start = player.startYear + season.seasonNumber - 1;
+    return `${start}/${String(start + 1).slice(-2)}`;
+  }
+  return null;
+}
+
+/** Option text: "Season 2 (2027/28)", or "Season 2" when no year identity exists. */
+export function seasonSelectorText(index, yearText) {
+  const base = `Season ${index + 1}`;
+  return yearText ? `${base} (${yearText})` : base;
+}
+
+/**
+ * Qualifier lines for a standings row. A promotion or relegation is shown once:
+ * the qualification text already names the move, so the raw divisionMove flag is
+ * only used when no qualification text describes it.
+ */
+export function standingQualifierLines(team, { live = false } = {}) {
+  const lines = [];
+  const qualification = typeof team?.qualification === "string" ? team.qualification.trim() : "";
+  if (qualification) {
+    lines.push(`${qualification}${live ? " · provisional" : ""}`);
+  }
+  const move = String(team?.divisionMove || "").toLowerCase();
+  if (move && !/promot|relegat/i.test(qualification)) {
+    if (move === "promoted") lines.push("Promoted");
+    else if (move === "relegated") lines.push("Relegated");
+  }
+  return lines;
 }
 
 function zoneClassForRow(team) {
