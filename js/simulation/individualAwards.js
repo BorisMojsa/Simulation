@@ -915,20 +915,34 @@ export function ensureWorldAwardField(player, { seasonId, fieldStage } = {}, rng
   }
   const stream = awardRng(rng, player, seasonId, `field:${editionId}`);
   // Synthetic world candidates scored with the same season-line contract (not an opaque 4.4 mean).
+  // Item 8: lines are calibrated to elite production user seasons (POTS-eligible
+  // ST/CM seasons typically score ~4.5–6.5). Prior talent bands produced top
+  // rivals at 7–8+ that no authentic user shortlist could touch.
   const worldPossible = 38 * 90;
   const candidates = Array.from({ length: AWARD_CONFIG.worldCandidates }, (_, i) => {
     const groups = ["GK", "DEF", "MID", "FWD"];
     const group = groups[i % 4];
-    const talent = 0.8 + 0.5 * Math.abs(gaussian(stream));
-    const minutes = Math.round(worldPossible * (0.72 + 0.2 * stream.random()));
+    // talent in ~[0.25, 1]: strong but not superhuman relative to a 94 OVR campaign.
+    const talent = clamp(0.25 + 0.45 * Math.abs(gaussian(stream)), 0.2, 1);
+    const minutes = Math.round(worldPossible * (0.68 + 0.26 * stream.random()));
     const line = {
       group,
       minutes,
-      goals: group === "FWD" ? Math.round(18 + 8 * talent) : group === "MID" ? Math.round(8 + 5 * talent) : group === "DEF" ? Math.round(2 + 2 * talent) : 0,
-      assists: group === "GK" ? 0 : Math.round(4 + 6 * talent * (group === "MID" || group === "FWD" ? 1 : 0.4)),
-      cleanSheets: group === "GK" || group === "DEF" ? Math.round(10 + 6 * talent) : 0,
-      rating: Number((RATING_BASELINE + 0.55 + 0.35 * talent + 0.12 * gaussian(stream)).toFixed(2)),
-      teamPpg: 1.8 + 0.4 * talent,
+      goals:
+        group === "FWD"
+          ? Math.round(9 + 14 * talent)
+          : group === "MID"
+            ? Math.round(5 + 7 * talent)
+            : group === "DEF"
+              ? Math.round(1 + 3 * talent)
+              : 0,
+      assists:
+        group === "GK"
+          ? 0
+          : Math.round(3 + 7 * talent * (group === "MID" || group === "FWD" ? 1 : 0.45)),
+      cleanSheets: group === "GK" || group === "DEF" ? Math.round(8 + 7 * talent) : 0,
+      rating: Number((RATING_BASELINE + 0.35 + 0.55 * talent + 0.1 * gaussian(stream)).toFixed(2)),
+      teamPpg: 1.45 + 0.7 * talent,
     };
     return {
       id: `rival:${editionId}:${i}`,
@@ -947,7 +961,7 @@ export function ensureWorldAwardField(player, { seasonId, fieldStage } = {}, rng
     seasonId: sid,
     approximated: true,
     scoreUnits: "scoreSeasonLine",
-    note: "Bounded synthetic world field in scoreSeasonLine units; not a full world simulation.",
+    note: "Bounded synthetic world field in scoreSeasonLine units; calibrated to elite production seasons (Item 8).",
     candidates,
   };
   player.awardFields[editionId] = field;

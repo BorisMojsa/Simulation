@@ -21,7 +21,7 @@ import {
 import { finalizeMembershipForSeasonSegments } from "./leagueMembership.js?v=91";
 import { simulateChronologicalSeason, resumeChronologicalSeason } from "./chronologicalSeason.js?v=106";
 import { findLeagueById } from "./destinationSchedule.js?v=91";
-import { evaluateSeasonAwards } from "./individualAwards.js?v=91";
+import { evaluateSeasonAwards } from "./individualAwards.js?v=92";
 import {
   buildSeasonEvidence,
   evidenceToDevelopmentContext,

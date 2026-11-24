@@ -37,7 +37,7 @@ const SHOT_DIR = join(root, "qa/screenshots/checklist-performance-awards");
 const CASE_DIR = join(RUN_DIR, "cases");
 const SNAP_DIR = join(RUN_DIR, "snapshots");
 const OUT = join(RUN_DIR, "browser-report.json");
-const REQUIRED = ["B01", "B02", "B03", "B04", "B05", "B06", "B07"];
+const REQUIRED = ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08"];
 const SELECTED = process.env.CASES
   ? process.env.CASES.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean)
   : REQUIRED;
@@ -275,6 +275,9 @@ function slimEvidence(snapOrBundle) {
           awardNames: s.individualAwards || s.awardNames || [],
           awardRecords: s.awardRecords || null,
           individualAwards: s.individualAwards || null,
+          awardDecisionTrace: s.awardDecisionTrace
+            ? { "world-player-of-the-year": s.awardDecisionTrace["world-player-of-the-year"] || null }
+            : null,
         })),
         careerHonors: player.careerHonors || null,
         awardFields: Object.fromEntries(
@@ -469,8 +472,10 @@ async function driveSeasonToDesk(
         // as a stay choice — /remain/ matches that label.
         const needsDecision =
           d.nextAction?.id === "resolve-decision" ||
+          d.nextAction?.id === "resolve-offers" ||
           d.seasonCheckpoint === "awaiting_decision" ||
-          Boolean(d.pendingDecision);
+          Boolean(d.pendingDecision) ||
+          (Array.isArray(d.pendingOffers) && d.pendingOffers.length > 0 && !nowCommitted);
         if (needsDecision && deskClear) {
           const tray = document.getElementById("transfer-offers") || document.body;
           const trayButtons = [...tray.querySelectorAll("button")].filter(
@@ -481,7 +486,11 @@ async function driveSeasonToDesk(
           ].filter((b) => !b.disabled && b.offsetParent !== null);
           const pool = decisionActions.length ? decisionActions : trayButtons;
           const isSkipLike = (t) => /skip remaining|skip phase|skip match|skip season/i.test(t);
+          // Item 8: successive legitimate offer/decision trays must resolve in
+          // order — decline mid-season offers after squad discussions when staying.
           const decisionBtn =
+            pool.find((b) => /decline offers and continue at/i.test(b.textContent || "")) ||
+            pool.find((b) => /decline all|decline offers|continue as free agent|no thanks/i.test(b.textContent || "")) ||
             pool.find((b) => /^stay and compete$/i.test((b.textContent || "").trim())) ||
             pool.find((b) => /^continue the season$/i.test((b.textContent || "").trim())) ||
             pool.find((b) => /^focus on recovery$/i.test((b.textContent || "").trim())) ||
@@ -494,9 +503,9 @@ async function driveSeasonToDesk(
             pool.find((b) => {
               const t = (b.textContent || "").trim();
               if (isSkipLike(t)) return false;
-              if (/review loan|see loan|decline offers|accept|sign for|seek a|request a permanent|ask to be sold/i.test(t))
+              if (/review loan|see loan|accept|sign for|seek a|request a permanent|ask to be sold/i.test(t))
                 return false;
-              return /stay and compete|continue the season|focus on recovery|keep working|see it out|remain at the club|^acknowledge$/i.test(
+              return /stay and compete|continue the season|focus on recovery|keep working|see it out|remain at the club|decline offers|^acknowledge$/i.test(
                 t
               );
             });
@@ -606,10 +615,12 @@ async function driveSeasonToDesk(
             }
           }
           const stayBtn =
-            buttons.find((b) => /^stay and compete$/i.test((b.textContent || "").trim())) ||
             buttons.find((b) => /decline offers and continue at/i.test(b.textContent || "")) ||
+            buttons.find((b) => /^stay and compete$/i.test((b.textContent || "").trim())) ||
             buttons.find((b) => /^acknowledge$|^see it out$|^remain$/i.test((b.textContent || "").trim()));
-          if (stayBtn && deskDecisionCount === 0) {
+          // Allow successive stay/decline clicks — mid-season offer trays often
+          // follow a squad discussion on the same desk.
+          if (stayBtn) {
             stayBtn.click();
             clicked.push(`desk-decision:${(stayBtn.textContent || "").trim()}`);
             return clicked;
@@ -918,6 +929,8 @@ const cases = {
   },
 
   async B05(page, guards) {
+    // Negative-capable world path: elite seed that may miss POTS / shortlist.
+    // Explicit world-win acceptance lives in B08.
     const snap = buildSnap({ id: "fix08-b05", position: "ST", ovr: 94, club: "Atalanta", age: 25, seed: 8820 });
     await writeCase("B05-initial.json", slimEvidence(snap));
     await restore(page, snap);
@@ -926,9 +939,12 @@ const cases = {
     await writeCase("B05-before-continue.json", slimEvidence(driven.beforeContinue));
     await writeCase("B05-desk.json", slimEvidence(desk));
     const before = awardSummary(driven.beforeContinue.snapshot.player);
+    const last = driven.beforeContinue.snapshot.player?.seasons?.at(-1);
     const world = (before.awardRecords || []).filter(
       (r) => r.awardId === "world-player-of-the-year" || /world/i.test(r.label || "")
     );
+    const worldTrace = last?.awardDecisionTrace?.["world-player-of-the-year"] || null;
+    assert(worldTrace, "world decision trace must be recorded even when ineligible", { worldTrace, before });
     await assertDeskUsable(page);
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
     return {
@@ -936,9 +952,10 @@ const cases = {
       before,
       worldPathExercised: true,
       worldRecords: world,
+      worldTrace,
       note: world.length
         ? "world award present"
-        : "world path evaluated; absence is a valid negative for this seed",
+        : `world path evaluated; negative outcome reason=${worldTrace?.reason || "unknown"}`,
     };
   },
 
@@ -1014,6 +1031,93 @@ const cases = {
     assert(restored.weeklyWage === b.weeklyWage, "fresh restore wage", { b, restored });
     assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
     return { ok: true, before: a, desk: b, restored, continued: true, earnedIds: a.earnedIds };
+  },
+
+  async B08(page, guards) {
+    // Browser-path world-win fixture on the deterministic engine. Seed 94035 was
+    // chosen from a declared 6-seed sweep (94013 fail, 94033 fail, 94035 PASS,
+    // 95001 fail, 95032 fail, 95033 PASS); reruns reproduce the same outcome.
+    // See phases/08/browser/b08-sweep-deterministic/.
+    const b08Seed = Number(process.env.B08_SEED || 94035);
+    const b08Club = process.env.B08_CLUB || "Real Madrid";
+    const snap = buildSnap({
+      id: "fix08-b08-world",
+      position: "ST",
+      ovr: 95,
+      club: b08Club,
+      age: 26,
+      seed: b08Seed,
+    });
+    await writeCase("B08-initial.json", slimEvidence(snap));
+    await writeFullSnapshot("B08-initial.full.json", snap);
+    await restore(page, snap);
+    const driven = await driveSeasonToDesk(page, { seasonsBefore: 0, shotPrefix: "B08" });
+    const beforeSnap = driven.beforeContinue.snapshot;
+    await writeCase("B08-before-continue.json", slimEvidence(driven.beforeContinue));
+    await writeFullSnapshot("B08-before-continue.full.json", driven.beforeContinue);
+    const desk = await exportSnapshot(page);
+    await writeCase("B08-desk.json", slimEvidence(desk));
+    await writeFullSnapshot("B08-desk.full.json", desk);
+
+    const before = awardSummary(beforeSnap.player);
+    const afterContinue = awardSummary(desk.player);
+    const worldBefore = (before.awardRecords || []).filter((r) => r.awardId === "world-player-of-the-year");
+    assert(worldBefore.some((r) => r.status === "won"), "B08 must earn World Player of the Year before Continue", {
+      worldBefore,
+      names: before.awardNames,
+      trace: beforeSnap.player?.seasons?.at(-1)?.awardDecisionTrace?.["world-player-of-the-year"],
+    });
+    assert(
+      (before.awardNames || []).includes("World Player of the Year"),
+      "world win appears in season award names",
+      before.awardNames
+    );
+    assert(before.seasons === afterContinue.seasons && before.age === afterContinue.age, "Continue exact-once", {
+      before,
+      afterContinue,
+    });
+    assert(
+      JSON.stringify(before.earnedIds) === JSON.stringify(afterContinue.earnedIds),
+      "world win not duplicated on Continue",
+      { before, afterContinue }
+    );
+
+    // Repeated Continue
+    const ui = await uiState(page);
+    if (ui.continueBtnVisible && !ui.continueBtnDisabled) {
+      await page.evaluate(() => document.getElementById("continue-btn")?.click());
+      await page.waitForTimeout(300);
+    }
+    const afterRepeat = awardSummary((await exportSnapshot(page)).player);
+    assert(afterRepeat.honorCount === afterContinue.honorCount, "repeat Continue honors stable", {
+      afterContinue,
+      afterRepeat,
+    });
+
+    // Fresh restore
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.waitForFunction(() => typeof window.__restoreCareerSnapshot === "function", null, {
+      timeout: 60000,
+    });
+    await restore(page, desk);
+    const restoredSnap = await exportSnapshot(page);
+    const restored = awardSummary(restoredSnap.player);
+    await writeCase("B08-fresh-restore.json", slimEvidence(restoredSnap));
+    assert(
+      (restored.awardRecords || []).some((r) => r.awardId === "world-player-of-the-year" && r.status === "won"),
+      "fresh restore retains world win",
+      restored
+    );
+    assert(relevantErrors(guards).length === 0, "page errors", relevantErrors(guards));
+    return {
+      ok: true,
+      worldWin: true,
+      before,
+      desk: afterContinue,
+      restored,
+      seed: b08Seed,
+      club: b08Club,
+    };
   },
 
   async B07(page, guards) {

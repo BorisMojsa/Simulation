@@ -582,19 +582,39 @@ function periodMeta(season, result = null) {
   };
 }
 
+/** Map award-record status / legacy flags onto export outcomes. */
+function awardRecordOutcome(rec) {
+  if (!rec || typeof rec !== "object") return null;
+  if (rec.outcome === "win" || rec.outcome === "selection" || rec.outcome === "nomination") return rec.outcome;
+  if (rec.status === "won" || rec.won === true) return "win";
+  if (rec.status === "selected" || rec.selected === true) return "selection";
+  if (rec.status === "nominated" || rec.nominated === true) return "nomination";
+  if (typeof rec.outcome === "string" && rec.outcome) return rec.outcome;
+  return null;
+}
+
+/**
+ * Aggregate award records and World Player decision traces across seasons.
+ * Records use `status` (`won` / `selected` / `nominated`); older exporters used
+ * `outcome` / boolean flags — accept both.
+ */
 function countAwards(seasons) {
   const wins = Object.create(null);
+  const selections = Object.create(null);
+  const nominations = Object.create(null);
   const events = [];
+  const worldSeasons = [];
   let winCount = 0;
   for (const s of seasons || []) {
     const seasonId = s?.seasonId || s?.periodId || null;
     const records = Array.isArray(s.awardRecords) ? s.awardRecords : [];
     const seenEvent = new Set();
     for (const rec of records) {
-      const outcome = rec?.outcome || (rec?.won ? "win" : rec?.nominated ? "nomination" : null);
+      const outcome = awardRecordOutcome(rec);
       const awardId = rec?.awardId || rec?.label || null;
       if (!awardId) continue;
-      const eventKey = `${seasonId || "?"}:${awardId}:${outcome || "unknown"}:${rec?.scope || ""}`;
+      const scope = rec.competitionScope || rec.scope || null;
+      const eventKey = `${seasonId || "?"}:${awardId}:${outcome || "unknown"}:${scope || ""}`;
       if (seenEvent.has(eventKey)) continue;
       seenEvent.add(eventKey);
       events.push({
@@ -602,11 +622,17 @@ function countAwards(seasons) {
         awardId,
         label: rec.label || awardId,
         outcome,
-        scope: rec.scope || null,
+        status: rec.status || null,
+        rank: rec.rank ?? null,
+        scope,
       });
-      if (outcome === "win" || rec?.won) {
+      if (outcome === "win") {
         wins[awardId] = (wins[awardId] || 0) + 1;
         winCount += 1;
+      } else if (outcome === "selection") {
+        selections[awardId] = (selections[awardId] || 0) + 1;
+      } else if (outcome === "nomination") {
+        nominations[awardId] = (nominations[awardId] || 0) + 1;
       }
     }
     // Labels without records: count only when no awardRecords exist for the season.
@@ -620,8 +646,36 @@ function countAwards(seasons) {
         winCount += 1;
       }
     }
+
+    // Item 8: export every season's World Player eligibility / outcome.
+    const traceRoot = s.awardDecisionTrace || null;
+    const worldTrace =
+      (traceRoot && typeof traceRoot === "object" && traceRoot["world-player-of-the-year"]) || null;
+    const worldRec = records.find((r) => r?.awardId === "world-player-of-the-year") || null;
+    if (worldTrace || worldRec) {
+      const ev = worldTrace?.evidence || worldRec?.evidence || {};
+      worldSeasons.push({
+        seasonId,
+        age: s.age ?? null,
+        club: s.clubDisplay || s.clubName || s.club || null,
+        league: s.leagueDisplay || s.league || null,
+        status: worldRec?.status || worldTrace?.status || null,
+        reason: worldTrace?.reason || null,
+        rank: worldRec?.rank ?? worldTrace?.rank ?? null,
+        cutoff: worldTrace?.cutoff ?? null,
+        leagueRank: ev.leagueRank ?? null,
+        competitionStrength: ev.competitionStrength ?? null,
+        participationMinutes: ev.minutes ?? s.minutes ?? null,
+        roleAdjustedScore: ev.score ?? null,
+        baseScore: ev.baseScore ?? null,
+        eliteTrophyWeight: ev.eliteTrophyWeight ?? null,
+        bestRivalScore: ev.bestRivalScore ?? null,
+        worldMinLeagueRank: ev.worldMinLeagueRank ?? null,
+        worldMinCompetitionStrength: ev.worldMinCompetitionStrength ?? null,
+      });
+    }
   }
-  return { wins, winCount, events };
+  return { wins, selections, nominations, winCount, events, worldSeasons };
 }
 
 function bootstrapFromRow(row) {

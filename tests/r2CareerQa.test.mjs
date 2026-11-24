@@ -376,6 +376,54 @@ test("awards reconcile by event outcome without double-counting labels", () => {
   assert.ok(awards.events.some((e) => e.outcome === "nomination"));
 });
 
+test("awards map status=won/selected/nominated and export world decision rows", () => {
+  const seasons = [
+    {
+      seasonId: "s2",
+      age: 28,
+      minutes: 3200,
+      awardRecords: [
+        {
+          awardId: "world-player-of-the-year",
+          label: "World Player of the Year",
+          status: "won",
+          rank: 1,
+          competitionScope: "world",
+          evidence: { score: 11.2, leagueRank: 1, competitionStrength: 0.9, bestRivalScore: 8.1 },
+        },
+        { awardId: "team-of-the-season", label: "Team of the Season", status: "selected" },
+        { awardId: "golden-boot", label: "Golden Boot", status: "nominated", rank: 2 },
+      ],
+      awardDecisionTrace: {
+        "world-player-of-the-year": {
+          status: "won",
+          reason: "world-leader",
+          rank: 1,
+          cutoff: 5,
+          evidence: {
+            score: 11.2,
+            baseScore: 10.1,
+            leagueRank: 1,
+            competitionStrength: 0.9,
+            bestRivalScore: 8.1,
+            eliteTrophyWeight: 0.4,
+          },
+        },
+      },
+      individualAwards: ["World Player of the Year"],
+    },
+  ];
+  const awards = playTest.countAwards(seasons);
+  assert.equal(awards.wins["world-player-of-the-year"], 1);
+  assert.equal(awards.selections["team-of-the-season"], 1);
+  assert.equal(awards.nominations["golden-boot"], 1);
+  assert.equal(awards.winCount, 1);
+  assert.equal(awards.worldSeasons.length, 1);
+  assert.equal(awards.worldSeasons[0].status, "won");
+  assert.equal(awards.worldSeasons[0].reason, "world-leader");
+  assert.equal(awards.worldSeasons[0].leagueRank, 1);
+});
+
 test("normal retirement odds helper retires within UI thresholds", () => {
   const player = { age: 42, isRetired: false, seasons: [] };
   assert.equal(playTest.maybeRetire(player, createRng(1)), true);

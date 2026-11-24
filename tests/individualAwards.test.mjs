@@ -503,3 +503,130 @@ test("evidence: competition strength and challenge are bounded", () => {
   assert.equal(weak.challengeRelativeToAbility, 0.55);
   assert.ok(weak.competitionStrength >= 0);
 });
+
+/* ------------------------------------------------------------------ */
+/* Round 2 Item 8 — World Player of the Year controls                  */
+/* ------------------------------------------------------------------ */
+
+function eliteLeague() {
+  return {
+    name: "Elite League",
+    leagueId: "elite",
+    tier: 5,
+    clubs: Array.from({ length: 20 }, (_, i) => ({
+      name: i === 0 ? "Test FC" : `E${i}`,
+      clubId: i === 0 ? "club:Test FC" : `e${i}`,
+      overall: 86,
+    })),
+  };
+}
+
+function evaluateWorldCase({ ledgerOpts, standing, trophies = [], seed = "wp", seasonStartAge = 26, playerOpts = {} }) {
+  const p = makePlayer({ name: `WP-${seed}`, rating: 90, ...playerOpts });
+  const league = eliteLeague();
+  const evidence = buildSeasonEvidence(p, {
+    seasonId: SEASON,
+    ledger: buildLedger(ledgerOpts),
+    standing,
+    league,
+    clubOverall: 90,
+    trophies,
+    seasonStartAge,
+  });
+  const res = evaluateSeasonAwards({
+    player: p,
+    evidence,
+    standing,
+    league,
+    rng: createStreamRng("wp", seed),
+    seasonId: SEASON,
+    seasonStartAge,
+  });
+  return {
+    record: res.byAward["world-player-of-the-year"] || null,
+    trace: res.decisionTrace["world-player-of-the-year"] || null,
+    pots: res.byAward["player-of-the-season"] || null,
+    names: res.awardNames,
+  };
+}
+
+test("World Player positive control: dominant elite season can win", () => {
+  const standing = { name: "Test FC", clubId: "club:Test FC", position: 1, played: 38, points: 98, goalsFor: 95, goalsAgainst: 24 };
+  const { record, trace, pots } = evaluateWorldCase({
+    ledgerOpts: { leagueApps: 38, leagueGoals: 42, assists: 16, rating: 8.5 },
+    standing,
+    trophies: [{ kind: "continental", label: "UCL", scope: "continental", participationWeight: 0.9 }],
+    seed: "pos",
+  });
+  assert.equal(pots?.status, "won");
+  assert.ok(pots?.rank != null && pots.rank <= 3, "POTS gate requires top-three");
+  assert.equal(record?.status, "won");
+  assert.equal(trace?.reason, "world-leader");
+  assert.ok(record.evidence.score > record.evidence.bestRivalScore);
+  assert.ok(record.evidence.competitionStrength >= 0.55);
+});
+
+test("World Player negative: insufficient participation", () => {
+  const standing = { name: "Test FC", clubId: "club:Test FC", position: 1, played: 38, points: 90, goalsFor: 80, goalsAgainst: 30 };
+  const { record, trace } = evaluateWorldCase({
+    ledgerOpts: { leagueApps: 6, leagueGoals: 5, assists: 1, rating: 8.8 },
+    standing,
+    seed: "neg-part",
+  });
+  assert.ok(!record);
+  assert.equal(trace?.status, "ineligible");
+  assert.ok(["below-participation", "league-pots-gate"].includes(trace?.reason));
+});
+
+test("World Player negative: weak output fails POTS / shortlist path", () => {
+  const standing = { name: "Test FC", clubId: "club:Test FC", position: 10, played: 38, points: 40, goalsFor: 35, goalsAgainst: 50 };
+  const { record, trace, pots } = evaluateWorldCase({
+    ledgerOpts: { leagueApps: 34, leagueGoals: 3, assists: 2, rating: 6.3 },
+    standing,
+    seed: "neg-weak",
+  });
+  assert.ok(!record || record.status !== "won");
+  if (!pots || pots.rank == null || pots.rank > 3) {
+    assert.equal(trace?.status, "ineligible");
+    assert.equal(trace?.reason, "league-pots-gate");
+  } else {
+    assert.ok(["outside-shortlist", "within-shortlist", "world-leader"].includes(trace?.reason) || trace?.status === "nominated");
+  }
+});
+
+test("World Player negative: weak competition strength gate", () => {
+  const p = makePlayer({ name: "Farm", rating: 88 });
+  const league = {
+    name: "Lower",
+    leagueId: "low",
+    tier: 1,
+    clubs: Array.from({ length: 20 }, (_, i) => ({
+      name: i === 0 ? "Test FC" : `L${i}`,
+      clubId: i === 0 ? "club:Test FC" : `l${i}`,
+      overall: 52,
+    })),
+  };
+  const standing = { name: "Test FC", clubId: "club:Test FC", position: 1, played: 38, points: 95, goalsFor: 90, goalsAgainst: 20 };
+  const evidence = buildSeasonEvidence(p, {
+    seasonId: SEASON,
+    ledger: buildLedger({ leagueApps: 38, leagueGoals: 40, assists: 12, rating: 8.4 }),
+    standing,
+    league,
+    clubOverall: 55,
+    seasonStartAge: 26,
+  });
+  assert.ok(evidence.competitionStrength < 0.55, `expected weak strength, got ${evidence.competitionStrength}`);
+  const res = evaluateSeasonAwards({
+    player: p,
+    evidence,
+    standing,
+    league,
+    rng: createStreamRng("wp", "neg-str"),
+    seasonId: SEASON,
+    seasonStartAge: 26,
+  });
+  const trace = res.decisionTrace["world-player-of-the-year"];
+  assert.ok(!res.byAward["world-player-of-the-year"]);
+  assert.equal(trace?.status, "ineligible");
+  assert.equal(trace?.reason, "competition-strength-gate");
+});
