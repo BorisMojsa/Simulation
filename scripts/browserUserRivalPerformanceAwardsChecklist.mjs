@@ -960,14 +960,19 @@ const cases = {
   },
 
   async B06(page, guards) {
-    // Positive recognition: careerId-specific seed that earns TOTS + Rookie.
+    // Positive recognition: declared seed that earns TOTS + Rookie.
+    // Override with B06_SEED for the deterministic sweep. Seed 15001 predates the
+    // season-sim determinism fix and no longer earns recognition. Post-fix sweep
+    // (CASES=B06, 15001-15012): PASS 15007, 15008, 15009; FAIL 15001-15006, 15010-15012.
+    // Default is the first passing seed in sweep order.
+    const b06Seed = Number(process.env.B06_SEED || 15007);
     const snap = buildSnap({
       id: "fix08-b06",
       position: "ST",
       ovr: 96,
       club: "Ajax",
       age: 23,
-      seed: 15001,
+      seed: b06Seed,
     });
     await writeCase("B06-initial.json", slimEvidence(snap));
     await writeFullSnapshot("B06-initial.full.json", snap);

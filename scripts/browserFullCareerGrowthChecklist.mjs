@@ -208,9 +208,27 @@ async function freshPage(context, base) {
   return page;
 }
 async function exported(page) {
-  const value = await page.evaluate(() => window.__exportCareerSnapshot?.() || null);
+  // Large authoritative worlds (>100 MB) exceed the CDP evaluate return-payload limit and
+  // destroy the execution context. Stringify in-page, then pull the string back in slices.
+  const size = await page.evaluate(() => {
+    const v = window.__exportCareerSnapshot?.() || null;
+    window.__fix11Export = v && v.player && v.world ? JSON.stringify(v) : null;
+    return window.__fix11Export ? window.__fix11Export.length : 0;
+  });
+  invariant(size > 0, "__exportCareerSnapshot returned no authoritative state");
+  const CHUNK = 4_000_000;
+  const parts = [];
+  for (let offset = 0; offset < size; offset += CHUNK) {
+    parts.push(
+      await page.evaluate(([a, b]) => window.__fix11Export.slice(a, b), [offset, offset + CHUNK])
+    );
+  }
+  await page.evaluate(() => {
+    delete window.__fix11Export;
+  });
+  const value = JSON.parse(parts.join(""));
   invariant(value?.player && value?.world, "__exportCareerSnapshot returned no authoritative state");
-  return clone(value);
+  return value;
 }
 async function installDeterministicClock(page, stampedAt) {
   if (!Number.isFinite(Number(stampedAt))) return;
