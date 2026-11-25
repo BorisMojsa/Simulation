@@ -187,13 +187,14 @@ async function driveSeniorSeasonToDesk(page, seasonsBefore, timeoutMs = 90000) {
         clicked.push("continue-btn");
       }
 
-      const deskBtn = [...document.querySelectorAll("#transfer-offers button")].find((b) =>
-        /stay|compete|acknowledge|decline offers and continue|see it out|see out|remain|continue at/i.test(
-          b.textContent || ""
+      // Prefer explicit squad-decision actions (non-renewal / development-loan / etc.).
+      const decisionBtn = [...document.querySelectorAll("#transfer-offers [data-decision-actions] button, #transfer-offers button")].find((b) =>
+        /stay|compete|acknowledge|decline offers and continue|see it out|see out|remain|continue at|seek a new club|review loan|request a permanent/i.test(
+          (b.textContent || "").trim()
         )
       );
-      if (deskBtn) {
-        deskBtn.click();
+      if (decisionBtn) {
+        decisionBtn.click();
         clicked.push("desk-decision");
       }
 
